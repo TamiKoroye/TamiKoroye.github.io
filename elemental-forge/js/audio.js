@@ -30,5 +30,6 @@ export class Audio {
   whoosh(k = 0.5) { this.noise(0.22 + k * 0.1, 'bandpass', 600 + k * 900, 2400, 0.25 * k + 0.05, 1.2); }
   impact(k = 1) { this.noise(0.35, 'lowpass', 1400, 120, 0.6 * k, 0.8); this.tone(0.25, 120, 45, 0.5 * k); }
   rumble(k = 0.6) { this.noise(0.5, 'lowpass', 300, 60, 0.6 * k, 0.7); this.tone(0.4, 70, 40, 0.35 * k, 'triangle'); }
+  step(k = 0.5) { if (!this.ctx) return; const t = this.ctx.currentTime; if (t - (this._lastStep || 0) < 0.12) return; this._lastStep = t; this.noise(0.07, 'lowpass', 900, 200, 0.12 * k + 0.02, 0.7); }
   hit(k = 0.6) { this.noise(0.12, 'highpass', 1800, 800, 0.35 * k); this.tone(0.14, 220, 80, 0.4 * k, 'square'); }
 }

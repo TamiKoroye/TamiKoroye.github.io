@@ -159,6 +159,31 @@ export class Arena {
     crate(-24, 3, 3.2, 1.0, 0.5, 0); crate(24, -12, 0.5, 1.0, 3.2, 0);
     crate(-6, 22, 1.2, 1.0, 1.2, 0.8); crate(16, 4.5, 1.2, 1.2, 1.2, 0.3);
 
+    // ---- slopes: ramps up to the platforms and a raised stone ledge (terrain variation)
+    const ramp = (x0, x1, z0, z1, h0, h1, mat) => {
+      // height varies linearly along x from h0 (at x0) to h1 (at x1)
+      const w = Math.abs(x1 - x0), d = z1 - z0, cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
+      const g = new THREE.BoxGeometry(w, 1, d, 6, 1, 1);
+      const pa = g.attributes.position;
+      for (let i = 0; i < pa.count; i++) {
+        const lx = pa.getX(i) + cx, top = h0 + (h1 - h0) * ((lx - x0) / (x1 - x0));
+        pa.setY(i, pa.getY(i) > 0 ? Math.max(0.02, top) : 0);
+      }
+      g.computeVertexNormals();
+      const m = new THREE.Mesh(g, mat); m.position.set(cx, 0, cz); m.castShadow = m.receiveShadow = true; this.group.add(m);
+      this.colliders.push({ kind: 'b', x: cx, z: cz, hx: w / 2, hz: d / 2, top: Math.max(h0, h1), walk: true, mesh: m, slope: { x0, x1, h0, h1 } });
+    };
+    ramp(-16, -12.5, -21, -17, 0.45, 0, stoneMat);
+    ramp(13.5, 17, 17, 21, 0, 0.45, stoneMat);
+    {
+      // flush against the west wall (x = -30) so there is no gap to fall into behind it
+      const ledge = new THREE.Mesh(new THREE.BoxGeometry(7.6, 1.6, 8), [stoneMat, stoneMat, stoneTop, stoneMat, stoneMat, stoneMat]);
+      ledge.position.set(-26.8, 0.8, 16); ledge.castShadow = ledge.receiveShadow = true; this.group.add(ledge);
+      this.colliders.push({ kind: 'b', x: -26.8, z: 16, hx: 3.8, hz: 4, top: 1.6, walk: true, mesh: ledge });
+      this.cameraBlockers.push(ledge);
+      ramp(-23, -16, 13, 19, 1.6, 0, stoneMat);
+    }
+
     // ---- rocks and spires
     const rockMat = new THREE.MeshStandardMaterial({ color: 0x5d5c63, roughness: 0.95, flatShading: true });
     this.rockMat = rockMat;
@@ -267,12 +292,18 @@ export class Arena {
   }
 
   // Height of walkable ground under (x, z) reachable from height y.
+  // top surface height of a collider at (x, z); ramps interpolate
+  topAt(c, x, z) {
+    if (!c.slope) return c.top;
+    const s = c.slope, t = clamp((x - s.x0) / (s.x1 - s.x0), 0, 1);
+    return s.h0 + (s.h1 - s.h0) * t;
+  }
   groundAt(x, z, y) {
     let h = 0;
     for (const c of this.colliders) {
-      if (!c.walk || c.top > y + 0.5 || c.dead) continue;
-      if (c.kind === 'c') { if ((x - c.x) ** 2 + (z - c.z) ** 2 < c.r * c.r) h = Math.max(h, c.top); }
-      else if (Math.abs(x - c.x) < c.hx && Math.abs(z - c.z) < c.hz) h = Math.max(h, c.top);
+      if (!c.walk || c.dead) continue;
+      if (c.kind === 'c') { if (c.top <= y + 0.5 && (x - c.x) ** 2 + (z - c.z) ** 2 < c.r * c.r) h = Math.max(h, c.top); }
+      else if (Math.abs(x - c.x) < c.hx && Math.abs(z - c.z) < c.hz) { const t = this.topAt(c, x, z); if (t <= y + 0.5) h = Math.max(h, t); }
     }
     return h;
   }
@@ -282,7 +313,7 @@ export class Arena {
     const p = f.pos, r = f.radius;
     for (const c of this.colliders) {
       if (c.dead) continue;
-      if (c.walk && p.y >= c.top - 0.5) continue;    // standing on / stepping onto it
+      if (c.walk && p.y >= this.topAt(c, clamp(p.x, c.x - c.hx, c.x + c.hx), clamp(p.z, c.z - (c.hz || 0), c.z + (c.hz || 0))) - 0.5) continue; // standing on / stepping onto it
       if (!c.walk && p.y >= c.top) continue;
       if (c.kind === 'c') {
         const dx = p.x - c.x, dz = p.z - c.z, d = Math.hypot(dx, dz), m = c.r + r;
@@ -313,7 +344,7 @@ export class Arena {
   // Which solid collider (if any) contains point p (used by projectiles).
   solidAt(p, pad = 0) {
     for (const c of this.colliders) {
-      if (c.dead || p.y > c.top + pad) continue;
+      if (c.dead || p.y > (c.slope ? this.topAt(c, p.x, p.z) : c.top) + pad) continue;
       if (c.kind === 'c') { if ((p.x - c.x) ** 2 + (p.z - c.z) ** 2 < (c.r + pad) ** 2) return c; }
       else if (Math.abs(p.x - c.x) < c.hx + pad && Math.abs(p.z - c.z) < c.hz + pad) return c;
     }

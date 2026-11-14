@@ -17,7 +17,7 @@
   {
     "name": "scene populated with meshes",
     "ok": true,
-    "detail": "208 meshes"
+    "detail": "130 meshes (each fighter is now a single skinned mesh)"
   },
   {
     "name": "player visible on screen",
@@ -32,12 +32,12 @@
   {
     "name": "stick forward moves the player",
     "ok": true,
-    "detail": "moved 13.51 m, speed 6.60"
+    "detail": "moved 17.33 m, speed 9.40"
   },
   {
     "name": "right-half drag rotates camera while moving (multi-touch)",
     "ok": true,
-    "detail": "yaw delta -0.46 rad"
+    "detail": "yaw delta -0.84 rad"
   },
   {
     "name": "player decelerates to a stop on release",
@@ -52,12 +52,12 @@
   {
     "name": "jump leaves the ground",
     "ok": true,
-    "detail": "height 1.13 m"
+    "detail": "height 0.98 m"
   },
   {
     "name": "dodge dashes the player",
     "ok": true,
-    "detail": "7.31 m"
+    "detail": "8.66 m"
   },
   {
     "name": "BEND raises a rock from the ground",
@@ -105,14 +105,89 @@
     "detail": "rival hp 81"
   },
   {
+    "name": "analogue stick: partial deflection walks",
+    "ok": true,
+    "detail": "1.69 m/s"
+  },
+  {
+    "name": "full deflection runs",
+    "ok": true,
+    "detail": "6.60 m/s"
+  },
+  {
+    "name": "holding the stick at its rim sprints",
+    "ok": true,
+    "detail": "9.40 m/s"
+  },
+  {
+    "name": "ramp: player climbs the slope onto the 1.6 m ledge",
+    "ok": true,
+    "detail": "max height 1.60 m"
+  },
+  {
+    "name": "hold STRIKE: light jab then charge stance",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "short hold releases a heavy palm strike that staggers",
+    "ok": true,
+    "detail": "actions heavy,; rival hp 82"
+  },
+  {
+    "name": "long hold releases a charged slam that knocks the rival down",
+    "ok": true,
+    "detail": "rival states ,down; hp 78"
+  },
+  {
+    "name": "knocked-down rival gets back up",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "dodge cancels attack recovery",
+    "ok": true,
+    "detail": "before: {\"a\":\"jab\",\"u\":0.44,\"ph\":\"fight\",\"stun\":-0.41666666666666663,\"hold\":-1,\"ch\":false,\"guard\":false,\"dead\":false}, after: dodging=true"
+  },
+  {
+    "name": "attack pressed during a dodge is buffered and fires",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "locked-on lateral dodge is a sidestep",
+    "ok": true,
+    "detail": "side"
+  },
+  {
+    "name": "locked-on backward dodge is a backstep",
+    "ok": true,
+    "detail": "back"
+  },
+  {
+    "name": "perfect guard deflects the rock back into the thrower",
+    "ok": true,
+    "detail": "{\"fired\":true,\"perfect\":1,\"counter\":true,\"oppHp\":87,\"php\":100,\"guarding\":true,\"gCd\":-28.01,\"act\":null,\"dodge\":0,\"btn\":true,\"en\":95}"
+  },
+  {
+    "name": "strike during the counter window performs a counter attack",
+    "ok": true,
+    "detail": "counter"
+  },
+  {
+    "name": "each fighter is one skinned mesh",
+    "ok": true,
+    "detail": "3832 triangles per fighter; frame: 90 draw calls, 108076 triangles"
+  },
+  {
     "name": "stick stays active while tapping BEND with the other thumb",
     "ok": true,
-    "detail": "speed 4.04"
+    "detail": "stick held=true, deflection 1.00, speed 4.40 m/s"
   },
   {
     "name": "AI opponent moves and fights",
     "ok": true,
-    "detail": "{\"php\":48,\"ohp\":100,\"opos\":[0,0,-9.8],\"fps\":\"22.6\"}"
+    "detail": "{\"php\":61,\"ohp\":87,\"opos\":[-9.3,0,-17.1],\"fps\":\"22.6\"}"
   },
   {
     "name": "fighter state stays finite after reload (no NaN poses)",
