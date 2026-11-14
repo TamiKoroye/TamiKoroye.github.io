@@ -1,6 +1,6 @@
 // Records a gameplay demonstration at true game speed.
 // The headless test browser renders slowly, so the game is advanced in exact 1/30 s steps and every
-// frame is screenshotted (HUD included), then encoded to a 30 fps MP4 with ffmpeg. Player inputs are
+// frame is captured from the WebGL canvas (the HTML HUD overlay is not included), then encoded to a 30 fps MP4 with ffmpeg. Player inputs are
 // scripted through the same control state the touch UI writes; the opponent is the real AI (Normal).
 // Usage: node tests/record-gameplay.mjs [baseUrl] [out.mp4]
 import { createRequire } from 'node:module';
@@ -51,19 +51,26 @@ at(860, 1000, (s, c) => { c.stick = [s.f < 930 ? 1 : -1, 0.15]; if (s.f % 22 ===
 at(1000, 1060, (s, c) => { c.stick = [0, 1]; if (s.f === 1005) c.press.push('jump'); if (s.f === 1030) c.press.push('dodge'); });
 const TOTAL = 1060;
 
-for (frame = 0; frame < TOTAL; frame++) {
-  const st = await page.evaluate(() => { const { player, opp } = window.__EF; return { dist: Math.hypot(opp.pos.x - player.pos.x, opp.pos.z - player.pos.z), pdead: player.dead, odead: opp.dead }; });
-  const c = { stick: [0, 0], press: [], held: [] };
-  for (const p of plan) if (frame >= p.from && frame < p.to) p.fn({ ...st, f: frame }, c);
-  await page.evaluate((c) => {
-    const E = window.__EF, C = E.controls;
-    C.stick.x = c.stick[0]; C.stick.y = c.stick[1];
-    for (const k of ['attack', 'bend', 'guard', 'jump', 'dodge']) C.btn[k] = c.held.includes(k) || (k === 'bend' && c.press.includes('bend'));
-    for (const k of c.press) C.pressed[k] = true;
-    document.querySelectorAll('.act').forEach(el => el.classList.toggle('down', C.btn[el.dataset.act]));
-    E.step(1 / 30); E.render();
-  }, c);
-  await page.screenshot({ path: path.join(FR, `f${String(frame).padStart(5, '0')}.jpg`), type: 'jpeg', quality: 82 });
+// Install the plan in the page (functions are sent as source) and capture the WebGL canvas in batches.
+await page.evaluate((src) => { window.__plan = src.map(([from, to, f]) => ({ from, to, fn: eval('(' + f + ')') })); }, plan.map(p => [p.from, p.to, p.fn.toString()]));
+const BATCH = 10;
+for (frame = 0; frame < TOTAL; frame += BATCH) {
+  const shots = await page.evaluate(([start, n]) => {
+    const E = window.__EF, C = E.controls, out = [];
+    for (let f = start; f < start + n; f++) {
+      const { player, opp } = E;
+      const st = { dist: Math.hypot(opp.pos.x - player.pos.x, opp.pos.z - player.pos.z), f };
+      const c = { stick: [0, 0], press: [], held: [] };
+      for (const p of window.__plan) if (f >= p.from && f < p.to) p.fn(st, c);
+      C.stick.x = c.stick[0]; C.stick.y = c.stick[1];
+      for (const k of ['attack', 'bend', 'guard', 'jump', 'dodge']) C.btn[k] = c.held.includes(k) || (k === 'bend' && c.press.includes('bend'));
+      for (const k of c.press) C.pressed[k] = true;
+      E.step(1 / 30); E.render();
+      out.push(document.getElementById('game').toDataURL('image/jpeg', 0.82)); // same task as render: buffer still valid
+    }
+    return out;
+  }, [frame, Math.min(BATCH, TOTAL - frame)]);
+  shots.forEach((d, i) => fs.writeFileSync(path.join(FR, `f${String(frame + i).padStart(5, '0')}.jpg`), Buffer.from(d.split(',')[1], 'base64')));
   if (frame % 100 === 0) process.stdout.write(`frame ${frame}/${TOTAL}\n`);
 }
 const summary = await page.evaluate(() => ({ playerHp: window.__EF.player.hp, rivalHp: window.__EF.opp.hp, hits: window.__EF.player.stats, phase: window.__EF.state.phase }));
