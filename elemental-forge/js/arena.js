@@ -176,9 +176,10 @@ export class Arena {
     ramp(-16, -12.5, -21, -17, 0.45, 0, stoneMat);
     ramp(13.5, 17, 17, 21, 0, 0.45, stoneMat);
     {
-      const ledge = new THREE.Mesh(new THREE.BoxGeometry(6, 1.6, 8), [stoneMat, stoneMat, stoneTop, stoneMat, stoneMat, stoneMat]);
-      ledge.position.set(-26, 0.8, 16); ledge.castShadow = ledge.receiveShadow = true; this.group.add(ledge);
-      this.colliders.push({ kind: 'b', x: -26, z: 16, hx: 3, hz: 4, top: 1.6, walk: true, mesh: ledge });
+      // flush against the west wall (x = -30) so there is no gap to fall into behind it
+      const ledge = new THREE.Mesh(new THREE.BoxGeometry(7.6, 1.6, 8), [stoneMat, stoneMat, stoneTop, stoneMat, stoneMat, stoneMat]);
+      ledge.position.set(-26.8, 0.8, 16); ledge.castShadow = ledge.receiveShadow = true; this.group.add(ledge);
+      this.colliders.push({ kind: 'b', x: -26.8, z: 16, hx: 3.8, hz: 4, top: 1.6, walk: true, mesh: ledge });
       this.cameraBlockers.push(ledge);
       ramp(-23, -16, 13, 19, 1.6, 0, stoneMat);
     }

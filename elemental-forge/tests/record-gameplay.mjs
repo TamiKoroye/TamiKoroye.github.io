@@ -75,5 +75,5 @@ for (frame = 0; frame < TOTAL; frame += BATCH) {
 }
 const summary = await page.evaluate(() => ({ playerHp: window.__EF.player.hp, rivalHp: window.__EF.opp.hp, hits: window.__EF.player.stats, phase: window.__EF.state.phase }));
 await browser.close();
-execSync(`ffmpeg -v error -y -framerate 30 -i "${FR}/f%05d.jpg" -c:v libx264 -pix_fmt yuv420p -crf 23 -movflags +faststart "${OUT}"`);
+execSync(`ffmpeg -v error -y -framerate 30 -i "${FR}/f%05d.jpg" -vf "crop=trunc(iw/2)*2:trunc(ih/2)*2" -c:v libx264 -pix_fmt yuv420p -crf 23 -movflags +faststart "${OUT}"`);
 console.log('wrote', OUT, JSON.stringify(summary), errors.length ? 'ERRORS: ' + errors.join(' | ') : 'no page errors');
