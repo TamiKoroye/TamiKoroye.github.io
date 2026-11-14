@@ -32,12 +32,12 @@
   {
     "name": "stick forward moves the player",
     "ok": true,
-    "detail": "moved 17.33 m, speed 9.40"
+    "detail": "moved 18.24 m, speed 9.40"
   },
   {
     "name": "right-half drag rotates camera while moving (multi-touch)",
     "ok": true,
-    "detail": "yaw delta -0.84 rad"
+    "detail": "yaw delta -0.61 rad"
   },
   {
     "name": "player decelerates to a stop on release",
@@ -47,17 +47,17 @@
   {
     "name": "locked strafe: faces rival while moving sideways",
     "ok": true,
-    "detail": "face error 0.13 rad, move vs facing 1.46 rad"
+    "detail": "face error 0.09 rad, move vs facing 1.63 rad"
   },
   {
     "name": "jump leaves the ground",
     "ok": true,
-    "detail": "height 0.98 m"
+    "detail": "height 1.05 m"
   },
   {
     "name": "dodge dashes the player",
     "ok": true,
-    "detail": "8.66 m"
+    "detail": "8.16 m"
   },
   {
     "name": "BEND raises a rock from the ground",
@@ -77,7 +77,7 @@
   {
     "name": "free-aim rock impacts at the reticle point",
     "ok": true,
-    "detail": "impact 12.8,0.1,-14.0 vs aim 13.3,0.0,-12.9 (err 1.17 m)"
+    "detail": "impact 13.0,0.1,-13.5 vs aim 13.3,0.0,-12.9 (err 0.64 m)"
   },
   {
     "name": "GUARD raises a stone shield",
@@ -167,7 +167,7 @@
   {
     "name": "perfect guard deflects the rock back into the thrower",
     "ok": true,
-    "detail": "{\"fired\":true,\"perfect\":1,\"counter\":true,\"oppHp\":87,\"php\":100,\"guarding\":true,\"gCd\":-28.01,\"act\":null,\"dodge\":0,\"btn\":true,\"en\":95}"
+    "detail": "{\"fired\":true,\"perfect\":1,\"counter\":true,\"oppHp\":87,\"php\":100,\"guarding\":true,\"gCd\":-28.26,\"act\":null,\"dodge\":0,\"btn\":true,\"en\":95}"
   },
   {
     "name": "strike during the counter window performs a counter attack",
@@ -177,7 +177,7 @@
   {
     "name": "each fighter is one skinned mesh",
     "ok": true,
-    "detail": "3832 triangles per fighter; frame: 90 draw calls, 108076 triangles"
+    "detail": "3832 triangles per fighter; frame: 90 draw calls, 108256 triangles"
   },
   {
     "name": "stick stays active while tapping BEND with the other thumb",
@@ -187,7 +187,7 @@
   {
     "name": "AI opponent moves and fights",
     "ok": true,
-    "detail": "{\"php\":61,\"ohp\":87,\"opos\":[-9.3,0,-17.1],\"fps\":\"22.6\"}"
+    "detail": "{\"php\":74,\"ohp\":87,\"opos\":[18.4,0,-8.1],\"fps\":\"23.2\"}"
   },
   {
     "name": "fighter state stays finite after reload (no NaN poses)",

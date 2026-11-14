@@ -46,7 +46,8 @@ check('WebGL context available', gl);
 
 // start with deterministic AI for the mechanics tests (no dodging / attacking unless we ask)
 await page.locator('#btn-start').tap();
-await ev(() => { const a = window.__EF.ai; a.P = { ...a.P, react: 0, melee: 0, throwGap: [999, 999] }; a.throwT = 999; });
+// mechanics checks run against a passive rival (it stands and faces the player); the real AI is exercised later on a fresh page
+await ev(() => { const a = window.__EF.ai; a.update = function () { const i = this.f.input; i.mx = i.mz = 0; i.attack = i.bend = i.guard = i.dodge = i.jump = false; i.faceYaw = Math.atan2(this.foe.pos.x - this.f.pos.x, this.foe.pos.z - this.f.pos.z); }; });
 await waitGame(1.6);
 await shot('02-round-start');
 const s0 = await ev(() => ({ phase: window.__EF.state.phase, p: window.__EF.player.pos.toArray(), o: window.__EF.opp.pos.toArray(), meshes: (() => { let n = 0; window.__EF.world.scene.traverse(o => { if (o.isMesh) n++; }); return n; })() }));
@@ -87,12 +88,12 @@ const stopped = await ev(() => Math.hypot(window.__EF.player.vel.x, window.__EF.
 check('player decelerates to a stop on release', stopped < 0.3, `speed ${stopped.toFixed(2)}`);
 
 // ---------------- independent move + aim: strafe sideways while facing the locked rival
-await ev(() => { const { player, opp, camCtl, state } = window.__EF; player.pos.set(0, 0, -10); opp.pos.set(0, 0, 0.0); opp.pos.z = -2; opp.pos.set(0, 0.16, 0); state.locked = true; camCtl.snapBehind(player); });
+await ev(() => { const { player, opp, camCtl, state } = window.__EF; player.pos.set(0, 0.16, -3); player.vel.set(0, 0, 0); opp.pos.set(0, 0.16, 4); state.locked = true; player.faceYaw = player.yaw = 0; camCtl.snapBehind(player); }); // on the dais: guaranteed clear of rocks
 await touch('touchStart', [{ x: 160, y: 300, id: 1 }]);
 await touch('touchMove', [{ x: 230, y: 300, id: 1 }]); // stick right
 await waitGame(0.8);
 const strafe = await ev(() => { const { player, opp } = window.__EF; const want = Math.atan2(opp.pos.x - player.pos.x, opp.pos.z - player.pos.z); const d = Math.atan2(Math.sin(want - player.faceYaw), Math.cos(want - player.faceYaw)); const mv = Math.atan2(player.vel.x, player.vel.z); return { faceErr: Math.abs(d), moveVsFace: Math.abs(Math.atan2(Math.sin(mv - player.faceYaw), Math.cos(mv - player.faceYaw))) }; });
-check('locked strafe: faces rival while moving sideways', strafe.faceErr < 0.25 && strafe.moveVsFace > 1.0, `face error ${strafe.faceErr.toFixed(2)} rad, move vs facing ${strafe.moveVsFace.toFixed(2)} rad`);
+check('locked strafe: faces rival while moving sideways', strafe.faceErr < 0.25 && strafe.moveVsFace > 1.0 && strafe.moveVsFace < 2.2, `face error ${strafe.faceErr.toFixed(2)} rad, move vs facing ${strafe.moveVsFace.toFixed(2)} rad`);
 await shot('05-lock-strafe');
 await touch('touchEnd', []);
 

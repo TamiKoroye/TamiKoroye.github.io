@@ -73,7 +73,9 @@ export class Combat {
     if (!r || (r.state !== 'held' && r.state !== 'rising')) return;
     f.heldRock = null;
     r.state = 'flying'; r.t = 0;
-    const target = f.input.aimPoint;
+    // aim the rock's centre slightly above the reticle point: rocks shatter when their edge touches a surface,
+    // so this makes the impact land on the reticle instead of short of it on shallow shots
+    const target = _t.copy(f.input.aimPoint); target.y += ROCK_R * 0.6;
     const from = r.pos;
     const dist = from.distanceTo(target);
     const tFlight = dist / ROCK_SPEED;
@@ -355,4 +357,4 @@ const MELEE = {
   heavy: { dmg: 12, range: 2.0, knock: 7.5, arc: 0.3, level: 1, guardBreak: 2.5 },
   counter: { dmg: 14, range: 2.1, knock: 9, arc: -1.1, level: 1 },
 };
-const _a = new THREE.Vector3(), _b = new THREE.Vector3(), _d = new THREE.Vector3();
+const _a = new THREE.Vector3(), _b = new THREE.Vector3(), _d = new THREE.Vector3(), _t = new THREE.Vector3();
