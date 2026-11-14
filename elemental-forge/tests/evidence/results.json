@@ -1,0 +1,137 @@
+[
+  {
+    "name": "page loads without errors",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "WebGL context available",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "fight phase begins",
+    "ok": true,
+    "detail": "fight"
+  },
+  {
+    "name": "scene populated with meshes",
+    "ok": true,
+    "detail": "208 meshes"
+  },
+  {
+    "name": "player visible on screen",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "opponent visible on screen",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "stick forward moves the player",
+    "ok": true,
+    "detail": "moved 13.51 m, speed 6.60"
+  },
+  {
+    "name": "right-half drag rotates camera while moving (multi-touch)",
+    "ok": true,
+    "detail": "yaw delta -0.46 rad"
+  },
+  {
+    "name": "player decelerates to a stop on release",
+    "ok": true,
+    "detail": "speed 0.00"
+  },
+  {
+    "name": "locked strafe: faces rival while moving sideways",
+    "ok": true,
+    "detail": "face error 0.13 rad, move vs facing 1.46 rad"
+  },
+  {
+    "name": "jump leaves the ground",
+    "ok": true,
+    "detail": "height 1.13 m"
+  },
+  {
+    "name": "dodge dashes the player",
+    "ok": true,
+    "detail": "7.31 m"
+  },
+  {
+    "name": "BEND raises a rock from the ground",
+    "ok": true,
+    "detail": "rising,held"
+  },
+  {
+    "name": "thrown rock hits the rival",
+    "ok": true,
+    "detail": "rival hp 87"
+  },
+  {
+    "name": "holding BEND keeps the rock suspended",
+    "ok": true,
+    "detail": "[\"held\"]"
+  },
+  {
+    "name": "free-aim rock impacts at the reticle point",
+    "ok": true,
+    "detail": "impact 12.8,0.1,-14.0 vs aim 13.3,0.0,-12.9 (err 1.17 m)"
+  },
+  {
+    "name": "GUARD raises a stone shield",
+    "ok": true,
+    "detail": "1 shield(s)"
+  },
+  {
+    "name": "shield intercepts the rock (no damage taken)",
+    "ok": true,
+    "detail": "player hp 100, shield hp 51.8"
+  },
+  {
+    "name": "shield sinks when GUARD released",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "same rock without guard damages the player",
+    "ok": true,
+    "detail": "player hp 87"
+  },
+  {
+    "name": "STRIKE combo damages the rival",
+    "ok": true,
+    "detail": "rival hp 81"
+  },
+  {
+    "name": "stick stays active while tapping BEND with the other thumb",
+    "ok": true,
+    "detail": "speed 4.04"
+  },
+  {
+    "name": "AI opponent moves and fights",
+    "ok": true,
+    "detail": "{\"php\":48,\"ohp\":100,\"opos\":[0,0,-9.8],\"fps\":\"22.6\"}"
+  },
+  {
+    "name": "fighter state stays finite after reload (no NaN poses)",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "player on screen during live AI round",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "portrait shows rotate-phone prompt",
+    "ok": true,
+    "detail": "flex"
+  },
+  {
+    "name": "no runtime errors during test",
+    "ok": true,
+    "detail": ""
+  }
+]

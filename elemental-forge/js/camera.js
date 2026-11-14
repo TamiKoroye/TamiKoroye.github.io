@@ -1,0 +1,99 @@
+// Third-person follow camera: shoulder offset, auto-follow, lock-on framing, collision, shake.
+import * as THREE from 'three';
+import { clamp, damp, dampAngle, angleDiff } from './util.js';
+import { HALF } from './arena.js';
+
+export class FollowCam {
+  constructor(camera, arena) {
+    this.cam = camera; this.arena = arena;
+    this.yaw = 0; this.pitch = 0.2;
+    this.dist = 5.2; this.curDist = 5.2;
+    this.shoulder = 0.55;
+    this.pivot = new THREE.Vector3();
+    this.lockOffsetYaw = 0;
+    this.sinceLook = 99;
+    this.shakeAmt = 0;
+    this.autoCam = true;
+    this.ray = new THREE.Raycaster();
+    this.fwd = new THREE.Vector3(); this.right = new THREE.Vector3();
+    this.fovBase = 62; this.fovKick = 0;
+  }
+
+  snapBehind(f) { this.yaw = f.faceYaw; this.pitch = 0.2; this.pivot.set(f.pos.x, f.pos.y + 1.45, f.pos.z); this.lockOffsetYaw = 0; }
+
+  update(dt, player, target, locked, look) {
+    // look: {x, y} radians this frame from touch/mouse
+    if (Math.abs(look.x) + Math.abs(look.y) > 1e-5) this.sinceLook = 0; else this.sinceLook += dt;
+
+    // pivot follows the player (y smoothed so jumps don't jerk the view)
+    const p = player.pos;
+    this.pivot.x = damp(this.pivot.x, p.x, 22, dt);
+    this.pivot.z = damp(this.pivot.z, p.z, 22, dt);
+    this.pivot.y = damp(this.pivot.y, p.y + 1.45, player.onGround ? 10 : 4, dt);
+
+    if (locked && target && !target.dead) {
+      // camera sits behind the player, looking through to the target
+      const dx = target.pos.x - p.x, dz = target.pos.z - p.z;
+      const want = Math.atan2(dx, dz);
+      this.lockOffsetYaw = clamp(this.lockOffsetYaw + look.x, -0.9, 0.9);
+      if (this.sinceLook > 0.35) this.lockOffsetYaw = damp(this.lockOffsetYaw, 0, 3, dt);
+      this.yaw = dampAngle(this.yaw, want + this.lockOffsetYaw, 7, dt);
+      const d = Math.hypot(dx, dz);
+      const wantPitch = clamp(0.27 + Math.atan2((p.y - target.pos.y) * 0.5, Math.max(d, 1)) - (d < 3 ? 0.05 : 0), -0.2, 0.6);
+      this.pitch = damp(this.pitch, wantPitch + clamp(look.y * 4, -0.2, 0.2), 5, dt);
+    } else {
+      this.yaw += look.x; this.pitch = clamp(this.pitch + look.y, -0.55, 1.05);
+      this.lockOffsetYaw = 0;
+      if (this.autoCam && this.sinceLook > 1.1) {
+        const sp = Math.hypot(player.vel.x, player.vel.z);
+        // drift behind the direction of travel (not when running at the camera)
+        if (sp > 2 && !player.input.strafe) {
+          const heading = Math.atan2(player.vel.x, player.vel.z);
+          const d = angleDiff(this.yaw, heading);
+          if (Math.abs(d) < 2.2) this.yaw += d * (1 - Math.exp(-1.4 * (sp / 6.6) * dt));
+        }
+        // keep the rival roughly in view during combat
+        if (target && !target.dead) {
+          const dx = target.pos.x - p.x, dz = target.pos.z - p.z, d = Math.hypot(dx, dz);
+          const want = Math.atan2(dx, dz), off = angleDiff(this.yaw, want);
+          if (d < 22 && Math.abs(off) > 0.75) this.yaw += (off - Math.sign(off) * 0.75) * (1 - Math.exp(-1.6 * dt));
+        }
+        this.pitch = damp(this.pitch, 0.18, 0.8, dt);
+      }
+    }
+
+    // over-the-shoulder offset widens during lock-on so the rival is framed beside / above the player
+    this.shoulder = damp(this.shoulder, locked && target && !target.dead ? 0.95 : 0.55, 4, dt);
+    this.dist = locked && target && !target.dead ? 5.6 : 5.2;
+    // build view
+    const cy = Math.cos(this.yaw), sy = Math.sin(this.yaw), cp = Math.cos(this.pitch), sp = Math.sin(this.pitch);
+    this.fwd.set(sy * cp, -sp, cy * cp);
+    this.right.set(-cy, 0, sy);
+    const base = _v.copy(this.pivot).addScaledVector(this.right, this.shoulder);
+    // collision: pull in if a rock / wall / crate is between pivot and camera
+    let want = this.dist;
+    this.ray.set(base, _v2.copy(this.fwd).negate());
+    this.ray.far = this.dist + 0.3;
+    const hits = this.ray.intersectObjects(this.arena.cameraBlockers, false);
+    if (hits.length) want = Math.max(1.2, hits[0].distance - 0.3);
+    this.curDist = want < this.curDist ? want : damp(this.curDist, want, 4, dt);
+    const pos = _v3.copy(base).addScaledVector(this.fwd, -this.curDist);
+    const lim = HALF + 1.2;
+    pos.x = clamp(pos.x, -lim, lim); pos.z = clamp(pos.z, -lim, lim);
+    pos.y = Math.max(pos.y, 0.35);
+    // shake
+    if (this.shakeAmt > 0) {
+      this.shakeAmt = Math.max(0, this.shakeAmt - dt * 1.6);
+      const s = this.shakeAmt * this.shakeAmt * 0.6;
+      pos.x += (Math.random() - 0.5) * s; pos.y += (Math.random() - 0.5) * s; pos.z += (Math.random() - 0.5) * s;
+    }
+    this.cam.position.copy(pos);
+    this.cam.lookAt(_v4.copy(pos).add(this.fwd));
+    const fov = this.fovBase + this.fovKick;
+    if (Math.abs(this.cam.fov - fov) > 0.05) { this.cam.fov = damp(this.cam.fov, fov, 8, dt); this.cam.updateProjectionMatrix(); }
+    this.fovKick = damp(this.fovKick, 0, 4, dt);
+  }
+
+  shake(a) { this.shakeAmt = Math.min(0.8, this.shakeAmt + a); }
+}
+const _v = new THREE.Vector3(), _v2 = new THREE.Vector3(), _v3 = new THREE.Vector3(), _v4 = new THREE.Vector3();
