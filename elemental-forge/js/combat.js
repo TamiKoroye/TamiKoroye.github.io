@@ -130,6 +130,28 @@ export class Combat {
       for (let s = 0; s < steps && !done; s++) {
         r.vel.y -= (r.state === 'falling' ? 18 : ROCK_GRAV) * h;
         r.pos.addScaledVector(r.vel, h);
+        // shields
+        for (const sh of this.shields) {
+          if (sh.dead || (sh.owner === r.owner && r.state === 'flying')) continue;
+          if (this.pointInShield(sh, r.pos, ROCK_R)) {
+            const o = sh.owner;
+            // perfect guard: shield raised just in time sends the rock back at its thrower
+            if (o && o.guarding && o.guardT < 0.25 && r.owner && r.owner !== o && !r.deflected) {
+              const back = r.owner.chestPos(_a);
+              r.vel.subVectors(back, r.pos).normalize().multiplyScalar(ROCK_SPEED);
+              r.vel.y += 0.5 * ROCK_GRAV * (r.pos.distanceTo(back) / ROCK_SPEED);
+              r.owner = o; r.deflected = true; o.counterT = 0.9; o.stats.perfect++;
+              r.pos.addScaledVector(r.vel, 0.03);
+              w.popup(o, 'DEFLECT', true); w.fx.spark(r.pos, 0xe8d6b0, 8); w.audio.impact(0.7); w.hitStop(0.06);
+              continue;
+            }
+            this.hitShield(sh, r.dmg * 1.4, r.pos);
+            if (o) o.stats.blocks++;
+            if (sh.owner) w.popup(sh.owner, 'BLOCK', true);
+            this.shatter(r, false); done = true; break;
+          }
+        }
+        if (done) break;
         // fighters
         if (r.state === 'flying') for (const t of w.fighters) {
           if (t === r.owner || t.dead) continue;
@@ -137,18 +159,8 @@ export class Combat {
           if (distPointSeg(r.pos, a, b) < ROCK_R + t.radius) {
             if (t.invuln > 0) continue; // rolled through it
             const dir = _d.set(r.vel.x, 0, r.vel.z).normalize();
-            this.damage(t, r.dmg, dir, r.owner, 'rock', r.pos.clone(), 6.5, true);
+            this.damage(t, r.dmg, dir, r.owner, 'rock', r.pos.clone(), 6.5, 1);
             this.shatter(r, true); done = true; break;
-          }
-        }
-        if (done) break;
-        // shields
-        for (const sh of this.shields) {
-          if (sh.dead || (sh.owner === r.owner && r.state === 'flying')) continue;
-          if (this.pointInShield(sh, r.pos, ROCK_R)) {
-            this.hitShield(sh, r.dmg * 1.4, r.pos);
-            if (sh.owner) w.popup(sh.owner, 'BLOCK', true);
-            this.shatter(r, false); done = true; break;
           }
         }
         if (done) break;
@@ -209,7 +221,7 @@ export class Combat {
     if (sh.owner && sh.owner.shield === sh) { sh.owner.shield = null; sh.owner.guarding = false; sh.owner.guardCd = 1.2; sh.owner.stunT = 0.3; }
   }
   pointInShield(sh, p, pad) {
-    if (sh.rise < 0.5) return false;
+    if (sh.rise < 0.3) return false;
     const dx = p.x - sh.pos.x, dz = p.z - sh.pos.z;
     const c = Math.cos(sh.yaw), s = Math.sin(sh.yaw);
     const lx = dx * c - dz * s, lz = dx * s + dz * c;
@@ -267,32 +279,42 @@ export class Combat {
       if (t.invuln > 0) continue;
       _d.normalize();
       const hitPt = t.chestPos(new THREE.Vector3()).addScaledVector(_d, -0.3);
-      this.damage(t, def.dmg, _d.clone(), f, name, hitPt, def.knock, name === 'kick');
+      this.damage(t, def.dmg, _d.clone(), f, name, hitPt, def.knock, def.level);
       return true;
     }
     // melee also chips enemy shields
     for (const sh of this.shields) {
       if (sh.owner === f || sh.dead) continue;
-      if (sh.pos.distanceTo(f.pos) < def.range + 0.6) { this.hitShield(sh, def.dmg, sh.pos.clone().setY(sh.pos.y + 1.2)); this.world.audio.impact(0.6); return true; }
+      if (sh.pos.distanceTo(f.pos) < def.range + 0.6) { this.hitShield(sh, def.dmg * (def.guardBreak || 1), sh.pos.clone().setY(sh.pos.y + 1.2)); this.world.audio.impact(0.6); return true; }
     }
     return false;
   }
 
   // ---------------------------------------------------------------- damage
-  damage(t, dmg, dir, from, kind, at, knock, heavy) {
+  // level: 0 flinch, 1 stagger, 2 knockdown
+  damage(t, dmg, dir, from, kind, at, knock, level = 0) {
     const w = this.world;
+    const heavy = level >= 1;
     // stone shield in front blocks melee (projectiles are blocked physically)
-    if (t.guarding && t.shield && kind !== 'rock') {
+    if (t.guarding && t.shield && kind !== 'rock' && kind !== 'slam') {
       const fwd = t.forward(_v2);
       if (-dir.dot(fwd) > 0.2) {
-        this.hitShield(t.shield, dmg, at);
+        if (t.guardT < 0.25 && from && !from.dead) {
+          // perfect guard: attacker is thrown off balance and a counter window opens
+          from.takeHit(0, _v3.copy(dir).negate(), 4, 1);
+          t.counterT = 0.9; t.stats.perfect++;
+          w.popup(t, 'PERFECT', true); w.fx.spark(at, 0xe8d6b0, 10); w.hitStop(0.08); w.audio.impact(0.8);
+          return;
+        }
+        this.hitShield(t.shield, dmg * (MELEE[kind]?.guardBreak || 1), at);
+        t.stats.blocks++;
         w.popup(t, 'BLOCK', true);
-        from.vel.x -= dir.x * 4; from.vel.z -= dir.z * 4;
+        if (from) { from.vel.x -= dir.x * 4; from.vel.z -= dir.z * 4; }
         w.audio.impact(0.5);
         return;
       }
     }
-    t.takeHit(dmg, dir, knock, heavy);
+    t.takeHit(dmg, dir, knock, level);
     w.popup(t, String(Math.round(dmg)));
     w.fx.spark(at, kind === 'rock' ? 0xffe0a0 : 0xfff2d0, kind === 'rock' ? 8 : 5);
     w.audio.hit(heavy ? 1 : 0.6);
@@ -301,16 +323,36 @@ export class Combat {
     if (w.onHit) w.onHit(t, from, kind);
   }
 
+  // charged axe-kick: ground shockwave that knocks down anyone grounded nearby and cracks shields
+  slam(f) {
+    const w = this.world, R = 3.4;
+    const fwd = f.forward(_v2), at = new THREE.Vector3(f.pos.x + fwd.x * 0.9, f.groundY, f.pos.z + fwd.z * 0.9);
+    w.fx.ring(at, R * 1.2, 0xe2d2b4, 0.5); w.fx.ring(at, R * 0.6, 0xffffff, 0.3);
+    w.fx.crater(at, 2.6); w.fx.debrisBurst(at.clone().setY(at.y + 0.1), 26, 4.5, 0.13, 0x7a6a58, 1.1); w.fx.dust(at, 12, 3.5);
+    w.audio.impact(1.4); w.audio.rumble(1); w.shake(0.45, at);
+    for (const t of w.fighters) {
+      if (t === f || t.dead || t.invuln > 0) continue;
+      const dx = t.pos.x - at.x, dz = t.pos.z - at.z, d = Math.hypot(dx, dz);
+      if (d > R + t.radius || t.pos.y - t.groundY > 0.6) continue;
+      const dir = new THREE.Vector3(dx, 0, dz).normalize();
+      const fall = 1 - Math.min(1, d / (R + t.radius)) * 0.4;
+      this.damage(t, Math.round(16 * fall), dir, f, 'slam', t.chestPos(new THREE.Vector3()), 7, 2);
+    }
+    for (const sh of this.shields) if (sh.owner !== f && !sh.dead && sh.pos.distanceTo(at) < R + 1) this.hitShield(sh, 45, sh.pos.clone().setY(sh.pos.y + 0.5));
+  }
+
   clear() {
     for (const r of this.rocks) this.world.scene.remove(r.mesh);
     for (const s of this.shields) this.world.scene.remove(s.mesh);
     this.rocks = []; this.shields = [];
   }
-  update(dt) { this.updateRocks(dt); this.updateShields(dt); }
+  update(dt) { this.updateShields(dt); this.updateRocks(dt); } // shields first so a just-raised guard is in place this frame
 }
 const MELEE = {
   jab: { dmg: 6, range: 1.75, knock: 2.5, arc: 0.35 },
   cross: { dmg: 7, range: 1.8, knock: 3, arc: 0.35 },
-  kick: { dmg: 11, range: 2.15, knock: 8, arc: -0.2 },
+  kick: { dmg: 11, range: 2.15, knock: 8, arc: -0.2, level: 1 },
+  heavy: { dmg: 12, range: 2.0, knock: 7.5, arc: 0.3, level: 1, guardBreak: 2.5 },
+  counter: { dmg: 14, range: 2.1, knock: 9, arc: -1.1, level: 1 },
 };
 const _a = new THREE.Vector3(), _b = new THREE.Vector3(), _d = new THREE.Vector3();

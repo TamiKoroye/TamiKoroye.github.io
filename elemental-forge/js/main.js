@@ -49,8 +49,8 @@ world.arena = new Arena(scene, renderer);
 world.combat = new Combat(world);
 const camCtl = new FollowCam(camera, world.arena);
 
-const player = new Fighter(world, { name: 'YOU', team: 0, skin: 0x8c5a3c, pants: 0x5b3a22, sash: 0xd88a2a, build: 1.04 });
-const opp = new Fighter(world, { name: 'RIVAL', team: 1, skin: 0x6e4630, pants: 0x2c3c58, sash: 0x3a7fc4, build: 1.0 });
+const player = new Fighter(world, { name: 'YOU', team: 0, skin: 0x8c5a3c, pants: 0x5b3a22, sash: 0xd88a2a, wrap: 0xd8cbb0, build: 1.04, bulk: 1.05 });
+const opp = new Fighter(world, { name: 'RIVAL', team: 1, skin: 0x6e4630, pants: 0x2c3c58, sash: 0x3a7fc4, wrap: 0xb9c3cf, build: 1.0, bulk: 0.97 });
 player.target = opp; opp.target = player;
 world.fighters.push(player, opp);
 const controls = new Controls(canvas);
@@ -60,8 +60,23 @@ const ai = new AI(world, opp, player, 'normal');
 const state = {
   difficulty: 'normal', quality: 'high', locked: true, aimHold: 0,
   round: 1, wins: [0, 0], phase: 'menu', phaseT: 0, paused: false,
-  pixelRatio: 1, frameAvg: 16, perfT: 0,
+  pixelRatio: 1, frameAvg: 16, perfT: 0, stickFullT: 0, manual: false,
 };
+// Intelligent lock-on: prefer the living enemy closest to the centre of view, then the nearest.
+function pickTarget() {
+  let best = null, bestScore = Infinity;
+  camera.getWorldDirection(_f0);
+  for (const f of world.fighters) {
+    if (f.team === player.team || f.dead) continue;
+    _c0.subVectors(f.chestPos(_t0), camera.position);
+    const d = _c0.length(); if (d > 40) continue;
+    const ang = Math.acos(clamp(_c0.dot(_f0) / d, -1, 1));
+    const score = ang * 2 + d / 20;
+    if (score < bestScore) { bestScore = score; best = f; }
+  }
+  return best;
+}
+const _f0 = new THREE.Vector3(), _c0 = new THREE.Vector3(), _t0 = new THREE.Vector3();
 const raycaster = new THREE.Raycaster();
 const aimPoint = new THREE.Vector3();
 let aimOnTarget = false;
@@ -134,7 +149,7 @@ function roundLogic(dt) {
 // ------------------------------------------------------------------ player input + aim
 const _f = new THREE.Vector3(), _r = new THREE.Vector3(), _c = new THREE.Vector3(), _t = new THREE.Vector3(), _p = new THREE.Vector3();
 function computeAim() {
-  const target = opp;
+  const target = player.target || opp;
   aimOnTarget = false;
   if (state.locked && !target.dead) {
     target.chestPos(aimPoint).y -= 0.1;
@@ -171,10 +186,17 @@ function playerInput(inp) {
   pi.mx = rx * inp.mx + fx * inp.my;
   pi.mz = rz * inp.mx + fz * inp.my;
   const b = inp.btn, pr = inp.pressed;
-  pi.attack = pr.attack; pi.jump = pr.jump; pi.dodge = pr.dodge;
+  pi.attack = pr.attack; pi.attackHeld = b.attack; pi.jump = pr.jump; pi.dodge = pr.dodge;
+  // sprint: push the stick to its rim and hold (or hold C on a keyboard)
+  const mag = Math.hypot(inp.mx, inp.my);
+  state.stickFullT = mag > 0.92 ? state.stickFullT + inp.dt : 0;
+
   pi.bend = b.bend || pr.bend; pi.guard = b.guard;
   if (pr.attack || pr.bend || b.bend || b.guard) state.aimHold = 1.4;
   pi.strafe = state.locked || state.aimHold > 0;
+  // auto-sprint only when not strafing (lock-on or aiming), so full-stick strafing stays locked to the target
+  pi.sprint = (!pi.strafe && state.stickFullT > 0.35) || controls.keys.has('KeyC');
+  if (player.sprinting) camCtl.fovKick = Math.max(camCtl.fovKick, 6);
   computeAim();
   pi.aimPoint.copy(aimPoint);
   pi.faceYaw = Math.atan2(aimPoint.x - player.pos.x, aimPoint.z - player.pos.z);
@@ -182,7 +204,7 @@ function playerInput(inp) {
 }
 
 // ------------------------------------------------------------------ HUD
-const hud = { php: $('p-hp'), pen: $('p-en'), ohp: $('o-hp'), oen: $('o-en'), omini: $('o-hp-mini'), ret: $('reticle'), lock: $('lock-marker'), tag: $('opp-tag'), lockBtn: $('btn-lock') };
+const hud = { php: $('p-hp'), pen: $('p-en'), ohp: $('o-hp'), oen: $('o-en'), omini: $('o-hp-mini'), ret: $('reticle'), lock: $('lock-marker'), tag: $('opp-tag'), lockBtn: $('btn-lock'), atk: $('btn-attack'), stick: $('stick-base') };
 const _s = new THREE.Vector3();
 function toScreen(v) { _s.copy(v).project(camera); return { x: (_s.x * 0.5 + 0.5) * window.innerWidth, y: (-_s.y * 0.5 + 0.5) * window.innerHeight, vis: _s.z < 1 && _s.z > -1 }; }
 function popup(f, text, block) {
@@ -200,6 +222,9 @@ function updateHUD(dt) {
   hud.oen.style.width = (opp.en / opp.maxEn * 100) + '%';
   hud.omini.style.width = (opp.hp / opp.maxHp * 100) + '%';
   hud.lockBtn.classList.toggle('on', state.locked);
+  hud.atk.style.setProperty('--charge', player.charging ? Math.min(1, player.chargeT / 0.7).toFixed(2) : 0);
+  hud.atk.classList.toggle('charged', player.charging && player.chargeT >= 0.7);
+  hud.stick.classList.toggle('sprint', player.sprinting);
   const W = window.innerWidth, H = window.innerHeight;
   let tx = W / 2, ty = H / 2;
   const os = toScreen(opp.chestPos(_c));
@@ -230,14 +255,15 @@ function frame(now) {
   if (state.phase !== 'menu' && state.perfT > 3 && state.frameAvg > 24 && state.pixelRatio > 1) {
     state.pixelRatio = Math.max(1, state.pixelRatio - 0.25); renderer.setPixelRatio(state.pixelRatio); resize(); state.perfT = 0;
   }
-  if (state.paused) { renderer.render(scene, camera); return; }
+  if (state.paused || state.manual) { renderer.render(scene, camera); return; }
   step(dt);
   renderer.render(scene, camera);
 }
 function step(dt) {
   if (world.hitStopT > 0) { world.hitStopT -= dt; dt *= 0.08; }
   const inp = controls.frame();
-  if (inp.pressed.lock) state.locked = !state.locked;
+  inp.dt = dt;
+  if (inp.pressed.lock) { state.locked = !state.locked; if (state.locked) { const t = pickTarget(); if (t) { player.target = t; } else state.locked = false; } }
   if (opp.dead && state.locked) state.locked = state.phase === 'fight';
   state.aimHold -= dt;
 
@@ -255,7 +281,7 @@ function step(dt) {
   world.fx.update(dt, (x, z, y) => world.arena.groundAt(x, z, y));
   if (active) {
     const look = { x: inp.lookX, y: inp.lookY };
-    camCtl.update(dt, player, opp, state.locked && !opp.dead, look);
+    { const tg = player.target || opp; camCtl.update(dt, player, tg, state.locked && !tg.dead, look); }
     roundLogic(dt);
   }
   // shadow light follows the action
@@ -320,4 +346,6 @@ $('loading').classList.add('hidden');
 requestAnimationFrame(frame);
 
 // test / debug handle (used by the automated browser tests)
-window.__EF = { world, player, opp, camCtl, controls, state, ai, aimPoint: () => aimPoint.clone(), stats };
+window.__EF = { world, player, opp, camCtl, controls, state, ai, aimPoint: () => aimPoint.clone(), stats,
+  // deterministic stepping for frame-accurate gameplay capture in tests
+  step: (dt) => step(dt), render: () => renderer.render(scene, camera), info: () => ({ calls: renderer.info.render.calls, triangles: renderer.info.render.triangles, programs: renderer.info.programs.length }) };

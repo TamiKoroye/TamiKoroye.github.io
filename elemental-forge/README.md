@@ -1,148 +1,98 @@
 # Elemental Forge
 
-A browser-playable 3D elemental combat game built with Three.js (r170, vendored locally, no build step). It is designed for a Samsung Galaxy S25 Ultra in landscape, using Chrome on Android.
+A browser-playable third-person elemental combat game for Android phones, played in landscape in Chrome on a Samsung Galaxy S25 Ultra. It uses Three.js r170, vendored locally, with no build step and no external downloads at runtime.
 
-**Current build: Milestone 1, complete.** It also includes the core of Milestone 2 (rock raise/suspend/throw and the stone shield) and a first-pass opponent AI with three difficulty settings, so the aiming and the defence have something real to test against.
+Live build: https://tamikoroye.github.io/elemental-forge/
+
+**Current build: Stage A (architecture and combat foundation).** Earth is the only playable element. Fire, Water and Air are Stage B.
 
 ## Launching
+- **Phone:** open the live link in Chrome and tap FIGHT. To install it like an app, open Chrome's menu and choose *Add to Home screen*.
+- **Locally:** `cd elemental-forge && python3 -m http.server 8765`, then open http://localhost:8765/. ES modules don't load from `file://`, so opening `index.html` directly won't work.
 
-### On the phone (recommended)
-The repository is a GitHub Pages site (`tamikoroye.github.io`). Once this branch is merged into the branch Pages serves from (or Pages is pointed at it under *Settings > Pages*), open:
+## Controls (touch)
+- **Move:** left thumb on the left half. Partial push walks, full push runs. Holding the stick at its rim sprints, when not locked on.
+- **Aim / camera:** drag on the right half. LOCK picks the rival nearest the centre of your view.
+- **STRIKE:**
+  - tap: jab, cross, spinning kick
+  - short hold: heavy palm strike (staggers, breaks guards)
+  - long hold, until the fists glow: charged axe-kick slam with a ground shockwave that knocks down
+- **GUARD (hold):** stone shield. Raised just before impact it becomes a perfect guard:
+  - a rock is deflected back at its thrower
+  - a melee attacker is staggered
+  - the next STRIKE becomes a spinning counter
+- **DODGE:** roll toward the stick. While locked on: sidestep or backstep.
+- **Cancels and buffering:** dodge and jump cancel attack recovery, and inputs pressed slightly early are buffered.
+- **BEND:** tap to raise and throw a rock at the reticle; hold to keep it suspended.
+- **Keyboard:** WASD, C (sprint), mouse, left/right click, Q, Space, Shift, Tab, Esc.
 
-    https://tamikoroye.github.io/elemental-forge/
+## Code layout
+| File | Role |
+|---|---|
+| `js/main.js` | Renderer, lighting, game loop, player input mapping, aiming, lock-on target selection, HUD, rounds, menus, test hooks |
+| `js/character.js` | Skinned character generator: one continuous weighted mesh on a `THREE.Skeleton` (17 bones), vertex-coloured clothing |
+| `js/fighter.js` | Fighter state machine: movement, stamina, actions with phases (startup, active, cancel, recovery), input buffer, dodges, hit levels, layered procedural animation |
+| `js/combat.js` | Rocks, stone shields, melee resolution, perfect guard and deflection, charged slam shockwave, damage |
+| `js/camera.js` | Over-the-shoulder follow camera: auto-follow, lock-on framing, collision pull-in, shake, FOV kick |
+| `js/controls.js` | Multi-touch floating stick, aim drag, buttons, keyboard/mouse |
+| `js/arena.js` | Arena geometry, ramps and ledges (slopes), colliders, ground and collision queries |
+| `js/ai.js` | Opponent decision-making (Milestone 1 level; Stage C rebuilds this) |
+| `js/fx.js`, `js/audio.js` | Pooled particles and decals; synthesised sound (no audio files) |
+| `tests/` | Automated play test, pose gallery, deterministic gameplay recorder |
 
-Tap **FIGHT**. The game asks for fullscreen and landscape lock. To install it like an app, use Chrome's menu and choose *Add to Home screen*. It launches fullscreen in landscape (a web manifest is included).
+## Stage A audit (summary)
+Findings that drove the work:
 
-### Locally on a computer
-Any static file server works. ES modules don't load from `file://`, so double-clicking `index.html` won't work.
+1. **Bodies were about 40 rigid primitives per fighter.** Segments pivoted visibly apart at joints, and each fighter cost about 40 draw calls (80 with shadows).
+   **Fix:** one generated skinned mesh per fighter. Lofted tubes are weight-blended across the shoulders, elbows, waist, hips, knees and ankles, and clothing is vertex-coloured, so each body is a single draw call.
+2. **Locomotion had a single run cycle.** There was no walk or sprint, no banking or acceleration lean, and no footsteps.
+   **Fix:** a speed-scaled walk/run/sprint cycle (stride, knee lift, arm pump, lean), banking into turns, leaning with acceleration, settling when stopping, and footstep sounds.
+3. **Combat was gated by long fixed animations.** There was no input buffering and no cancelling, and every hit produced the same flinch.
+   **Fix:** actions now have explicit active and cancel phases, a 0.15 to 0.25 s input buffer, and dodge/jump/attack cancels. Moves: heavy and charged attacks, a perfect guard with counter, directional dodges (roll, sidestep, backstep). Hits are graded: flinch, stagger, or knockdown with get-up.
+4. **Terrain was flat apart from steps.**
+   **Fix:** ramps up to the platforms and a 1.6 m stone ledge, with slope-aware ground, collision and projectile queries.
+5. **Camera:** lock-on now picks the best target (view angle plus distance), with an FOV kick when sprinting. Sprint no longer overrides strafing while locked on (a bug found in testing).
+6. **Kept unchanged**, because they worked: the renderer, arena, rock and shield systems, aiming and reticle, touch controls, and the round flow.
 
-    cd elemental-forge
-    python3 -m http.server 8765
-    # open http://localhost:8765/
+**Rigged asset evaluation.** No suitable authorised rigged martial-artist model or animation set was reachable from the build environment. The CC0 KayKit characters are chibi-proportioned. The three.js example `Xbot` is a Mixamo-derived mannequin with unclear redistribution terms and no martial-arts clips. Mixamo, Quaternius and similar sources were not reachable. So the characters are generated in code, and the animation is procedural on a real skeleton. If you can supply licensed rigged GLB characters and animations, the skeleton layout in `character.js` is the integration point.
 
-To play the local copy on the phone over Wi-Fi, use `http://<computer-ip>:8765/`. Fullscreen and orientation lock may be refused over plain http on a LAN address. The game still runs.
+## Status
+**Implemented and verified (automated, 42/42 checks; see `tests/evidence/results.json`):**
+- walk, run and sprint by stick deflection
+- slope climbing
+- heavy and charged attacks
+- knockdown and get-up
+- dodge cancel
+- input buffering
+- sidestep and backstep
+- perfect guard deflecting a rock back into its thrower, followed by a counter attack
+- the single-mesh skinned characters
+- all Milestone 1 checks:
+  - movement and camera
+  - multi-touch
+  - aiming and reticle accuracy
+  - shield blocking
+  - combo
+  - AI round
+  - portrait prompt
 
-## Controls
+**Implemented, not verified on device:** performance, touch feel and audio on the Galaxy S25 Ultra. Tests use a software renderer at about 20 fps, so they say nothing about real frame rate.
 
-| Action | Touch | Keyboard / mouse |
-|---|---|---|
-| Move (360°, analogue) | Left thumb anywhere on the left 45% of the screen (floating stick) | WASD / arrows |
-| Aim / turn camera | Drag anywhere on the right side | Mouse (click the game to capture the pointer) |
-| Strike combo (jab, cross, spinning kick) | STRIKE | Left click / F |
-| Earth bend: raise a rock | BEND: tap = raise and throw at the reticle; hold = keep it suspended, release to throw | Right click / E |
-| Stone shield | GUARD (hold) | Q (hold) |
-| Jump | JUMP | Space |
-| Dodge roll (in the stick direction, brief invulnerability) | DODGE | Shift |
-| Target lock on/off | LOCK | Tab / T |
-| Pause, sensitivity, auto-camera | II | Esc / P |
-
-The stick and the aim drag are tracked per finger. You can run with one thumb while aiming, bending or guarding with the other.
-
-## What is implemented
-
-**Rendering and arena**
-- Real-time WebGL with ACES tone mapping, hemisphere and sun lighting, and soft shadow maps that follow the action.
-- The hall is laid out after the reference video: blue-grey and orange tiled courts, a raised yin-yang dais, stepped stone platforms (two heights, walkable), wooden crates, rock spires and boulders (all solid cover), element banners, framed wall panels, raised stands and a 900-figure instanced crowd.
-
-**Fighters**
-- Articulated humanoids with 17 animated joints each: hips, spine, chest, neck, head, shoulders, elbows, wrists, hips, knees and ankles. Bodies have muscle masses, pants, sash, wraps and a face.
-- All animation is procedural and blended, with no canned clips:
-  - combat idle stance, with feet placed by two-bone leg IK
-  - run cycle with arm counter-swing and body lean
-  - strafe and back-pedal
-  - jump/air tuck and landing crouch
-  - forward roll in any direction
-  - jab, cross and a 360° spinning roundhouse
-  - earth raise, push-throw, guard stance and suspend pose
-  - hit reaction and knockdown
-- Upper-body actions layer over the run, so you can punch or throw while moving.
-
-**Movement**
-- Camera-relative, analogue, full 360° movement with acceleration and deceleration.
-- Jump with air control, and a dodge roll with i-frames.
-- Collision against rocks, crates, walls and platforms. You can step up and down the platforms and jump onto crates.
-- Facing is independent of movement. While locked on or recently attacking, the fighter faces the aim point and strafes.
-
-**Camera**
-- Over-the-shoulder follow camera with smoothing.
-- Collision pull-in against cover.
-- Auto-follow behind the direction of travel, and auto-turn to keep the rival in view.
-- During lock-on the camera stays behind you, framing the rival above and beside your shoulder.
-- Manual drag works in both modes. In lock mode it's a temporary offset that springs back.
-- Screen shake on impacts.
-
-**Aiming**
-- A centre reticle backed by a real ray cast. The ray hits the floor, cover or the rival, and the aim point is where the rock goes. Gravity is compensated, so the rock lands where the reticle points.
-- Aim assist snaps to the rival when the reticle is near them (the reticle turns red).
-- During lock-on the reticle tracks the rival, with light target leading.
-
-**Earth combat**
-- Rocks burst out of the ground (debris and a crater decal), hover and bob while held, then fly with spin and a dust trail.
-- Rocks shatter on fighters, shields, cover, the floor and walls.
-- The stone shield erupts in front of you in 0.16 s and turns to follow your aim while held. It physically stops rocks and blocks melee hits from the front. It has HP and cracks apart if overloaded, which briefly stuns its owner. It sinks back into the floor on release.
-
-**Feedback**
-- Damage numbers and BLOCK pop-ups.
-- Hit flash on the body, hit-stop, sparks, shockwave rings and dust.
-- Synthesised sound effects (Web Audio, no audio files).
-
-**Opponent**
-- Keeps a preferred range, circle-strafes and steers around obstacles.
-- Throws rocks with target leading and aim error.
-- Melees up close, and reacts to incoming rocks by dodging or raising a shield.
-- Retreats when low on health.
-- Difficulty settings: Training, Normal (default) and Master.
-
-**Match flow**
-- Best of 3 rounds, KO, round banners, and a victory/defeat screen.
-- Pause menu.
-- "Turn your phone sideways" prompt in portrait.
-- Adaptive resolution: drops the pixel ratio if frames run slow. A Battery graphics mode is also available.
+**Planned:**
+- Stage B: fire, water and air, plus element interactions
+- Stage C: enemy archetypes and AI
+- Stage D: the Stone Highlands chapter
+- Stages E to G: advanced disciplines, campaign and polish
 
 ## Testing
-
-### What was tested automatically (in this build environment)
-`tests/play-test.mjs` launches the real game in headless Chromium at the S25 Ultra's CSS viewport in landscape (891×412, touch enabled, mobile mode). It drives the game with genuine Chrome DevTools multi-touch events: it presses the real on-screen buttons and drags the real stick and aim area. It then checks game state and saves screenshots. Latest run: **27/27 checks passed** (see `tests/evidence/results.json`). The checks:
-
-- page loads with no errors; WebGL context created; fight phase starts; scene populated
-- player and opponent both inside the camera view
-- left stick moves the player (13+ m in about 1.2 s at 6.6 m/s); player decelerates to a stop on release
-- right-side drag rotates the camera while the stick finger is still held (multi-touch)
-- locked strafe: the fighter faces the rival (error 0.03 rad) while moving at about 100° to its facing
-- jump leaves the ground; dodge roll travels 7+ m
-- BEND raises a rock; a thrown rock hits the locked rival; holding BEND keeps the rock suspended
-- free aim: the rock impacts within about 1.2 m of the reticle's world point at roughly 12 m range (the residual is the rock's radius at a shallow angle)
-- GUARD raises a shield; the shield intercepts a rock aimed at the player (player HP unchanged, shield HP reduced); the shield sinks on release; the same rock without the guard does damage
-- the STRIKE combo damages the rival
-- the stick stays active while another finger taps BEND
-- after a page reload, both fighters stay finite and visible during a live AI round (regression test for a bug found during testing, described below)
-- portrait orientation shows the rotate prompt
-
-`tests/pose-gallery.mjs` renders close-up stills of every pose. These were inspected and used to fix anatomy problems.
-
-Screenshots from the test runs are in `tests/evidence/`.
-
-**Bug found and fixed during testing:** on some page loads the first animation-frame timestamp precedes the start-up clock. The resulting negative time step produced NaN in the fighters' pose smoothing, which made both fighters invisible. Fixes: the time step is now clamped, the acceleration maths is guarded, and the pose buffers reset each round. A regression check was added to the test suite.
-
-Re-run the tests with:
-
     cd elemental-forge && python3 -m http.server 8765 &
-    node tests/play-test.mjs http://localhost:8765/ ./test-shots
+    node tests/play-test.mjs http://localhost:8765/ ./test-shots          # 42 automated checks with real CDP multi-touch
+    node tests/pose-gallery.mjs http://localhost:8765/ ./poses           # close-up stills of every pose
+    node tests/record-gameplay.mjs http://localhost:8765/ ./gameplay.mp4  # deterministic 30 fps gameplay capture
 
-### What was NOT tested
-- **Nothing has been run on a physical Samsung Galaxy S25 Ultra.** The automated tests use a software GPU (SwiftShader) at about 20 fps, so they show nothing about real frame rate, thermals or battery on the phone. Real touch feel (latency, thumb reach, button sizes) also needs your hands on the device.
-- Fullscreen and orientation lock are requested but couldn't be verified on Android Chrome.
-- Audio was not listened to. It is synthesised and only starts after the first tap, which browsers require.
+The recorder advances the game in exact 1/30 s steps and screenshots each frame. The footage therefore plays at true game speed, even though the headless browser renders far slower than a phone.
 
-## Known limitations / next milestones
-- Fire, Water and Air buttons are visible but locked (Milestone 4).
-- Earthbending still to come (Milestone 2):
-  - earth pillars under enemies
-  - free-standing stone walls
-  - steering a suspended rock through 3D space
-  - orbiting-rock 360° attack
-  - using held rocks defensively
-- The AI is a first pass (Milestone 3 will deepen it with combos, flanking and smarter guarding). It does not jump, and its obstacle avoidance is steering-based (no path-finding).
-- Terrain is not yet reshaped by attacks beyond crater decals. Environmental destruction and elemental interactions are Milestone 5.
-- The fighters are built from primitive shapes and animated procedurally, with no skinned meshes or motion capture. Silhouettes and poses read clearly, but they are not as smooth as hand-authored animation.
-- The free-aim impact point lands up to about 1 m short on very shallow floor shots, because of the rock's radius.
+## Known limitations
+- The characters are generated in code. They are a large step up from the primitives, but not equal to artist-made models; facial detail is minimal and there are no fingers.
+- The AI is still the Milestone 1 brain. It reacts to the new hit levels but doesn't yet use heavy, charged or counter moves.
+- The free-aim rock impact point can land up to about 1 m short on very shallow floor shots, because of the rock's radius.

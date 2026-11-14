@@ -51,7 +51,7 @@ await waitGame(1.6);
 await shot('02-round-start');
 const s0 = await ev(() => ({ phase: window.__EF.state.phase, p: window.__EF.player.pos.toArray(), o: window.__EF.opp.pos.toArray(), meshes: (() => { let n = 0; window.__EF.world.scene.traverse(o => { if (o.isMesh) n++; }); return n; })() }));
 check('fight phase begins', s0.phase === 'fight', s0.phase);
-check('scene populated with meshes', s0.meshes > 150, `${s0.meshes} meshes`);
+check('scene populated with meshes', s0.meshes > 100, `${s0.meshes} meshes (each fighter is now a single skinned mesh)`);
 
 // visibility of both fighters in camera frustum
 const vis = await ev(() => {
@@ -187,6 +187,119 @@ await waitGame(0.6);
 const mel = await ev(() => window.__EF.opp.hp);
 check('STRIKE combo damages the rival', mel < 100, `rival hp ${mel}`);
 
+// ================= Stage A: movement / combat responsiveness =================
+const setup = (o) => ev((o) => { const { player, opp, camCtl, state, world } = window.__EF; state.locked = o.locked; world.combat.clear();
+  for (const f of [player, opp]) { f.vel.set(0, 0, 0); f.action = null; f.stunT = 0; f.dodgeT = 0; f.hp = 100; f.en = 100; f.guarding = false; f.charging = false; f.atkHoldT = -1; f.counterT = 0; f.invuln = 0; f.dead = false; }
+  player.pos.set(...o.p); opp.pos.set(...o.o); player.faceYaw = player.yaw = Math.atan2(opp.pos.x - player.pos.x, opp.pos.z - player.pos.z); camCtl.snapBehind(player); }, o);
+const P = (fn) => ev(fn);
+// walk vs run vs sprint from stick deflection
+await setup({ locked: false, p: [0, 0, -14], o: [20, 0, 20] });
+fingers.clear();
+await fDown(1, 160, 300); await fMove(1, 160, 280); // ~35% deflection
+await waitGame(0.8);
+const walkSp = await P(() => Math.hypot(window.__EF.player.vel.x, window.__EF.player.vel.z));
+await fMove(1, 160, 220); // full
+await waitGame(0.25);
+const runSp = await P(() => Math.hypot(window.__EF.player.vel.x, window.__EF.player.vel.z));
+await waitGame(0.9);
+const sprintSt = await P(() => ({ sp: Math.hypot(window.__EF.player.vel.x, window.__EF.player.vel.z), on: window.__EF.player.sprinting }));
+await shot('20-sprint');
+await fUp(1); await waitGame(0.6);
+check('analogue stick: partial deflection walks', walkSp > 1.2 && walkSp < 4, `${walkSp.toFixed(2)} m/s`);
+check('full deflection runs', runSp > 5.5 && runSp < 7, `${runSp.toFixed(2)} m/s`);
+check('holding the stick at its rim sprints', sprintSt.on && sprintSt.sp > 8.5, `${sprintSt.sp.toFixed(2)} m/s`);
+
+// slope: run up the ramp onto the raised ledge
+await setup({ locked: false, p: [-12.5, 0, 16], o: [20, 0, 20] });
+await P(() => { window.__EF.camCtl.yaw = -Math.PI / 2; });
+await fDown(1, 160, 300); await fMove(1, 160, 230);
+let maxY = 0; for (let i = 0; i < 25; i++) { await waitGame(0.1); maxY = Math.max(maxY, await P(() => window.__EF.player.pos.y)); }
+await shot('21-on-ledge');
+await fUp(1);
+check('ramp: player climbs the slope onto the 1.6 m ledge', maxY > 1.5, `max height ${maxY.toFixed(2)} m`);
+
+// heavy (hold STRIKE briefly) and charged slam (hold long) against a passive rival
+await setup({ locked: true, p: [0, 0, -12], o: [0, 0, -10.4] });
+await waitGame(0.2);
+let ac = await btnCenter('btn-attack');
+await fDown(4, ac.x, ac.y); await waitGame(0.45);
+const chargingA = await P(() => window.__EF.player.charging);
+await fUp(4);
+let seen = new Set(); for (let i = 0; i < 12; i++) { await waitGame(0.05); seen.add(await P(() => window.__EF.player.action)); if (i === 4) await shot('22-heavy'); }
+const hpHeavy = await P(() => ({ hp: window.__EF.opp.hp, act: window.__EF.opp.action }));
+check('hold STRIKE: light jab then charge stance', chargingA);
+check('short hold releases a heavy palm strike that staggers', seen.has('heavy') && hpHeavy.hp < 100, `actions ${[...seen].join(',')}; rival hp ${hpHeavy.hp}`);
+await setup({ locked: true, p: [0, 0, -12], o: [0, 0, -10.2] });
+await waitGame(0.2);
+await fDown(4, ac.x, ac.y); await waitGame(1.15);
+await shot('23-charging');
+await fUp(4);
+let oppActs = new Set(); for (let i = 0; i < 16; i++) { await waitGame(0.05); oppActs.add(await P(() => window.__EF.opp.action)); if (i === 9) await shot('24-slam'); }
+const slamRes = await P(() => ({ hp: window.__EF.opp.hp }));
+check('long hold releases a charged slam that knocks the rival down', oppActs.has('down') && slamRes.hp < 100, `rival states ${[...oppActs].join(',')}; hp ${slamRes.hp}`);
+await waitGame(1.2);
+check('knocked-down rival gets back up', await P(() => !window.__EF.opp.action || window.__EF.opp.action === 'getup' || window.__EF.opp.action === null));
+
+// dodge cancels attack recovery; attack pressed mid-dodge is buffered
+await setup({ locked: true, p: [0, 0, -12], o: [0, 0, -6] });
+await waitGame(0.2);
+// deterministic frame stepping (30 fps) so short timing windows are tested exactly
+const stepN = (n) => ev((n) => { for (let i = 0; i < n; i++) window.__EF.step(1 / 30); window.__EF.render(); }, n);
+await P(() => { window.__EF.state.manual = true; });
+await P(() => { window.__EF.controls.pressed.attack = true; });
+await stepN(1);
+await stepN(4);
+const dcBefore = await P(() => ({ a: window.__EF.player.action, u: +window.__EF.player.actionU.toFixed(2), ph: window.__EF.state.phase, stun: window.__EF.player.stunT, react: window.__EF.player.reacting(), hold: window.__EF.player.atkHoldT, ch: window.__EF.player.charging, guard: window.__EF.player.guarding, dead: window.__EF.player.dead }));
+await P(() => { window.__EF.controls.pressed.dodge = true; });
+await stepN(2);
+const dcAfter = await P(() => ({ d: window.__EF.player.dodgeT > 0, act: window.__EF.player.action }));
+check('dodge cancels attack recovery', dcBefore.a === 'jab' && dcAfter.d && !dcAfter.act, `before: ${JSON.stringify(dcBefore)}, after: dodging=${dcAfter.d}`);
+await stepN(4);
+await P(() => { window.__EF.state.manual = false; });
+await tapBtn('btn-attack', 0.03);
+let buffered = false; for (let i = 0; i < 12; i++) { await waitGame(0.04); const a = await P(() => window.__EF.player.action); if (a === 'jab' || a === 'cross' || a === 'kick') { buffered = true; break; } }
+check('attack pressed during a dodge is buffered and fires', buffered);
+
+// locked-on sidestep and backstep
+await setup({ locked: true, p: [0, 0, -12], o: [0, 0, -4] });
+await waitGame(0.3);
+await fDown(1, 160, 300); await fMove(1, 230, 300);
+const dcB = await btnCenter('btn-dodge');
+await fDown(3, dcB.x, dcB.y); await waitGame(0.1);
+const side = await P(() => window.__EF.player.dodgeKind);
+await shot('25-sidestep');
+await fUp(3); await fUp(1); await waitGame(0.5);
+await fDown(1, 160, 300); await fMove(1, 160, 370);
+await fDown(3, dcB.x, dcB.y); await waitGame(0.1);
+const backK = await P(() => window.__EF.player.dodgeKind);
+await fUp(3); await fUp(1);
+check('locked-on lateral dodge is a sidestep', side === 'side', side);
+check('locked-on backward dodge is a backstep', backK === 'back', backK);
+
+// perfect guard: raise the shield just before a rock lands -> rock deflects back into the thrower, counter window opens
+await setup({ locked: true, p: [0, 0, -14], o: [0, 0, -4] });
+await waitGame(0.3);
+await P(() => { const { world, opp, player } = window.__EF; const c = world.combat; c.summonRock(opp); const r = opp.heldRock; r.state = 'held'; r.pos.set(opp.pos.x, 1.4, opp.pos.z - 1.0); opp.input.aimPoint.set(player.pos.x, 1.2, player.pos.z); c.release(opp); });
+// step frame by frame and press GUARD (as the on-screen button does) when the rock is ~5 m out
+const fired = await P(() => { const E = window.__EF; E.state.manual = true;
+  for (let i = 0; i < 60; i++) { const r = E.world.combat.rocks[0]; if (r && r.pos.distanceTo(E.player.chestPos()) < 5) { E.controls.btn.guard = true; return true; } E.step(1 / 30); } return false; });
+await stepN(5); await shot('26-deflect');
+await stepN(15);
+const pg = await P(() => ({ perfect: window.__EF.player.stats.perfect, counter: window.__EF.player.counterT > 0, oppHp: window.__EF.opp.hp, php: window.__EF.player.hp, guarding: window.__EF.player.guarding, gCd: +window.__EF.player.guardCd.toFixed(2), act: window.__EF.player.action, dodge: window.__EF.player.dodgeT, btn: window.__EF.controls.btn.guard, en: Math.round(window.__EF.player.en) }));
+await P(() => { window.__EF.controls.btn.guard = false; }); await stepN(10);
+await P(() => { window.__EF.state.manual = false; });
+check('perfect guard deflects the rock back into the thrower', fired && pg.perfect > 0 && pg.oppHp < 100 && pg.php === 100, JSON.stringify({ fired, ...pg }));
+await P(() => { window.__EF.player.counterT = 0.9; window.__EF.opp.pos.set(0, 0, -12.5 + 1.8); });
+await tapBtn('btn-attack', 0.03);
+await waitGame(0.08);
+const ctr = await P(() => window.__EF.player.action);
+check('strike during the counter window performs a counter attack', ctr === 'counter', ctr);
+await waitGame(0.5);
+
+// rendering cost of the skinned characters
+const info = await P(() => ({ ...window.__EF.info(), tris: window.__EF.player.triangles }));
+check('each fighter is one skinned mesh', info.tris > 1000, `${info.tris} triangles per fighter; frame: ${info.calls} draw calls, ${info.triangles} triangles`);
+
 // ---------------- full AI round (normal difficulty) for a few seconds
 await ev(() => { location.hash = ''; });
 await page.reload(); await page.waitForFunction(() => window.__EF); await sleep(800);
@@ -199,8 +312,8 @@ await shot('16-ai-fight-a');
 await fMove(1, 220, 300);
 for (let i = 0; i < 3; i++) { await tapBtn('btn-bend', 0.05, 8 + i); await waitGame(0.9); }
 await shot('17-ai-fight-b');
-const stillMoving = await ev(() => Math.hypot(window.__EF.player.vel.x, window.__EF.player.vel.z));
-check('stick stays active while tapping BEND with the other thumb', stillMoving > 2, `speed ${stillMoving.toFixed(2)}`);
+const stillMoving = await ev(() => ({ held: window.__EF.controls.stickPtr !== null, mag: Math.hypot(window.__EF.controls.stick.x, window.__EF.controls.stick.y), sp: Math.hypot(window.__EF.player.vel.x, window.__EF.player.vel.z) }));
+check('stick stays active while tapping BEND with the other thumb', stillMoving.held && stillMoving.mag > 0.8, `stick held=${stillMoving.held}, deflection ${stillMoving.mag.toFixed(2)}, speed ${stillMoving.sp.toFixed(2)} m/s`);
 await fUp(1);
 await waitGame(4);
 await shot('18-ai-fight-c');
