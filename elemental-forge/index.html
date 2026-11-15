@@ -33,11 +33,12 @@
   </div>
 
   <div id="elements">
-    <button class="el active" data-el="earth" title="Earth">EARTH</button>
-    <button class="el locked" data-el="fire" title="Fire (Milestone 4)">FIRE</button>
-    <button class="el locked" data-el="water" title="Water (Milestone 4)">WATER</button>
-    <button class="el locked" data-el="air" title="Air (Milestone 4)">AIR</button>
+    <button class="el active" data-el="earth"><b>EARTH</b><i class="pips"></i></button>
+    <button class="el" data-el="fire"><b>FIRE</b><i class="pips"></i></button>
+    <button class="el" data-el="water"><b>WATER</b><i class="pips"></i></button>
+    <button class="el" data-el="air"><b>AIR</b><i class="pips"></i></button>
   </div>
+  <div id="style-tag"></div>
 
   <button id="btn-pause" class="small-btn">II</button>
   <button id="btn-lock" class="small-btn">LOCK</button>
@@ -49,11 +50,12 @@
   <div id="stick-base"><div id="stick-knob"></div></div>
 
   <div id="action-pad">
-    <button class="act" id="btn-attack" data-act="attack"><span>STRIKE</span></button>
-    <button class="act" id="btn-bend" data-act="bend"><span>BEND</span></button>
-    <button class="act" id="btn-guard" data-act="guard"><span>GUARD</span></button>
     <button class="act" id="btn-jump" data-act="jump"><span>JUMP</span></button>
+    <button class="act" id="btn-guard" data-act="guard"><span>GUARD</span><small></small></button>
     <button class="act" id="btn-dodge" data-act="dodge"><span>DODGE</span></button>
+    <button class="act" id="btn-hand" data-act="hand"><span>HAND</span><small></small></button>
+    <button class="act" id="btn-leg" data-act="leg"><span>LEG</span><small></small></button>
+    <button class="act" id="btn-special" data-act="special"><span>SPECIAL</span><small></small></button>
   </div>
   <div id="popups"></div>
   <div id="banner"></div>
@@ -62,13 +64,23 @@
 <div id="menu" class="overlay">
   <div class="panel">
     <h1>ELEMENTAL <span>FORGE</span></h1>
-    <p class="sub">Stage A build: skinned fighters, fluid movement, layered martial-arts combat, earthbending</p>
+    <p class="sub">Four elements, four martial arts: Earth (Hung Gar), Fire (Northern Shaolin), Water (Tai Chi), Air (Baguazhang)</p>
     <div class="row">
       <label>Opponent</label>
       <div class="seg" id="difficulty">
         <button data-d="training">Training</button>
         <button data-d="normal" class="on">Normal</button>
         <button data-d="master">Master</button>
+      </div>
+    </div>
+    <div class="row">
+      <label>Rival element</label>
+      <div class="seg" id="rival-el">
+        <button data-r="random" class="on">Random</button>
+        <button data-r="earth">Earth</button>
+        <button data-r="fire">Fire</button>
+        <button data-r="water">Water</button>
+        <button data-r="air">Air</button>
       </div>
     </div>
     <div class="row">
@@ -81,13 +93,13 @@
     <button id="btn-start" class="big">FIGHT</button>
     <details class="help">
       <summary>Controls</summary>
-      <p><b>Move:</b> left thumb anywhere on the left half. Push lightly to walk, fully to run; hold the stick at its rim to sprint (when not locked on).</p>
-      <p><b>Aim / camera:</b> drag on the right half. LOCK picks the rival nearest your view and keeps them framed.</p>
-      <p><b>STRIKE:</b> tap for a jab, cross, spinning-kick combo. Hold briefly, then release, for a heavy palm strike (staggers, breaks guards). Hold until your fists glow for a charged axe-kick slam that knocks down everyone nearby.</p>
-      <p><b>GUARD</b> (hold) raises a stone shield. Raise it just before a hit lands for a perfect guard: rocks fly back at the thrower, melee attackers stumble, and your next STRIKE becomes a spinning counter.</p>
-      <p><b>DODGE:</b> roll in the stick direction. While locked on: sidestep left/right, hop back when pulling away. Dodge and jump cancel the end of an attack; buttons pressed slightly early are remembered.</p>
-      <p><b>BEND:</b> tap to raise and throw a rock at the reticle; hold to keep it suspended, release to throw.</p>
-      <p><b>Keyboard:</b> WASD move, C sprint, mouse aim (click to capture), Left click strike (hold for heavy/charged), Right click bend, Q guard, Space jump, Shift dodge, Tab lock, Esc pause.</p>
+      <p><b>Move:</b> left thumb on the left half (light push walks, full push runs, hold at the rim to sprint). <b>Aim / camera:</b> drag on the right half. <b>LOCK</b> frames the rival.</p>
+      <p><b>Elements</b> (top left): switch instantly between Earth (Hung Gar), Fire (Northern Shaolin), Water (Tai Chi) and Air (Baguazhang). Each changes your stance, movement and every technique.</p>
+      <p><b>HAND</b> tap: hand technique (stone punch, fire fist, water palm, air palm). <b>Hold HAND</b> for sustained bending: lift up to three rocks, a fire stream, draw water from a pool (then a water whip), or a wind push.</p>
+      <p><b>LEG</b> tap: kicks (tap again for the second kick). <b>Hold LEG</b> and release for the charged move: seismic stomp, flying dragon kick, tidal sweep, cyclone.</p>
+      <p>Held rocks, flame orbs, water globes and vortices circle you; HAND or LEG launches them. <b>SPECIAL</b>: stone pillar (stand on it), flame orb (three = volley), water sphere (traps), vortex (three = big vortex).</p>
+      <p><b>GUARD</b> (hold): earth wall, fire wall, water shield or air deflection. Raise it just before impact to send projectiles back and open a counter. <b>DODGE</b>: roll, flame dash, water slide or air dash. <b>JUMP</b> twice as Air; hold JUMP to glide.</p>
+      <p><b>Keyboard:</b> WASD, mouse aim, left/right click = HAND/LEG, Q guard, E special, Space jump, Shift dodge, 1-4 elements, C sprint, Tab lock.</p>
     </details>
   </div>
 </div>
@@ -105,6 +117,14 @@
         <button data-a="on" class="on">On</button>
         <button data-a="off">Off</button>
       </div>
+    </div>
+    <div class="row">
+      <label>Button size</label>
+      <input type="range" id="btn-size" min="0.8" max="1.3" step="0.05" value="1">
+    </div>
+    <div class="row">
+      <label>Button spacing</label>
+      <input type="range" id="btn-spread" min="0.85" max="1.3" step="0.05" value="1">
     </div>
     <button id="btn-resume" class="big">RESUME</button>
     <button id="btn-quit" class="big ghost">MAIN MENU</button>

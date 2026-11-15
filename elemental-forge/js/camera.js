@@ -66,16 +66,38 @@ export class FollowCam {
     this.shoulder = damp(this.shoulder, locked && target && !target.dead ? 0.95 : 0.55, 4, dt);
     this.dist = locked && target && !target.dead ? 5.6 : 5.2;
     // build view
-    const cy = Math.cos(this.yaw), sy = Math.sin(this.yaw), cp = Math.cos(this.pitch), sp = Math.sin(this.pitch);
-    this.fwd.set(sy * cp, -sp, cy * cp);
+    // Low obstructions (platform edges, ledges, boulders, pillars) are cleared by raising the camera over them;
+    // only tall ones (walls, spires) make it pull in. This keeps the lower part of the view open on raised terrain.
+    const cy = Math.cos(this.yaw), sy = Math.sin(this.yaw);
     this.right.set(-cy, 0, sy);
     const base = _v.copy(this.pivot).addScaledVector(this.right, this.shoulder);
-    // collision: pull in if a rock / wall / crate is between pivot and camera
+    const blocked = (pitch) => {
+      const cp = Math.cos(pitch), sp = Math.sin(pitch);
+      this.ray.set(base, _v2.set(-sy * cp, sp, -cy * cp));
+      this.ray.far = this.dist + 0.3;
+      const h = this.ray.intersectObjects(this.arena.cameraBlockers, false);
+      return h.length ? h[0].distance : Infinity;
+    };
+    // is the player's lower body hidden from this camera pitch? (sight line from the hips to the camera)
+    const hips = _v4.set(player.pos.x, player.pos.y + 0.6, player.pos.z);
+    const bodyHidden = (pitch) => {
+      const cp = Math.cos(pitch), sp = Math.sin(pitch);
+      const cam = _v3.set(base.x - sy * cp * this.dist, base.y + sp * this.dist, base.z - cy * cp * this.dist);
+      const dir = _v2.subVectors(cam, hips), len = dir.length(); dir.divideScalar(len);
+      this.ray.set(hips, dir); this.ray.far = len;
+      return this.ray.intersectObjects(this.arena.cameraBlockers, false).length > 0;
+    };
+    let lift = 0;
+    if (blocked(this.pitch) < this.dist || bodyHidden(this.pitch)) {
+      for (const l of [0.12, 0.24, 0.36, 0.5, 0.65]) { if (blocked(this.pitch + l) >= this.dist && !bodyHidden(this.pitch + l)) { lift = l; break; } lift = l; }
+    }
+    this.pitchLift = damp(this.pitchLift || 0, lift, lift > (this.pitchLift || 0) ? 10 : 2.5, dt);
+    const pitch = Math.min(1.15, this.pitch + this.pitchLift);
+    const cp = Math.cos(pitch), sp = Math.sin(pitch);
+    this.fwd.set(sy * cp, -sp, cy * cp);
     let want = this.dist;
-    this.ray.set(base, _v2.copy(this.fwd).negate());
-    this.ray.far = this.dist + 0.3;
-    const hits = this.ray.intersectObjects(this.arena.cameraBlockers, false);
-    if (hits.length) want = Math.max(1.2, hits[0].distance - 0.3);
+    const hd = blocked(pitch);
+    if (hd < this.dist + 0.3) want = Math.max(1.2, hd - 0.3);
     this.curDist = want < this.curDist ? want : damp(this.curDist, want, 4, dt);
     const pos = _v3.copy(base).addScaledVector(this.fwd, -this.curDist);
     const lim = HALF + 1.2;

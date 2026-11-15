@@ -1,11 +1,14 @@
-// Multi-touch + keyboard/mouse input. Produces a stick vector, look deltas and button states.
+// Multi-touch + keyboard/mouse input. Produces a stick vector, look deltas, held buttons and press edges.
+// Action buttons: HAND, LEG, GUARD, DODGE, JUMP, SPECIAL (star layout) + four element buttons.
+const ACTS = ['hand', 'leg', 'guard', 'dodge', 'jump', 'special'];
+
 export class Controls {
   constructor(canvas) {
     this.canvas = canvas;
-    this.stick = { x: 0, y: 0 };            // x right, y up (forward)
-    this.look = { x: 0, y: 0 };             // accumulated pixel deltas since last read
-    this.btn = { attack: false, bend: false, guard: false, jump: false, dodge: false };
-    this.pressed = { attack: false, bend: false, guard: false, jump: false, dodge: false, lock: false };
+    this.stick = { x: 0, y: 0 };
+    this.look = { x: 0, y: 0 };
+    this.btn = {}; this.pressed = { lock: false, el: null };
+    for (const a of ACTS) { this.btn[a] = false; this.pressed[a] = false; }
     this.sens = 1;
     this.stickPtr = null; this.lookPtr = null;
     this.stickOrigin = { x: 0, y: 0 };
@@ -13,7 +16,6 @@ export class Controls {
     this.keys = new Set();
     this.touchUsed = false;
     this.enabled = false;
-
     this.base = document.getElementById('stick-base');
     this.knob = document.getElementById('stick-knob');
 
@@ -32,45 +34,45 @@ export class Controls {
         const a = el.dataset.act;
         this.btnPtrs.set(e.pointerId, { a, el });
         this.btn[a] = true; this.pressed[a] = true; el.classList.add('down');
-        // allow sliding a thumb off a button into aiming
+        if (navigator.vibrate && e.pointerType === 'touch') try { navigator.vibrate(8); } catch (_) {}
         try { el.releasePointerCapture(e.pointerId); } catch (_) {}
       }, opts);
     }
+    for (const el of document.querySelectorAll('.el')) {
+      el.addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); this.pressed.el = el.dataset.el; }, opts);
+    }
     document.getElementById('btn-lock').addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); this.pressed.lock = true; }, opts);
 
+    const keyMap = { Space: 'jump', ShiftLeft: 'dodge', ShiftRight: 'dodge', KeyQ: 'guard', KeyF: 'hand', KeyG: 'leg', KeyE: 'special' };
+    const elKeys = { Digit1: 'earth', Digit2: 'fire', Digit3: 'water', Digit4: 'air' };
     window.addEventListener('keydown', e => {
       if (!this.enabled) return;
-      if (e.code === 'Tab') e.preventDefault();
+      if (e.code === 'Tab' || e.code === 'Space') e.preventDefault();
       if (this.keys.has(e.code)) return;
       this.keys.add(e.code);
-      const map = { Space: 'jump', ShiftLeft: 'dodge', ShiftRight: 'dodge', KeyQ: 'guard', KeyE: 'bend', KeyF: 'attack', Tab: 'lock', KeyT: 'lock' };
-      const a = map[e.code];
-      if (a) { this.pressed[a] = true; if (a in this.btn) this.btn[a] = true; }
+      const a = keyMap[e.code];
+      if (a) { this.pressed[a] = true; this.btn[a] = true; }
+      if (elKeys[e.code]) this.pressed.el = elKeys[e.code];
+      if (e.code === 'Tab' || e.code === 'KeyT') this.pressed.lock = true;
     });
-    window.addEventListener('keyup', e => {
-      this.keys.delete(e.code);
-      const map = { Space: 'jump', ShiftLeft: 'dodge', ShiftRight: 'dodge', KeyQ: 'guard', KeyE: 'bend', KeyF: 'attack' };
-      const a = map[e.code]; if (a) this.btn[a] = false;
-    });
+    window.addEventListener('keyup', e => { this.keys.delete(e.code); const a = keyMap[e.code]; if (a) this.btn[a] = false; });
     canvas.addEventListener('mousedown', e => {
       if (!this.enabled || this.touchUsed) return;
-      if (document.pointerLockElement !== canvas) { canvas.requestPointerLock?.(); }
-      if (e.button === 0) { this.btn.attack = true; this.pressed.attack = true; }
-      if (e.button === 2) { this.btn.bend = true; this.pressed.bend = true; }
+      if (document.pointerLockElement !== canvas) canvas.requestPointerLock?.();
+      if (e.button === 0) { this.btn.hand = true; this.pressed.hand = true; }
+      if (e.button === 2) { this.btn.leg = true; this.pressed.leg = true; }
     });
-    window.addEventListener('mouseup', e => { if (e.button === 0) this.btn.attack = false; if (e.button === 2) this.btn.bend = false; });
+    window.addEventListener('mouseup', e => { if (e.button === 0) this.btn.hand = false; if (e.button === 2) this.btn.leg = false; });
     document.addEventListener('mousemove', e => {
       if (document.pointerLockElement === canvas) { this.look.x += e.movementX * 0.9; this.look.y += e.movementY * 0.9; }
     });
   }
 
   onDown(e) {
-    if (!this.enabled) return;
-    if (e.pointerType === 'mouse') return; // mouse handled separately (pointer lock)
+    if (!this.enabled || e.pointerType === 'mouse') return;
     e.preventDefault();
     this.touchUsed = true;
-    const w = window.innerWidth;
-    if (e.clientX < w * 0.45 && this.stickPtr === null) {
+    if (e.clientX < window.innerWidth * 0.45 && this.stickPtr === null) {
       this.stickPtr = e.pointerId;
       this.stickOrigin.x = e.clientX; this.stickOrigin.y = e.clientY;
       this.base.style.display = 'block';
@@ -86,7 +88,6 @@ export class Controls {
       let dx = e.clientX - this.stickOrigin.x, dy = e.clientY - this.stickOrigin.y;
       const R = 58, d = Math.hypot(dx, dy);
       if (d > R) {
-        // floating stick: drag the base along when the thumb overshoots
         const ex = d - R;
         this.stickOrigin.x += dx / d * ex; this.stickOrigin.y += dy / d * ex;
         this.base.style.left = this.stickOrigin.x + 'px'; this.base.style.top = this.stickOrigin.y + 'px';
@@ -94,43 +95,33 @@ export class Controls {
       }
       this.knob.style.transform = `translate(${dx}px,${dy}px)`;
       let x = dx / R, y = -dy / R;
-      const m = Math.hypot(x, y);
-      const dead = 0.12;
+      const m = Math.hypot(x, y), dead = 0.12;
       if (m < dead) { x = 0; y = 0; } else { const k = Math.min(1, (m - dead) / (1 - dead)) / m; x *= k; y *= k; }
       this.stick.x = x; this.stick.y = y;
-    } else if (e.pointerId === this.lookPtr || (this.btnPtrs.has(e.pointerId))) {
-      if (e.pointerId !== this.lookPtr) return;
+    } else if (e.pointerId === this.lookPtr) {
       e.preventDefault();
-      this.look.x += (e.clientX - this.lookLast.x) * 1.0;
-      this.look.y += (e.clientY - this.lookLast.y) * 1.0;
+      this.look.x += e.clientX - this.lookLast.x;
+      this.look.y += e.clientY - this.lookLast.y;
       this.lookLast.x = e.clientX; this.lookLast.y = e.clientY;
     }
   }
   onUp(e) {
-    if (e.pointerId === this.stickPtr) {
-      this.stickPtr = null; this.stick.x = this.stick.y = 0; this.base.style.display = 'none';
-    }
+    if (e.pointerId === this.stickPtr) { this.stickPtr = null; this.stick.x = this.stick.y = 0; this.base.style.display = 'none'; }
     if (e.pointerId === this.lookPtr) this.lookPtr = null;
     const b = this.btnPtrs.get(e.pointerId);
     if (b) { this.btnPtrs.delete(e.pointerId); if (![...this.btnPtrs.values()].some(v => v.a === b.a)) { this.btn[b.a] = false; b.el.classList.remove('down'); } }
   }
 
-  // read and clear per-frame data
   frame() {
     let sx = this.stick.x, sy = this.stick.y;
     const k = this.keys;
     const kx = (k.has('KeyD') || k.has('ArrowRight') ? 1 : 0) - (k.has('KeyA') || k.has('ArrowLeft') ? 1 : 0);
     const ky = (k.has('KeyW') || k.has('ArrowUp') ? 1 : 0) - (k.has('KeyS') || k.has('ArrowDown') ? 1 : 0);
     if (kx || ky) { const l = Math.hypot(kx, ky); sx = kx / l; sy = ky / l; }
-    // touch look: radians per pixel scaled by screen size so it feels the same on any phone
     const scale = (this.touchUsed ? 3.4 / Math.max(window.innerWidth, 1) : 0.0026) * this.sens;
-    const out = {
-      mx: sx, my: sy,
-      lookX: -this.look.x * scale, lookY: this.look.y * scale * 0.8,
-      btn: { ...this.btn }, pressed: { ...this.pressed },
-    };
+    const out = { mx: sx, my: sy, lookX: -this.look.x * scale, lookY: this.look.y * scale * 0.8, btn: { ...this.btn }, pressed: { ...this.pressed } };
     this.look.x = this.look.y = 0;
-    for (const key in this.pressed) this.pressed[key] = false;
+    for (const key in this.pressed) this.pressed[key] = key === 'el' ? null : false;
     return out;
   }
 

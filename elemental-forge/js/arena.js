@@ -204,11 +204,26 @@ export class Arena {
       if (spire) { m.scale.set(r * 0.9, h, r * 0.9); }
       m.position.set(x, h * 0.3, z); m.rotation.y = rng() * 6.28;
       m.castShadow = m.receiveShadow = true; this.group.add(m);
-      const col = { kind: 'c', x, z, r: r * 0.92, top: h * 1.2, walk: false, mesh: m, rock: true };
+      g.computeBoundingBox();
+      const top = m.position.y + g.boundingBox.max.y * h;
+      // low, broad boulders can be jumped onto and fought from; tall spires stay solid cover
+      const walk = !spire && top < 1.75;
+      const col = { kind: 'c', x, z, r: r * 0.92, top: walk ? top - 0.05 : h * 1.2, walk, mesh: m, rock: true };
       this.colliders.push(col); this.cameraBlockers.push(m);
       place.push([x, z, r]);
       return col;
     };
+    // water sources for waterbending: shallow pools with a stone rim
+    this.waterSources = [];
+    const waterMat = new THREE.MeshStandardMaterial({ color: 0x2f7fc8, roughness: 0.06, metalness: 0.2, transparent: true, opacity: 0.82, emissive: 0x08223c });
+    const rimMat = new THREE.MeshStandardMaterial({ color: 0x8c8790, roughness: 0.85 });
+    for (const [px, pz] of [[15, -9], [-14, 9]]) {
+      const rim = new THREE.Mesh(new THREE.TorusGeometry(2.3, 0.22, 8, 40), rimMat); rim.rotation.x = Math.PI / 2; rim.position.set(px, 0.16, pz); rim.castShadow = rim.receiveShadow = true; this.group.add(rim);
+      const surf = new THREE.Mesh(new THREE.CircleGeometry(2.25, 40), waterMat); surf.rotation.x = -Math.PI / 2; surf.position.set(px, 0.12, pz); this.group.add(surf);
+      this.waterSources.push({ x: px, y: 0.12, z: pz, mesh: surf });
+      this.colliders.push({ kind: 'c', x: px, z: pz, r: 2.45, top: 0.3, walk: true, mesh: rim, pool: true });
+      place.push([px, pz, 2.6]);
+    }
     // spire cluster near the dais (like the reference) + scattered boulders
     const spires = [[-8.5, 4, 0.9, 2.6], [-9.6, 5.8, 0.7, 1.9], [-8.4, 6.9, 0.55, 1.4], [8.8, -5, 1.0, 2.9], [10.2, -3.6, 0.7, 2.0], [9.6, -6.8, 0.6, 1.5]];
     for (const s of spires) rock(s[0], s[1], s[2], s[3], true);
@@ -222,6 +237,21 @@ export class Arena {
       if (!okSpot(x, z, r)) continue;
       rock(x, z, r, big ? 1.4 + rng() * 1.2 : 0.7 + rng() * 0.6, false);
       n++;
+    }
+    // loose stones: earthbenders can lift these (and stand on them); they re-form after being thrown
+    this.looseStones = [];
+    const looseGeo = jaggedRockGeometry(rng, 1, 0.25, 0.85);
+    tries = 0;
+    while (this.looseStones.length < 8 && tries < 800) {
+      tries++;
+      const ang = rng() * Math.PI * 2, d = 8.5 + rng() * 15;
+      const x = Math.cos(ang) * d, z = Math.sin(ang) * d;
+      if (!okSpot(x, z, 0.6)) continue;
+      const m = new THREE.Mesh(looseGeo, rockMat); m.scale.setScalar(0.52); m.position.set(x, 0.28, z); m.rotation.y = rng() * 6.28;
+      m.castShadow = m.receiveShadow = true; this.group.add(m);
+      const col = { kind: 'c', x, z, r: 0.55, top: 0.72, walk: true, mesh: m, loose: true };
+      this.colliders.push(col); place.push([x, z, 0.6]);
+      this.looseStones.push({ mesh: m, col, home: new THREE.Vector3(x, 0.28, z), respawnT: 0, taken: false });
     }
 
     // ---- walls, banners, panels, stands and crowd
@@ -292,6 +322,30 @@ export class Arena {
   }
 
   // Height of walkable ground under (x, z) reachable from height y.
+  nearestLooseStone(p, maxD) {
+    let best = null, bd = maxD;
+    for (const s of this.looseStones) { if (s.taken) continue; const d = Math.hypot(s.home.x - p.x, s.home.z - p.z); if (d < bd) { bd = d; best = s; } }
+    return best;
+  }
+  nearestWaterSource(p, maxD) {
+    let best = null, bd = maxD;
+    for (const s of this.waterSources) { const d = Math.hypot(s.x - p.x, s.z - p.z) - 2.2; if (d < bd) { bd = d; best = s; } }
+    return best;
+  }
+  updateLoose(dt, fx) {
+    for (const s of this.looseStones) {
+      if (s.respawnT > 0) {
+        s.respawnT -= dt;
+        if (s.respawnT <= 0) { s.taken = false; s.col.dead = false; s.mesh.visible = true; s.rise = 0; if (fx) { fx.debrisBurst(s.home.clone().setY(0.1), 8, 2, 0.08, 0x7a7068); fx.dust(s.home, 6, 1.5); } }
+      }
+      if (s.rise !== undefined && s.rise < 1) { s.rise = Math.min(1, s.rise + dt * 3); s.mesh.position.y = s.home.y - (1 - s.rise) * 0.7; }
+    }
+    // gentle ripple on the pools
+    const t = performance.now() * 0.001;
+    for (const w of this.waterSources) w.mesh.position.y = w.y + Math.sin(t * 2 + w.x) * 0.012;
+  }
+  resetLoose() { for (const s of this.looseStones) { s.taken = false; s.respawnT = 0; s.col.dead = false; s.mesh.visible = true; s.mesh.position.copy(s.home); } }
+
   // top surface height of a collider at (x, z); ramps interpolate
   topAt(c, x, z) {
     if (!c.slope) return c.top;

@@ -1,0 +1,870 @@
+// Unified bending system for all four elements.
+//   controlled objects  : rocks / flame orbs / water globes / vortices orbiting their bender (sustained control)
+//   projectiles         : the same objects (or new ones) in flight, each element with its own physics
+//   sustained techniques: fire stream, water draw + whip, wind push, boulder lift (while HAND is held)
+//   defences            : earth wall, fire wall, water shield, air deflection (real collision + rules)
+//   environment         : burning ground, stone pillars (walkable), seismic spikes, loose stones, water sources
+//   interactions        : reusable rules for projectile-vs-projectile and projectile-vs-defence by element
+import * as THREE from 'three';
+import { jaggedRockGeometry, HALF } from './arena.js';
+import { clamp, mulberry32, smooth01, rand } from './util.js';
+
+const SPEC = {
+  rock:     { el: 'earth', r: 0.36, speed: 30, grav: 6,  dmg: 12, knock: 6.5, level: 1, life: 4 },
+  rockKick: { el: 'earth', r: 0.36, speed: 37, grav: 5,  dmg: 15, knock: 8,   level: 1, life: 4 },
+  boulder:  { el: 'earth', r: 0.48, speed: 28, grav: 6,  dmg: 17, knock: 9,   level: 2, life: 4 },
+  pebble:   { el: 'earth', r: 0.2,  speed: 28, grav: 5,  dmg: 5,  knock: 3,   level: 0, life: 2 },
+  fireball: { el: 'fire',  r: 0.28, speed: 34, grav: 0,  dmg: 7,  knock: 2.5, level: 0, life: 1.1 },
+  fireOrb:  { el: 'fire',  r: 0.36, speed: 30, grav: 0,  dmg: 11, knock: 4,   level: 1, life: 1.5 },
+  fireArc:  { el: 'fire',  r: 0.8,  speed: 24, grav: 0,  dmg: 9,  knock: 5,   level: 1, life: 0.7, wide: true },
+  water:    { el: 'water', r: 0.34, speed: 26, grav: 4,  dmg: 7,  knock: 7,   level: 1, life: 2 },
+  droplet:  { el: 'water', r: 0.22, speed: 28, grav: 3,  dmg: 4,  knock: 4,   level: 0, life: 1.4 },
+  waterArc: { el: 'water', r: 0.9,  speed: 20, grav: 0,  dmg: 9,  knock: 8,   level: 1, life: 0.8, wide: true },
+  sphere:   { el: 'water', r: 0.5,  speed: 19, grav: 2,  dmg: 4,  knock: 1,   level: 0, life: 2, restrain: 1.4 },
+  gust:     { el: 'air',   r: 0.5,  speed: 40, grav: 0,  dmg: 4,  knock: 11,  level: 1, life: 0.55 },
+  blade:    { el: 'air',   r: 0.85, speed: 32, grav: 0,  dmg: 7,  knock: 8,   level: 1, life: 0.6, wide: true },
+  vortex:   { el: 'air',   r: 1.5,  speed: 13, grav: 0,  dmg: 12, knock: 3,   level: 2, life: 1.7, pull: true },
+  orbVortex:{ el: 'air',   r: 0.45, speed: 30, grav: 0,  dmg: 8,  knock: 9,   level: 1, life: 0.9 },
+};
+const MAX_HELD = 3;
+const _v = new THREE.Vector3(), _v2 = new THREE.Vector3(), _v3 = new THREE.Vector3(), _a = new THREE.Vector3(), _b = new THREE.Vector3(), _up = new THREE.Vector3(0, 1, 0);
+
+function distPointSeg(p, a, b) {
+  _v.subVectors(b, a); const l2 = _v.lengthSq();
+  const t = l2 > 0 ? clamp(_v2.subVectors(p, a).dot(_v) / l2, 0, 1) : 0;
+  return p.distanceTo(_v3.copy(a).addScaledVector(_v, t));
+}
+
+export class Bending {
+  constructor(world) {
+    this.world = world;
+    this.objs = [];      // controlled objects and projectiles
+    this.defs = [];      // defences
+    this.burns = [];     // burning ground patches
+    this.rings = [];     // expanding area attacks (spin fire, tidal sweep, cyclone)
+    this.spikes = [];    // seismic spikes
+    this.pillars = [];   // raised stone platforms
+    this.holds = new Map(); // fighter -> sustained technique state
+    const rng = mulberry32(99);
+    this.rockGeos = [0, 1, 2, 3, 4].map(() => jaggedRockGeometry(rng, 1, 0.3, 0.9));
+    this.mat = {
+      rock: new THREE.MeshStandardMaterial({ color: 0x6b625c, roughness: 0.95, flatShading: true }),
+      fireCore: new THREE.MeshBasicMaterial({ color: 0xffc46b }),
+      fireArc: new THREE.MeshBasicMaterial({ color: 0xff7a2a, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }),
+      water: new THREE.MeshStandardMaterial({ color: 0x3f8fd8, roughness: 0.08, metalness: 0.1, transparent: true, opacity: 0.78, emissive: 0x0c2a48 }),
+      waterArc: new THREE.MeshStandardMaterial({ color: 0x5aa8ec, roughness: 0.1, transparent: true, opacity: 0.7, side: THREE.DoubleSide, emissive: 0x0c2a48 }),
+      air: new THREE.MeshBasicMaterial({ color: 0xf4f8ff, transparent: true, opacity: 0.55, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }),
+      stream: new THREE.MeshBasicMaterial({ color: 0xff7a2a, transparent: true, opacity: 0.55, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }),
+      streamCore: new THREE.MeshBasicMaterial({ color: 0xffd27a, transparent: true, opacity: 0.6, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }),
+      windCone: new THREE.MeshBasicMaterial({ color: 0xeaf2ff, transparent: true, opacity: 0.16, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, wireframe: true }),
+      shieldWater: new THREE.MeshStandardMaterial({ color: 0x4b9be0, roughness: 0.05, metalness: 0.1, transparent: true, opacity: 0.32, emissive: 0x0b2440, depthWrite: false, side: THREE.DoubleSide }),
+      stone: new THREE.MeshStandardMaterial({ color: 0x7a6a58, roughness: 0.95, flatShading: true }),
+      bubble: new THREE.MeshStandardMaterial({ color: 0x5aa8ec, roughness: 0.05, transparent: true, opacity: 0.4, depthWrite: false }),
+    };
+    this.geo = {
+      sphere: new THREE.SphereGeometry(1, 14, 10),
+      sphereHi: new THREE.IcosahedronGeometry(1, 3),
+      ring: new THREE.TorusGeometry(1, 0.06, 6, 28),
+      crescent: new THREE.TorusGeometry(1, 0.13, 6, 22, Math.PI * 0.95),
+      flatRing: (() => { const g = new THREE.RingGeometry(0.85, 1, 48); g.rotateX(-Math.PI / 2); return g; })(),
+      // unit-length open cone along +y from a narrow base (at y = 0) to a wide end (at y = 1)
+      cone: (() => { const g = new THREE.CylinderGeometry(1, 0.12, 1, 18, 4, true); g.translate(0, 0.5, 0); return g; })(),
+    };
+    this.wallGeo = (() => {
+      const g = new THREE.BoxGeometry(1.9, 2.0, 0.45, 5, 5, 2);
+      const p = g.attributes.position, seen = new Map();
+      for (let i = 0; i < p.count; i++) {
+        const x = p.getX(i), y = p.getY(i), z = p.getZ(i), key = `${x.toFixed(2)},${y.toFixed(2)},${z.toFixed(2)}`;
+        let d = seen.get(key); if (!d) { d = [(rng() - 0.5) * 0.14, (rng() - 0.5) * 0.12, (rng() - 0.5) * 0.18]; seen.set(key, d); }
+        const taper = y > 0.9 ? 0.85 : 1;
+        p.setXYZ(i, x * taper + d[0], y + d[1] + (y > 0.9 ? (rng() - 0.5) * 0.25 : 0), z + d[2]);
+      }
+      g.translate(0, 1.0, 0); g.computeVertexNormals(); return g;
+    })();
+    this.pillarGeo = (() => { const g = jaggedRockGeometry(rng, 1, 0.14, 1); g.translate(0, 0.35, 0); return g; })();
+    this.light = new THREE.PointLight(0xff8a3a, 0, 9, 1.6); world.scene.add(this.light);
+    this.waterLight = 0;
+  }
+
+  // ================================================================== helpers
+  held(f, el) { let n = 0; for (const o of this.objs) if (o.owner === f && o.state !== 'flying' && o.state !== 'dead' && o.el === (el || f.el)) n++; return n; }
+  heldList(f, el) { return this.objs.filter(o => o.owner === f && (o.state === 'orbit' || o.state === 'rising' || o.state === 'drawing') && o.el === (el || f.el)); }
+  aimDir(f, from, out = new THREE.Vector3()) {
+    const t = f.input.aimPoint;
+    out.subVectors(t, from); if (out.lengthSq() < 0.01) f.forward(out); return out.normalize();
+  }
+  forwardPoint(f, d, h = 1.3, out = new THREE.Vector3()) { const fw = f.forward(_v2); return out.set(f.pos.x + fw.x * d, f.pos.y + h, f.pos.z + fw.z * d); }
+  handPoint(f, side, out = new THREE.Vector3()) { return f.J['w' + (side > 0 ? 'L' : 'R')].getWorldPosition(out); }
+  footPoint(f, side, out = new THREE.Vector3()) { return f.J['a' + (side > 0 ? 'L' : 'R')].getWorldPosition(out); }
+
+  makeMesh(kind, scale) {
+    const S = SPEC[kind], el = S.el;
+    let m;
+    if (el === 'earth') { m = new THREE.Mesh(this.rockGeos[Math.floor(Math.random() * 5)], this.mat.rock); m.scale.setScalar(S.r * 1.15); m.castShadow = true; }
+    else if (el === 'fire') {
+      if (S.wide) { m = new THREE.Mesh(this.geo.crescent, this.mat.fireArc); m.scale.set(S.r, S.r, S.r * 1.6); }
+      else { m = new THREE.Mesh(this.geo.sphere, this.mat.fireCore); m.scale.setScalar(S.r * 0.6); }
+    } else if (el === 'water') {
+      if (S.wide) { m = new THREE.Mesh(this.geo.crescent, this.mat.waterArc); m.scale.set(S.r, S.r, S.r * 2); }
+      else { m = new THREE.Mesh(this.geo.sphereHi, this.mat.water); m.scale.setScalar(S.r); m.castShadow = true; }
+    } else {
+      m = new THREE.Group();
+      const n = S.wide ? 1 : 3;
+      for (let i = 0; i < n; i++) {
+        const r = new THREE.Mesh(S.wide ? this.geo.crescent : this.geo.ring, this.mat.air);
+        r.rotation.x = Math.PI / 2; r.position.y = (i - 1) * S.r * 0.35; r.scale.setScalar(S.r * (1 - Math.abs(i - 1) * 0.3)); m.add(r);
+      }
+    }
+    if (scale) m.scale.multiplyScalar(scale);
+    this.world.scene.add(m);
+    return m;
+  }
+
+  spawn(kind, owner, pos, state = 'flying', extra = {}) {
+    const S = SPEC[kind];
+    const o = { kind, el: S.el, owner, pos: pos.clone(), vel: new THREE.Vector3(), state, t: 0, life: S.life, r: S.r * (extra.scale || 1),
+      dmg: S.dmg, knock: S.knock, level: S.level, mesh: extra.mesh || this.makeMesh(kind, extra.scale), spin: new THREE.Vector3(rand(-6, 6), rand(-6, 6), rand(-6, 6)),
+      slot: Math.random() * Math.PI * 2, from: null, src: extra.src || null, dmgMul: 1, hitSet: new Set(), ...extra };
+    o.mesh.position.copy(o.pos);
+    this.objs.push(o);
+    return o;
+  }
+
+  launch(o, f, speedMul = 1, target) {
+    const S = SPEC[o.kind];
+    o.state = 'flying'; o.t = 0; o.life = S.life;
+    const aim = target || f.input.aimPoint;
+    const tgt = _a.copy(aim); if (S.grav > 0) tgt.y += o.r * 0.6;
+    const speed = S.speed * speedMul;
+    o.vel.subVectors(tgt, o.pos);
+    const dist = o.vel.length();
+    o.vel.normalize().multiplyScalar(speed);
+    if (S.grav > 0) o.vel.y += 0.5 * S.grav * (dist / speed);
+    if (S.wide) o.vel.y = 0;                      // arcs and blades travel level, a little above the ground
+    this.world.audio.whoosh(0.6 + 0.3 * speedMul);
+    return o;
+  }
+  fire(kind, f, from, opts = {}) {
+    const o = this.spawn(kind, f, from, 'flying', opts);
+    this.launch(o, f, opts.speedMul || 1, opts.target);
+    if (opts.dir) { o.vel.copy(opts.dir).multiplyScalar(SPEC[kind].speed * (opts.speedMul || 1)); }
+    return o;
+  }
+  kill(o, how) {
+    if (o.state === 'dead') return;
+    o.state = 'dead';
+    this.world.scene.remove(o.mesh);
+    const fx = this.world.fx, w = this.world;
+    if (how === 'silent') return;
+    if (o.el === 'earth') { fx.debrisBurst(o.pos, 12, 3.5, 0.1, 0x6e665e); fx.dust(o.pos, 5, 2, 0x9f9282); w.audio.impact(0.6); }
+    if (o.el === 'fire') { for (let i = 0; i < 10; i++) fx.fire(o.pos, _v.set(rand(-3, 3), rand(-1, 3), rand(-3, 3)), 0.5, 0.35); fx.smoke(o.pos); w.audio.fireHit(0.6); }
+    if (o.el === 'water') { fx.splash(o.pos, 14); w.audio.splash(0.7); this.extinguishNear(o.pos, 1.8); }
+    if (o.el === 'air') { for (let i = 0; i < 6; i++) fx.wind(o.pos, _v.set(rand(-4, 4), rand(-1, 2), rand(-4, 4)), 0.6, 0.35); }
+    if (how === 'steam') fx.steam(o.pos, 10);
+    if (o.src) o.src.respawnT = 18; // loose stone comes back later
+  }
+  dropAll(f, el) {
+    for (const o of this.objs) if (o.owner === f && o.state !== 'flying' && o.state !== 'dead' && (!el || o.el === el)) {
+      if (o.el === 'earth') { o.state = 'falling'; o.vel.set(0, 0, 0); } else this.kill(o);
+    }
+    this.holdEnd(f);
+  }
+
+  // ================================================================== technique events
+  event(f, name, tech) {
+    const w = this.world, s = f.techSide || 1, aim = f.input.aimPoint;
+    const hand = this.handPoint(f, -s), foot = this.footPoint(f, s);
+    switch (name) {
+      // ---------------- earth
+      case 'earth.hand': {
+        const held = this.heldList(f, 'earth').filter(o => o.state === 'orbit');
+        if (held.length) { const o = held[0]; this.launch(o, f, 1.05); w.fx.dust(o.pos, 3, 1); return; }
+        // burst a stone from the ground in front and punch it straight out
+        const p = this.forwardPoint(f, 1.1, 0); p.y = w.arena.groundAt(p.x, p.z, f.pos.y + 0.3) + 0.9;
+        w.fx.debrisBurst(_v.set(p.x, p.y - 0.8, p.z), 8, 2, 0.08, 0x7a7068); w.fx.crater(_v.set(p.x, p.y - 0.9, p.z), 1);
+        const o = this.fire('rock', f, p); o.dmg = 9; w.audio.rumble(0.4); return;
+      }
+      case 'earth.leg': {
+        const held = this.heldList(f, 'earth').filter(o => o.state === 'orbit');
+        if (held.length) { const o = held[0]; o.kind = o.kind === 'boulder' ? 'boulder' : 'rockKick'; this.launch(o, f, 1.2); w.shake(0.12, o.pos); return; }
+        const p = this.forwardPoint(f, 1.2, 0); p.y = w.arena.groundAt(p.x, p.z, f.pos.y + 0.3) + 0.55;
+        w.fx.debrisBurst(_v.set(p.x, p.y - 0.5, p.z), 10, 2.4, 0.09, 0x7a7068); w.fx.crater(_v.set(p.x, p.y - 0.55, p.z), 1.2);
+        this.fire('rockKick', f, p); w.audio.rumble(0.5); return;
+      }
+      case 'earth.sweep': {
+        const fw = f.forward(_v2), base = Math.atan2(fw.x, fw.z);
+        for (const d of [-0.35, 0, 0.35]) {
+          const dir = new THREE.Vector3(Math.sin(base + d), 0.05, Math.cos(base + d));
+          const p = new THREE.Vector3(f.pos.x + dir.x * 0.9, f.pos.y + 0.35, f.pos.z + dir.z * 0.9);
+          this.fire('pebble', f, p, { dir });
+        }
+        w.fx.dust(f.pos, 10, 3); w.audio.rumble(0.6); return;
+      }
+      case 'earth.seismic': {
+        w.combat.slam(f);
+        const fw = f.forward(_v2);
+        for (let i = 1; i <= 5; i++) this.spikes.push({ owner: f, t: -i * 0.07, pos: new THREE.Vector3(f.pos.x + fw.x * (1.4 + i * 1.3), f.groundY, f.pos.z + fw.z * (1.4 + i * 1.3)), mesh: null, hit: new Set() });
+        return;
+      }
+      case 'earth.pillar': {
+        const t = f.target, locked = f.input.strafe && t && !t.dead && t.pos.distanceTo(f.pos) < 9;
+        const at = locked ? t.pos.clone() : this.forwardPoint(f, 2.2, 0);
+        this.raisePillar(f, at.x, at.z);
+        return;
+      }
+      // ---------------- fire
+      case 'fire.hand': {
+        const orbs = this.heldList(f, 'fire').filter(o => o.state === 'orbit');
+        if (orbs.length) { this.launch(orbs[0], f, 1); return; }
+        this.fire('fireball', f, hand); w.audio.fireWhoosh(0.6); return;
+      }
+      case 'fire.leg': { const o = this.fire('fireArc', f, foot.setY(f.pos.y + 0.9)); this.orientArc(o); w.audio.fireWhoosh(0.9); return; }
+      case 'fire.spin': { this.ring(f, 'fire', 3.4, 9, { dmg: 9, knock: 6, level: 1 }); w.audio.fireWhoosh(1); return; }
+      case 'fire.charged': {
+        const o = this.fire('fireArc', f, this.forwardPoint(f, 0.8, 0.9), { scale: 1.5 }); o.dmg = 14; o.level = 2; this.orientArc(o);
+        this.ring(f, 'fire', 2.6, 10, { dmg: 6, knock: 5, level: 1 }); w.audio.fireWhoosh(1.2); w.shake(0.2, f.pos); return;
+      }
+      case 'fire.special': {
+        const orbs = this.heldList(f, 'fire');
+        if (orbs.length >= MAX_HELD) { orbs.forEach((o, i) => setTimeout(() => o.state === 'orbit' && this.launch(o, f, 1), i * 90)); w.popup(f, 'VOLLEY', true); return; }
+        const o = this.spawn('fireOrb', f, hand, 'orbit'); o.slot = orbs.length * 2.1; w.audio.fireWhoosh(0.4); return;
+      }
+      // ---------------- water
+      case 'water.hand': {
+        const g = this.heldList(f, 'water').filter(o => o.state === 'orbit');
+        if (g.length) { this.launch(g[0], f, 1); return; }
+        this.fire('droplet', f, hand); w.audio.splash(0.4); return;
+      }
+      case 'water.leg': {
+        const g = this.heldList(f, 'water').filter(o => o.state === 'orbit');
+        const o = this.fire('waterArc', f, this.forwardPoint(f, 0.8, 0.7), { scale: g.length ? 1 : 0.7 }); this.orientArc(o);
+        if (g.length) this.kill(g[0], 'silent'); else { o.dmg = 6; o.knock = 6; }
+        w.audio.splash(0.8); return;
+      }
+      case 'water.leg2': {
+        const g = this.heldList(f, 'water').filter(o => o.state === 'orbit');
+        if (g.length) this.kill(g[0], 'silent');
+        this.ring(f, 'water', g.length ? 3.6 : 2.8, 8, { dmg: 7, knock: 7, level: 1 }); w.audio.splash(1); return;
+      }
+      case 'water.charged': {
+        const g = this.heldList(f, 'water'); g.forEach(o => this.kill(o, 'silent'));
+        this.ring(f, 'water', 3 + g.length * 1.0, 9, { dmg: 6 + g.length * 2, knock: 9, level: g.length >= 2 ? 2 : 1 }); w.audio.splash(1.3); w.shake(0.2, f.pos); return;
+      }
+      case 'water.special': {
+        const g = this.heldList(f, 'water').filter(o => o.state === 'orbit');
+        if (g.length) this.kill(g[0], 'silent'); else if (f.en < 10) return; else f.en -= 10;
+        this.fire('sphere', f, this.forwardPoint(f, 0.9, 1.3)); w.audio.splash(0.6); return;
+      }
+      // ---------------- air
+      case 'air.hand': {
+        const v = this.heldList(f, 'air').filter(o => o.state === 'orbit');
+        if (v.length) { v[0].kind = 'orbVortex'; this.launch(v[0], f, 1); return; }
+        this.fire('gust', f, hand); w.audio.gust(0.6); return;
+      }
+      case 'air.leg': { const o = this.fire('blade', f, this.forwardPoint(f, 0.6, 1.0)); this.orientArc(o); w.audio.gust(0.9); return; }
+      case 'air.leg2': {
+        const fw = f.forward(_v2), base = Math.atan2(fw.x, fw.z);
+        for (const d of [-0.32, 0, 0.32]) { const o = this.fire('blade', f, this.forwardPoint(f, 0.6, 1.0), { dir: new THREE.Vector3(Math.sin(base + d), 0, Math.cos(base + d)), scale: 0.8 }); this.orientArc(o); }
+        w.audio.gust(1); return;
+      }
+      case 'air.charged': { this.ring(f, 'air', 3.4, 12, { dmg: 4, knock: 9, level: 1, lift: 5 }); w.audio.gust(1.2); return; }
+      case 'air.special': {
+        const v = this.heldList(f, 'air');
+        if (v.length >= MAX_HELD) {
+          v.forEach(o => this.kill(o, 'silent'));
+          this.fire('vortex', f, this.forwardPoint(f, 1.5, 1.2)); w.popup(f, 'VORTEX', true); w.audio.gust(1.3); return;
+        }
+        const o = this.spawn('orbVortex', f, hand, 'orbit'); o.slot = v.length * 2.1; w.audio.gust(0.4); return;
+      }
+    }
+  }
+  orientArc(o) { o.mesh.rotation.set(Math.PI / 2, 0, 0); o.mesh.rotation.order = 'YXZ'; o.mesh.rotation.y = Math.atan2(o.vel.x, o.vel.z) - Math.PI / 2; }
+
+  ring(owner, el, maxR, speed, hit) {
+    const mesh = new THREE.Mesh(this.geo.flatRing, el === 'fire' ? this.mat.fireArc : el === 'water' ? this.mat.waterArc : this.mat.air);
+    mesh.position.set(owner.pos.x, owner.pos.y + 0.25, owner.pos.z); mesh.scale.setScalar(0.5);
+    this.world.scene.add(mesh);
+    this.rings.push({ owner, el, r: 0.5, maxR, speed, mesh, hit, done: new Set(), center: owner.pos.clone() });
+    // projectiles caught inside an air or water ring are thrown outward / extinguished
+  }
+
+  raisePillar(f, x, z) {
+    const w = this.world;
+    const mine = this.pillars.filter(p => p.owner === f);
+    if (mine.length >= 3) this.lowerPillar(mine[0]);
+    const gy = w.arena.groundAt(x, z, 10);
+    const mesh = new THREE.Mesh(this.pillarGeo, this.mat.stone);
+    mesh.scale.set(0.75, 1.05, 0.75); mesh.position.set(x, gy - 1.6, z); mesh.castShadow = mesh.receiveShadow = true;
+    w.scene.add(mesh);
+    const col = { kind: 'b', x, z, hx: 0.6, hz: 0.6, top: gy + 1.45, walk: true, mesh, pillar: true };
+    w.arena.colliders.push(col); w.arena.cameraBlockers.push(mesh);
+    const p = { owner: f, mesh, col, t: 0, life: 14, gy };
+    this.pillars.push(p);
+    w.fx.debrisBurst(new THREE.Vector3(x, gy + 0.1, z), 18, 3, 0.12, 0x7a6a58); w.fx.dust(new THREE.Vector3(x, gy, z), 10, 2.5); w.fx.crater(new THREE.Vector3(x, gy, z), 2.2);
+    w.audio.rumble(1); w.shake(0.2, mesh.position);
+    // anyone standing on the spot is launched
+    for (const t of w.fighters) {
+      if (Math.abs(t.pos.x - x) < 0.9 && Math.abs(t.pos.z - z) < 0.9 && t.pos.y < gy + 0.8) {
+        t.vel.y = 9.5; t.onGround = false;
+        if (t !== f && !t.dead) w.combat.damage(t, 8, new THREE.Vector3(0, 0, 0).set(t.pos.x - f.pos.x, 0, t.pos.z - f.pos.z).normalize(), f, 'pillar', t.chestPos(new THREE.Vector3()), 2, 2);
+      }
+    }
+  }
+  lowerPillar(p) { p.life = Math.min(p.life, 0.01); }
+
+  // ================================================================== sustained techniques (HAND held)
+  holdStart(f) {
+    const h = { el: f.el, t: 0, tick: 0, whip: null };
+    this.holds.set(f, h);
+    if (f.el === 'water' && this.held(f, 'water') >= MAX_HELD) h.mode = 'whip';
+    else if (f.el === 'water') h.mode = 'draw';
+  }
+  // a visible body for sustained streams: a cone from the hands along the aim
+  streamMesh(h, key, mats, from, dir, len, radius) {
+    if (!h[key]) { h[key] = mats.map(m => { const c = new THREE.Mesh(this.geo.cone, m); this.world.scene.add(c); return c; }); (h.streams = h.streams || []).push(...h[key]); }
+    h[key].forEach((c, i) => {
+      const r = radius * (i ? 0.45 : 1) * (0.9 + Math.random() * 0.2);
+      c.position.copy(from); c.quaternion.setFromUnitVectors(_up, dir); c.scale.set(r, len, r);
+      c.rotateY(h.t * (i ? -9 : 6));
+    });
+  }
+  holdEnd(f) {
+    const h = this.holds.get(f); if (!h) return;
+    if (h.whip) { this.world.scene.remove(h.whip); h.whip = null; }
+    if (h.streams) { for (const m of h.streams) this.world.scene.remove(m); }
+    this.holds.delete(f);
+  }
+  holdTick(f, dt) {
+    const h = this.holds.get(f); if (!h) return;
+    const w = this.world; h.t += dt; h.tick -= dt;
+    const aim = f.input.aimPoint;
+    if (h.el === 'earth') {
+      // Boulder Lift: one rock (or a nearby loose stone) every 0.35 s up to three
+      if (h.tick <= 0 && this.held(f, 'earth') < MAX_HELD && f.en >= 8) {
+        h.tick = 0.35; f.en -= 8;
+        const stone = w.arena.nearestLooseStone(f.pos, 8);
+        let o;
+        if (stone) {
+          stone.col.dead = true; stone.mesh.visible = false; stone.taken = true;
+          o = this.spawn('boulder', f, stone.mesh.position.clone().setY(stone.mesh.position.y + 0.3), 'rising', { src: stone });
+          o.start = o.pos.clone();
+          w.fx.dust(stone.mesh.position, 8, 2);
+        } else {
+          const p = this.forwardPoint(f, 1.2 + Math.random() * 0.6, 0);
+          p.x += rand(-0.8, 0.8); p.z += rand(-0.8, 0.8); p.y = w.arena.groundAt(p.x, p.z, f.pos.y + 0.3) - 0.4;
+          o = this.spawn('rock', f, p, 'rising'); o.start = p.clone();
+          w.fx.debrisBurst(_v.set(p.x, p.y + 0.45, p.z), 10, 2.2, 0.09, 0x7a7068, 0.8); w.fx.crater(_v.set(p.x, p.y + 0.42, p.z), 1.3);
+        }
+        o.slot = this.held(f, 'earth') * 2.1;
+        w.audio.rumble(0.5);
+      }
+    } else if (h.el === 'fire') {
+      // Fire Stream: continuous jet from both palms toward the aim point
+      const from = _a.copy(this.handPoint(f, 1)).add(this.handPoint(f, -1, _b)).multiplyScalar(0.5);
+      const dir = this.aimDir(f, from, _b);
+      let len = Math.min(9, from.distanceTo(aim) + 0.5);
+      // defences and walls cut the stream short
+      const blocker = this.rayDefence(f, from, dir, len);
+      if (blocker) { len = blocker.d; if (h.tick <= 0) this.hitDefence(blocker.def, 4, from.clone().addScaledVector(dir, len), 'fire', null); }
+      this.streamMesh(h, 'flame', [this.mat.stream, this.mat.streamCore], from, dir, len, 0.55);
+      for (let i = 0; i < 7; i++) { const k = Math.random(); this.world.fx.fire(from.clone().addScaledVector(dir, 0.3 + k * 0.6), dir.clone().multiplyScalar(len * 2.2 + rand(-1, 1)).add(_v.set(rand(-0.8, 0.8), rand(-0.4, 0.8), rand(-0.8, 0.8))), 0.35 + k * 0.4, 0.42); }
+      if (h.tick <= 0) {
+        h.tick = 0.15;
+        for (const t of w.fighters) {
+          if (t === f || t.dead || t.invuln > 0) continue;
+          const c = t.chestPos(_v3); c.y -= 0.3;
+          const along = _v.subVectors(c, from).dot(dir);
+          if (along < 0 || along > len + 0.4) continue;
+          const off = c.distanceTo(_v2.copy(from).addScaledVector(dir, along));
+          if (off < 0.6 + along * 0.06) w.combat.damage(t, 2, dir.clone().setY(0).normalize(), f, 'fireStream', c.clone(), 1.2, (h.t % 0.6) < 0.16 ? 0 : -1);
+        }
+        const end = _v.copy(from).addScaledVector(dir, len);
+        const gy = w.arena.groundAt(end.x, end.z, end.y + 0.5);
+        if (end.y - gy < 1.0) this.burn(end.x, end.z, gy, f);
+        this.deflectInCone(f, from, dir, len, 'fire');
+        w.audio.fireWhoosh(0.25);
+      }
+      this.light.position.copy(from).addScaledVector(dir, len * 0.5); this.lightBoost = 1;
+    } else if (h.el === 'water') {
+      if (h.mode !== 'whip' && this.held(f, 'water') >= MAX_HELD) h.mode = 'whip';
+      if (h.mode === 'draw') {
+        // Water Lift: draw from a pool if one is near, otherwise condense moisture (slower, costs more)
+        const src = w.arena.nearestWaterSource(f.pos, 10);
+        if (h.tick <= 0 && f.en >= (src ? 5 : 12)) {
+          h.tick = src ? 0.4 : 0.95; f.en -= src ? 5 : 12;
+          const from = src ? new THREE.Vector3(src.x, src.y + 0.2, src.z) : this.handPoint(f, 1).setY(f.pos.y + 0.3);
+          const o = this.spawn('water', f, from, 'drawing'); o.start = from.clone(); o.slot = this.held(f, 'water') * 2.1;
+          w.fx.splash(from, 10); w.audio.splash(0.5);
+        }
+      } else this.whipTick(f, h, dt);
+    } else if (h.el === 'air') {
+      // Wind Push: a sustained cone that shoves fighters, loose rocks and projectiles away
+      const from = this.forwardPoint(f, 0.6, 1.3, _a);
+      const dir = this.aimDir(f, from, _b); dir.y *= 0.3; dir.normalize();
+      this.streamMesh(h, 'wind', [this.mat.windCone, this.mat.windCone], from, dir, 8, 1.7);
+      for (let i = 0; i < 4; i++) { const p = w.fx.wind(from.clone().add(_v.set(rand(-0.4, 0.4), rand(-0.4, 0.4), rand(-0.4, 0.4))), dir.clone().multiplyScalar(rand(12, 18)), 0.5, 0.5); p.alpha = 0.45; }
+      for (const t of w.fighters) {
+        if (t === f || t.dead) continue;
+        const c = t.chestPos(_v3), to = _v.subVectors(c, from), d = to.length();
+        if (d > 9 || to.dot(dir) / d < 0.86) continue;
+        const k = (1 - d / 9) * 26 * dt;
+        t.vel.x += dir.x * k * 1.4; t.vel.z += dir.z * k * 1.4;
+        if (h.tick <= 0) w.combat.damage(t, 1, dir.clone().setY(0).normalize(), f, 'wind', c.clone(), 0, -1);
+      }
+      if (h.tick <= 0) h.tick = 0.3;
+      this.deflectInCone(f, from, dir, 9, 'air');
+    }
+  }
+
+  whipTick(f, h, dt) {
+    const w = this.world;
+    // Water Whip: a lashing stream of water, consuming held water over time
+    if (!h.whip) {
+      h.whip = new THREE.InstancedMesh(this.geo.sphere, this.mat.water, 16); h.whip.frustumCulled = false; w.scene.add(h.whip);
+      h.whipUse = 2.5;
+    }
+    h.whipUse -= dt;
+    if (h.whipUse <= 0) { const g = this.heldList(f, 'water'); if (g.length) this.kill(g[0], 'silent'); h.whipUse = 2.5; if (!this.held(f, 'water')) { this.holdEnd(f); return; } }
+    const from = _a.copy(this.handPoint(f, -1));
+    const dir = this.aimDir(f, from, _b);
+    const len = Math.min(6.5, from.distanceTo(f.input.aimPoint));
+    const lash = Math.sin(h.t * 7.5);
+    const side = _v2.set(-dir.z, 0, dir.x);
+    const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), sc = new THREE.Vector3();
+    const tip = new THREE.Vector3();
+    for (let i = 0; i < 16; i++) {
+      const k = i / 15;
+      const p = _v.copy(from).addScaledVector(dir, k * len).addScaledVector(side, Math.sin(k * Math.PI) * lash * 1.6 * k).add(_v3.set(0, Math.sin(k * 6 + h.t * 9) * 0.12, 0));
+      const r = 0.16 * (1 - k * 0.5);
+      m4.compose(p, q, sc.set(r, r, r)); h.whip.setMatrixAt(i, m4);
+      if (i === 15) tip.copy(p);
+      if (Math.random() < 0.15) w.fx.splash(p, 1);
+    }
+    h.whip.instanceMatrix.needsUpdate = true;
+    if (h.tick <= 0) {
+      h.tick = 0.42;
+      for (const t of w.fighters) {
+        if (t === f || t.dead || t.invuln > 0) continue;
+        if (distPointSeg(t.chestPos(_v3), from, tip) < 1.0) w.combat.damage(t, 6, dir.clone().setY(0).normalize(), f, 'whip', t.chestPos(new THREE.Vector3()), 4, 0);
+      }
+      this.extinguishNear(tip, 1.5);
+      w.audio.splash(0.4);
+    }
+  }
+
+  deflectInCone(f, from, dir, len, el) {
+    for (const o of this.objs) {
+      if (o.state !== 'flying' || o.owner === f) continue;
+      const to = _v.subVectors(o.pos, from), d = to.length();
+      if (d > len || to.dot(dir) / d < 0.85) continue;
+      if (el === 'air') {
+        // wind turns projectiles aside and blows light ones back
+        const heavy = o.el === 'earth';
+        o.vel.lerp(_v2.copy(dir).multiplyScalar(o.vel.length()), heavy ? 0.06 : 0.25);
+        if (!heavy && !o.blown) { o.blown = true; o.owner = f; }
+      } else if (el === 'fire' && (o.el === 'air')) this.kill(o);
+      else if (el === 'fire' && o.el === 'water') { this.kill(o, 'steam'); }
+    }
+  }
+
+  // ================================================================== defences (GUARD)
+  guardStart(f) {
+    const w = this.world, el = f.el;
+    const d = { el, owner: f, t: 0, hp: el === 'earth' ? 70 : el === 'fire' ? 55 : el === 'water' ? 60 : 50, rise: 0, sink: 0, dead: false, yaw: f.faceYaw, pos: new THREE.Vector3() };
+    if (el === 'earth') {
+      d.mesh = new THREE.Mesh(this.wallGeo, this.mat.stone); d.mesh.castShadow = d.mesh.receiveShadow = true; d.box = { hw: 0.95, hh: 2.0, hd: 0.3 };
+      this.placeDef(d, 1);
+      w.fx.debrisBurst(d.pos.clone().setY(d.pos.y + 0.1), 14, 2.6, 0.1, 0x7a6a58, 0.9); w.fx.dust(d.pos, 8, 2.2); w.fx.crater(d.pos, 2); w.audio.rumble(0.8);
+    } else if (el === 'fire') {
+      d.mesh = new THREE.Group(); d.box = { hw: 1.25, hh: 1.9, hd: 0.35 };
+      this.placeDef(d, 1); w.audio.fireWhoosh(0.9);
+    } else if (el === 'water') {
+      d.mesh = new THREE.Mesh(this.geo.sphereHi, this.mat.shieldWater); d.sphere = 1.45; this.placeDef(d, 1); w.audio.splash(0.7);
+    } else {
+      d.mesh = new THREE.Group();
+      for (let i = 0; i < 3; i++) { const r = new THREE.Mesh(this.geo.ring, this.mat.air); r.rotation.x = Math.PI / 2 + (i - 1) * 0.5; r.scale.setScalar(1.6 - i * 0.15); d.mesh.add(r); }
+      d.sphere = 1.9; this.placeDef(d, 1); w.audio.gust(0.7);
+    }
+    w.scene.add(d.mesh);
+    this.defs.push(d);
+    f.defense = d;
+  }
+  guardEnd(f) { const d = f.defense; f.defense = null; if (d && !d.dead) d.sink = 0.001; }
+  placeDef(d, snap) {
+    const f = d.owner;
+    d.yaw = snap >= 1 ? f.faceYaw : d.yaw + Math.atan2(Math.sin(f.faceYaw - d.yaw), Math.cos(f.faceYaw - d.yaw)) * snap;
+    if (d.box) {
+      const off = d.el === 'earth' ? 1.0 : 1.1;
+      const gx = f.pos.x + Math.sin(d.yaw) * off, gz = f.pos.z + Math.cos(d.yaw) * off;
+      d.pos.set(gx, this.world.arena.groundAt(gx, gz, f.pos.y + 0.3), gz);
+    } else d.pos.set(f.pos.x, f.pos.y + 1.1, f.pos.z);
+  }
+  defContains(d, p, pad) {
+    if (d.rise < 0.3) return false;
+    if (d.box) {
+      const dx = p.x - d.pos.x, dz = p.z - d.pos.z, c = Math.cos(d.yaw), s = Math.sin(d.yaw);
+      const lx = dx * c - dz * s, lz = dx * s + dz * c, ly = p.y - d.pos.y;
+      return Math.abs(lx) < d.box.hw + pad && Math.abs(lz) < d.box.hd + pad && ly > -pad && ly < d.box.hh * d.rise + pad;
+    }
+    // spherical shells protect the front 300 degrees
+    const to = _v.subVectors(p, d.pos), dist = to.length();
+    if (dist > d.sphere * d.rise + pad) return false;
+    const fw = d.owner.forward(_v2);
+    return (to.x * fw.x + to.z * fw.z) / (Math.hypot(to.x, to.z) || 1) > -0.85;
+  }
+  rayDefence(f, from, dir, len) {
+    for (const d of this.defs) {
+      if (d.owner === f || d.dead) continue;
+      for (let s = 0.5; s < len; s += 0.4) if (this.defContains(d, _v3.copy(from).addScaledVector(dir, s), 0.2)) return { def: d, d: s };
+    }
+    return null;
+  }
+  hitDefence(d, dmg, at, el, proj) {
+    const w = this.world;
+    if (d.el === 'fire' && el === 'water') dmg *= 2.5;   // water douses fire walls
+    if (d.el === 'water' && el === 'fire') { dmg = 0; w.fx.steam(at, 6); }
+    d.hp -= dmg; d.shake = 0.15;
+    if (d.el === 'earth') { w.fx.debrisBurst(at, 6, 2.4, 0.08, 0x7a6a58); }
+    if (d.hp <= 0) this.breakDefence(d);
+  }
+  breakDefence(d) {
+    const w = this.world; d.dead = true; w.scene.remove(d.mesh);
+    if (d.el === 'earth') { w.fx.debrisBurst(d.pos.clone().setY(d.pos.y + 1), 24, 4, 0.15, 0x7a6a58); w.audio.impact(1.1); }
+    if (d.el === 'water') { w.fx.splash(d.pos, 24); w.audio.splash(1); }
+    if (d.el === 'fire') { for (let i = 0; i < 16; i++) w.fx.fire(d.pos.clone().setY(d.pos.y + 1), _v.set(rand(-3, 3), rand(0, 3), rand(-3, 3))); w.fx.smoke(d.pos); }
+    const o = d.owner; if (o && o.defense === d) { o.defense = null; o.guarding = false; o.guardCd = 1.1; o.stunT = 0.3; }
+  }
+  // what a defence does to a projectile that enters it. Returns true if the projectile stops.
+  defend(d, o) {
+    const w = this.world, owner = d.owner, perfect = owner.guarding && owner.guardT < 0.25;
+    const sendBack = () => {
+      const back = o.owner.chestPos(_a);
+      const sp = Math.max(18, o.vel.length());
+      o.vel.subVectors(back, o.pos).normalize().multiplyScalar(sp);
+      if (SPEC[o.kind].grav) o.vel.y += 0.5 * SPEC[o.kind].grav * (o.pos.distanceTo(back) / sp);
+      o.owner = owner; o.deflected = true; owner.counterT = 0.9; owner.stats.perfect++;
+      o.pos.addScaledVector(o.vel, 0.03);
+      w.popup(owner, d.el === 'water' ? 'REDIRECT' : 'DEFLECT', true); w.hitStop(0.05);
+    };
+    if (perfect && !o.deflected && o.owner !== owner && (d.el !== 'fire' || o.el === 'earth' || o.el === 'fire')) { sendBack(); return false; }
+    owner.stats.blocks++;
+    if (d.el === 'earth') { this.hitDefence(d, o.dmg * (o.el === 'water' ? 0.6 : 1.4), o.pos.clone(), o.el, o); this.kill(o); w.popup(owner, 'BLOCK', true); return true; }
+    if (d.el === 'fire') {
+      if (o.el === 'earth') { if (!o.passedFire) { o.passedFire = true; o.dmgMul *= 0.5; this.hitDefence(d, 12, o.pos.clone(), 'earth'); } return false; }
+      this.hitDefence(d, o.el === 'water' ? 22 : o.dmg * 0.5, o.pos.clone(), o.el); this.kill(o, o.el === 'water' ? 'steam' : undefined); w.popup(owner, 'BURNED', true); return true;
+    }
+    if (d.el === 'water') {
+      if (o.el === 'fire') { this.kill(o, 'steam'); w.popup(owner, 'DOUSED', true); return true; }
+      if (o.el === 'earth') { if (!o.slowed) { o.slowed = true; o.vel.multiplyScalar(0.5); o.dmgMul *= 0.5; this.hitDefence(d, 18, o.pos.clone(), 'earth'); w.fx.splash(o.pos, 8); } return false; }
+      this.hitDefence(d, 8, o.pos.clone(), o.el); this.kill(o); return true;
+    }
+    // air: everything is turned aside
+    if (!o.airTurned) {
+      o.airTurned = true;
+      const away = _a.subVectors(o.pos, owner.chestPos(_b)).setY(0).normalize();
+      const sp = o.vel.length() * (o.el === 'earth' ? 0.8 : 1);
+      o.vel.copy(away.multiplyScalar(0.7).add(_b.set(-o.vel.z, 0, o.vel.x).normalize().multiplyScalar(0.7))).normalize().multiplyScalar(sp);
+      this.hitDefence(d, o.el === 'earth' ? 14 : 4, o.pos.clone(), o.el);
+      w.popup(owner, 'DEFLECT', true); w.audio.gust(0.6);
+    }
+    return false;
+  }
+
+  // ================================================================== environment
+  burn(x, z, gy, owner) {
+    for (const b of this.burns) if (Math.hypot(b.x - x, b.z - z) < 0.9) { b.t = Math.max(b.t, 4); return; }
+    if (this.burns.length > 14) this.burns.shift();
+    this.burns.push({ x, z, y: gy, t: 4, r: 1.1, owner, tick: 0 });
+  }
+  extinguishNear(p, r) {
+    const before = this.burns.length;
+    this.burns = this.burns.filter(b => { const keep = Math.hypot(b.x - p.x, b.z - p.z) > r + b.r * 0.5; if (!keep) this.world.fx.steam(new THREE.Vector3(b.x, b.y + 0.2, b.z), 5); return keep; });
+    return before - this.burns.length;
+  }
+
+  // ================================================================== projectile vs projectile rules
+  clash(a, b) {
+    const w = this.world;
+    if (a.el === b.el) { this.kill(a); this.kill(b); return; }
+    const pair = (x, y) => (a.el === x && b.el === y) ? [a, b] : (a.el === y && b.el === x) ? [b, a] : null;
+    let p;
+    if ((p = pair('water', 'fire'))) { this.kill(p[1], 'steam'); p[0].dmgMul *= 0.7; return; }        // water douses fire
+    if ((p = pair('earth', 'fire'))) { this.kill(p[1]); return; }                                      // rock smothers fire
+    if ((p = pair('earth', 'water'))) { p[0].vel.multiplyScalar(0.55); this.kill(p[1]); return; }        // water slows rock
+    if ((p = pair('air', 'earth'))) {                                                                   // wind nudges rock
+      const g = p[0], r = p[1]; r.vel.lerp(_v.copy(g.vel).setLength(r.vel.length()), 0.25); this.kill(g); return; }
+    if ((p = pair('air', 'fire')) || (p = pair('air', 'water'))) {                                      // wind blows light elements back
+      const g = p[0], x = p[1]; x.vel.copy(g.vel).setLength(Math.max(x.vel.length(), 20)); x.owner = g.owner; this.kill(g); w.fx.wind(x.pos, x.vel.clone().multiplyScalar(0.3)); return; }
+  }
+
+  // ================================================================== update
+  update(dt) {
+    const w = this.world;
+    this.lightBoost = 0;
+    this.updateDefences(dt);   // first, so a defence raised this frame is already in place for projectiles
+    this.updateObjects(dt);
+    this.updateRings(dt);
+    this.updateEnvironment(dt);
+    // one shared flickering light makes fire read as a light source without per-flame lights
+    let fireN = 0; for (const o of this.objs) if (o.el === 'fire' && o.state !== 'dead') { fireN++; if (!this.lightBoost) this.light.position.copy(o.pos); }
+    const want = (this.lightBoost ? 3.5 : fireN ? 2.2 : this.burns.length ? 1.2 : 0) * (0.85 + Math.random() * 0.3);
+    if (!fireN && !this.lightBoost && this.burns.length) { const b = this.burns[this.burns.length - 1]; this.light.position.set(b.x, b.y + 0.6, b.z); }
+    this.light.intensity += (want - this.light.intensity) * Math.min(1, dt * 12);
+  }
+
+  updateObjects(dt) {
+    const w = this.world;
+    for (const o of this.objs) {
+      if (o.state === 'dead') continue;
+      o.t += dt;
+      const f = o.owner, S = SPEC[o.kind];
+      if (o.state === 'rising' || o.state === 'drawing' || o.state === 'orbit') {
+        if (f.dead) { this.kill(o); continue; }
+        const list = this.heldList(f, o.el), n = list.length, i = list.indexOf(o);
+        const guard = f.guarding && f.el === o.el;
+        let ang, rad, h;
+        if (guard) { ang = f.faceYaw + (n > 1 ? (i / (n - 1) - 0.5) * 1.6 : 0); rad = 1.05; h = 1.25 + (i % 2) * 0.35; }    // defensive formation in front
+        else {
+          const rate = { earth: 0.9, fire: 2.2, water: 1.3, air: 3.2 }[o.el];
+          ang = f.time * rate + i * (Math.PI * 2 / Math.max(n, 1)); rad = o.el === 'air' ? 1.15 : 1.25; h = 1.3 + Math.sin(f.time * 2 + i) * 0.12;
+        }
+        const anchor = _a.set(f.pos.x + Math.sin(ang) * rad, f.pos.y + h, f.pos.z + Math.cos(ang) * rad);
+        if (o.state === 'rising' || o.state === 'drawing') {
+          const dur = o.state === 'rising' ? 0.32 : 0.45, k = smooth01(o.t / dur);
+          o.pos.lerpVectors(o.start, anchor, k); o.pos.y += Math.sin(k * Math.PI) * (o.state === 'drawing' ? 1.4 : 0.35);
+          if (o.state === 'drawing' && Math.random() < 0.6) w.fx.splash(o.pos, 1);
+          if (o.t >= dur) o.state = 'orbit';
+        } else o.pos.lerp(anchor, 1 - Math.exp(-10 * dt));
+        this.animateObj(o, dt);
+        // held objects intercept enemy projectiles (defensive formations)
+        for (const p of this.objs) {
+          if (p.state !== 'flying' || p.owner === f || p.state === 'dead') continue;
+          if (p.pos.distanceTo(o.pos) < p.r + o.r + 0.1) { this.clash(o, p); if (p.state !== 'dead' && o.el === 'earth') this.kill(p); break; }
+        }
+        continue;
+      }
+      if (o.state === 'falling') {
+        o.vel.y -= 18 * dt; o.pos.addScaledVector(o.vel, dt);
+        const gy = w.arena.groundAt(o.pos.x, o.pos.z, o.pos.y + 1);
+        if (o.pos.y < gy + o.r * 0.6) this.kill(o);
+        o.mesh.position.copy(o.pos); continue;
+      }
+      // ---- flying
+      o.life -= dt;
+      const steps = 3, hstep = dt / steps;
+      let done = false;
+      for (let s = 0; s < steps && !done; s++) {
+        o.vel.y -= (S.grav || 0) * hstep;
+        if (o.restrainPull) {}
+        if (S.pull) {   // vortex drags nearby fighters in and up
+          for (const t of w.fighters) {
+            if (t === o.owner || t.dead) continue;
+            const to = _v.subVectors(o.pos, t.pos); to.y = 0; const d = to.length();
+            if (d < 4.5 && d > 0.3) { t.vel.x += to.x / d * 18 * hstep; t.vel.z += to.z / d * 18 * hstep; }
+          }
+        }
+        o.pos.addScaledVector(o.vel, hstep);
+        // defences
+        for (const d of this.defs) {
+          if (d.dead || d.owner === o.owner) continue;
+          if (this.defContains(d, o.pos, o.r * 0.6) && this.defend(d, o)) { done = true; break; }
+        }
+        if (done) break;
+        // other projectiles
+        for (const p of this.objs) {
+          if (p === o || p.state !== 'flying' || p.owner === o.owner) continue;
+          if (p.pos.distanceTo(o.pos) < p.r + o.r) { this.clash(o, p); if (o.state === 'dead') { done = true; break; } }
+        }
+        if (done) break;
+        // fighters
+        for (const t of w.fighters) {
+          if (t === o.owner || t.dead || o.hitSet.has(t)) continue;
+          const a = _a.set(t.pos.x, t.pos.y + 0.35, t.pos.z), b = _b.set(t.pos.x, t.pos.y + 1.6, t.pos.z);
+          if (distPointSeg(o.pos, a, b) < o.r + t.radius) {
+            if (t.invuln > 0) continue;
+            o.hitSet.add(t);
+            const dir = new THREE.Vector3(o.vel.x, 0, o.vel.z).normalize();
+            w.combat.damage(t, Math.round(o.dmg * o.dmgMul), dir, o.owner, 'proj', o.pos.clone(), o.knock, o.level);
+            if (S.restrain && !t.dead) this.restrain(t, S.restrain);
+            if (o.el === 'fire' && Math.random() < 0.6) this.burn(t.pos.x, t.pos.z, t.groundY, o.owner);
+            if (!S.wide && o.kind !== 'vortex') { this.kill(o); done = true; break; }
+          }
+        }
+        if (done) break;
+        // geometry
+        const c = w.arena.solidAt(o.pos, o.r * 0.6);
+        const gy = w.arena.groundAt(o.pos.x, o.pos.z, o.pos.y + 1);
+        const low = o.pos.y < gy + o.r * 0.6;
+        if (S.wide && low) o.pos.y = gy + o.r * 0.6;  // arcs skim the floor
+        if ((c && !(S.wide && o.el === 'air')) || (low && !S.wide) || Math.abs(o.pos.x) > HALF + 1 || Math.abs(o.pos.z) > HALF + 1 || o.life <= 0) {
+          if (low && o.el === 'earth') w.fx.crater(_v.set(o.pos.x, gy, o.pos.z), 1.1);
+          if (low && o.el === 'fire') this.burn(o.pos.x, o.pos.z, gy, o.owner);
+          if (o.el === 'water') this.extinguishNear(o.pos, 2);
+          if (o.el === 'earth' && w.shake) w.shake(0.1, o.pos);
+          this.kill(o); done = true;
+        }
+      }
+      if (!done) {
+        // water and wind put out fires they pass over
+        if (o.el === 'water' && o.pos.y < 2) this.extinguishNear(o.pos, S.wide ? 1.2 : 0.7);
+        this.animateObj(o, dt);
+      }
+    }
+    this.objs = this.objs.filter(o => o.state !== 'dead');
+  }
+
+  animateObj(o, dt) {
+    const w = this.world, m = o.mesh;
+    m.position.copy(o.pos);
+    if (o.el === 'earth') { m.rotation.x += o.spin.x * dt * (o.state === 'flying' ? 1 : 0.15); m.rotation.y += o.spin.y * dt * (o.state === 'flying' ? 1 : 0.15); if (o.state === 'flying' && Math.random() < dt * 25) w.fx.puff(o.pos.clone(), _v.set(0, 0.2, 0), 0.3, 0.35, 0xb0a290, 0.3, 1.2); }
+    else if (o.el === 'fire') {
+      const big = SPEC[o.kind].wide ? 6 : 3;
+      for (let i = 0; i < big; i++) w.fx.fire(o.pos.clone().add(_v.set(rand(-0.15, 0.15) * o.r * 3, rand(-0.1, 0.1), rand(-0.15, 0.15) * o.r * 3)), _v2.copy(o.vel).multiplyScalar(-0.12).add(_v3.set(rand(-0.5, 0.5), rand(0, 1), rand(-0.5, 0.5))), o.r * 1.6, 0.25);
+      m.scale.setScalar((SPEC[o.kind].wide ? o.r : o.r * 0.6) * (0.9 + Math.random() * 0.2)); if (SPEC[o.kind].wide) m.scale.z = o.r * 1.6;
+    } else if (o.el === 'water') {
+      if (!SPEC[o.kind].wide) { const t = o.t * 9; m.scale.set(o.r * (1 + 0.12 * Math.sin(t)), o.r * (1 + 0.12 * Math.sin(t + 2)), o.r * (1 + 0.12 * Math.sin(t + 4))); }
+      if (Math.random() < (o.state === 'flying' ? 0.7 : 0.08)) w.fx.puff(o.pos.clone(), _v.set(rand(-0.5, 0.5), -0.5, rand(-0.5, 0.5)), 0.12, 0.4, 0x8cc8f2, 0.7, 0.4);
+    } else {
+      m.rotation.y += dt * 14; if (m.children.length > 1) m.children.forEach((c, i) => c.rotation.z += dt * (8 + i * 3));
+      if (Math.random() < 0.6) w.fx.wind(o.pos.clone().add(_v.set(rand(-0.4, 0.4), rand(-0.3, 0.3), rand(-0.4, 0.4)).multiplyScalar(o.r * 2)), _v2.copy(o.vel).multiplyScalar(0.2), 0.35 * o.r * 2, 0.35);
+    }
+  }
+
+  restrain(t, dur) {
+    t.restrainT = dur; t.vel.set(0, Math.min(t.vel.y, 0), 0);
+    if (!t.bubble) { t.bubble = new THREE.Mesh(this.geo.sphereHi, this.mat.bubble); t.bubble.scale.setScalar(1.05); this.world.scene.add(t.bubble); }
+    this.world.popup(t, 'RESTRAINED', true);
+  }
+
+  updateRings(dt) {
+    const w = this.world;
+    for (const r of this.rings) {
+      r.r += r.speed * dt;
+      const k = r.r / r.maxR;
+      r.mesh.scale.setScalar(r.r); r.mesh.position.set(r.center.x, r.center.y + 0.3 + (r.el === 'air' ? k * 0.8 : 0), r.center.z);
+      r.mesh.material = r.el === 'fire' ? this.mat.fireArc : r.el === 'water' ? this.mat.waterArc : this.mat.air;
+      const n = r.el === 'fire' ? 10 : 6;
+      for (let i = 0; i < n; i++) {
+        const a = Math.random() * Math.PI * 2, p = _v.set(r.center.x + Math.cos(a) * r.r, r.center.y + 0.3 + Math.random() * 0.6, r.center.z + Math.sin(a) * r.r);
+        if (r.el === 'fire') w.fx.fire(p, _v2.set(Math.cos(a) * 2, 1.5, Math.sin(a) * 2), 0.6, 0.3);
+        else if (r.el === 'water') w.fx.splash(p, 1);
+        else w.fx.wind(p, _v2.set(-Math.sin(a) * 9, 2, Math.cos(a) * 9), 0.6, 0.3);
+      }
+      for (const t of w.fighters) {
+        if (t === r.owner || t.dead || r.done.has(t) || t.invuln > 0) continue;
+        const d = Math.hypot(t.pos.x - r.center.x, t.pos.z - r.center.z);
+        if (Math.abs(d - r.r) < 0.7 && t.pos.y - r.center.y < 1.6) {
+          r.done.add(t);
+          const dir = new THREE.Vector3(t.pos.x - r.center.x, 0, t.pos.z - r.center.z).normalize();
+          w.combat.damage(t, r.hit.dmg, dir, r.owner, r.el + 'Ring', t.chestPos(new THREE.Vector3()), r.hit.knock, r.hit.level);
+          if (r.hit.lift) t.vel.y = Math.max(t.vel.y, r.hit.lift);
+        }
+      }
+      for (const o of this.objs) {
+        if (o.state !== 'flying' || o.owner === r.owner) continue;
+        const d = Math.hypot(o.pos.x - r.center.x, o.pos.z - r.center.z);
+        if (Math.abs(d - r.r) < 0.8) {
+          if (r.el === 'air') { o.vel.set(o.pos.x - r.center.x, 0.1, o.pos.z - r.center.z).setLength(Math.max(o.vel.length(), 18)); o.owner = r.owner; }
+          else this.clash(o, { el: r.el, vel: new THREE.Vector3(), pos: o.pos, kill() {}, state: 'ring', r: 0, dmgMul: 1, owner: r.owner, mesh: new THREE.Object3D() });
+        }
+      }
+      if (r.el === 'water') this.extinguishNear(_v.set(r.center.x, 0, r.center.z), r.r);
+      r.mesh.material.opacity = 0.85 * (1 - k * 0.7);
+      if (r.r >= r.maxR) { r.dead = true; w.scene.remove(r.mesh); }
+    }
+    this.rings = this.rings.filter(r => !r.dead);
+  }
+
+  updateDefences(dt) {
+    const w = this.world;
+    for (const d of this.defs) {
+      if (d.dead) continue;
+      d.t += dt;
+      if (d.sink > 0) {
+        d.sink += dt; d.rise = 1 - smooth01(d.sink / 0.3);
+        if (d.sink > 0.3) { d.dead = true; w.scene.remove(d.mesh); continue; }
+      } else {
+        d.rise = smooth01(d.t / (d.el === 'earth' ? 0.16 : 0.12));
+        this.placeDef(d, 1 - Math.exp(-10 * dt));
+        if (d.el === 'earth' && d.t < 0.2 && Math.random() < 0.5) w.fx.debrisBurst(d.pos.clone().setY(d.pos.y + 0.05), 1, 1.5, 0.07, 0x7a6a58, 0.6);
+      }
+      let shk = 0; if (d.shake > 0) { d.shake -= dt; shk = (Math.random() - 0.5) * 0.08; }
+      if (d.el === 'earth') { d.mesh.position.set(d.pos.x + shk, d.pos.y - (1 - d.rise) * 2.1, d.pos.z); d.mesh.rotation.set(0, d.yaw, 0); }
+      else if (d.el === 'fire') {
+        // a curtain of flame: emitted along the wall's width every frame
+        const c = Math.cos(d.yaw), s = Math.sin(d.yaw);
+        for (let i = 0; i < 9; i++) { const lx = rand(-1.2, 1.2); w.fx.fire(_v.set(d.pos.x + lx * c, d.pos.y + rand(0, 0.5) * d.rise, d.pos.z - lx * s), _v2.set(0, rand(2, 4) * d.rise, 0), 0.55, 0.45); }
+        this.lightBoost = 1; this.light.position.set(d.pos.x, d.pos.y + 1, d.pos.z);
+        // melee attackers touching the flames get burned
+        for (const t of w.fighters) if (t !== d.owner && !t.dead && this.defContains(d, t.chestPos(_v3).setY(t.pos.y + 0.8), 0.4) && (d.burnTick = (d.burnTick || 0) - dt) < 0) { d.burnTick = 0.4; w.combat.damage(t, 3, new THREE.Vector3(Math.sin(d.yaw), 0, Math.cos(d.yaw)), d.owner, 'fireWall', t.chestPos(new THREE.Vector3()), 3, 0); }
+      } else if (d.el === 'water') {
+        d.mesh.position.copy(d.pos); d.mesh.scale.setScalar(d.sphere * d.rise * (1 + Math.sin(d.t * 6) * 0.03)); d.mesh.rotation.y += dt * 1.5;
+        if (Math.random() < 0.5) w.fx.splash(_v.copy(d.pos).add(_v2.set(rand(-1, 1), rand(-1, 1), rand(-1, 1)).setLength(d.sphere)), 1);
+        this.extinguishNear(_v.set(d.pos.x, d.owner.pos.y, d.pos.z), 1.2);
+      } else {
+        d.mesh.position.copy(d.pos); d.mesh.scale.setScalar(d.rise); d.mesh.rotation.y += dt * 9;
+        if (Math.random() < 0.8) { const a = Math.random() * 6.28; w.fx.wind(_v.set(d.pos.x + Math.cos(a) * d.sphere, d.pos.y + rand(-0.8, 0.8), d.pos.z + Math.sin(a) * d.sphere), _v2.set(-Math.sin(a) * 8, 0, Math.cos(a) * 8), 0.5, 0.3); }
+      }
+      if (!d.owner.guarding && d.sink === 0) d.sink = 0.001;
+    }
+    this.defs = this.defs.filter(d => !d.dead);
+  }
+
+  updateEnvironment(dt) {
+    const w = this.world;
+    // burning ground: hurts anyone standing in it, spreads flame particles
+    for (const b of this.burns) {
+      b.t -= dt;
+      if (Math.random() < dt * 22) w.fx.fire(_v.set(b.x + rand(-b.r, b.r) * 0.7, b.y + 0.05, b.z + rand(-b.r, b.r) * 0.7), _v2.set(0, rand(1.5, 3), 0), 0.5, 0.5);
+      b.tick -= dt;
+      if (b.tick <= 0) {
+        b.tick = 0.4;
+        for (const t of w.fighters) if (!t.dead && t.onGround && Math.hypot(t.pos.x - b.x, t.pos.z - b.z) < b.r && Math.abs(t.pos.y - b.y) < 0.4 && t !== b.owner) w.combat.damage(t, 2, new THREE.Vector3(0, 0, 0), b.owner, 'burn', t.chestPos(new THREE.Vector3()), 0, -1);
+      }
+    }
+    this.burns = this.burns.filter(b => b.t > 0);
+    // seismic spikes erupt one after another
+    for (const s of this.spikes) {
+      s.t += dt;
+      if (s.t >= 0 && !s.mesh) {
+        s.mesh = new THREE.Mesh(this.pillarGeo, this.mat.stone); s.mesh.scale.set(0.35, 0.9, 0.35); s.mesh.castShadow = true;
+        s.mesh.position.copy(s.pos).setY(s.pos.y - 1); w.scene.add(s.mesh);
+        w.fx.debrisBurst(s.pos.clone().setY(s.pos.y + 0.1), 8, 3, 0.1, 0x7a6a58); w.audio.rumble(0.4);
+        for (const t of w.fighters) if (t !== s.owner && !t.dead && !s.hit.has(t) && Math.hypot(t.pos.x - s.pos.x, t.pos.z - s.pos.z) < 1.0 && t.pos.y - t.groundY < 0.6 && t.invuln <= 0) {
+          s.hit.add(t); w.combat.damage(t, 9, new THREE.Vector3(t.pos.x - s.owner.pos.x, 0, t.pos.z - s.owner.pos.z).normalize(), s.owner, 'spike', t.chestPos(new THREE.Vector3()), 3, 2); t.vel.y = 7;
+        }
+      }
+      if (s.mesh) { const k = s.t < 0.15 ? smooth01(s.t / 0.15) : s.t > 1.3 ? 1 - smooth01((s.t - 1.3) / 0.3) : 1; s.mesh.position.y = s.pos.y - 1 + k * 1.15; }
+      if (s.t > 1.6) { if (s.mesh) w.scene.remove(s.mesh); s.dead = true; }
+    }
+    this.spikes = this.spikes.filter(s => !s.dead);
+    // pillars rise, stand for a while, then sink back
+    for (const p of this.pillars) {
+      p.t += dt; p.life -= dt;
+      const k = p.life > 0 ? smooth01(p.t / 0.22) : 1 - smooth01(-p.life / 0.4);
+      p.mesh.position.y = p.gy - 1.6 + k * 1.6; p.col.top = p.gy + 1.45 * Math.max(0.05, k);
+      if (p.life < -0.4) { p.dead = true; w.scene.remove(p.mesh); p.col.dead = true; w.arena.colliders = w.arena.colliders.filter(c => c !== p.col); w.arena.cameraBlockers = w.arena.cameraBlockers.filter(m => m !== p.mesh); }
+    }
+    this.pillars = this.pillars.filter(p => !p.dead);
+    // restraint bubbles follow their captives
+    for (const t of w.fighters) {
+      if (t.restrainT > 0) { t.restrainT -= dt; if (t.bubble) { t.bubble.position.set(t.pos.x, t.pos.y + 1.0, t.pos.z); t.bubble.visible = true; } if (t.restrainT <= 0 || t.dead) { if (t.bubble) { w.scene.remove(t.bubble); t.bubble = null; } w.fx.splash(t.chestPos(_v), 16); } }
+    }
+    w.arena.updateLoose(dt, w.fx);
+  }
+
+  clear() {
+    for (const o of this.objs) this.world.scene.remove(o.mesh);
+    for (const d of this.defs) this.world.scene.remove(d.mesh);
+    for (const r of this.rings) this.world.scene.remove(r.mesh);
+    for (const s of this.spikes) if (s.mesh) this.world.scene.remove(s.mesh);
+    for (const p of this.pillars) { this.world.scene.remove(p.mesh); p.col.dead = true; }
+    this.world.arena.colliders = this.world.arena.colliders.filter(c => !c.pillar);
+    this.world.arena.cameraBlockers = this.world.arena.cameraBlockers.filter(m => !this.pillars.some(p => p.mesh === m));
+    for (const [f] of this.holds) this.holdEnd(f);
+    for (const f of this.world.fighters) { if (f.bubble) { this.world.scene.remove(f.bubble); f.bubble = null; } f.restrainT = 0; f.defense = null; }
+    this.objs = []; this.defs = []; this.rings = []; this.spikes = []; this.pillars = []; this.burns = [];
+    this.world.arena.resetLoose();
+  }
+}
+export { SPEC };

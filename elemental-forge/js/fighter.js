@@ -1,289 +1,270 @@
-// Fighter: skinned martial-artist body, procedural layered animation and movement/combat state.
+// Fighter: skinned martial artist driven by an element style (stance, locomotion, keyframed techniques),
+// plus movement physics, stamina, dodges, reactions and the HAND / LEG / GUARD / SPECIAL input model.
 import * as THREE from 'three';
-import { clamp, dampAngle, angleDiff, smooth01 } from './util.js';
-import { buildSkinnedFighter, HIP_H, LEG } from './character.js';
+import { clamp, dampAngle, angleDiff, smooth01, rand } from './util.js';
+import { buildSkinnedFighter } from './character.js';
+import { JOINTS, JI, PN, POSE_LEN, PX, PY, PZ, LEG_START, S, add, arm, legRaw, legIK, hipDown, seg, stanceLegs, HIP_H } from './pose.js';
+import { STYLES } from './styles.js';
 
-// ---------------------------------------------------------------- pose data
-const JOINTS = ['hips', 'spine', 'chest', 'neck', 'head', 'sL', 'eL', 'wL', 'sR', 'eR', 'wR', 'hL', 'kL', 'aL', 'hR', 'kR', 'aR'];
-const JI = {}; JOINTS.forEach((n, i) => (JI[n] = i * 3));
-const PN = JOINTS.length * 3;
-const POSE_LEN = PN + 3;
-const PX = PN, PY = PN + 1, PZ = PN + 2;
-
-function S(p, j, x, y, z) { const i = JI[j]; p[i] = x; p[i + 1] = y; p[i + 2] = z; }
-function add(p, j, x, y, z) { const i = JI[j]; p[i] += x; p[i + 1] += y; p[i + 2] += z; }
-const sideName = (base, side) => base + (side > 0 ? 'L' : 'R');
-// side: +1 = left (+x), -1 = right (-x). abd > 0 raises the arm outwards.
-function arm(p, side, fwd, abd, twist, elbow, wrist = 0) {
-  S(p, sideName('s', side), fwd, twist * side, abd * side);
-  S(p, sideName('e', side), -Math.max(0, elbow), 0, 0);
-  S(p, sideName('w', side), wrist, 0, 0);
-}
-function legRaw(p, side, hx, hzOut, kx, ax) {
-  S(p, sideName('h', side), hx, 0, hzOut * side);
-  S(p, sideName('k', side), Math.max(0, kx), 0, 0);
-  S(p, sideName('a', side), ax, 0, 0);
-}
-// Two-bone IK in the sagittal plane: foot `fwd` metres in front of the hip, `down` metres below it.
-function legIK(p, side, fwd, down, out = 0.08) {
-  const d = Math.min(Math.hypot(fwd, down), LEG * 2 - 0.001);
-  const half = Math.acos(clamp(d / (2 * LEG), -1, 1));
-  const a = Math.atan2(fwd, down) + half, k = 2 * half;
-  legRaw(p, side, -a, out, k, a - k);
-}
-const hipDown = (py) => HIP_H + py - 0.08;
-const seg = (u, a, b) => smooth01((u - a) / (b - a));
-
-// ---------------------------------------------------------------- actions
-// phases: active = [start, end] as a fraction of dur; cancel = fraction after which dodge/jump/attack may cancel recovery.
+// Reactions and shared moves (element techniques live in styles.js)
 export const ACTIONS = {
-  jab:     { dur: 0.30, upper: true,  active: [0.28, 0.5], cancel: 0.55, lunge: 6 },
-  cross:   { dur: 0.32, upper: true,  active: [0.28, 0.5], cancel: 0.55, lunge: 6 },
-  kick:    { dur: 0.58, upper: false, active: [0.36, 0.6], cancel: 0.68, lunge: 7 },
-  heavy:   { dur: 0.52, upper: false, active: [0.42, 0.62], cancel: 0.72, lunge: 8 },
-  slam:    { dur: 0.72, upper: false, fireAt: 0.55, cancel: 0.8 },
-  counter: { dur: 0.4,  upper: false, active: [0.2, 0.55], cancel: 0.65, lunge: 10 },
-  raise:   { dur: 0.32, upper: true },
-  throw:   { dur: 0.36, upper: true, fireAt: 0.32, cancel: 0.6 },
-  hit:     { dur: 0.3,  upper: false, react: true },
-  stagger: { dur: 0.62, upper: false, react: true },
-  down:    { dur: 0.85, upper: false, react: true },
-  getup:   { dur: 0.45, upper: false, react: true },
-  land:    { dur: 0.14, upper: false, soft: true },
-  ko:      { dur: 99,   upper: false, react: true },
+  counter: { dur: 0.4,  upper: false, active: { from: 0.2, to: 0.55, dmg: 14, range: 2.1, arc: -1.1, knock: 9, level: 1 }, cancel: 0.65, lunge: 10 },
+  hit:     { dur: 0.3,  react: true },
+  stagger: { dur: 0.62, react: true },
+  down:    { dur: 0.85, react: true },
+  getup:   { dur: 0.45, react: true },
+  land:    { dur: 0.14, soft: true },
+  ko:      { dur: 99,   react: true },
 };
-const COMBO = ['jab', 'cross', 'kick'];
-const DODGE = { roll: 0.42, side: 0.26, back: 0.3 };
-export const SPEED = { walk: 3.0, run: 6.6, sprint: 9.4 };
 
-// ---------------------------------------------------------------- Fighter
 export class Fighter {
   constructor(world, opts) {
     this.world = world;
-    this.name = opts.name;
-    this.team = opts.team;
+    this.name = opts.name; this.team = opts.team;
     const body = buildSkinnedFighter({ skin: opts.skin, pants: opts.pants, sash: opts.sash, wrap: opts.wrap, build: opts.build || 1, bulk: opts.bulk || 1 });
     this.root = body.root; this.tumble = body.tumble; this.J = body.J; this.material = body.material; this.mesh = body.mesh;
-    this.triangles = body.triangles;
+    this.triangles = body.triangles; this.sashIdx = body.sashIdx;
     world.scene.add(this.root);
 
-    this.pos = new THREE.Vector3();
-    this.vel = new THREE.Vector3();
+    this.pos = new THREE.Vector3(); this.vel = new THREE.Vector3();
     this.yaw = 0; this.faceYaw = 0; this.spinYaw = 0;
     this.radius = 0.42; this.height = 1.75;
-    this.onGround = true; this.groundY = 0; this.airTime = 0;
-    this.maxHp = 100; this.hp = 100;
-    this.maxEn = 100; this.en = 100;
-    this.action = null; this.actionT = 0; this.actionFired = false; this.hitDone = false;
-    this.comboIdx = 0; this.comboTimer = 0; this.queued = false;
+    this.onGround = true; this.groundY = 0; this.airTime = 0; this.airJumps = 0;
+    this.maxHp = 100; this.hp = 100; this.maxEn = 100; this.en = 100;
+    this.action = null; this.tech = null; this.actionT = 0; this.evIdx = 0; this.hitDone = false; this.jumped = false;
+    this.handSide = 1; this.techSide = 1; this.legIdx = 0; this.comboTimer = 0;
+    this.handHoldT = -1; this.legHoldT = -1; this.holding = false; this.holdPh = 0;
+    this.charging = false; this.chargeT = 0;
     this.dodgeT = 0; this.dodgeDur = 0.42; this.dodgeKind = 'roll'; this.dodgeDir = new THREE.Vector3(); this.dodgeCd = 0;
-    this.guarding = false; this.guardT = 0; this.holding = false; this.guardCd = 0;
-    this.charging = false; this.chargeT = 0; this.atkHoldT = -1;
-    this.counterT = 0;
-    this.lungeT = 0; this.lungeDir = new THREE.Vector3();
-    this.invuln = 0; this.flash = 0; this.stunT = 0;
+    this.guarding = false; this.guardT = 0; this.guardCd = 0; this.defense = null;
+    this.counterT = 0; this.lungeT = 0; this.lungeDir = new THREE.Vector3();
+    this.invuln = 0; this.flash = 0; this.stunT = 0; this.restrainT = 0;
     this.sprinting = false;
-    this.buf = { attack: 0, dodge: 0, jump: 0 };
-    this.runPhase = 0; this.time = Math.random() * 10; this.stepSide = 0;
+    this.buf = { hand: 0, leg: 0, special: 0, dodge: 0, jump: 0 };
+    this.runPhase = 0; this.time = Math.random() * 10;
     this.moveLocal = new THREE.Vector2(0, 1);
     this.speedNorm = 0; this.bank = 0; this.accLean = 0; this.prevFace = 0; this.prevVel = new THREE.Vector3();
     this.dead = false;
     this.input = Fighter.blankInput();
-    this.heldRock = null; this.shield = null;
     this.target = null;
-    this.stats = { hitsLanded: 0, blocks: 0, perfect: 0 };
-
-    this.pose = new Float32Array(POSE_LEN);
-    this.cur = new Float32Array(POSE_LEN);
-    this.tmpPose = new Float32Array(POSE_LEN);
+    this.stats = { hitsLanded: 0, blocks: 0, perfect: 0, techniques: {} };
+    this.pose = new Float32Array(POSE_LEN); this.cur = new Float32Array(POSE_LEN);
+    this.tmpA = new Float32Array(POSE_LEN); this.tmpB = new Float32Array(POSE_LEN); this.tmpPose = new Float32Array(POSE_LEN);
+    this.el = null; this.setElement(opts.element || 'earth', true);
   }
 
   static blankInput() {
-    return { mx: 0, mz: 0, strafe: false, faceYaw: null, attack: false, attackHeld: false, bend: false, guard: false, jump: false, dodge: false, sprint: false, aimPoint: new THREE.Vector3() };
+    return { mx: 0, mz: 0, strafe: false, faceYaw: null, hand: false, handHeld: false, leg: false, legHeld: false, special: false, guard: false, jump: false, dodge: false, sprint: false, aimPoint: new THREE.Vector3() };
+  }
+
+  setElement(el, quiet) {
+    if (el === this.el || !STYLES[el]) return;
+    const old = this.el;
+    if (old && this.world.bending) { this.world.bending.dropAll(this, old); if (this.guarding) { this.guarding = false; this.world.bending.guardEnd(this); } }
+    this.holding = false; this.charging = false; this.handHoldT = -1; this.legHoldT = -1;
+    if (this.action === 'tech') this.action = null;
+    this.el = el; this.style = STYLES[el];
+    // the sash takes the element's colour
+    const col = this.mesh.geometry.attributes.color, c = new THREE.Color(this.style.sash);
+    for (const i of this.sashIdx) col.setXYZ(i, c.r, c.g, c.b);
+    col.needsUpdate = true;
+    if (!quiet) { this.world.popup(this, this.style.name.toUpperCase(), true); this.world.audio.whoosh(0.3); }
   }
 
   reset(x, z, yaw) {
     this.pos.set(x, 0, z); this.vel.set(0, 0, 0);
     this.yaw = this.faceYaw = this.prevFace = yaw; this.spinYaw = 0;
     this.hp = this.maxHp; this.en = this.maxEn; this.dead = false;
-    this.action = null; this.guarding = false; this.holding = false; this.charging = false; this.atkHoldT = -1;
-    this.dodgeT = 0; this.stunT = 0; this.invuln = 0; this.flash = 0; this.counterT = 0; this.lungeT = 0;
-    this.buf.attack = this.buf.dodge = this.buf.jump = 0;
+    this.action = null; this.tech = null; this.guarding = false; this.holding = false; this.charging = false; this.handHoldT = this.legHoldT = -1;
+    this.dodgeT = 0; this.stunT = 0; this.invuln = 0; this.flash = 0; this.counterT = 0; this.lungeT = 0; this.restrainT = 0; this.airJumps = 0;
+    for (const k in this.buf) this.buf[k] = 0;
     this.tumble.quaternion.identity(); this.tumble.position.y = 0.6;
     this.pose.fill(0); this.cur.fill(0); this.runPhase = 0; this.bank = 0; this.accLean = 0;
-    this.root.position.copy(this.pos);
-    this.root.rotation.y = this.yaw;
+    this.root.position.copy(this.pos); this.root.rotation.y = this.yaw;
   }
 
   chestPos(out = new THREE.Vector3()) { return out.set(this.pos.x, this.pos.y + 1.3, this.pos.z); }
   forward(out = new THREE.Vector3()) { return out.set(Math.sin(this.yaw), 0, Math.cos(this.yaw)); }
   handPos(side, out = new THREE.Vector3()) { return this.J['w' + side].getWorldPosition(out); }
 
-  get actionU() { return this.action ? this.actionT / ACTIONS[this.action].dur : 1; }
-  reacting() { return this.action && ACTIONS[this.action].react; }
-  // may a new move start now? (free, or inside a cancel window of the current move)
+  get A() { return this.action === 'tech' ? this.tech : (this.action ? ACTIONS[this.action] : null); }
+  get actionU() { const A = this.A; return A ? this.actionT / A.dur : 1; }
+  reacting() { const A = this.A; return !!(A && A.react); }
   free(kind) {
-    if (this.dead || this.stunT > 0 || this.reacting()) return false;
-    if (this.dodgeT > 0) return kind === 'attack' ? this.dodgeT < this.dodgeDur * 0.3 : false; // roll -> attack
-    if (!this.action) return true;
-    const A = ACTIONS[this.action];
-    if (A.soft) return true;
-    if (this.action === 'raise') return kind === 'dodge';
+    if (this.dead || this.stunT > 0 || this.restrainT > 0 || this.reacting()) return false;
+    if (this.dodgeT > 0) return kind === 'attack' ? this.dodgeT < this.dodgeDur * 0.3 : false;
+    const A = this.A;
+    if (!A || A.soft) return true;
     return A.cancel !== undefined && this.actionU >= A.cancel;
   }
   busy() { return !this.free('jump'); }
-  canAct() { return !this.dead && this.stunT <= 0 && this.dodgeT <= 0; }
 
-  startAction(name) {
-    this.action = name; this.actionT = 0; this.actionFired = false; this.hitDone = false;
-    this.spinYaw = 0; this.queued = false;
+  startAction(name) { this.action = name; this.tech = null; this.actionT = 0; this.evIdx = 0; this.hitDone = false; this.jumped = false; this.spinYaw = 0; }
+  startTech(def, side) {
+    if (!def) return false;
+    if (this.en < (def.cost || 0)) { this.world.popup(this, 'NO ENERGY', true); return false; }
+    this.en -= def.cost || 0;
+    this.action = 'tech'; this.tech = def; this.actionT = 0; this.evIdx = 0; this.hitDone = false; this.jumped = false; this.spinYaw = 0;
+    this.techSide = side || 1;
+    this.world.combat.lunge(this, def);
+    const n = def.name || 'tech'; this.stats.techniques[n] = (this.stats.techniques[n] || 0) + 1;
+    return true;
   }
 
   // ------------------------------------------------------------ simulation
   update(dt) {
     if (!(dt > 0)) return;
-    const w = this.world, inp = this.input;
+    const w = this.world, inp = this.input, st = this.style, B = w.bending;
     this.time += dt;
     this.dodgeCd -= dt; this.guardCd -= dt; this.invuln -= dt; this.comboTimer -= dt; this.stunT -= dt; this.counterT -= dt;
     this.flash = Math.max(0, this.flash - dt * 5);
     for (const k in this.buf) this.buf[k] = Math.max(0, this.buf[k] - dt);
-    if (inp.attack) this.buf.attack = 0.25;
+    if (inp.hand) this.buf.hand = 0.25;
+    if (inp.leg) this.buf.leg = 0.25;
+    if (inp.special) this.buf.special = 0.25;
     if (inp.dodge) this.buf.dodge = 0.18;
     if (inp.jump) this.buf.jump = 0.15;
     if (this.guarding) this.guardT += dt;
 
-    // ---- action timeline
+    // ---- action / technique timeline
     if (this.action) {
-      const A = ACTIONS[this.action];
+      const A = this.A;
       this.actionT += dt;
       const u = this.actionT / A.dur;
-      if (A.active && !this.hitDone && u >= A.active[0] && u <= A.active[1]) {
-        if (w.combat.meleeCheck(this, this.action)) { this.hitDone = true; this.stats.hitsLanded++; }
+      if (A.active && !this.hitDone && u >= A.active.from && u <= A.active.to) {
+        if (w.combat.meleeCheck(this, A.active, this.action === 'tech' ? this.el : 'counter')) this.hitDone = true;
       }
-      if (A.fireAt && !this.actionFired && u >= A.fireAt) {
-        this.actionFired = true;
-        if (this.action === 'throw') w.combat.release(this);
-        if (this.action === 'slam') w.combat.slam(this);
-      }
-      if (this.action === 'slam' && !this.actionFired && u > 0.12 && u < 0.2 && this.onGround) { this.vel.y = 4.2; this.onGround = false; }
-      if (COMBO.includes(this.action) && this.queued && u >= 0.6 && this.action !== 'kick') this.startCombo();
-      else if (u >= 1 && this.action !== 'ko') {
-        const was = this.action;
-        if (this.queued && COMBO.includes(was) && was !== 'kick') this.startCombo();
-        else { this.action = null; this.spinYaw = 0; if (was === 'down') this.startAction('getup'); }
+      if (A.events) while (this.evIdx < A.events.length && u >= A.events[this.evIdx][0]) { B.event(this, A.events[this.evIdx][1], A); this.evIdx++; }
+      if (A.spin) this.spinYaw = A.spin[2] * Math.PI * 2 * seg(u, A.spin[0], A.spin[1]);
+      if (this.action === 'counter') this.spinYaw = Math.PI * 2 * seg(u, 0, 0.55);
+      if (A.jumpAt && !this.jumped && u >= A.jumpAt[0]) { this.jumped = true; if (this.onGround) { this.vel.y = A.jumpAt[1]; this.onGround = false; } }
+      if (u >= 1 && this.action !== 'ko') {
+        const was = this.action; this.action = null; this.tech = null; this.spinYaw = 0;
+        if (was === 'down') this.startAction('getup');
       }
     }
 
-    const live = !this.dead;
-    // ---- commands (buffered)
-    if (live) {
-      if (this.buf.dodge && this.dodgeCd <= 0 && this.en >= 10 && this.free('dodge') && !this.charging) { this.buf.dodge = 0; this.doDodge(); }
-      if (this.buf.jump && this.onGround && this.free('jump') && !this.charging && !this.guarding) {
-        this.buf.jump = 0; if (this.action) this.action = null;
-        this.vel.y = 7.4; this.onGround = false; w.audio.whoosh(0.4);
+    const live = !this.dead, restrained = this.restrainT > 0;
+    // ---- commands (buffered so slightly early presses still land)
+    if (live && !restrained) {
+      if (this.buf.dodge && this.dodgeCd <= 0 && this.en >= 10 && this.free('dodge') && !this.charging) { this.buf.dodge = 0; this.endHold(); this.doDodge(); }
+      if (this.buf.jump && this.free('jump') && !this.charging && !this.guarding) {
+        if (this.onGround) { this.buf.jump = 0; this.action = null; this.vel.y = st.jump.v; this.onGround = false; this.airJumps = 0; this.jumpFx(false); }
+        else if (this.airJumps < st.jump.air && this.vel.y < 5) { this.buf.jump = 0; this.airJumps++; this.vel.y = 7.2; this.jumpFx(true); }
       }
-      if (this.buf.attack && !this.charging) {
-        if (this.free('attack') && !this.guarding) {
-          this.buf.attack = 0; this.dodgeT = 0;
-          if (this.holding) { this.holding = false; this.startAction('throw'); }
-          else if (this.counterT > 0) { this.counterT = 0; this.startAction('counter'); w.combat.lunge(this, ACTIONS.counter); w.popup(this, 'COUNTER', true); w.audio.whoosh(0.9); }
-          else { if (this.comboTimer <= 0) this.comboIdx = 0; this.startCombo(); }
-          this.atkHoldT = 0;
-        } else if (COMBO.includes(this.action) && this.action !== 'kick' && this.actionU > 0.2) { this.queued = true; this.buf.attack = 0; }
+      const canStrike = this.free('attack') && !this.guarding && !this.holding;
+      if (this.buf.hand && !this.charging && canStrike) {
+        this.buf.hand = 0; this.dodgeT = 0;
+        if (this.counterT > 0) { this.counterT = 0; this.startAction('counter'); w.combat.lunge(this, ACTIONS.counter); w.popup(this, 'COUNTER', true); w.audio.whoosh(0.9); }
+        else { this.handSide = -this.handSide; this.startTech(st.tech.hand, this.handSide); }
+        this.handHoldT = 0;
       }
-      // hold STRIKE: light -> charge stance -> heavy (short) or charged slam (long)
-      if (this.atkHoldT >= 0) {
-        if (!inp.attackHeld) {
-          if (this.charging) {
-            this.charging = false;
-            if (this.chargeT >= 0.7) { this.startAction('slam'); w.audio.whoosh(1); }
-            else { this.startAction('heavy'); w.combat.lunge(this, ACTIONS.heavy); w.audio.whoosh(0.8); }
+      if (this.buf.leg && !this.charging && canStrike) {
+        this.buf.leg = 0; this.dodgeT = 0;
+        this.legIdx = this.comboTimer > 0 ? (this.legIdx + 1) % st.tech.leg.length : 0;
+        this.comboTimer = 0.9;
+        this.startTech(st.tech.leg[this.legIdx], this.legIdx === 0 ? -1 : 1);
+        this.legHoldT = 0;
+      }
+      if (this.buf.special && !this.charging && canStrike) { this.buf.special = 0; this.startTech(st.tech.special, this.handSide); }
+
+      // HAND held -> sustained technique (stream / lift / draw / push)
+      if (this.handHoldT >= 0) {
+        if (!inp.handHeld) { this.handHoldT = -1; this.endHold(); }
+        else {
+          this.handHoldT += dt;
+          const ready = !this.action || (this.action === 'tech' && this.tech === st.tech.hand && this.actionU > (this.tech.cancel || 0.6));
+          if (!this.holding && this.handHoldT > 0.22 && ready && !this.guarding && !this.reacting()) {
+            this.holding = true; this.holdPh = 0; this.action = null; this.tech = null; B.holdStart(this);
           }
-          this.atkHoldT = -1;
+        }
+      }
+      if (this.holding) {
+        this.holdPh = (this.holdPh + dt / st.tech.handHold.period) % 1;
+        this.en -= st.tech.handHold.drain * dt;
+        B.holdTick(this, dt);
+        if (this.en <= 0 || !B.holds.has(this)) this.endHold();
+      }
+      // LEG held -> gather force, release for the element's charged technique
+      if (this.legHoldT >= 0) {
+        if (!inp.legHeld) {
+          if (this.charging) { this.charging = false; if (this.chargeT >= 0.55) this.startTech(st.tech.charged, 1); }
+          this.legHoldT = -1;
         } else {
-          this.atkHoldT += dt;
-          const lightDone = !this.action || (COMBO.includes(this.action) && this.actionU > 0.55);
-          if (!this.charging && this.atkHoldT > 0.26 && lightDone && !this.guarding && this.stunT <= 0 && !this.reacting()) {
-            this.charging = true; this.chargeT = 0; this.action = null; this.queued = false;
-          }
+          this.legHoldT += dt;
+          const kickDone = !this.action || (this.action === 'tech' && this.actionU > 0.6);
+          if (!this.charging && this.legHoldT > 0.3 && kickDone && !this.guarding && !this.reacting()) { this.charging = true; this.chargeT = 0; this.action = null; this.tech = null; }
         }
       }
       if (this.charging) {
         this.chargeT += dt;
-        if (this.stunT > 0 || this.reacting() || this.dodgeT > 0) { this.charging = false; this.atkHoldT = -1; }
-        else if (Math.random() < dt * 14) {
-          const h = this.handPos(Math.random() < 0.5 ? 'L' : 'R', _v);
-          w.fx.puff(h, _v2.set((Math.random() - 0.5), 0.8, (Math.random() - 0.5)), 0.12 + this.chargeT * 0.1, 0.3, this.chargeT >= 0.7 ? 0xffc35a : 0xc8b89a, 0.7, 1.5);
-        }
+        if (this.stunT > 0 || this.reacting() || this.dodgeT > 0) { this.charging = false; this.legHoldT = -1; }
+        else if (Math.random() < dt * 16) this.chargeFx();
       }
-      // guard (stone shield)
-      if (inp.guard && !this.guarding && this.guardCd <= 0 && this.en > 5 && !this.charging && (this.free('guard') || this.action === 'raise' || this.action === 'throw')) {
-        if (this.action && !ACTIONS[this.action].soft) this.action = null;
-        if (this.holding) { this.holding = false; w.combat.dropRock(this); }
-        this.guarding = true; this.guardT = 0; w.combat.raiseShield(this);
+      // GUARD: the element's defence
+      if (inp.guard && !this.guarding && this.guardCd <= 0 && this.en > 5 && !this.charging && (this.free('guard') || this.action === 'tech')) {
+        if (this.action && !(this.A && this.A.soft)) { this.action = null; this.tech = null; }
+        this.endHold();
+        this.guarding = true; this.guardT = 0; B.guardStart(this);
       }
-      // bending (rock)
-      if (inp.bend && !this.holding && !this.guarding && !this.charging && this.free('bend') && this.en >= 16 && this.dodgeT <= 0) {
-        if (w.combat.summonRock(this)) { this.holding = true; this.startAction('raise'); }
-      }
-      if (this.holding && !inp.bend && this.action !== 'raise' && this.action !== 'throw') { this.holding = false; this.startAction('throw'); }
     }
-    if (this.guarding && (!inp.guard || this.dead || this.en <= 0 || this.stunT > 0 || this.reacting())) {
-      this.guarding = false; this.guardCd = 0.25; w.combat.dropShield(this);
+    if (this.guarding && (!inp.guard || this.dead || this.en <= 0 || this.stunT > 0 || this.reacting() || restrained)) {
+      this.guarding = false; this.guardCd = 0.25; B.guardEnd(this);
     }
-    if (this.holding && (this.dead || this.stunT > 0 || this.reacting())) { this.holding = false; w.combat.dropRock(this); }
+    if ((this.dead || this.stunT > 0 || this.reacting() || restrained) && this.holding) this.endHold();
 
     // ---- energy / stamina
-    let mx = live ? inp.mx : 0, mz = live ? inp.mz : 0;
+    let mx = live && !restrained ? inp.mx : 0, mz = live && !restrained ? inp.mz : 0;
     const mlen = Math.hypot(mx, mz);
     if (mlen > 1) { mx /= mlen; mz /= mlen; }
     this.sprinting = live && inp.sprint && mlen > 0.85 && this.onGround && !this.guarding && !this.holding && !this.charging && !this.action && this.en > 2;
-    if (this.guarding) this.en -= 9 * dt;
+    if (this.guarding) this.en -= 8 * dt;
     else if (this.sprinting) this.en -= 7 * dt;
-    else if (!this.holding && !this.charging) this.en += (this.onGround ? 16 : 8) * dt;
+    else if (!this.holding && !this.charging) this.en += (this.onGround ? 15 : 8) * dt;
     this.en = clamp(this.en, 0, this.maxEn);
 
     // ---- movement
-    let maxSpeed = this.sprinting ? SPEED.sprint : SPEED.run;
-    if (this.guarding) maxSpeed = 2.2;
+    const L = st.loco;
+    let maxSpeed = this.sprinting ? L.sprint : L.run;
+    if (this.guarding) maxSpeed = 2.4;
     else if (this.charging) maxSpeed = 1.6;
-    else if (this.holding) maxSpeed = 4.4;
-    if (this.action && !ACTIONS[this.action].soft) {
-      const A = ACTIONS[this.action];
-      maxSpeed = A.react ? 0 : (A.upper ? 3.6 : (this.actionU > (A.cancel ?? 1) ? 3 : 0.5));
-    }
-    if (this.stunT > 0) maxSpeed = 0;
+    else if (this.holding) maxSpeed = st.tech.handHold.move;
+    const A = this.A;
+    if (A && !A.soft) maxSpeed = A.react ? 0 : (A.move !== undefined ? A.move : (A.upper ? 3.5 : 0.5));
+    if (this.stunT > 0 || restrained) maxSpeed = 0;
 
     if (this.dodgeT > 0) {
       this.dodgeT -= dt;
-      const k = smooth01(this.dodgeT / this.dodgeDur);
-      const sp = this.dodgeKind === 'roll' ? 3 + 12 * k : this.dodgeKind === 'side' ? 2 + 13 * k : 2 + 10 * k;
+      const k = smooth01(this.dodgeT / this.dodgeDur), D = st.dodge;
+      const sp = this.dodgeKind === 'side' ? 2 + 13 * k : this.dodgeKind === 'back' ? 2 + 10 * k : 2.5 + (D.speed - 2.5) * k;
       this.vel.x = this.dodgeDir.x * sp; this.vel.z = this.dodgeDir.z * sp;
       if (this.dodgeKind === 'back' && this.dodgeT > this.dodgeDur * 0.5 && this.onGround) { this.vel.y = 2.6; this.onGround = false; }
+      if (this.dodgeKind === 'airdash' && this.dodgeT > this.dodgeDur * 0.6) this.vel.y = Math.max(this.vel.y, 1.2);
+      this.dodgeTrail();
     } else if (this.lungeT > 0) {
       this.lungeT -= dt;
       this.vel.x = this.lungeDir.x; this.vel.z = this.lungeDir.z;
     } else {
       const tx = mx * maxSpeed, tz = mz * maxSpeed;
       const wantMove = tx * tx + tz * tz > 0.01;
-      // stronger accel from standstill, softer when already moving (keeps momentum through turns)
-      const accel = this.onGround ? (wantMove ? (this.sprinting ? 22 : 34) : (this.reacting() ? 9 : 26)) : 10;
+      const accel = this.onGround ? (wantMove ? (this.sprinting ? L.accel * 0.6 : L.accel) : (this.reacting() ? 9 : L.accel * 0.8)) : (this.el === 'air' ? 16 : 10);
       const dx = tx - this.vel.x, dz = tz - this.vel.z;
-      const dl = Math.hypot(dx, dz), step = accel * dt * (w.iceAt ? w.iceAt(this.pos) : 1);
+      const dl = Math.hypot(dx, dz), step = accel * dt;
       if (dl <= step || dl < 1e-6) { this.vel.x = tx; this.vel.z = tz; }
       else { this.vel.x += dx / dl * step; this.vel.z += dz / dl * step; }
     }
-    this.vel.y -= 21 * dt;
+    // airbenders fall more slowly while holding JUMP after the peak (air-assisted glide)
+    const glide = this.el === 'air' && !this.onGround && inp.jumpHeld && this.vel.y < 0;
+    this.vel.y -= (glide ? 7 : 21) * dt;
+    if (glide && Math.random() < dt * 20) w.fx.wind(this.pos.clone().setY(this.pos.y + 0.2), _v.set(rand(-1, 1), -2, rand(-1, 1)), 0.5, 0.4);
     this.pos.addScaledVector(this.vel, dt);
 
-    // collisions and ground (steps, ramps, platforms)
     w.arena.collide(this);
     const gy = w.arena.groundAt(this.pos.x, this.pos.z, this.pos.y);
     if (this.pos.y <= gy + 0.001) {
-      if (!this.onGround && this.airTime > 0.28 && (!this.action || ACTIONS[this.action].soft) && this.dodgeT <= 0) { this.startAction('land'); w.fx.dust(this.pos, 6, 1.4); w.audio.step(1); }
-      this.pos.y = gy; if (this.vel.y < 0) this.vel.y = 0; this.onGround = true; this.airTime = 0;
+      if (!this.onGround && this.airTime > 0.28 && (!this.A || this.A.soft) && this.dodgeT <= 0) { this.startAction('land'); w.fx.dust(this.pos, 6, 1.4); w.audio.step(1); }
+      this.pos.y = gy; if (this.vel.y < 0) this.vel.y = 0; this.onGround = true; this.airTime = 0; this.airJumps = 0;
     } else if (this.pos.y > gy + 0.03) {
-      // stick to the ground walking down steps and ramps
       if (this.onGround && this.vel.y <= 0 && this.pos.y - gy < 0.5) { this.pos.y = gy; this.vel.y = 0; }
       else { this.onGround = false; this.airTime += dt; }
     } else this.pos.y = gy;
@@ -291,7 +272,7 @@ export class Fighter {
 
     // ---- facing
     let wantYaw = null;
-    if (this.dead || this.reacting()) wantYaw = null;
+    if (this.dead || this.reacting() || restrained) wantYaw = null;
     else if (this.lungeT > 0) wantYaw = Math.atan2(this.lungeDir.x, this.lungeDir.z);
     else if (this.sprinting && mlen > 0.15) wantYaw = Math.atan2(mx, mz);
     else if (inp.strafe || this.guarding || this.holding || this.charging || (this.action && this.action !== 'land')) wantYaw = inp.faceYaw;
@@ -302,77 +283,88 @@ export class Fighter {
     }
     this.yaw = this.faceYaw + this.spinYaw;
 
-    // ---- motion analysis for animation (local move dir, turn banking, acceleration lean)
+    // ---- motion analysis for animation
     const sp = Math.hypot(this.vel.x, this.vel.z);
-    this.speedNorm = clamp(sp / SPEED.run, 0, 1.45);
+    this.speedNorm = clamp(sp / 6.6, 0, 1.6);
     const c = Math.cos(this.faceYaw), s = Math.sin(this.faceYaw);
-    if (sp > 0.05) {
-      const lz = (this.vel.x * s + this.vel.z * c) / sp, lx = (this.vel.x * c - this.vel.z * s) / sp;
-      this.moveLocal.set(lx, lz);
-    }
+    if (sp > 0.05) this.moveLocal.set((this.vel.x * c - this.vel.z * s) / sp, (this.vel.x * s + this.vel.z * c) / sp);
     const yawRate = angleDiff(this.prevFace, this.faceYaw) / dt; this.prevFace = this.faceYaw;
     const ax = (this.vel.x - this.prevVel.x) / dt, az = (this.vel.z - this.prevVel.z) / dt; this.prevVel.copy(this.vel);
-    const accF = (ax * s + az * c);
     const kk = 1 - Math.exp(-8 * dt);
     this.bank += (clamp(-yawRate * this.speedNorm * 0.07, -0.32, 0.32) - this.bank) * kk;
-    this.accLean += (clamp(accF * 0.012, -0.28, 0.2) - this.accLean) * kk;
-    const stride = 1.5 + 1.1 * Math.min(this.speedNorm, 1.4);
+    this.accLean += (clamp((ax * s + az * c) * 0.012, -0.28, 0.2) - this.accLean) * kk;
+    const stride = (1.5 + 1.1 * Math.min(this.speedNorm, 1.4)) * L.stride;
     const prevPh = this.runPhase;
     this.runPhase += sp * dt * (Math.PI * 2 / stride);
-    if (this.onGround && sp > 1.2 && Math.floor(prevPh / Math.PI) !== Math.floor(this.runPhase / Math.PI)) w.audio.step(Math.min(1, sp / 7));
+    if (this.onGround && sp > 1.2 && Math.floor(prevPh / Math.PI) !== Math.floor(this.runPhase / Math.PI)) w.audio.step(Math.min(1, sp / 7) * L.heavy);
 
     this.animate(dt);
     this.root.position.copy(this.pos);
     this.root.rotation.y = this.yaw;
-    const f = this.flash, ch = this.charging ? Math.min(1, this.chargeT / 0.7) * (0.15 + 0.1 * Math.sin(this.time * 30)) : 0;
-    this.material.emissive.setRGB(f * 0.9 + ch, f * 0.25 + ch * 0.6, f * 0.15);
+    const f = this.flash, ch = this.charging ? Math.min(1, this.chargeT / 0.55) * (0.15 + 0.1 * Math.sin(this.time * 30)) : 0;
+    const ec = new THREE.Color(this.style.color);
+    this.material.emissive.setRGB(f * 0.9 + ch * ec.r, f * 0.25 + ch * ec.g, f * 0.15 + ch * ec.b);
   }
 
-  startCombo() {
-    const name = COMBO[this.comboIdx % 3];
-    this.comboIdx = (this.comboIdx + 1) % 3; this.comboTimer = 0.8;
-    this.startAction(name);
-    this.world.combat.lunge(this, ACTIONS[name]);
-    this.world.audio.whoosh(name === 'kick' ? 0.8 : 0.45);
+  endHold() { if (this.holding) { this.holding = false; this.world.bending.holdEnd(this); } }
+
+  jumpFx(air) {
+    const w = this.world;
+    if (this.el === 'fire') { this.vel.y += air ? 0 : 0.6; for (let i = 0; i < 10; i++) w.fx.fire(this.pos.clone().setY(this.pos.y + 0.1), _v.set(rand(-1.5, 1.5), rand(-2, 0.5), rand(-1.5, 1.5)), 0.5, 0.35); }
+    if (this.el === 'air' || air) { w.fx.ring(this.pos, 1.6, 0xffffff, 0.35); for (let i = 0; i < 8; i++) w.fx.wind(this.pos.clone().setY(this.pos.y + 0.2), _v.set(rand(-3, 3), -1, rand(-3, 3)), 0.6, 0.4); w.audio.gust(air ? 0.7 : 0.4); }
+    else w.audio.whoosh(0.4);
+  }
+  chargeFx() {
+    const w = this.world, h = this.handPos(Math.random() < 0.5 ? 'L' : 'R', _v), full = this.chargeT >= 0.55;
+    if (this.el === 'fire') w.fx.fire(h, _v2.set(rand(-0.5, 0.5), 1, rand(-0.5, 0.5)), full ? 0.45 : 0.25, 0.3);
+    else if (this.el === 'water') w.fx.splash(h, 1);
+    else if (this.el === 'air') w.fx.wind(h, _v2.set(rand(-2, 2), 0.5, rand(-2, 2)), 0.4, 0.3);
+    else w.fx.debrisBurst(this.pos.clone().setY(this.pos.y + 0.05), 1, 1.2, 0.06, 0x7a6a58, 0.5);
+  }
+  dodgeTrail() {
+    const w = this.world, t = this.style.dodge.trail, p = _v.copy(this.pos).setY(this.pos.y + 0.3);
+    if (t === 'fire') { for (let i = 0; i < 3; i++) w.fx.fire(p, _v2.set(-this.vel.x * 0.1 + rand(-0.5, 0.5), rand(0, 1.5), -this.vel.z * 0.1 + rand(-0.5, 0.5)), 0.5, 0.35); }
+    else if (t === 'water') { if (Math.random() < 0.7) w.fx.splash(p, 2); }
+    else if (t === 'air') { for (let i = 0; i < 2; i++) w.fx.wind(p.setY(this.pos.y + rand(0.2, 1.6)), _v2.set(-this.vel.x * 0.2, 0, -this.vel.z * 0.2), 0.5, 0.35); }
   }
 
   doDodge() {
-    const inp = this.input;
+    const inp = this.input, D = this.style.dodge;
     let dx = inp.mx, dz = inp.mz;
     if (Math.hypot(dx, dz) < 0.2) { dx = -Math.sin(this.faceYaw); dz = -Math.cos(this.faceYaw); }
     const l = Math.hypot(dx, dz); this.dodgeDir.set(dx / l, 0, dz / l);
-    // direction relative to facing picks the move: forward = roll, sideways = sidestep, back = backstep
     const c = Math.cos(this.faceYaw), s = Math.sin(this.faceYaw);
     const lz = this.dodgeDir.x * s + this.dodgeDir.z * c;
     const strafing = inp.strafe || this.guarding;
-    this.dodgeKind = !strafing ? 'roll' : lz < -0.6 ? 'back' : Math.abs(lz) < 0.6 ? 'side' : 'roll';
-    this.dodgeDur = DODGE[this.dodgeKind];
-    this.dodgeT = this.dodgeDur; this.dodgeCd = 0.45; this.invuln = this.dodgeDur * 0.75; this.en -= 10;
-    this.action = null; this.spinYaw = 0; this.queued = false;
-    if (this.holding) { this.holding = false; this.world.combat.dropRock(this); }
+    // earth rolls (or sidesteps / backsteps while locked on); fire dashes; water slides; air dashes
+    if (D.kind === 'roll') this.dodgeKind = !strafing ? 'roll' : lz < -0.6 ? 'back' : Math.abs(lz) < 0.6 ? 'side' : 'roll';
+    else this.dodgeKind = D.kind;
+    this.dodgeDur = this.dodgeKind === 'side' ? 0.26 : this.dodgeKind === 'back' ? 0.3 : D.dur;
+    this.dodgeT = this.dodgeDur; this.dodgeCd = 0.42; this.invuln = this.dodgeDur * (D.iframes || 0.75); this.en -= 10;
+    this.action = null; this.tech = null; this.spinYaw = 0;
     this.world.fx.dust(this.pos, 5, 1.2);
-    this.world.audio.whoosh(0.6);
+    if (this.el === 'air') this.world.audio.gust(0.6); else if (this.el === 'fire') this.world.audio.fireWhoosh(0.6); else this.world.audio.whoosh(0.6);
   }
 
-  // level: 0 flinch, 1 stagger, 2 knockdown
+  // level: -1 damage only, 0 flinch, 1 stagger, 2 knockdown
   takeHit(dmg, dir, knock, level) {
-    level = level === true ? 1 : (level || 0);
+    level = level === true ? 1 : (level ?? 0);
     this.hp = Math.max(0, this.hp - dmg);
+    if (level < 0) { this.flash = Math.max(this.flash, 0.35); if (this.hp <= 0) this.die(dir.lengthSq() ? dir : _v.set(0, 0, 1)); return; }
     this.flash = 1;
     this.vel.x += dir.x * knock; this.vel.z += dir.z * knock;
     if (level >= 1) this.vel.y = Math.max(this.vel.y, level === 2 ? 4.5 : 2.5);
     this.hitDir = dir.clone(); this.koDir = dir.clone();
     if (this.hp <= 0) { this.die(dir); return; }
-    if (this.holding) { this.holding = false; this.world.combat.dropRock(this); }
-    this.charging = false; this.atkHoldT = -1; this.lungeT = 0; this.dodgeT = 0;
+    this.endHold(); this.charging = false; this.legHoldT = -1; this.lungeT = 0; this.dodgeT = 0;
     if (level === 2) { this.startAction('down'); this.stunT = 0; this.invuln = 0.9; this.onGround = false; }
     else if (level === 1) { this.startAction('stagger'); this.stunT = 0.5; }
     else { this.startAction('hit'); this.stunT = 0.2; }
   }
 
   die(dir) {
-    this.dead = true; this.guarding = false; this.charging = false;
-    this.world.combat.dropShield(this);
+    this.dead = true; this.guarding = false; this.charging = false; this.endHold();
+    this.world.bending.guardEnd(this);
     this.startAction('ko'); this.koDir = dir.clone();
     this.vel.x = dir.x * 6; this.vel.z = dir.z * 6; this.vel.y = 4;
   }
@@ -380,52 +372,69 @@ export class Fighter {
   // ------------------------------------------------------------ animation
   animate(dt) {
     const p = this.pose; p.fill(0);
-    const t = this.time, onG = this.onGround, spd = this.speedNorm;
+    const t = this.time, onG = this.onGround, spd = this.speedNorm, st = this.style;
 
-    // ---- locomotion base: idle <-> walk/run/sprint, air
-    this.idlePose(p, t);
+    // ---- base: the element's stance blended with its locomotion cycle
+    st.stance(p, t);
     if (onG && spd > 0.04 && this.dodgeT <= 0) {
       const q = this.tmpPose; q.fill(0);
       this.runPose(q, this.runPhase, spd);
       const wRun = clamp(spd * 3, 0, 1);
       for (let i = 0; i < POSE_LEN; i++) p[i] += (q[i] - p[i]) * wRun;
     }
-    if (!onG && this.dodgeT <= 0 && this.action !== 'down' && this.action !== 'slam') this.airPose(p);
+    if (!onG && this.dodgeT <= 0 && this.action !== 'down' && !(this.action === 'tech' && this.tech.jumpAt)) this.airPose(p);
 
-    // ---- motion dynamics: bank into turns, lean with acceleration, settle on stops
+    // ---- motion dynamics: bank into turns, lean with acceleration
     add(p, 'spine', this.accLean * 0.9, 0, this.bank * 0.6);
     add(p, 'hips', this.accLean * 0.3, 0, this.bank * 0.4);
     add(p, 'neck', -this.accLean * 0.5, 0, -this.bank * 0.5);
     if (this.accLean < -0.05 && spd > 0.15) p[PY] -= -this.accLean * 0.25;
 
-    // ---- continuous stances
-    if (this.guarding) this.guardPose(p, onG && spd < 0.2);
-    if (this.holding && this.action !== 'raise') this.holdPose(p, t);
-    if (this.charging) this.chargePose(p, t, spd < 0.2);
+    // ---- sustained stances (legs keep stepping while moving)
+    const moving = spd > 0.2 && onG;
+    const layer = (fn) => { const q = this.tmpPose; q.set(p); fn(q); for (let i = 0; i < POSE_LEN; i++) { const lower = (i >= LEG_START && i < PN) || i < 3 || i >= PN; if (lower && moving) continue; p[i] = q[i]; } };
+    const ctx = { s: this.techSide, t, ph: this.holdPh };
+    if (this.guarding) layer(q => st.tech.guard(q, ctx));
+    if (this.holding) layer(q => st.tech.handHold.pose(q, ctx));
+    if (this.charging) layer(q => this.chargePose(q, t));
+    if (this.restrainT > 0) this.restrainedPose(p, t);
 
-    // ---- actions (upper-body actions layer over locomotion legs while moving)
-    if (this.action) {
-      const A = ACTIONS[this.action], u = clamp(this.actionT / A.dur, 0, 1);
-      const q = this.tmpPose; q.set(p);
-      this.actionPose(q, this.action, u);
-      const legsToo = !A.upper || spd < 0.15 || !onG;
-      for (let i = 0; i < POSE_LEN; i++) {
-        const lower = (i >= JI.hL && i < PN) || i < 3 || i >= PN;
+    // ---- techniques: keyframes over the current base pose
+    if (this.action === 'tech') {
+      const T = this.tech, u = clamp(this.actionT / T.dur, 0, 1), keys = T.keys;
+      let i = 0; while (i < keys.length - 2 && u > keys[i + 1][0]) i++;
+      const k0 = keys[i], k1 = keys[i + 1];
+      const lt = smooth01((u - k0[0]) / Math.max(1e-4, k1[0] - k0[0]));
+      const a = this.tmpA, b = this.tmpB; a.set(p); b.set(p);
+      const c = { s: this.techSide, t, u };
+      k0[1](a, c); k1[1](b, c);
+      const legsToo = !T.upper || !moving;
+      for (let j = 0; j < POSE_LEN; j++) {
+        const lower = (j >= LEG_START && j < PN) || j < 3 || j >= PN;
         if (lower && !legsToo) continue;
-        p[i] = q[i];
+        p[j] = a[j] + (b[j] - a[j]) * lt;
       }
+    } else if (this.action) {
+      const A = ACTIONS[this.action], u = clamp(this.actionT / A.dur, 0, 1);
+      this.reactionPose(p, this.action, u);
     }
     if (this.dodgeT > 0) this.dodgePose(p, 1 - this.dodgeT / this.dodgeDur);
 
-    // ---- critically-damped smoothing towards the target pose (fast for strikes, softer for locomotion)
-    const act = this.action && !ACTIONS[this.action].soft;
-    const rate = act || this.dodgeT > 0 ? 28 : 15;
-    const k = 1 - Math.exp(-rate * dt);
-    const c = this.cur;
-    for (let i = 0; i < POSE_LEN; i++) c[i] += (p[i] - c[i]) * k;
+    // ---- smoothing towards the target pose
+    const act = (this.action && !(this.A && this.A.soft)) || this.dodgeT > 0;
+    const rate = act ? 26 : (this.el === 'water' ? 9 : this.el === 'earth' ? 12 : 15);   // water flows, earth settles, fire/air snap
+    // critically damped approach with a joint angular-velocity cap: fast enough for whip-like kicks
+    // (~20 rad/s) but never a visible snap when one technique hands over to the next
+    const k = 1 - Math.exp(-rate * dt), cap = 20 * dt, capPos = 3 * dt;
+    const cur = this.cur;
+    for (let i = 0; i < POSE_LEN; i++) {
+      let d = (p[i] - cur[i]) * k; const c = i < PN ? cap : capPos;
+      if (d > c) d = c; else if (d < -c) d = -c;
+      cur[i] += d;
+    }
     const J = this.J;
-    for (let j = 0; j < JOINTS.length; j++) { const i = j * 3; J[JOINTS[j]].rotation.set(c[i], c[i + 1], c[i + 2], 'YXZ'); }
-    J.hips.position.set(c[PX], HIP_H + c[PY], c[PZ]);
+    for (let j = 0; j < JOINTS.length; j++) { const i = j * 3; J[JOINTS[j]].rotation.set(cur[i], cur[i + 1], cur[i + 2], 'YXZ'); }
+    J.hips.position.set(cur[PX], HIP_H + cur[PY], cur[PZ]);
 
     // ---- whole-body rotation (roll, knockdown, get-up, KO)
     const tq = this.tumble.quaternion;
@@ -447,43 +456,32 @@ export class Fighter {
     }
   }
 
-  idlePose(p, t) {
-    const b = Math.sin(t * 2.3), sway = Math.sin(t * 1.1);
-    p[PY] = -0.07 + b * 0.006;
-    p[PX] = sway * 0.012;
-    S(p, 'hips', 0, 0.32, sway * 0.02);
-    S(p, 'spine', 0.06, -0.12, -sway * 0.02);
-    S(p, 'chest', 0.04 + b * 0.015, -0.14, 0);
-    S(p, 'neck', -0.05, -0.04, 0);
-    S(p, 'head', 0.02, -0.02, 0);
-    arm(p, 1, -0.95 + b * 0.03, 0.28, -0.3, 1.9, 0.1);
-    arm(p, -1, -0.7 - b * 0.03, 0.32, -0.4, 2.15, 0.1);
-    const down = hipDown(p[PY]);
-    legIK(p, 1, 0.24, down, 0.1);
-    legIK(p, -1, -0.2, down, 0.12);
-  }
-
-  // walk (spd < 0.5) -> run (1) -> sprint (1.4): stride, knee lift, lean and arm pump all scale with speed
+  // Locomotion shaped by the style: stride, knee lift, bob, lean, arm carriage
   runPose(p, ph, spd) {
-    const f = this.moveLocal.y, s = this.moveLocal.x;
-    const run = Math.min(spd, 1), sprint = clamp((spd - 1) / 0.4, 0, 1);
-    const A = 0.3 + 0.5 * run + 0.22 * sprint;
+    const L = this.style.loco, f = this.moveLocal.y, s = this.moveLocal.x;
+    const run = Math.min(spd, 1), sprint = clamp((spd - 1) / 0.45, 0, 1);
+    const A = (0.3 + 0.5 * run + 0.22 * sprint) * L.stride;
     const sinL = Math.sin(ph), sinR = -sinL;
-    p[PY] = -0.03 - 0.03 * run + Math.abs(Math.cos(ph)) * (0.025 + 0.04 * run);
-    const lean = (0.1 * run + 0.22 * sprint) * f;
+    p[PY] = -0.03 - 0.03 * run + Math.abs(Math.cos(ph)) * (0.025 + 0.04 * run) * L.bob - (this.el === 'earth' ? 0.05 : 0);
+    const lean = (0.1 * run + 0.22 * sprint) * f * L.lean;
     S(p, 'hips', 0.04 * f, sinL * (0.12 + 0.1 * run) * f, -s * 0.12);
     S(p, 'spine', lean * 0.6, -sinL * 0.1 * f, s * 0.05);
-    S(p, 'chest', lean * 0.5, -sinL * (0.08 + 0.06 * run) * f, 0);
+    S(p, 'chest', lean * 0.5, -sinL * (0.08 + 0.06 * run) * f * L.swing, 0);
     S(p, 'neck', -lean * 0.6, 0, 0);
     S(p, 'head', -lean * 0.3, 0, 0);
     for (const side of [1, -1]) {
       const sn = side > 0 ? sinL : sinR, cs = side > 0 ? Math.cos(ph) : -Math.cos(ph);
       const swingFwd = sn * A * f, swingSide = sn * A * 0.7 * s;
       const lift = Math.max(0, f >= 0 ? cs : -cs);
-      const knee = 0.15 + (0.6 + 0.9 * run + 0.4 * sprint) * lift;
-      legRaw(p, side, -swingFwd, swingSide * side + 0.05, knee, -0.12 + 0.3 * Math.max(0, -sn * f));
-      const elbow = 0.5 + 1.0 * run + 0.25 * sprint + 0.2 * cs * run;
-      arm(p, side, sn * (0.35 + 0.4 * run + 0.35 * sprint) * f - 0.2 * run, 0.1 + Math.abs(s) * 0.15, 0, elbow, 0);
+      const knee = 0.15 + (0.6 + 0.9 * run + 0.4 * sprint) * lift * L.knee;
+      legRaw(p, side, -swingFwd, swingSide * side + 0.05 + L.out, knee, -0.12 + 0.3 * Math.max(0, -sn * f));
+      if (L.flow) {
+        // water: arms float out to the sides and drift with the stride
+        arm(p, side, -0.5 + sn * 0.25 * f, 0.55 + 0.1 * cs, 0.4, L.elbow, 0.3);
+      } else {
+        const elbow = L.elbow * (0.35 + 0.65 * run) + 0.25 * sprint + 0.2 * cs * run;
+        arm(p, side, sn * (0.35 + 0.4 * run + 0.35 * sprint) * f * L.swing + L.carry * run, 0.1 + Math.abs(s) * 0.15 + (L.carry > 0 ? 0.15 : 0), L.carry > 0 ? -0.6 : 0, elbow, L.carry > 0 ? -0.6 : 0);
+      }
     }
   }
 
@@ -493,163 +491,72 @@ export class Fighter {
     S(p, 'spine', 0.1 + tuck * 0.15, 0, 0);
     legRaw(p, 1, -0.9 - tuck * 0.4, 0.12, 1.4 + tuck * 0.4, -0.3);
     legRaw(p, -1, 0.15, 0.1, 0.9 + tuck * 0.5, -0.2);
-    arm(p, 1, -0.5, 0.9, 0, 0.9);
-    arm(p, -1, -0.2, 1.0, 0, 0.7);
+    if (this.el === 'air') { arm(p, 1, -0.4, 1.3, -0.8, 0.2, -1.0); arm(p, -1, -0.4, 1.3, -0.8, 0.2, -1.0); }
+    else { arm(p, 1, -0.5, 0.9, 0, 0.9); arm(p, -1, -0.2, 1.0, 0, 0.7); }
   }
 
-  guardPose(p, legs) {
-    S(p, 'spine', 0.12, 0, 0); S(p, 'chest', 0.05, 0, 0);
-    S(p, 'neck', -0.1, 0, 0); S(p, 'head', -0.05, 0, 0);
-    arm(p, 1, -1.35, 0.35, 0.3, 0.45, -1.2);
-    arm(p, -1, -1.35, 0.35, 0.3, 0.45, -1.2);
-    if (legs) {
-      S(p, 'hips', 0.05, 0, 0); p[PY] = -0.2;
-      const down = hipDown(p[PY]);
-      legIK(p, 1, 0.15, down, 0.38); legIK(p, -1, -0.12, down, 0.38);
-    }
+  chargePose(p, t) {
+    const k = Math.min(1, this.chargeT / 0.55), tr = Math.sin(t * 40) * 0.015 * k, el = this.el;
+    stanceLegs(p, -0.24 - 0.08 * k, 0.32, 0.22, -0.3, 0.24);
+    S(p, 'hips', 0.05, 0.6, 0); S(p, 'spine', 0.2 + tr, -0.3, 0); S(p, 'chest', 0.08, -0.35 - 0.15 * k, 0); S(p, 'neck', -0.15, 0.5, 0);
+    if (el === 'earth' || el === 'fire') { arm(p, 1, -0.6, 0.25, 0.2, 1.4 + tr, 0.4); arm(p, -1, 0.35 + 0.2 * k, 0.3, 0.3, 1.9, 0.4); }
+    else { arm(p, 1, -0.7 - 0.3 * Math.sin(t * 4), 0.7, 0.5, 0.9, 0.3); arm(p, -1, -0.5 + 0.3 * Math.sin(t * 4), 0.7, 0.5, 0.9, 0.3); }
   }
 
-  holdPose(p, t) {
-    const b = Math.sin(t * 6) * 0.05;
-    S(p, 'chest', 0.02, 0.15, 0);
-    arm(p, 1, -1.25 + b, 0.5, 0.2, 0.9, -0.9);
-    arm(p, -1, -1.5 - b, 0.25, 0.2, 0.6, -1.1);
-  }
-
-  chargePose(p, t, legs) {
-    const k = Math.min(1, this.chargeT / 0.7), tr = Math.sin(t * 40) * 0.015 * k;
-    S(p, 'hips', 0.05, 0.6, 0); S(p, 'spine', 0.18 + tr, -0.3, 0); S(p, 'chest', 0.08, -0.35 - 0.15 * k, 0);
-    S(p, 'neck', -0.15, 0.5, 0); S(p, 'head', -0.05, 0.15, 0);
-    arm(p, 1, -0.6, 0.25, 0.2, 1.4 + tr, 0.4);
-    arm(p, -1, 0.35 + 0.2 * k, 0.3, 0.3, 1.9, 0.4);
-    if (legs) {
-      p[PY] = -0.2 - 0.06 * k;
-      const down = hipDown(p[PY]);
-      legIK(p, 1, 0.34, down, 0.2); legIK(p, -1, -0.3, down, 0.22);
-    }
+  restrainedPose(p, t) {
+    const s = Math.sin(t * 18) * 0.08;
+    S(p, 'spine', -0.1 + s, 0, s); arm(p, 1, -0.6 + s, 1.0, 0, 0.8); arm(p, -1, -0.6 - s, 1.0, 0, 0.8);
   }
 
   dodgePose(p, u) {
-    if (this.dodgeKind === 'roll') {
+    const k = this.dodgeKind;
+    if (k === 'roll') {
       p[PY] = -0.25;
       S(p, 'hips', 0, 0, 0); S(p, 'spine', 0.5, 0, 0); S(p, 'chest', 0.4, 0, 0); S(p, 'neck', 0.4, 0, 0);
       legRaw(p, 1, -1.9, 0.15, 2.3, -0.4); legRaw(p, -1, -1.7, 0.15, 2.3, -0.4);
       arm(p, 1, -1.2, 0.3, 0, 2.0); arm(p, -1, -1.2, 0.3, 0, 2.0);
-    } else if (this.dodgeKind === 'side') {
-      // low lateral shuffle: lean into the direction of travel, trailing leg extended
-      const c = Math.cos(this.faceYaw), s = Math.sin(this.faceYaw);
-      const lx = this.dodgeDir.x * c - this.dodgeDir.z * s; // +1 = towards local left
-      const dir = lx >= 0 ? 1 : -1, e = Math.sin(u * Math.PI);
-      p[PY] = -0.2 * e - 0.05;
-      S(p, 'hips', 0.05, 0, -0.2 * dir * e); S(p, 'spine', 0.15, 0, 0.32 * dir * e); S(p, 'neck', 0, 0, -0.3 * dir * e);
+      return;
+    }
+    const c = Math.cos(this.faceYaw), s = Math.sin(this.faceYaw);
+    const lx = this.dodgeDir.x * c - this.dodgeDir.z * s, lz = this.dodgeDir.x * s + this.dodgeDir.z * c;
+    const e = Math.sin(u * Math.PI);
+    if (k === 'side' || k === 'slide') {
+      // low lateral move; water glides with arms flowing, earth shuffles with guard up
+      const dir = lx >= 0 ? 1 : -1;
+      p[PY] = -0.22 * e - 0.05;
+      S(p, 'hips', 0.05, 0, -0.2 * dir * e); S(p, 'spine', 0.15 + 0.2 * lz * e, 0, 0.32 * dir * e); S(p, 'neck', 0, 0, -0.3 * dir * e);
       const down = hipDown(p[PY]);
-      legIK(p, dir, 0.05, down - 0.05, 0.45 * e + 0.1);
-      legIK(p, -dir, -0.05, down, 0.1 + 0.2 * e);
-      arm(p, 1, -1.0, 0.4 + 0.3 * e, 0, 1.6); arm(p, -1, -0.8, 0.4 + 0.3 * e, 0, 1.8);
-    } else {
-      // backstep hop: torso upright, guard held high, legs tucked mid-air
-      const e = Math.sin(u * Math.PI);
+      legIK(p, dir, 0.05, down - 0.05, 0.45 * e + 0.1); legIK(p, -dir, -0.05, down, 0.1 + 0.2 * e);
+      if (k === 'slide') { arm(p, dir, -0.5, 1.2, 0.5, 0.4, 0.3); arm(p, -dir, -1.1, 0.4, 0.5, 0.9, 0.3); }
+      else { arm(p, 1, -1.0, 0.4 + 0.3 * e, 0, 1.6); arm(p, -1, -0.8, 0.4 + 0.3 * e, 0, 1.8); }
+    } else if (k === 'back') {
       p[PY] = -0.08;
       S(p, 'spine', -0.15 * e, 0, 0); S(p, 'chest', -0.1 * e, 0, 0);
       legRaw(p, 1, -0.5 * e - 0.2, 0.1, 0.8 * e + 0.4, -0.2); legRaw(p, -1, 0.1, 0.1, 0.5 * e + 0.3, -0.2);
       arm(p, 1, -1.2, 0.3, -0.3, 2.0); arm(p, -1, -1.0, 0.3, -0.3, 2.1);
+    } else if (k === 'dash') {
+      // fire: explosive low lunge, rear leg driving, fists forward
+      p[PY] = -0.2;
+      S(p, 'spine', 0.45 * Math.max(0, lz) + 0.1, 0, 0.2 * lx);
+      legRaw(p, 1, -0.9, 0.1, 1.1, -0.2); legRaw(p, -1, 0.6, 0.1, 0.3, 0.3);
+      arm(p, 1, -1.3, 0.2, 0, 1.6); arm(p, -1, 0.5, 0.3, 0, 1.4);
+    } else {
+      // air: upright gliding dash with a half turn and open palms trailing
+      p[PY] = 0.0;
+      S(p, 'spine', -0.05, 0.6 * e, 0.25 * lx); S(p, 'chest', 0, 0.3 * e, 0);
+      legRaw(p, 1, -0.6, 0.1, 1.2, 0.3); legRaw(p, -1, 0.3, 0.1, 0.4, 0.4);
+      arm(p, 1, 0.5, 0.9, -0.6, 0.2, -1.0); arm(p, -1, 0.5, 0.9, -0.6, 0.2, -1.0);
     }
   }
 
-  actionPose(p, name, u) {
+  reactionPose(p, name, u) {
     switch (name) {
-      case 'jab': case 'cross': {
-        const side = name === 'jab' ? 1 : -1;
-        const wind = seg(u, 0, 0.3), ext = seg(u, 0.22, 0.38), back = seg(u, 0.62, 1);
-        const e = ext * (1 - back);
-        S(p, 'hips', 0, (0.3 - 0.55 * e) * side, 0);
-        S(p, 'chest', 0.06, (-0.15 * wind - 0.55 * e) * side, 0);
-        S(p, 'spine', 0.12 * e, -0.2 * e * side, 0);
-        arm(p, side, -0.9 - 0.7 * e, 0.28 - 0.2 * e, -0.2, 1.9 - 1.85 * e, 0);
-        arm(p, -side, -0.75, 0.3, -0.4, 2.2, 0);
-        if (u < 0.85) {
-          p[PY] = -0.12;
-          const down = hipDown(p[PY]);
-          legIK(p, side, 0.38 * (0.5 + e * 0.5), down, 0.1);
-          legIK(p, -side, -0.28, down, 0.12);
-        }
-        break;
-      }
-      case 'kick': {
-        const lift = Math.sin(u * Math.PI);
-        const ext = seg(u, 0.25, 0.45) * (1 - seg(u, 0.75, 1));
-        this.spinYaw = -seg(u, 0.08, 0.83) * Math.PI * 2;
-        p[PY] = 0.08 * lift;
-        S(p, 'hips', 0, 0, -0.35 * ext);
-        S(p, 'spine', 0, 0, 0.25 * ext); S(p, 'chest', 0.05, 0, 0.15 * ext);
-        legRaw(p, -1, -0.4 * ext, 1.45 * ext, 1.5 * (1 - ext) + 0.1, 0.4);
-        legIK(p, 1, 0.05, HIP_H - 0.08 + p[PY] - 0.04, 0.05);
-        arm(p, 1, -0.4, 1.2, 0, 0.8); arm(p, -1, -0.2, 1.4, 0, 0.5);
-        break;
-      }
-      case 'heavy': {
-        // chambered double palm strike: sink and coil, step through, drive both palms
-        const coil = seg(u, 0, 0.38), push = seg(u, 0.36, 0.5), back = seg(u, 0.72, 1);
-        const e = push * (1 - back), cl = coil * (1 - push);
-        p[PY] = -0.18 - 0.06 * cl + 0.04 * e;
-        S(p, 'hips', 0.05, 0.5 * cl - 0.3 * e, 0);
-        S(p, 'spine', 0.25 * cl + 0.2 * e, -0.3 * cl + 0.2 * e, 0); S(p, 'chest', 0.05, -0.3 * cl + 0.15 * e, 0);
-        S(p, 'neck', -0.2 * e, 0.3 * cl, 0);
-        arm(p, 1, -0.3 * cl - 1.45 * e, 0.3, 0.2, 1.7 * (1 - e) + 0.15, -1.3 * e);
-        arm(p, -1, 0.3 * cl - 1.35 * e, 0.35, 0.2, 1.9 * (1 - e) + 0.15, -1.3 * e);
-        const down = hipDown(p[PY]);
-        legIK(p, 1, 0.2 + 0.32 * e, down, 0.22); legIK(p, -1, -0.25 - 0.15 * e, down, 0.2);
-        break;
-      }
-      case 'slam': {
-        // charged axe kick: leap, right leg swings overhead, slams down at 55%
-        const up = seg(u, 0.08, 0.4), drop = seg(u, 0.42, 0.56), rec = seg(u, 0.7, 1);
-        const high = up * (1 - drop);
-        S(p, 'spine', -0.2 * high + 0.45 * drop * (1 - rec), 0, 0); S(p, 'chest', -0.1 * high + 0.2 * drop * (1 - rec), 0, 0);
-        S(p, 'neck', 0.2 * high, 0, 0);
-        legRaw(p, -1, -2.3 * high - 0.6 * drop * (1 - rec), 0.1, 0.1 + 0.6 * drop * (1 - rec), 0.3);
-        legRaw(p, 1, 0.3 * high, 0.1, 0.6 + 0.6 * high, -0.2);
-        arm(p, 1, -2.4 * high - 0.3, 0.6 - 0.3 * high, 0, 0.6, 0);
-        arm(p, -1, -2.4 * high - 0.3, 0.6 - 0.3 * high, 0, 0.6, 0);
-        if (drop > 0.5) { p[PY] = -0.25 * (1 - rec); arm(p, 1, -0.9, 0.9, 0, 0.3, 0); arm(p, -1, -0.9, 0.9, 0, 0.3, 0); }
-        break;
-      }
       case 'counter': {
-        // spinning backfist
-        this.spinYaw = seg(u, 0.0, 0.55) * Math.PI * 2;
         const e = seg(u, 0.2, 0.4) * (1 - seg(u, 0.65, 1));
         p[PY] = -0.12;
         S(p, 'spine', 0.1, 0, 0.1 * e); S(p, 'chest', 0, 0.4 * e, 0);
-        arm(p, -1, -1.45 * e - 0.4, 1.0 * e + 0.3, 0.6, 0.25 + 1.4 * (1 - e));
-        arm(p, 1, -0.9, 0.4, -0.3, 2.1);
-        const down = hipDown(p[PY]);
-        legIK(p, 1, 0.25, down, 0.18); legIK(p, -1, -0.25, down, 0.18);
-        break;
-      }
-      case 'raise': {
-        const rise = smooth01(u);
-        p[PY] = -0.24 + 0.12 * rise;
-        S(p, 'hips', 0, 0, 0); S(p, 'spine', 0.35 - 0.3 * rise, 0, 0); S(p, 'chest', 0.1, 0, 0);
-        S(p, 'neck', -0.2, 0, 0);
-        arm(p, 1, -0.35 - 1.05 * rise, 0.3, 0.6, 0.5, 0.6 - 1.2 * rise);
-        arm(p, -1, -0.35 - 1.05 * rise, 0.3, 0.6, 0.5, 0.6 - 1.2 * rise);
-        const down = hipDown(p[PY]);
-        legIK(p, 1, 0.2, down, 0.32); legIK(p, -1, -0.15, down, 0.32);
-        break;
-      }
-      case 'throw': {
-        const wind = seg(u, 0, 0.3), push = seg(u, 0.25, 0.45), back = seg(u, 0.7, 1);
-        const e = push * (1 - back);
-        S(p, 'hips', 0, -0.2 + 0.5 * wind - 0.8 * e, 0);
-        S(p, 'chest', 0.1, 0.4 * wind - 0.9 * e, 0);
-        S(p, 'spine', 0.15 * e, 0, 0);
-        arm(p, -1, -1.0 - 0.6 * e, 0.4 - 0.3 * e, 0.2, 1.6 - 1.55 * e, -1.2 * e);
-        arm(p, 1, -0.6 + 0.4 * e, 0.6, 0, 1.4, 0);
-        if (this.speedNorm < 0.15) {
-          p[PY] = -0.14;
-          const down = hipDown(p[PY]);
-          legIK(p, 1, 0.42, down, 0.15); legIK(p, -1, -0.32 + 0.1 * e, down, 0.15);
-        }
+        arm(p, -1, -1.45 * e - 0.4, 1.0 * e + 0.3, 0.6, 0.25 + 1.4 * (1 - e)); arm(p, 1, -0.9, 0.4, -0.3, 2.1);
+        const down = hipDown(p[PY]); legIK(p, 1, 0.25, down, 0.18); legIK(p, -1, -0.25, down, 0.18);
         break;
       }
       case 'hit': {
@@ -661,8 +568,7 @@ export class Fighter {
         break;
       }
       case 'stagger': {
-        // stumble backwards: torso thrown back, arms out for balance, two recovery steps
-        const k = Math.sin(Math.min(1, u * 1.3) * Math.PI) , st = Math.sin(u * Math.PI * 3);
+        const k = Math.sin(Math.min(1, u * 1.3) * Math.PI), st = Math.sin(u * Math.PI * 3);
         p[PY] = -0.1 - 0.08 * k;
         S(p, 'spine', -0.45 * k, 0.2 * st, 0.12 * st); S(p, 'chest', -0.2 * k, 0, 0); S(p, 'neck', -0.35 * k, 0, 0);
         arm(p, 1, -0.6 * k, 1.2 * k + 0.2, 0, 0.6); arm(p, -1, -0.3 * k, 1.3 * k + 0.2, 0, 0.5);
@@ -678,7 +584,6 @@ export class Fighter {
         break;
       }
       case 'getup': {
-        // kip up: tuck legs, push off, rise into stance
         const k = 1 - seg(u, 0.4, 1);
         p[PY] = -0.3 * k;
         S(p, 'spine', 0.5 * k, 0, 0); S(p, 'neck', 0.2 * k, 0, 0);
