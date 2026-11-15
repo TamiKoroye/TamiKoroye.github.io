@@ -64,6 +64,7 @@ export class Combat {
         if (level >= 0) { from.vel.x -= dir.x * 3; from.vel.z -= dir.z * 3; w.audio.impact(0.4); }
         if (r.mul <= 0) return;
         dmg *= r.mul; knock *= r.mul;
+        if (r.mul < 0.5) level = -1;   // a blow taken on the guard does not stagger; one that breaks through still does
       }
     }
     t.takeHit(dmg, dir, knock, level);

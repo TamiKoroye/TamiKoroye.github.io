@@ -9,12 +9,32 @@ import * as THREE from 'three';
 export const MOCAP = {};
 export const hasMocap = () => Object.keys(MOCAP).length > 0;
 
-export async function loadMocap(url = 'assets/animations/martial.json') {
-  const r = await fetch(url);
-  if (!r.ok) throw new Error('mocap pack ' + r.status);
-  const d = await r.json();
-  for (const j of d.clips) MOCAP[j.name] = { clip: j.q ? unpack(j, d.fps || 30) : THREE.AnimationClip.parse(j), impact: j.impact, limb: j.limb, loop: !!j.loop, travel: j.travel, src: j.src };
+// The pack is an ES module (assets/animations/martial.js), loaded like the game's own code: no fetch/XHR, which
+// some embedded hosts block. Every clip is decoded and checked; the result reports what actually decoded.
+export const PACK_STATUS = { expected: 0, decoded: 0, errors: [] };
+export async function loadMocap() {
+  let mod;
+  try { mod = await import('../assets/animations/martial.js'); }
+  catch (e) { PACK_STATUS.errors.push('animation pack module assets/animations/martial.js did not load: ' + (e && e.message || e)); throw new Error(PACK_STATUS.errors[0]); }
+  const d = mod.default; PACK_STATUS.expected = mod.CLIP_COUNT || (d && d.clips ? d.clips.length : 0);
+  if (!d || !Array.isArray(d.clips)) throw new Error('animation pack has no clips');
+  for (const j of d.clips) {
+    try {
+      const clip = j.q ? unpack(j, d.fps || 30) : THREE.AnimationClip.parse(j);
+      if (!(clip.duration > 0) || !clip.tracks.length) throw new Error('empty clip');
+      for (const t of clip.tracks) if (!t.values.length || t.values.some(v => !Number.isFinite(v))) throw new Error('bad values in ' + t.name);
+      MOCAP[j.name] = { clip, impact: j.impact, limb: j.limb, loop: !!j.loop, travel: j.travel, src: j.src };
+      PACK_STATUS.decoded++;
+    } catch (e) { PACK_STATUS.errors.push(`clip ${j.name}: ${e.message || e}`); }
+  }
   return MOCAP;
+}
+// every clip the game refers to (techniques, stances, guards, holds, reactions); used by the loading check
+export function requiredClips(styles) {
+  const need = new Set(['hit_a', 'hit_b', 'ko', 'getup', 'dodge_side', 'dodge_side_M', 'dodge_back', 'block_hit', 'strafe', 'strafe_M', 'water_redirect']);
+  for (const L of Object.values(LOOPS)) for (const n of Object.values(L)) need.add(n);
+  for (const st of Object.values(styles)) { const t = st.tech; for (const T of [t.hand, ...(t.leg || []), t.charged, t.special]) if (T && T.clip) for (const n of (Array.isArray(T.clip) ? T.clip : [T.clip])) need.add(n); }
+  return [...need].filter(n => !MOCAP[n]);
 }
 
 // tracks stored as base64 int16 (quaternions x 32767, positions in millimetres), sampled at a fixed rate

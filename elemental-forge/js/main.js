@@ -12,7 +12,7 @@ import { FX } from './fx.js';
 import { Audio } from './audio.js';
 import { clamp, damp } from './util.js';
 import { loadHeroAssets, TOON_RAMP, heroReady } from './hero.js';
-import { loadMocap, adoptTiming, MOCAP } from './mocap.js';
+import { loadMocap, adoptTiming, MOCAP, PACK_STATUS, requiredClips } from './mocap.js';
 import { BUILD } from './build.js';
 
 const $ = (id) => document.getElementById(id);
@@ -69,12 +69,21 @@ toonify(world.arena.group);
 world.bending = new Bending(world);
 const camCtl = new FollowCam(camera, world.arena);
 
-// rigged character + animation clips (CC0); the game still runs with procedural bodies if this fails
-try { await loadHeroAssets(); } catch (e) { console.warn('character asset failed to load, using procedural bodies', e); }
-// authored martial-arts techniques (motion capture); without them the procedural techniques are used
-if (heroReady() && !/[?&]mocap=0/.test(location.search)) {
-  try { await loadMocap(); adoptTiming(STYLES); } catch (e) { console.warn('martial-arts clips failed to load, using procedural techniques', e); window.__mocapError = String(e); }
+// ---- loading check: the rigged character and every martial-arts clip the game uses must decode before combat can
+// start. Nothing falls back to the old procedural bodies or techniques silently; a failure is shown on the menu.
+// (?mocap=0 is an explicit comparison mode that uses the procedural techniques on purpose and says so.)
+const LOAD = { mode: /[?&]mocap=0/.test(location.search) ? 'procedural comparison (?mocap=0)' : 'authored', character: 'pending', clipsDecoded: 0, clipsExpected: 0, missing: [], errors: [], ok: false };
+try { await loadHeroAssets(); LOAD.character = 'ok'; } catch (e) { LOAD.character = 'failed'; LOAD.errors.push('Character: ' + (e && e.message || e)); }
+if (LOAD.character === 'ok' && LOAD.mode === 'authored') {
+  try { await loadMocap(); } catch (e) { LOAD.errors.push('Animations: ' + (e && e.message || e)); }
+  LOAD.clipsDecoded = PACK_STATUS.decoded; LOAD.clipsExpected = PACK_STATUS.expected;
+  for (const er of PACK_STATUS.errors) if (!LOAD.errors.some(x => x.includes(er))) LOAD.errors.push('Animations: ' + er);
+  if (LOAD.clipsDecoded) adoptTiming(STYLES);
+  LOAD.missing = requiredClips(STYLES);
+  if (LOAD.missing.length) LOAD.errors.push(`Animations: ${LOAD.missing.length} clips the game needs are missing (${LOAD.missing.slice(0, 6).join(', ')}${LOAD.missing.length > 6 ? ', ...' : ''})`);
 }
+LOAD.ok = LOAD.character === 'ok' && (LOAD.mode !== 'authored' || (LOAD.clipsDecoded > 0 && LOAD.clipsDecoded === LOAD.clipsExpected && !LOAD.missing.length));
+window.__LOAD = LOAD;
 const player = new Fighter(world, { name: 'YOU', team: 0, skin: 0x8c5a3c, pants: 0x26324f, sash: 0xd88a2a, wrap: 0xd8cbb0, build: 1.04, bulk: 1.05 });
 const opp = new Fighter(world, { name: 'RIVAL', team: 1, skin: 0x6e4630, pants: 0x4a5531, sash: 0x3a7fc4, wrap: 0xb9c3cf, build: 1.0, bulk: 0.97 });
 player.target = opp; opp.target = player;
@@ -387,7 +396,7 @@ function showGame() {
   $('hud').classList.remove('hidden'); $('rotate').classList.add('armed'); layoutStar();
   controls.enabled = true; state.paused = false;
 }
-$('btn-start').addEventListener('click', () => { world.audio.unlock(); goFullscreen(); showGame(); startMatch(); });
+$('btn-start').addEventListener('click', () => { if (!LOAD.ok) return; world.audio.unlock(); goFullscreen(); showGame(); startMatch(); });
 $('btn-again').addEventListener('click', () => { showGame(); startMatch(); });
 const toMenu = () => {
   state.phase = 'menu'; state.paused = false; world.fighting = false; controls.enabled = false;
@@ -416,17 +425,24 @@ $('loading').classList.add('hidden');
 requestAnimationFrame(frame);
 
 // test / debug handle (used by the automated browser tests)
-window.__EF = { world, player, opp, camCtl, controls, state, ai, renderer, scene, camera, MOCAP, aimPoint: () => aimPoint.clone(), stats, layoutStar, STYLES,
+window.__EF = { world, player, opp, camCtl, controls, state, ai, renderer, scene, camera, MOCAP, LOAD, aimPoint: () => aimPoint.clone(), stats, layoutStar, STYLES,
   // deterministic stepping for frame-accurate gameplay capture in tests
   step: (dt) => step(dt), render: () => renderer.render(scene, camera), info: () => ({ calls: renderer.info.render.calls, triangles: renderer.info.render.triangles, programs: renderer.info.programs.length }) };
 
-// ---- build stamp on the menu (so the build running on a device can be identified) and the animation overlay
+// ---- build stamp (so the build on a device can be identified) with the ACTUAL loading result, and the start gate
 {
-  const n = Object.keys(MOCAP).length;
   const stamp = document.createElement('div'); stamp.id = 'build-stamp';
-  stamp.textContent = `${BUILD} · ${n ? n + ' martial-arts clips loaded' : 'NO martial-arts clips' + (window.__mocapError ? ' (' + window.__mocapError + ')' : '')}`;
-  stamp.style.cssText = 'position:fixed;left:8px;bottom:6px;font:11px/1.2 system-ui,sans-serif;color:#fff;opacity:.75;z-index:50;pointer-events:none;text-shadow:0 1px 2px #000';
+  stamp.textContent = `${BUILD} · ` + (LOAD.mode !== 'authored' ? LOAD.mode : LOAD.ok ? `character OK · ${LOAD.clipsDecoded}/${LOAD.clipsExpected} martial-arts clips decoded` : 'LOADING FAILED - see the menu');
+  stamp.style.cssText = 'position:fixed;left:8px;bottom:6px;font:11px/1.2 system-ui,sans-serif;color:#fff;opacity:.8;z-index:50;pointer-events:none;text-shadow:0 1px 2px #000';
   document.body.appendChild(stamp);
+  if (!LOAD.ok) {
+    const start = $('btn-start'); start.disabled = true; start.textContent = 'CANNOT START'; start.style.opacity = '0.5';
+    const box = document.createElement('div'); box.id = 'load-error';
+    box.style.cssText = 'margin:10px auto 0;max-width:560px;text-align:left;font:13px/1.4 system-ui,sans-serif;color:#fff;background:#8a1f1f;border-radius:8px;padding:10px 12px';
+    box.innerHTML = '<b>The game assets did not load, so the fight cannot start.</b><br>' + LOAD.errors.map(e => '&bull; ' + e.replace(/</g, '&lt;')).join('<br>') +
+      '<br><small>The authored martial-arts animations need these files. Reload the page, or open the game in Chrome at its own address.</small>';
+    start.parentNode.insertBefore(box, start.nextSibling);
+  }
   // ?debug=anim : live readout of the player's animation state (clip, source take, speed, blend weights)
   if (/[?&]debug=anim/.test(location.search)) {
     const box = document.createElement('div');

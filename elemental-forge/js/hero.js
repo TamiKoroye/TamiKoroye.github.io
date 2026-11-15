@@ -23,8 +23,17 @@ export const TOON_RAMP = (() => {
 
 const USED = ['Idle_Loop', 'Walk_Loop', 'Jog_Fwd_Loop', 'Sprint_Loop', 'Jump_Start', 'Jump_Loop', 'Jump_Land', 'Roll', 'Hit_Chest', 'Hit_Head', 'Death01', 'Punch_Jab', 'Punch_Cross', 'Spell_Simple_Shoot'];
 
-export async function loadHeroAssets(onProgress) {
-  const g = await new GLTFLoader().loadAsync('assets/characters/ual-mannequin.json', onProgress);
+// The character is a binary glTF inside an ES module (assets/characters/ual-mannequin.glb.js): loaded like the
+// game's own code and parsed in memory, with no fetch/XHR (some embedded hosts block those but allow scripts).
+export async function loadHeroAssets() {
+  let mod;
+  try { mod = await import('../assets/characters/ual-mannequin.glb.js'); }
+  catch (e) { throw new Error('character module assets/characters/ual-mannequin.glb.js did not load: ' + (e && e.message || e)); }
+  const bin = atob(mod.default), bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  const g = await new GLTFLoader().parseAsync(bytes.buffer, '');
+  let bones = 0, skinned = 0; g.scene.traverse(o => { if (o.isBone) bones++; if (o.isSkinnedMesh) skinned++; });
+  if (!skinned || bones < 50) throw new Error(`character decoded without its skeleton (${bones} bones, ${skinned} skinned meshes)`);
   TEMPLATE = g;
   CLIPS = {};
   for (const name of USED) {
@@ -259,6 +268,12 @@ export class Hero {
         if (f.tech.upper && moving) layered = true;
       }
     }
+    if (clip === 'Idle_Loop' && f.action === 'counter') {
+      // the counterattack after a perfect guard: the element's spinning kick
+      const T = f.style.tech.leg[1] || f.style.tech.leg[0], n = T && T.clip && (Array.isArray(T.clip) ? T.clip[0] : T.clip);
+      if (has(n)) { clip = n; ts = this.actions[n].getClip().duration / Math.max(0.25, f.A.dur); wU = wL = 0; fade = 0.08; if (this.curName !== n) restart = true; }
+    }
+    if (clip === 'Idle_Loop' && f.restrainT > 0 && has(L.guard)) { clip = L.guard; ts = 0.6; wU = wL = 0; fade = 0.15; }   // trapped: struggling inside the guard
     if (clip === 'Idle_Loop' && f.charging) {
       // gathering force: the charged technique's own wind-up, held
       const T = f.style.tech.charged, n = T && T.clip;
@@ -280,6 +295,8 @@ export class Hero {
         clip = L.idle; wU = wL = 0; fade = 0.25; layered = moving;
       }
     }
+    // nothing else matched (any state not listed above): the element's authored stance, never the procedural body
+    if (clip === 'Idle_Loop' && wU === 1 && has(L.idle)) { clip = L.idle; wU = wL = 0; fade = 0.2; layered = moving; }
     if (layered) {
       const [ln, lts] = loco();
       this.play(clip + '|U', fade, ts, restart);
