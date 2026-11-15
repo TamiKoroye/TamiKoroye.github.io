@@ -42,6 +42,7 @@ export class Fighter {
     this.handSide = 1; this.techSide = 1; this.legIdx = 0; this.comboTimer = 0;
     this.handHoldT = -1; this.legHoldT = -1; this.holding = false; this.holdPh = 0;
     this.charging = false; this.chargeT = 0;
+    this.ext = new THREE.Vector3();   // external push (wind, blasts): decays on its own, footwork cannot cancel it
     this.dodgeT = 0; this.dodgeDur = 0.42; this.dodgeKind = 'roll'; this.dodgeDir = new THREE.Vector3(); this.dodgeCd = 0;
     this.guarding = false; this.guardT = 0; this.guardCd = 0; this.defense = null;
     this.counterT = 0; this.lungeT = 0; this.lungeDir = new THREE.Vector3();
@@ -128,9 +129,10 @@ export class Fighter {
     this.dodgeCd -= dt; this.guardCd -= dt; this.invuln -= dt; this.comboTimer -= dt; this.stunT -= dt; this.counterT -= dt;
     this.flash = Math.max(0, this.flash - dt * 5);
     for (const k in this.buf) this.buf[k] = Math.max(0, this.buf[k] - dt);
-    if (inp.hand) this.buf.hand = 0.25;
-    if (inp.leg) this.buf.leg = 0.25;
-    if (inp.special) this.buf.special = 0.25;
+    // input buffer: long enough to queue the next technique during an authored recovery
+    if (inp.hand) this.buf.hand = 0.35;
+    if (inp.leg) this.buf.leg = 0.35;
+    if (inp.special) this.buf.special = 0.35;
     if (inp.dodge) this.buf.dodge = 0.18;
     if (inp.jump) this.buf.jump = 0.15;
     if (this.guarding) this.guardT += dt;
@@ -182,7 +184,9 @@ export class Fighter {
         if (!inp.handHeld) { this.handHoldT = -1; this.endHold(); }
         else {
           this.handHoldT += dt;
-          const ready = !this.action || (this.action === 'tech' && this.tech === st.tech.hand && this.actionU > (this.tech.cancel || 0.6));
+          // a held HAND turns into the sustained technique straight away: a punch that has not landed yet is abandoned
+          const T = this.tech, ev = T && T.events && T.events.length ? T.events[0][0] : 0.3;
+          const ready = !this.action || (this.action === 'tech' && T === st.tech.hand && (this.actionU < ev || this.actionU > (T.cancel || 0.6)));
           if (!this.holding && this.handHoldT > 0.22 && ready && !this.guarding && !this.reacting()) {
             this.holding = true; this.holdPh = 0; this.action = null; this.tech = null; B.holdStart(this);
           }
@@ -201,7 +205,9 @@ export class Fighter {
           this.legHoldT = -1;
         } else {
           this.legHoldT += dt;
-          const kickDone = !this.action || (this.action === 'tech' && this.actionU > Math.min(0.6, this.tech.cancel ?? 0.6));
+          // a held LEG starts gathering force straight away: a kick that has not landed yet is abandoned
+          const K = this.tech, kev = K && K.events && K.events.length ? K.events[0][0] : 0.3;
+          const kickDone = !this.action || (this.action === 'tech' && (this.actionU < kev || this.actionU > Math.min(0.6, K.cancel ?? 0.6)));
           if (!this.charging && this.legHoldT > 0.3 && kickDone && !this.guarding && !this.reacting()) { this.charging = true; this.chargeT = 0; this.action = null; this.tech = null; }
         }
       }
@@ -267,6 +273,7 @@ export class Fighter {
     this.vel.y -= (glide ? 7 : 21) * dt;
     if (glide && Math.random() < dt * 20) w.fx.wind(this.pos.clone().setY(this.pos.y + 0.2), _v.set(rand(-1, 1), -2, rand(-1, 1)), 0.5, 0.4);
     this.pos.addScaledVector(this.vel, dt);
+    if (this.ext.lengthSq() > 1e-4) { this.pos.addScaledVector(this.ext, dt); this.ext.multiplyScalar(Math.exp(-(this.onGround ? 4 : 1.5) * dt)); } else this.ext.set(0, 0, 0);
 
     w.arena.collide(this);
     const gy = w.arena.groundAt(this.pos.x, this.pos.z, this.pos.y);
@@ -453,7 +460,7 @@ export class Fighter {
       const prog = 1 - this.dodgeT / this.dodgeDur;
       tq.setFromAxisAngle(local(this.dodgeDir), smooth01(clamp(prog / 0.9, 0, 1)) * Math.PI * 2);
       this.tumble.position.y = 0.6;
-    } else if (this.dead || this.action === 'down' || this.action === 'getup') {
+    } else if ((this.dead || this.action === 'down' || this.action === 'getup') && !(this.hero && this.hero.actions.ko)) {   // the hero uses authored falls
       let prog;
       if (this.dead) prog = smooth01(clamp(this.actionT / 0.55, 0, 1));
       else if (this.action === 'down') prog = smooth01(clamp(this.actionT / 0.35, 0, 1));

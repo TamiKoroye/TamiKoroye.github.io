@@ -9,7 +9,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import { HIP_H } from './character.js';
-import { MOCAP, clipFor } from './mocap.js';
+import { MOCAP, clipFor, LOOPS } from './mocap.js';
 
 let TEMPLATE = null, CLIPS = null;
 export const heroReady = () => !!TEMPLATE;
@@ -104,7 +104,9 @@ export class Hero {
     }
     // retargeted motion-capture techniques (played once, held on the last frame until the next state)
     for (const [name, m] of Object.entries(MOCAP)) {
-      const a = this.mixer.clipAction(m.clip); a.setLoop(THREE.LoopOnce, 1); a.clampWhenFinished = true; this.actions[name] = a;
+      const a = this.mixer.clipAction(m.clip);
+      if (!m.loop) { a.setLoop(THREE.LoopOnce, 1); a.clampWhenFinished = true; }
+      this.actions[name] = a;
     }
     this.techN = -1;
     this.cur = null; this.play('Idle_Loop', 0);
@@ -182,34 +184,56 @@ export class Hero {
     this.cur = a; this.curName = name;
   }
 
-  // choose authored clip + procedural weights from the fighter's state
+  // choose authored clip + procedural weights from the fighter's state. Priority: knockdown / KO, hit reactions,
+  // dodges, techniques, guard, sustained bending, airborne, locomotion, then the element's combat stance.
+  // Procedural motion only fills in what no clip covers (running legs under upper-body moves, sideways steps).
   drive(f, dt) {
-    let wU = 1, wL = 1, clip = 'Idle_Loop', ts = 1;
-    const A = f.A, sp = Math.hypot(f.vel.x, f.vel.z), fwd = f.moveLocal.y;
+    let wU = 1, wL = 1, clip = 'Idle_Loop', ts = 1, fade = 0.18, restart = false;
+    const A = f.A, sp = Math.hypot(f.vel.x, f.vel.z), fwd = f.moveLocal.y, moving = sp > 0.6;
+    const L = LOOPS[f.el] || {}, has = (n) => n && this.actions[n];
     const free = (!A || A.soft) && !f.guarding && !f.holding && !f.charging && !(f.restrainT > 0) && f.dodgeT <= 0 && !f.dead;
-    if (f.dodgeT > 0 && f.dodgeKind === 'roll') { clip = 'Roll'; wU = wL = 0; ts = 1.46 / (f.dodgeDur * 1.7); }
-    else if (f.action === 'hit') { clip = f.hitAlt ? 'Hit_Head' : 'Hit_Chest'; wU = wL = 0; }
-    else if (f.action === 'tech' && f.tech.clip && MOCAP[f.tech.clip]) {
+    const once = (name, scale, fd = 0.08) => { clip = name; ts = scale; wU = wL = 0; fade = fd; if (this.curName !== name) restart = true; };
+    if (f.dead && has('ko')) once('ko', 1.1, 0.12);
+    else if (f.action === 'down' && has('ko')) once('ko', 1.6, 0.1);
+    else if (f.action === 'getup' && has('getup')) { once('getup', this.actions.getup.getClip().duration / Math.max(0.3, f.A.dur) * 0.75, 0.1); }
+    else if (f.action === 'hit' || f.action === 'stagger') {
+      const n = f.hitAlt ? 'hit_b' : 'hit_a';
+      if (has(n)) { clip = n; ts = f.action === 'stagger' ? 1.1 : 1.5; wU = wL = 0; fade = 0.05; if (f.actionT < dt * 1.5 || this.curName !== n) restart = true; }
+      else { clip = f.hitAlt ? 'Hit_Head' : 'Hit_Chest'; wU = wL = 0; if (this.curName !== clip || f.actionT < dt * 1.5) restart = true; ts = 1.2; fade = 0.05; }
+    }
+    else if (f.dodgeT > 0 && f.dodgeKind === 'roll') { clip = 'Roll'; wU = wL = 0; ts = 1.46 / (f.dodgeDur * 1.7); fade = 0.06; if (this.curName !== 'Roll') restart = true; }
+    else if (f.dodgeT > 0 && has('dodge_side')) {
+      // dodge direction relative to facing picks the clip: backwards flips (air), sideways steps aside
+      const c = Math.cos(f.yaw), s = Math.sin(f.yaw), lx = f.dodgeDir.x * c - f.dodgeDir.z * s, lz = f.dodgeDir.x * s + f.dodgeDir.z * c;
+      const n = lz < -0.6 && f.el === 'air' ? 'dodge_back' : Math.abs(lx) > 0.4 ? (lx < 0 ? 'dodge_side' : 'dodge_side_M') : null;
+      if (n && has(n)) once(n, this.actions[n].getClip().duration / Math.max(0.2, f.dodgeDur) * 0.8, 0.06);
+    }
+    if (clip === 'Idle_Loop' && f.action === 'tech' && f.tech.clip) {
       // authored technique: the captured clip drives the whole body; running legs stay procedural for upper-body techs
-      clip = clipFor(f.tech, f.techSide); ts = f.tech.clipTS || 1; wU = 0;
-      wL = f.tech.upper && f.onGround && sp > 0.5 ? 1 : 0;
-      if (f.techN !== this.techN) { this.techN = f.techN; this.play(clip, 0.08, ts, true); }
+      const [n, scale] = clipFor(f.tech, f.techSide, f.techN);
+      if (has(n)) {
+        clip = n; ts = scale; wU = 0; wL = f.tech.upper && f.onGround && moving ? 1 : 0; fade = 0.1;
+        if (f.techN !== this.techN) { this.techN = f.techN; restart = true; }
+      }
     }
-    else if (free && !f.onGround) { clip = f.vel.y > 1.5 && f.airTime < 0.3 ? 'Jump_Start' : 'Jump_Loop'; wU = wL = 0; ts = f.vel.y > 1.5 ? 1.6 : 1; }
-    else if (free && sp > 0.5 && fwd > 0.7) {
-      // authored locomotion, matched to ground speed
-      if (sp < 2.4) { clip = 'Walk_Loop'; ts = THREE.MathUtils.clamp(sp / 1.5, 0.7, 1.6); }
-      else if (sp < 7.6) { clip = 'Jog_Fwd_Loop'; ts = THREE.MathUtils.clamp(sp / 4.2, 0.8, 1.7); }
-      else { clip = 'Sprint_Loop'; ts = THREE.MathUtils.clamp(sp / 7.4, 0.9, 1.5); }
-      wU = wL = 0;
-    } else if (A && A.upper && f.onGround && sp > 0.5 && fwd > 0.7) {
-      // upper-body technique over authored running legs
-      clip = sp < 7.6 ? 'Jog_Fwd_Loop' : 'Sprint_Loop'; ts = THREE.MathUtils.clamp(sp / 4.2, 0.8, 1.7); wU = 1; wL = 0;
+    if (clip === 'Idle_Loop' && wU === 1) {
+      if (f.guarding && has(L.guard)) { clip = L.guard; wU = 0; wL = moving ? 1 : 0; fade = 0.12; }
+      else if (f.holding && has(L.hold)) { clip = L.hold; wU = 0; wL = moving ? 1 : 0; fade = 0.2; }
+      else if (free && !f.onGround) { clip = f.vel.y > 1.5 && f.airTime < 0.3 ? 'Jump_Start' : 'Jump_Loop'; wU = wL = 0; ts = f.vel.y > 1.5 ? 1.6 : 1; }
+      else if (free && sp > 0.5 && fwd > 0.7) {
+        // authored locomotion, matched to ground speed
+        if (sp < 2.4) { clip = 'Walk_Loop'; ts = THREE.MathUtils.clamp(sp / 1.5, 0.7, 1.6); }
+        else if (sp < 7.6) { clip = 'Jog_Fwd_Loop'; ts = THREE.MathUtils.clamp(sp / 4.2, 0.8, 1.7); }
+        else { clip = 'Sprint_Loop'; ts = THREE.MathUtils.clamp(sp / 7.4, 0.9, 1.5); }
+        wU = wL = 0; fade = 0.22;
+      } else if (A && A.upper && f.onGround && sp > 0.5 && fwd > 0.7) {
+        clip = sp < 7.6 ? 'Jog_Fwd_Loop' : 'Sprint_Loop'; ts = THREE.MathUtils.clamp(sp / 4.2, 0.8, 1.7); wU = 1; wL = 0;
+      } else if (free && f.onGround && has(L.idle)) {
+        // the element's authored combat stance; sideways and backward steps keep procedural legs under it
+        clip = L.idle; wU = 0; wL = moving ? 1 : 0; fade = 0.25;
+      }
     }
-    if (MOCAP[clip]) { /* started above */ }
-    else if (clip === 'Roll' && this.curName !== 'Roll') this.play('Roll', 0.06, ts, true);
-    else if (clip === 'Hit_Chest' || clip === 'Hit_Head') { if (this.curName !== clip || f.actionT < dt * 1.5) this.play(clip, 0.05, 1.2, true); }
-    else this.play(clip, 0.18, ts);
+    this.play(clip, fade, ts, restart);
     if (this.cur) this.cur.timeScale = ts;
     const k = 1 - Math.exp(-(wU > this.wU || wL > this.wL ? 16 : 10) * dt);
     this.wU += (wU - this.wU) * k; this.wL += (wL - this.wL) * k;

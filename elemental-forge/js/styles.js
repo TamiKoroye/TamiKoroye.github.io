@@ -56,7 +56,7 @@ const earth = {
   dodge: { kind: 'roll', dur: 0.44, speed: 12, iframes: 0.7 },
   labels: { hand: 'STONE PUNCH', leg: 'EARTH KICK', guard: 'WALL', special: 'PILLAR' },
   tech: {
-    hand: T({ name: 'Stone Punch', clip: 'earth_punch', dur: 0.42, cost: 9, cancel: 0.6, upper: true, move: 3.2, lunge: 5,
+    hand: T({ name: 'Stone Punch', clip: ['earth_punch', 'earth_punch2'], dur: 0.42, cost: 9, cancel: 0.6, upper: true, move: 3.2, lunge: 5,
       active: { from: 0.33, to: 0.5, dmg: 7, range: 1.8, arc: 0.4, knock: 3, level: 0 },
       events: [[0.34, 'earth.hand']],
       keys: [
@@ -79,7 +79,7 @@ const earth = {
           [0.7, (p, c) => { stanceLegs(p, -0.3, 0.36, 0.3, -0.16, 0.3, c.s); S(p, 'spine', 0.22, 0, 0); arm(p, 1, -0.6, 0.3, 0, 0.4, 1.0); arm(p, -1, -0.6, 0.3, 0, 0.4, 1.0); }],
           [1.0, () => {}],
         ] }),
-      T({ name: 'Earth Sweep', clip: 'earth_side', dur: 0.62, cost: 12, cancel: 0.75, move: 0.5, spin: [0.08, 0.7, 1],
+      T({ name: 'Earth Sweep', clip: 'earth_sweep', dur: 0.62, cost: 12, cancel: 0.75, move: 0.5, spin: [0.08, 0.7, 1],
         active: { from: 0.35, to: 0.6, dmg: 7, range: 2.2, arc: -1.1, knock: 4, level: 1 },
         events: [[0.45, 'earth.sweep']],
         keys: [
@@ -91,7 +91,7 @@ const earth = {
           [1.0, () => {}],
         ] }),
     ],
-    charged: T({ name: 'Seismic Stomp', dur: 0.75, cost: 22, cancel: 0.82, move: 0, jumpAt: [0.14, 4.4],
+    charged: T({ name: 'Seismic Stomp', clip: 'earth_stomp', dur: 0.75, cost: 22, cancel: 0.82, move: 0, jumpAt: [0.14, 4.4],
       events: [[0.55, 'earth.seismic']],
       keys: [
         [0.0, () => {}],
@@ -106,7 +106,7 @@ const earth = {
         arm(p, 1, -0.3 - 1.4 * k, 0.3, 0.6, 0.4, 0.8 - 1.4 * k); arm(p, -1, -0.3 - 1.4 * k, 0.3, 0.6, 0.4, 0.8 - 1.4 * k); } },
     guard: (p) => { stanceLegs(p, -0.32, 0.12, 0.42, -0.12, 0.42); S(p, 'spine', 0.14, 0, 0); S(p, 'neck', -0.12, 0, 0);
       arm(p, 1, -1.3, 0.35, 0.3, 0.45, -1.25); arm(p, -1, -1.3, 0.35, 0.3, 0.45, -1.25); },
-    special: T({ name: 'Stone Pillar', dur: 0.55, cost: 20, cancel: 0.7, move: 0,
+    special: T({ name: 'Stone Pillar', clip: 'earth_pillar', dur: 0.55, cost: 20, cancel: 0.7, move: 0,
       events: [[0.42, 'earth.pillar']],
       keys: [
         [0.0, () => {}],
@@ -126,7 +126,7 @@ const fire = {
   dodge: { kind: 'dash', dur: 0.32, speed: 17, iframes: 0.75, trail: 'fire' },
   labels: { hand: 'FIRE FIST', leg: 'FLAME KICK', guard: 'FIRE WALL', special: 'FLAME ORB' },
   tech: {
-    hand: T({ name: 'Fire Fist', clip: 'fire_punch', dur: 0.27, cost: 6, cancel: 0.5, upper: true, move: 4.2, lunge: 5,
+    hand: T({ name: 'Fire Fist', clip: ['fire_punch', 'fire_punch2'], dur: 0.27, cost: 6, cancel: 0.5, upper: true, move: 4.2, lunge: 5,
       active: { from: 0.28, to: 0.5, dmg: 5, range: 1.9, arc: 0.4, knock: 2, level: 0 },
       events: [[0.3, 'fire.hand']],
       keys: [
@@ -175,7 +175,7 @@ const fire = {
         arm(p, 1, -1.55 + tr, 0.15, -0.6, 0.15, -1.2); arm(p, -1, -1.5 - tr, 0.1, -0.6, 0.2, -1.2); } },
     guard: (p) => { stanceLegs(p, -0.14, 0.3, 0.14, -0.3, 0.12); S(p, 'spine', 0.08, 0, 0);
       arm(p, 1, -1.35, -0.1, 0.2, 1.75, 0.2); arm(p, -1, -1.25, -0.15, 0.2, 1.8, 0.2); },  // crossed forearms
-    special: T({ name: 'Flame Orb', dur: 0.36, cost: 10, cancel: 0.55, upper: true, move: 4,
+    special: T({ name: 'Flame Orb', clip: 'fire_orb', dur: 0.36, cost: 10, cancel: 0.55, upper: true, move: 4,
       events: [[0.3, 'fire.special']],
       keys: [
         [0.0, () => {}],
@@ -226,7 +226,7 @@ const water = {
           [1.0, () => {}],
         ] }),
     ],
-    charged: T({ name: 'Tidal Sweep', dur: 0.85, cost: 18, cancel: 0.88, move: 0.5, spin: [0.1, 0.75, 1],
+    charged: T({ name: 'Tidal Sweep', clip: 'water_tidal', dur: 0.85, cost: 18, cancel: 0.88, move: 0.5, spin: [0.1, 0.75, 1],
       events: [[0.6, 'water.charged']],
       keys: [
         [0.0, () => {}],
@@ -241,7 +241,7 @@ const water = {
     guard: (p, c) => { const a = Math.sin((c ? c.t : 0) * 2.2);
       stanceLegs(p, -0.18, 0.22, 0.16, -0.12, 0.16); S(p, 'hips', 0, 0.15 * a, 0); S(p, 'spine', 0.05, 0, 0);
       arm(p, 1, -1.15 + 0.15 * a, 0.75, 0.6, 1.0, 0.4); arm(p, -1, -1.15 - 0.15 * a, 0.75, 0.6, 1.0, 0.4); },
-    special: T({ name: 'Water Sphere', dur: 0.6, cost: 12, cancel: 0.72, move: 2, upper: true,
+    special: T({ name: 'Water Sphere', clip: 'water_sphere', dur: 0.6, cost: 12, cancel: 0.72, move: 2, upper: true,
       events: [[0.52, 'water.special']],
       keys: [
         [0.0, () => {}],
@@ -307,7 +307,7 @@ const air = {
     guard: (p, c) => { const a = Math.sin((c ? c.t : 0) * 5);
       stanceLegs(p, -0.16, 0.18, 0.05, -0.16, 0.06); S(p, 'hips', 0, 0.5 * a, 0); S(p, 'chest', 0, 0.3 * a, 0);
       arm(p, 1, -1.35, 0.6 + 0.3 * a, -0.8, 0.4, -1.1); arm(p, -1, -0.9, 0.1, -0.5, 1.5, -0.8); },
-    special: T({ name: 'Vortex', dur: 0.45, cost: 10, cancel: 0.62, upper: true, move: 4.5,
+    special: T({ name: 'Vortex', clip: 'air_vortex', dur: 0.45, cost: 10, cancel: 0.62, upper: true, move: 4.5,
       events: [[0.38, 'air.special']],
       keys: [
         [0.0, () => {}],

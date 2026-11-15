@@ -49,7 +49,7 @@ const S = (fn, arg) => ev(fn, arg);
 const setup = (o) => ev((o) => {
   const E = window.__EF, { player, opp, camCtl, state, world } = E;
   world.bending.clear(); state.locked = o.locked ?? true; state.aimHold = 0;
-  for (const f of [player, opp]) { f.vel.set(0, 0, 0); f.action = null; f.tech = null; f.stunT = 0; f.dodgeT = 0; f.hp = 100; f.en = 100; f.guarding = false; f.holding = false; f.charging = false; f.handHoldT = -1; f.legHoldT = -1; f.counterT = 0; f.invuln = 0; f.dead = false; f.restrainT = 0; f.spinYaw = 0; f.tumble.quaternion.identity(); f.stats = { hitsLanded: 0, blocks: 0, perfect: 0, techniques: {} }; }
+  for (const f of [player, opp]) { f.vel.set(0, 0, 0); f.action = null; f.tech = null; f.stunT = 0; f.dodgeT = 0; f.hp = 100; f.en = 100; f.guarding = false; f.holding = false; f.charging = false; f.handHoldT = -1; f.legHoldT = -1; f.counterT = 0; f.invuln = 0; f.dead = false; f.restrainT = 0; f.spinYaw = 0; if (f.ext) f.ext.set(0, 0, 0); f.tumble.quaternion.identity(); f.stats = { hitsLanded: 0, blocks: 0, perfect: 0, techniques: {} }; }
   player.setElement(o.el || 'earth', true); opp.setElement(o.oel || 'earth', true);
   player.pos.set(...(o.p || [0, 0, -12])); opp.pos.set(...(o.o || [0, 0, -4]));
   player.faceYaw = player.yaw = Math.atan2(opp.pos.x - player.pos.x, opp.pos.z - player.pos.z); opp.faceYaw = opp.yaw = player.faceYaw + Math.PI;
@@ -235,7 +235,8 @@ for (const el of els) {
     for (let i = 0; i < 3; i++) { await press('btn-special', 2); await stepN(14); }
     const orbs = await S(() => window.__EF.world.bending.held(window.__EF.player));
     await shot(`13-${el}-three-orbs`);
-    await press('btn-special', 2); await stepN(6);
+    // the release happens on the 4th press's impact frame (about 0.3 s into the authored throw)
+    await press('btn-special', 2); await stepN(14);
     const fly = await S(() => window.__EF.world.bending.objs.filter(o => o.state === 'flying' && o.owner === window.__EF.player).map(o => o.kind));
     await stepN(30);
     check(`${el}: SPECIAL builds up three controlled ${el === 'fire' ? 'flame orbs' : 'vortices'}, then releases them together`, orbs === 3 && fly.length >= 1, `held ${orbs}, then flying: ${fly.join(',')}`);
@@ -314,6 +315,8 @@ check('a rock punches through a fire wall at reduced force', thruFire < 100 && t
 // pillar platform + standing on it
 await setup({ el: 'earth', locked: false, p: [0, 0, -14], o: [20, 0, 20] });
 await press('btn-special', 2); await stepN(25);
+// let the authored pillar-raising move finish before walking onto the pillar
+await S(() => { const E = window.__EF; for (let i = 0; i < 40 && E.player.action; i++) E.step(1 / 30); });
 const pil = await S(() => { const p = window.__EF.world.bending.pillars[0]; return p ? { x: p.col.x, z: p.col.z, top: p.col.top } : null; });
 check('earth SPECIAL raises a solid stone pillar', pil && pil.top > 1.3, JSON.stringify(pil));
 await stick(0, -60); await stepN(3); await press('btn-jump', 1); let onPillar = 0; for (let i = 0; i < 30; i++) { await stepN(1); onPillar = Math.max(onPillar, await S(() => window.__EF.player.onGround ? window.__EF.player.pos.y : 0)); } await stickUp();

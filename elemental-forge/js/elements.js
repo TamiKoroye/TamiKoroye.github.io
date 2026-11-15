@@ -411,9 +411,11 @@ export class Bending {
       for (const t of w.fighters) {
         if (t === f || t.dead) continue;
         const c = t.chestPos(_v3), to = _v.subVectors(c, from), d = to.length();
-        if (d > 9 || to.dot(dir) / d < 0.86) continue;
-        const k = (1 - d / 9) * 26 * dt;
-        t.vel.x += dir.x * k * 1.4; t.vel.z += dir.z * k * 1.4;
+        if (d > 10 || to.dot(dir) / d < 0.86) continue;
+        // a steady external push the target's footwork cannot cancel (it can still walk against it slowly)
+        const k = (1 - d / 10) * 34 * dt;
+        t.ext.x += dir.x * k; t.ext.z += dir.z * k;
+        const e = Math.hypot(t.ext.x, t.ext.z); if (e > 7) { t.ext.x *= 7 / e; t.ext.z *= 7 / e; }
         if (h.tick <= 0) w.combat.damage(t, 1, dir.clone().setY(0).normalize(), f, 'wind', c.clone(), 0, -1);
       }
       if (h.tick <= 0) h.tick = 0.3;
