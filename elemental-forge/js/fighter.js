@@ -110,12 +110,18 @@ export class Fighter {
   busy() { return !this.free('jump'); }
 
   startAction(name) { this.action = name; this.tech = null; this.actionT = 0; this.evIdx = 0; this.hitDone = false; this.jumped = false; this.spinYaw = 0; }
-  startTech(def, side) {
+  // basic: a HAND / LEG strike. Strikes always happen: without the energy for bending they are performed as plain
+  // martial-arts blows (same movement, physical damage only, no elemental effect).
+  startTech(def, side, basic = false) {
     if (!def) return false;
     // alternating authored takes (e.g. hook / lunge punch) each carry their own timing
     if (def.variants) { this.altN = (this.altN || 0) + 1; def = def.variants[this.altN % def.variants.length]; }
-    if (this.en < (def.cost || 0)) { this.world.popup(this, 'NO ENERGY', true); return false; }
-    this.en -= def.cost || 0;
+    const powered = this.en >= (def.cost || 0);
+    if (!powered) {
+      if ((this.noEnPopT || 0) <= 0) { this.world.popup(this, 'NO ENERGY', true); this.noEnPopT = 1; }
+      if (!basic) return false;
+    } else this.en -= def.cost || 0;
+    this.unpowered = !powered;
     this.action = 'tech'; this.tech = def; this.actionT = 0; this.evIdx = 0; this.hitDone = false; this.jumped = false; this.spinYaw = 0;
     this.techSide = side || 1; this.techN = (this.techN || 0) + 1;
     this.world.combat.lunge(this, def);
@@ -128,7 +134,7 @@ export class Fighter {
     if (!(dt > 0)) return;
     const w = this.world, inp = this.input, st = this.style, B = w.bending;
     this.time += dt;
-    this.dodgeCd -= dt; this.guardCd -= dt; this.perfectT = (this.perfectT || 0) - dt; this.blockPopT = (this.blockPopT || 0) - dt; this.invuln -= dt; this.comboTimer -= dt; this.stunT -= dt; this.counterT -= dt;
+    this.dodgeCd -= dt; this.guardCd -= dt; this.noEnPopT = (this.noEnPopT || 0) - dt; this.perfectT = (this.perfectT || 0) - dt; this.blockPopT = (this.blockPopT || 0) - dt; this.invuln -= dt; this.comboTimer -= dt; this.stunT -= dt; this.counterT -= dt;
     this.flash = Math.max(0, this.flash - dt * 5);
     for (const k in this.buf) this.buf[k] = Math.max(0, this.buf[k] - dt);
     // input buffer: long enough to queue the next technique during an authored recovery
@@ -145,9 +151,9 @@ export class Fighter {
       this.actionT += dt;
       const u = this.actionT / A.dur;
       if (A.active && !this.hitDone && u >= A.active.from && u <= A.active.to) {
-        if (w.combat.meleeCheck(this, A.active, this.action === 'tech' ? this.el : 'counter')) this.hitDone = true;
+        if (w.combat.meleeCheck(this, this.unpowered && this.action === 'tech' && A.active ? { ...A.active, dmg: Math.round(A.active.dmg * 0.6) } : A.active, this.action === 'tech' ? this.el : 'counter')) this.hitDone = true;
       }
-      if (A.events) while (this.evIdx < A.events.length && u >= A.events[this.evIdx][0]) { B.event(this, A.events[this.evIdx][1], A); this.evIdx++; }
+      if (A.events) while (this.evIdx < A.events.length && u >= A.events[this.evIdx][0]) { if (!(this.unpowered && this.action === 'tech')) B.event(this, A.events[this.evIdx][1], A); this.evIdx++; }
       if (A.spin) this.spinYaw = A.spin[2] * Math.PI * 2 * seg(u, A.spin[0], A.spin[1]);
       if (this.action === 'counter') this.spinYaw = Math.PI * 2 * seg(u, 0, 0.55);
       if (A.jumpAt && !this.jumped && u >= A.jumpAt[0]) { this.jumped = true; if (this.onGround) { this.vel.y = A.jumpAt[1]; this.onGround = false; } }
@@ -169,14 +175,14 @@ export class Fighter {
       if (this.buf.hand && !this.charging && canStrike) {
         this.buf.hand = 0; this.dodgeT = 0;
         if (this.counterT > 0) { this.counterT = 0; this.startAction('counter'); w.combat.lunge(this, ACTIONS.counter); w.popup(this, 'COUNTER', true); w.audio.whoosh(0.9); }
-        else { this.handSide = -this.handSide; this.startTech(st.tech.hand, this.handSide); }
+        else { this.handSide = -this.handSide; this.startTech(st.tech.hand, this.handSide, true); }
         this.handHoldT = 0;
       }
       if (this.buf.leg && !this.charging && canStrike) {
         this.buf.leg = 0; this.dodgeT = 0;
         this.legIdx = this.comboTimer > 0 ? (this.legIdx + 1) % st.tech.leg.length : 0;
         this.comboTimer = 0.9;
-        this.startTech(st.tech.leg[this.legIdx], this.legIdx === 0 ? -1 : 1);
+        this.startTech(st.tech.leg[this.legIdx], this.legIdx === 0 ? -1 : 1, true);
         this.legHoldT = 0;
       }
       // icebending: SPECIAL while the water wall is up freezes it into an ice wall (progression flag iceUnlocked)
@@ -241,7 +247,7 @@ export class Fighter {
     this.sprinting = live && inp.sprint && mlen > 0.85 && this.onGround && !this.guarding && !this.holding && !this.charging && !this.action && this.en > 2;
     if (this.guarding) this.en -= 8 * dt;
     else if (this.sprinting) this.en -= 7 * dt;
-    else if (!this.holding && !this.charging) this.en += (this.onGround ? 15 : 8) * dt;
+    else if (!this.holding && !this.charging) this.en += (this.onGround ? 20 : 10) * dt;
     this.en = clamp(this.en, 0, this.maxEn);
 
     // ---- movement

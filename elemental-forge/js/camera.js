@@ -9,6 +9,7 @@ export class FollowCam {
     this.yaw = 0; this.pitch = 0.2;
     this.dist = 3.5; this.curDist = 3.5;
     this.shoulder = 0.55;
+    this.sideAngle = 0.3;
     this.pivot = new THREE.Vector3();
     this.lockOffsetYaw = 0;
     this.sinceLook = 99;
@@ -37,7 +38,8 @@ export class FollowCam {
       const want = Math.atan2(dx, dz);
       this.lockOffsetYaw = clamp(this.lockOffsetYaw + look.x, -0.9, 0.9);
       if (this.sinceLook > 0.35) this.lockOffsetYaw = damp(this.lockOffsetYaw, 0, 3, dt);
-      this.yaw = dampAngle(this.yaw, want + this.lockOffsetYaw, 7, dt);
+      // three-quarter view while locked on, so the fighter's arms and legs read instead of only the back
+      this.yaw = dampAngle(this.yaw, want + this.lockOffsetYaw + this.sideAngle, 7, dt);
       const d = Math.hypot(dx, dz);
       const wantPitch = clamp(0.27 + Math.atan2((p.y - target.pos.y) * 0.5, Math.max(d, 1)) - (d < 3 ? 0.05 : 0), -0.2, 0.6);
       this.pitch = damp(this.pitch, wantPitch + clamp(look.y * 4, -0.2, 0.2), 5, dt);

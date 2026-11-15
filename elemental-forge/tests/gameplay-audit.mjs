@@ -95,13 +95,13 @@ async function session(mode) {
     if (touched) await settle();
     const shot = await page.evaluate(([video, fingersNow, mode]) => {
       const E = window.__EF, p = E.player, o = E.opp, h = p.hero;
-      p.hp = Math.max(p.hp, 50); p.en = Math.max(p.en, 60); o.hp = Math.max(o.hp, 40);
+      p.hp = Math.max(p.hp, 50); o.hp = Math.max(o.hp, 40);   // energy is NOT refilled: it runs down exactly as in a real match
       const d = o.pos.distanceTo(p.pos); if (d > 6) o.pos.lerp(p.pos, 0.04);
       E.step(1 / 30);
       const c = h && h.cur, dur = c ? c.getClip().duration : 1;
       const row = { f: window.__f++, el: p.el, act: p.action, tech: p.tech ? p.tech.name : null, techN: p.techN, u: p.action ? +p.actionU.toFixed(2) : null,
         clip: h ? h.curName : null, ct: c ? +(c.time / dur).toFixed(2) : null, ts: c ? +c.timeScale.toFixed(2) : null, wU: h ? +h.wU.toFixed(2) : 1, wL: h ? +h.wL.toFixed(2) : 1,
-        sp: +Math.hypot(p.vel.x, p.vel.z).toFixed(1), guard: p.guarding, hold: p.holding, charge: p.charging, dodge: p.dodgeT > 0, hit: p.reacting() };
+        sp: +Math.hypot(p.vel.x, p.vel.z).toFixed(1), en: Math.round(p.en), unp: !!(p.unpowered && p.action === 'tech'), guard: p.guarding, hold: p.holding, charge: p.charging, dodge: p.dodgeT > 0, hit: p.reacting() };
       window.__log.push(row);
       if (!video) return null;
       // main view, then a full-body side inset
@@ -123,7 +123,7 @@ async function session(mode) {
       g.fillText(`technique: ${row.tech || row.act || (row.guard ? 'GUARD' : row.hold ? 'HOLD' : row.charge ? 'CHARGE' : row.dodge ? 'DODGE' : '-')}`, 10, 44);
       g.fillText(`clip: ${(row.clip || '').split('|')[0]}${(row.clip || '').endsWith('|U') ? ' (upper body)' : ''}  [${m ? m.src.replace(/ \[.*\]/, '') : 'core library'}]  ${Math.round((row.ct || 0) * 100)}%  x${row.ts}`, 10, 64);
       if (lowN) g.fillText(`legs: ${lowN} [${E.MOCAP[lowN] ? E.MOCAP[lowN].src.replace(/ \[.*\]/, '') : 'core library'}]`, 10, 104);
-      g.fillText(`authored: upper ${Math.round((1 - row.wU) * 100)}%  lower ${Math.round((1 - row.wL) * 100)}%`, 10, 84);
+      g.fillText(`authored: upper ${Math.round((1 - row.wU) * 100)}%  lower ${Math.round((1 - row.wL) * 100)}%   energy ${row.en}${row.unp ? '  (strike without bending: out of energy)' : ''}`, 10, 84);
       g.fillText('full body (side)', W - s, H - s - 12);
       for (const q of fingersNow) { g.beginPath(); g.arc(q.x, q.y, 16, 0, 7); g.fillStyle = 'rgba(255,255,255,0.45)'; g.fill(); g.fillStyle = '#fff'; g.fillText(q.label || '', q.x + 18, q.y + 5); }
       return cv.toDataURL('image/jpeg', 0.82);
