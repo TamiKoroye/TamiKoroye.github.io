@@ -123,13 +123,13 @@
     "section": "Four distinct martial-arts styles",
     "name": "each element has its own stance (pose distance between every pair)",
     "ok": true,
-    "detail": "closest pair earth/water: 2.11 rad"
+    "detail": "closest pair earth/water: 2.07 rad"
   },
   {
     "section": "Four distinct martial-arts styles",
     "name": "earth stance is the lowest (rooted Hung Gar)",
     "ok": true,
-    "detail": "earth -0.24, fire -0.15, water -0.12, air -0.13"
+    "detail": "earth -0.24, fire -0.17, water -0.13, air -0.14"
   },
   {
     "section": "Four distinct martial-arts styles",
@@ -243,7 +243,7 @@
     "section": "FIRE: HAND, LEG, sustained control, defence, charged technique",
     "name": "fire: holding HAND sustains a fire stream that burns the rival",
     "ok": true,
-    "detail": "holding=true, held objects 0, rival hp 75"
+    "detail": "holding=true, held objects 0, rival hp 81"
   },
   {
     "section": "FIRE: HAND, LEG, sustained control, defence, charged technique",
@@ -351,7 +351,7 @@
     "section": "AIR: HAND, LEG, sustained control, defence, charged technique",
     "name": "air: full-body kick (leg raised, supporting foot planted, hips/torso engaged)",
     "ok": true,
-    "detail": "kicking hip 2.07 rad, support ankle 0.07 m above ground, torso 0.47 rad"
+    "detail": "kicking hip 2.07 rad, support ankle 0.07 m above ground, torso 0.46 rad"
   },
   {
     "section": "AIR: HAND, LEG, sustained control, defence, charged technique",
@@ -405,7 +405,7 @@
     "section": "Elemental interactions and environment",
     "name": "air gust blows a fireball back at its caster",
     "ok": true,
-    "detail": "{\"ohp\":89,\"php\":100}"
+    "detail": "{\"ohp\":93,\"php\":100}"
   },
   {
     "section": "Elemental interactions and environment",
@@ -417,7 +417,7 @@
     "section": "Elemental interactions and environment",
     "name": "earth SPECIAL raises a solid stone pillar",
     "ok": true,
-    "detail": "{\"x\":0.8970749039705801,\"z\":-11.991205183034818,\"top\":1.45}"
+    "detail": "{\"x\":0.9372788472380504,\"z\":-12.009646171526251,\"top\":1.45}"
   },
   {
     "section": "Elemental interactions and environment",
@@ -471,7 +471,7 @@
     "section": "Camera",
     "name": "camera rises over a raised platform edge instead of being blocked",
     "ok": true,
-    "detail": "pitch lift 0.12 rad, player at screen y -0.14"
+    "detail": "pitch lift 0.24 rad, player at screen y -0.27"
   },
   {
     "section": "Camera",
@@ -483,7 +483,7 @@
     "section": "AI, performance and regression",
     "name": "AI rival fights with its element techniques",
     "ok": true,
-    "detail": "water: {\"Water Palm\":2,\"Water Sphere\":1}, player hp 88"
+    "detail": "water: {\"Crescent Water Kick\":2,\"Water Sphere\":1}, player hp 84"
   },
   {
     "section": "AI, performance and regression",
@@ -495,13 +495,13 @@
     "section": "AI, performance and regression",
     "name": "simulation cost per frame is small",
     "ok": true,
-    "detail": "0.34 ms per simulated frame (includes HUD; software renderer not included)"
+    "detail": "0.90 ms per simulated frame (includes HUD; software renderer not included)"
   },
   {
     "section": "AI, performance and regression",
     "name": "render cost stays bounded",
     "ok": true,
-    "detail": "42 draw calls, 105650 triangles"
+    "detail": "116 draw calls, 165938 triangles"
   },
   {
     "section": "AI, performance and regression",
