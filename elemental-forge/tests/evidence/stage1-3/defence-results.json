@@ -1,0 +1,87 @@
+[
+ {
+  "name": "earth: guard stops a blow from the front but not from behind",
+  "ok": true,
+  "detail": "front hp 100, from behind hp 92"
+ },
+ {
+  "name": "fire: guard stops a blow from the front but not from behind",
+  "ok": true,
+  "detail": "front hp 100, from behind hp 92"
+ },
+ {
+  "name": "water: guard stops a blow from the front but not from behind",
+  "ok": true,
+  "detail": "front hp 100, from behind hp 92"
+ },
+ {
+  "name": "air: guard stops a blow from the front but not from behind",
+  "ok": true,
+  "detail": "front hp 98, from behind hp 92"
+ },
+ {
+  "name": "water wall stops a rock (earth) from the front",
+  "ok": true,
+  "detail": "player hp 100, blocks 1"
+ },
+ {
+  "name": "water wall stops a fireball (fire) from the front",
+  "ok": true,
+  "detail": "player hp 100, blocks 1"
+ },
+ {
+  "name": "water wall stops a water (water) from the front",
+  "ok": true,
+  "detail": "player hp 100, blocks 1"
+ },
+ {
+  "name": "water wall stops a vortex (air) from the front",
+  "ok": true,
+  "detail": "player hp 100, blocks 1"
+ },
+ {
+  "name": "a boulder breaks through the water wall at reduced force",
+  "ok": true,
+  "detail": "player hp 91, unblocked damage would be 17"
+ },
+ {
+  "name": "water wall stops a sustained fire stream",
+  "ok": true,
+  "detail": "player hp 100"
+ },
+ {
+  "name": "water guard puts out burning ground underfoot",
+  "ok": true,
+  "detail": "player hp 100, burning patches left 0"
+ },
+ {
+  "name": "repeated rocks wear the water wall down until the guard breaks",
+  "ok": true,
+  "detail": "{\"broke\":true,\"guarding\":false,\"cd\":0.7666666666666666}"
+ },
+ {
+  "name": "GUARD + SPECIAL freezes the water wall into an ice wall with solid colliders",
+  "ok": true,
+  "detail": "{\"ice\":true,\"cols\":5,\"still\":true,\"iceHp\":138.8}"
+ },
+ {
+  "name": "the ice wall stays after the guard is released and absorbs a fireball",
+  "ok": true,
+  "detail": "{\"ice\":true,\"cols\":5,\"still\":true,\"iceHp\":138.8}"
+ },
+ {
+  "name": "guarding with held water forms rotating streams that stop an attack from behind",
+  "ok": true,
+  "detail": "{\"ring\":true,\"hp\":100}"
+ },
+ {
+  "name": "perfectly timed water guard redirects a fireball into the thrower",
+  "ok": true,
+  "detail": "{\"perfect\":1,\"oppHp\":93,\"hp\":100}"
+ },
+ {
+  "name": "no runtime errors",
+  "ok": true,
+  "detail": ""
+ }
+]
