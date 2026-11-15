@@ -1,0 +1,80 @@
+{
+ "base": "https://tamikoroye.github.io/elemental-forge-dev/",
+ "results": [
+  {
+   "name": "1 complete animation pack loads (decoded == expected, nothing missing, character OK)",
+   "ok": true,
+   "detail": "stamp \"dev 2026-11-15 r5 · commit 042214e · character OK · 68/68 martial-arts clips decoded\""
+  },
+  {
+   "name": "1 no page errors while loading",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "1b pack loads with fetch/XHR blocked (embedded-viewer conditions)",
+   "ok": true,
+   "detail": "stamp \"dev 2026-11-15 r5 · commit 042214e · character OK · 68/68 martial-arts clips decoded\""
+  },
+  {
+   "name": "1c missing pack: start is blocked with a visible error, no procedural fallback",
+   "ok": true,
+   "detail": "error shown: \"The game assets did not load, so the fight cannot start.• Animations: animation pack module assets/animations/martial.js did not load: Faile\""
+  },
+  {
+   "name": "3 punch plays its authored clip in every element",
+   "ok": true,
+   "detail": "earth: earth_punch2_M; fire: fire_punch2_M; water: water_palm; air: air_palm"
+  },
+  {
+   "name": "4 kick plays its authored clip in every element",
+   "ok": true,
+   "detail": "earth: earth_kick; fire: fire_round_M; water: water_kick; air: air_crescent_M"
+  },
+  {
+   "name": "5 sustained bending (held HAND) plays the authored hold loop",
+   "ok": true,
+   "detail": "earth: earth_lift; fire: fire_stream; water: water_draw; air: air_push"
+  },
+  {
+   "name": "6 guard plays the authored guard and the follow-up strike lands as a technique",
+   "ok": true,
+   "detail": "earth: earth_guard; fire: fire_guard; water: water_guard; air: air_guard"
+  },
+  {
+   "name": "7 attacks while moving: authored upper body over authored footwork",
+   "ok": true,
+   "detail": "earth: 43 frames, legs Jog_Fwd_Loop/Walk_Loop/earth_kick; fire: 80 frames, legs Jog_Fwd_Loop/Walk_Loop/fire_round_M/fire_spin; water: 34 frames, legs Walk_Loop/Jog_Fwd_Loop/water_kick; air: 15 frames, legs Jog_Fwd_Loop/Walk_Loop"
+  },
+  {
+   "name": "8 six quick attacks per element without refilling energy all play authored clips",
+   "ok": true,
+   "detail": "distinct strikes 3/3/3/3, energy at the end 73/90/100/100, strikes without bending 0 frames"
+  },
+  {
+   "name": "9 switching through all four elements via the element buttons",
+   "ok": true,
+   "detail": "earth -> fire -> water -> air"
+  },
+  {
+   "name": "SPECIAL plays its authored clip in every element",
+   "ok": true,
+   "detail": "earth: earth_pillar; fire: fire_orb_M; water: water_sphere; air: air_vortex"
+  },
+  {
+   "name": "NO procedural fallback: every technique/guard/hold frame shows a clip from the pack",
+   "ok": true,
+   "detail": "893 frames checked, 0 procedural"
+  },
+  {
+   "name": "NO procedural body in ANY frame of the session (stance, movement, reactions included)",
+   "ok": true,
+   "detail": "1191 frames, 0 procedural"
+  },
+  {
+   "name": "10 all of the above through touch controls only, no page errors",
+   "ok": true,
+   "detail": ""
+  }
+ ]
+}

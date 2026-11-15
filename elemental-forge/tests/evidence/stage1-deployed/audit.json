@@ -1,0 +1,2386 @@
+{
+ "touch": {
+  "techniques": [
+   {
+    "el": "earth",
+    "action": "Stone Punch",
+    "clip": "earth_punch2_M|U",
+    "clipShare": 1,
+    "frames": 11,
+    "techProgress": 0.6,
+    "clipProgress": 0.66,
+    "speed": 1.45,
+    "authoredUpper": 1,
+    "authoredLower": 1,
+    "movingShare": 1,
+    "endedBy": "next technique"
+   },
+   {
+    "el": "earth",
+    "action": "Stone Punch",
+    "clip": "earth_punch|U",
+    "clipShare": 1,
+    "frames": 28,
+    "techProgress": 0.83,
+    "clipProgress": 0.87,
+    "speed": 1.45,
+    "authoredUpper": 1,
+    "authoredLower": 1,
+    "movingShare": 1,
+    "endedBy": "hit reaction"
+   },
+   {
+    "el": "earth",
+    "action": "Earth Kick",
+    "clip": "earth_kick",
+    "clipShare": 1,
+    "frames": 8,
+    "techProgress": 0.29,
+    "clipProgress": 0.33,
+    "speed": 1.45,
+    "authoredUpper": 1,
+    "authoredLower": 1,
+    "movingShare": 0,
+    "endedBy": "hit reaction"
+   },
+   {
+    "el": "earth",
+    "action": "Stone Punch",
+    "clip": "earth_punch2_M",
+    "clipShare": 0.83,
+    "frames": 18,
+    "techProgress": 0.86,
+    "clipProgress": 0.92,
+    "speed": 1.45,
+    "authoredUpper": 1,
+    "authoredLower": 1,
+    "movingShare": 0.17,
+    "endedBy": "dodge"
+   },
+   {
+    "el": "earth",
+    "action": "dodge",
+    "clip": "dodge_side",
+    "clipShare": 1,
+    "frames": 7,
+    "techProgress": 0,
+    "clipProgress": 0.72,
+    "speed": 3.08,
+    "authoredUpper": 1,
+    "authoredLower": 1,
+    "movingShare": 1,
+    "endedBy": "finished"
+   },
+   {
+    "el": "earth",
+    "action": "Stone Punch",
+    "clip": "earth_punch",
+    "clipShare": 0.89,
+    "frames": 19,
+    "techProgress": 0.67,
+    "clipProgress": 0.71,
+    "speed": 1.45,
+    "authoredUpper": 1,
+    "authoredLower": 1,
+    "movingShare": 0.11,
+    "endedBy": "next technique"
+   },
+   {
+    "el": "earth",
+    "action": "Earth Kick",
+    "clip": "earth_kick",
+    "clipShare": 1,
+    "frames": 11,
+    "techProgress": 0.3,
+    "clipProgress": 0.34,
+    "speed": 1.45,
+    "authoredUpper": 1,
+    "authoredLower": 1,
+    "movingShare": 0,
+    "endedBy": "guard"
+   },
+   {
+    "el": "earth",
+    "action": "guard",
+    "clip": "earth_guard",
+    "clipShare": 1,
+    "frames": 30,
+    "techProgress": 0,
+    "clipProgress": 1,
+    "speed": 1,
+    "authoredUpper": 1,
+    "authoredLower": 1,
+    "movingShare": 0,
+    "endedBy": "finished"
+   },
+   {
+    "el": "earth",
+    "action": "Stone Pillar",
+    "clip": "earth_pillar",
+    "clipShare": 1,
+    "frames": 8,
+    "techProgress": 0.22,
+    "clipProgress": 0.25,
+    "speed": 1.7,
+    "authoredUpper": 1,
+    "authoredLower": 1,
+    "movingShare": 0,
+    "endedBy": "hit reaction"
+   },
+   {
+    "el": "earth",
+    "action": "Earth Kick",
+    "clip": "earth_kick",
+    "clipShare": 1,
+    "frames": 18,
+    "techProgress": 0.59,
+    "clipProgress": 0.63,
+    "speed": 1.45,
+    "authoredUpper": 1,
+    "authoredLower": 1,
+    "movingShare": 0.22,
+    "endedBy": "next technique"
+   },
+   {
+    "el": "earth",
+    "action": "Stone Punch",
+    "clip": "earth_punch2_M|U",
+    "clipShare": 1,
+    "frames": 10,
+    "techProgress": 0.54,
+    "clipProgress": 0.6,
+    "speed": 1.45,
+    "authoredUpper": 1,
+    "authoredLower": 1,
+    "movingShare": 1,
+    "endedBy": "next technique"
+   },
+   {
+    "el": "earth",
+    "action": "Stone Punch",
+    "clip": "earth_punch|U",
+    "clipShare": 0.55,
+    "frames": 22,
+    "techProgress": 0.68,
+    "clipProgress": 0.72,
+    "speed": 1.45,
+    "authoredUpper": 1,
+    "authoredLower": 1,
+    "movingShare": 0.55,
+    "endedBy": "next technique"
+   },
+   {
+    "el": "earth",
+    "action": "Stone Punch",
+    "clip": "earth_punch2_M",
+    "clipShare": 1,
+    "frames": 10,
+    "techProgress": 0.54,
+    "clipProgress": 0.6,
+    "speed": 1.45,
+    "authoredUpper": 1,
+    "authoredLower": 1,
+    "movingShare": 0,
+    "endedBy": "hold"
+   },
+   {
+    "el": "earth",
+    "action": "hold",
+    "clip": "earth_lift",
+    "clipShare": 1,
+    "frames": 22,
+    "techProgress": 0,
+    "clipProgress": 0.41,
+    "speed": 1,
+    "authoredUpper": 1,
+    "authoredLower": 1,
+    "movingShare": 0,
+    "endedBy": "finished"
+   },
+   {
+    "el": "fire",
+    "action": "Fire Fist",
+    "clip": "fire_punch_M|U",
+    "clipShare": 1,
+    "frames": 16,
+    "techProgress": 0.96,
+    "clipProgress": 1,
+    "speed": 1.75,
+    "authoredUpper": 1,
+    "authoredLower": 1,
+    "movingShare": 1,
+    "endedBy": "finished"
+   },
+   {
+    "el": "fire",
+    "action": "Fire Fist",
+    "clip": "fire_punch2_M|U",
+    "clipShare": 1,
+    "frames": 10,
+    "techProgress": 0.98,
+    "clipProgress": 1,
+    "speed": 1.75,
+    "authoredUpper": 1,
+    "authoredLower": 1,
+    "movingShare": 1,
+    "endedBy": "next technique"
+   },
+   {
+    "el": "fire",
+    "action": "Fire Fist",
+    "clip": "fire_punch_M|U",
+    "clipShare": 1,
+    "frames": 18,
+    "techProgress": 0.97,
+    "clipProgress": 1,
+    "speed": 1.75,
+    "authoredUpper": 1,
+    "authoredLower": 1,
+    "movingShare": 1,
+    "endedBy": "finished"
+   },
+   {
+    "el": "fire",
+    "action": "Fire Fist",
+    "clip": "fire_punch2_M|U",
+    "clipShare": 1,
+    "frames": 8,
+    "techProgress": 0.77,
+    "clipProgress": 0.88,
+    "speed": 1.75,
+    "authoredUpper": 1,
+    "authoredLower": 1,
+    "movingShare": 1,
+    "endedBy": "next technique"
+   },
+   {
+    "el": "fire",
+    "action": "Flame Kick",
+    "clip": "fire_round_M",
+    "clipShare": 1,
+    "frames": 2,
+    "techProgress": 0,
+    "clipProgress": 0.01,
+    "speed": 1.75,
+    "authoredUpper": 1,
+    "authoredLower": 1,
+    "movingShare": 1,
+    "endedBy": "hit reaction"
+   },
+   {
+    "el": "fire",
+    "action": "Spinning Flame Kick",
+    "clip": "fire_spin",
+    "clipShare": 1,
+    "frames": 17,
+    "techProgress": 0.63,
+    "clipProgress": 0.67,
+    "speed": 1.5,
+    "authoredUpper": 1,
+    "authoredLower": 1,
+    "movingShare": 0.41,
+    "endedBy": "next technique"
+   },
+   {
+    "el": "fire",
+    "action": "Fire Fist",
+    "clip": "fire_punch_M",
+    "clipShare": 1,
+    "frames": 16,
+    "techProgress": 0.96,
+    "clipProgress": 1,
+    "speed": 1.75,
+    "authoredUpper": 1,
+    "authoredLower": 1,
+    "movingShare": 0,
+    "endedBy": "finished"
+   },
+   {
+    "el": "fire",
+    "action": "dodge",
+    "clip": "dodge_side",
+    "clipShare": 1,
+    "frames": 9,
+    "techProgress": 0,
+    "clipProgress": 0.75,
+    "speed": 2.5,
+    "authoredUpper": 1,
+    "authoredLower": 1,
+    "movingShare": 1,
+    "endedBy": "finished"
+   },
+   {
+    "el": "fire",
+    "action": "Fire Fist",
+    "clip": "fire_punch2_M",
+    "clipShare": 1,
+    "frames": 10,
+    "techProgress": 0.98,
+    "clipProgress": 1,
+    "speed": 1.75,
+    "authoredUpper": 1,
+    "authoredLower": 1,
+    "movingShare": 0,
+    "endedBy": "finished"
+   },
+   {
+    "el": "fire",
+    "action": "Flame Kick",
+    "clip": "fire_round_M",
+    "clipShare": 1,
+    "frames": 17,
+    "techProgress": 0.8,
+    "clipProgress": 0.85,
+    "speed": 1.75,
+    "authoredUpper": 1,
+    "authoredLower": 1,
+    "movingShare": 0,
+    "endedBy": "guard"
+   },
+   {
+    "el": "fire",
+    "action": "guard",
+    "clip": "fire_guard",
+    "clipShare": 1,
+    "frames": 30,
+    "techProgress": 0,
+    "clipProgress": 0.5,
+    "speed": 1,
+    "authoredUpper": 1,
+    "authoredLower": 1,
+    "movingShare": 0,
+    "endedBy": "finished"
+   },
+   {
+    "el": "fire",
+    "action": "Flame Orb",
+    "clip": "fire_orb",
+    "clipShare": 1,
+    "frames": 22,
+    "techProgress": 0.98,
+    "clipProgress": 1,
+    "speed": 1.5,
+    "authoredUpper": 1,
+    "authoredLower": 1,
+    "movingShare": 0,
+    "endedBy": "finished"
+   },
+   {
+    "el": "fire",
+    "action": "Flame Kick",
+    "clip": "fire_round_M",
+    "clipShare": 1,
+    "frames": 14,
+    "techProgress": 0.65,
+    "clipProgress": 0.7,
+    "speed": 1.75,
+    "authoredUpper": 1,
+    "authoredLower": 1,
+    "movingShare": 0.07,
+    "endedBy": "next technique"
+   },
+   {
+    "el": "fire",
+    "action": "Fire Fist",
+    "clip": "fire_punch_M|U",
+    "clipShare": 1,
+    "frames": 11,
+    "techProgress": 0.73,
+    "clipProgress": 0.8,
+    "speed": 1.75,
+    "authoredUpper": 1,
+    "authoredLower": 1,
+    "movingShare": 1,
+    "endedBy": "next technique"
+   },
+   {
+    "el": "fire",
+    "action": "Fire Fist",
+    "clip": "fire_punch2_M|U",
+    "clipShare": 1,
+    "frames": 11,
+    "techProgress": 0.89,
+    "clipProgress": 0.9,
+    "speed": 1.75,
+    "authoredUpper": 1,
+    "authoredLower": 1,
+    "movingShare": 1,
+    "endedBy": "finished"
+   },
+   {
+    "el": "fire",
+    "action": "Fire Fist",
+    "clip": "fire_punch_M",
+    "clipShare": 1,
+    "frames": 9,
+    "techProgress": 0.58,
+    "clipProgress": 0.66,
+    "speed": 1.75,
+    "authoredUpper": 1,
+    "authoredLower": 1,
+    "movingShare": 0,
+    "endedBy": "hold"
+   },
+   {
+    "el": "fire",
+    "action": "hold",
+    "clip": "fire_stream",
+    "clipShare": 1,
+    "frames": 25,
+    "techProgress": 0,
+    "clipProgress": 0.96,
+    "speed": 1,
+    "authoredUpper": 1,
+    "authoredLower": 1,
+    "movingShare": 0,
+    "endedBy": "finished"
+   },
+   {
+    "el": "fire",
+    "action": "Flame Kick",
+    "clip": "fire_round_M",
+    "clipShare": 1,
+    "frames": 13,
+    "techProgress": 0.6,
+    "clipProgress": 0.65,
+    "speed": 1.75,
+    "authoredUpper": 1,
+    "authoredLower": 1,
+    "movingShare": 0,
+    "endedBy": "charge"
+   },
+   {
+    "el": "fire",
+    "action": "charge",
+    "clip": "fire_fly",
+    "clipShare": 1,
+    "frames": 17,
+    "techProgress": 0,
+    "clipProgress": 0.22,
+    "speed": null,
+    "authoredUpper": 1,
+    "authoredLower": 1,
+    "movingShare": 0,
+    "endedBy": "next technique"
+   },
+   {
+    "el": "fire",
+    "action": "Flying Dragon Kick",
+    "clip": "fire_fly",
+    "clipShare": 1,
+    "frames": 21,
+    "techProgress": 0.97,
+    "clipProgress": 1,
+    "speed": 1.75,
+    "authoredUpper": 1,
+    "authoredLower": 1,
+    "movingShare": 0,
+    "endedBy": "finished"
+   },
+   {
+    "el": "water",
+    "action": "Water Palm",
+    "clip": "water_palm|U",
+    "clipShare": 1,
+    "frames": 4,
+    "techProgress": 0.13,
+    "clipProgress": 0.17,
+    "speed": 2.3,
+    "authoredUpper": 1,
+    "authoredLower": 1,
+    "movingShare": 1,
+    "endedBy": "hit reaction"
+   },
+   {
+    "el": "water",
+    "action": "Water Palm",
+    "clip": "water_palm_M|U",
+    "clipShare": 0.86,
+    "frames": 14,
+    "techProgress": 0.55,
+    "clipProgress": 0.6,
+    "speed": 2.3,
+    "authoredUpper": 1,
+    "authoredLower": 1,
+    "movingShare": 0.71,
+    "endedBy": "next technique"
+   },
+   {
+    "el": "water",
+    "action": "Water Palm",
+    "clip": "water_palm",
+    "clipShare": 1,
+    "frames": 13,
+    "techProgress": 0.43,
+    "clipProgress": 0.48,
+    "speed": 2.3,
+    "authoredUpper": 1,
+    "authoredLower": 1,
+    "movingShare": 0,
+    "endedBy": "next technique"
+   },
+   {
+    "el": "water",
+    "action": "Crescent Water Kick",
+    "clip": "water_kick",
+    "clipShare": 1,
+    "frames": 16,
+    "techProgress": 0.6,
+    "clipProgress": 0.64,
+    "speed": 1.45,
+    "authoredUpper": 1,
+    "authoredLower": 1,
+    "movingShare": 0,
+    "endedBy": "next technique"
+   },
+   {
+    "el": "water",
+    "action": "Turning Wave Kick",
+    "clip": "water_turn",
+    "clipShare": 1,
+    "frames": 32,
+    "techProgress": 0.97,
+    "clipProgress": 1,
+    "speed": 1.45,
+    "authoredUpper": 1,
+    "authoredLower": 1,
+    "movingShare": 0,
+    "endedBy": "finished"
+   },
+   {
+    "el": "water",
+    "action": "dodge",
+    "clip": "dodge_side",
+    "clipShare": 1,
+    "frames": 12,
+    "techProgress": 0,
+    "clipProgress": 0.8,
+    "speed": 2,
+    "authoredUpper": 1,
+    "authoredLower": 1,
+    "movingShare": 1,
+    "endedBy": "finished"
+   },
+   {
+    "el": "water",
+    "action": "Water Palm",
+    "clip": "water_palm_M",
+    "clipShare": 1,
+    "frames": 14,
+    "techProgress": 0.55,
+    "clipProgress": 0.6,
+    "speed": 2.3,
+    "authoredUpper": 1,
+    "authoredLower": 1,
+    "movingShare": 0,
+    "endedBy": "next technique"
+   },
+   {
+    "el": "water",
+    "action": "Crescent Water Kick",
+    "clip": "water_kick",
+    "clipShare": 1,
+    "frames": 19,
+    "techProgress": 0.73,
+    "clipProgress": 0.78,
+    "speed": 1.45,
+    "authoredUpper": 1,
+    "authoredLower": 1,
+    "movingShare": 0,
+    "endedBy": "guard"
+   },
+   {
+    "el": "water",
+    "action": "guard",
+    "clip": "water_guard",
+    "clipShare": 1,
+    "frames": 30,
+    "techProgress": 0,
+    "clipProgress": 0.33,
+    "speed": 1,
+    "authoredUpper": 1,
+    "authoredLower": 1,
+    "movingShare": 0,
+    "endedBy": "finished"
+   },
+   {
+    "el": "water",
+    "action": "Water Sphere",
+    "clip": "water_sphere",
+    "clipShare": 0.93,
+    "frames": 28,
+    "techProgress": 0.97,
+    "clipProgress": 1,
+    "speed": 1.5,
+    "authoredUpper": 1,
+    "authoredLower": 1,
+    "movingShare": 0.04,
+    "endedBy": "finished"
+   },
+   {
+    "el": "water",
+    "action": "Crescent Water Kick",
+    "clip": "water_kick",
+    "clipShare": 1,
+    "frames": 14,
+    "techProgress": 0.59,
+    "clipProgress": 0.63,
+    "speed": 1.45,
+    "authoredUpper": 1,
+    "authoredLower": 1,
+    "movingShare": 1,
+    "endedBy": "next technique"
+   },
+   {
+    "el": "water",
+    "action": "Water Palm",
+    "clip": "water_palm|U",
+    "clipShare": 1,
+    "frames": 14,
+    "techProgress": 0.44,
+    "clipProgress": 0.48,
+    "speed": 2.3,
+    "authoredUpper": 1,
+    "authoredLower": 1,
+    "movingShare": 1,
+    "endedBy": "next technique"
+   },
+   {
+    "el": "water",
+    "action": "Water Palm",
+    "clip": "water_palm_M|U",
+    "clipShare": 0.67,
+    "frames": 18,
+    "techProgress": 0.61,
+    "clipProgress": 0.65,
+    "speed": 2.3,
+    "authoredUpper": 1,
+    "authoredLower": 1,
+    "movingShare": 0.61,
+    "endedBy": "next technique"
+   },
+   {
+    "el": "water",
+    "action": "Water Palm",
+    "clip": "water_palm",
+    "clipShare": 1,
+    "frames": 9,
+    "techProgress": 0.34,
+    "clipProgress": 0.34,
+    "speed": 2.3,
+    "authoredUpper": 1,
+    "authoredLower": 1,
+    "movingShare": 0,
+    "endedBy": "hold"
+   },
+   {
+    "el": "water",
+    "action": "hold",
+    "clip": "water_draw",
+    "clipShare": 1,
+    "frames": 25,
+    "techProgress": 0,
+    "clipProgress": 0.21,
+    "speed": 1,
+    "authoredUpper": 1,
+    "authoredLower": 1,
+    "movingShare": 0,
+    "endedBy": "finished"
+   },
+   {
+    "el": "water",
+    "action": "Crescent Water Kick",
+    "clip": "water_kick",
+    "clipShare": 1,
+    "frames": 14,
+    "techProgress": 0.59,
+    "clipProgress": 0.63,
+    "speed": 1.45,
+    "authoredUpper": 1,
+    "authoredLower": 1,
+    "movingShare": 0,
+    "endedBy": "charge"
+   },
+   {
+    "el": "water",
+    "action": "charge",
+    "clip": "water_tidal",
+    "clipShare": 1,
+    "frames": 16,
+    "techProgress": 0,
+    "clipProgress": 0.2,
+    "speed": null,
+    "authoredUpper": 1,
+    "authoredLower": 1,
+    "movingShare": 0,
+    "endedBy": "next technique"
+   },
+   {
+    "el": "water",
+    "action": "Tidal Sweep",
+    "clip": "water_tidal",
+    "clipShare": 1,
+    "frames": 30,
+    "techProgress": 0.74,
+    "clipProgress": 0.77,
+    "speed": 2,
+    "authoredUpper": 1,
+    "authoredLower": 1,
+    "movingShare": 0,
+    "endedBy": "finished"
+   },
+   {
+    "el": "air",
+    "action": "Air Palm",
+    "clip": "air_palm_M|U",
+    "clipShare": 1,
+    "frames": 10,
+    "techProgress": 0.55,
+    "clipProgress": 0.61,
+    "speed": 1.65,
+    "authoredUpper": 1,
+    "authoredLower": 1,
+    "movingShare": 1,
+    "endedBy": "next technique"
+   },
+   {
+    "el": "air",
+    "action": "Air Palm",
+    "clip": "air_palm|U",
+    "clipShare": 1,
+    "frames": 10,
+    "techProgress": 0.55,
+    "clipProgress": 0.61,
+    "speed": 1.65,
+    "authoredUpper": 1,
+    "authoredLower": 1,
+    "movingShare": 1,
+    "endedBy": "next technique"
+   },
+   {
+    "el": "air",
+    "action": "Air Palm",
+    "clip": "air_palm_M|U",
+    "clipShare": 0.88,
+    "frames": 17,
+    "techProgress": 0.98,
+    "clipProgress": 1,
+    "speed": 1.65,
+    "authoredUpper": 1,
+    "authoredLower": 1,
+    "movingShare": 0.88,
+    "endedBy": "finished"
+   },
+   {
+    "el": "air",
+    "action": "Air Palm",
+    "clip": "air_palm|U",
+    "clipShare": 0.8,
+    "frames": 10,
+    "techProgress": 0.55,
+    "clipProgress": 0.61,
+    "speed": 1.65,
+    "authoredUpper": 1,
+    "authoredLower": 1,
+    "movingShare": 0.7,
+    "endedBy": "next technique"
+   },
+   {
+    "el": "air",
+    "action": "Crescent Air Kick",
+    "clip": "air_crescent_M",
+    "clipShare": 1,
+    "frames": 19,
+    "techProgress": 0.62,
+    "clipProgress": 0.67,
+    "speed": 1.65,
+    "authoredUpper": 1,
+    "authoredLower": 1,
+    "movingShare": 0.37,
+    "endedBy": "next technique"
+   },
+   {
+    "el": "air",
+    "action": "Whirlwind Kick",
+    "clip": "air_whirl",
+    "clipShare": 1,
+    "frames": 35,
+    "techProgress": 0.9,
+    "clipProgress": 0.93,
+    "speed": 1.65,
+    "authoredUpper": 1,
+    "authoredLower": 1,
+    "movingShare": 0.31,
+    "endedBy": "dodge"
+   },
+   {
+    "el": "air",
+    "action": "dodge",
+    "clip": "dodge_side",
+    "clipShare": 1,
+    "frames": 10,
+    "techProgress": 0,
+    "clipProgress": 0.74,
+    "speed": 2.22,
+    "authoredUpper": 1,
+    "authoredLower": 1,
+    "movingShare": 1,
+    "endedBy": "finished"
+   },
+   {
+    "el": "air",
+    "action": "Air Palm",
+    "clip": "air_palm_M",
+    "clipShare": 0.83,
+    "frames": 12,
+    "techProgress": 0.67,
+    "clipProgress": 0.73,
+    "speed": 1.65,
+    "authoredUpper": 1,
+    "authoredLower": 1,
+    "movingShare": 0.08,
+    "endedBy": "next technique"
+   },
+   {
+    "el": "air",
+    "action": "Crescent Air Kick",
+    "clip": "air_crescent_M",
+    "clipShare": 1,
+    "frames": 15,
+    "techProgress": 0.65,
+    "clipProgress": 0.7,
+    "speed": 1.65,
+    "authoredUpper": 1,
+    "authoredLower": 1,
+    "movingShare": 0,
+    "endedBy": "guard"
+   },
+   {
+    "el": "air",
+    "action": "guard",
+    "clip": "air_guard",
+    "clipShare": 1,
+    "frames": 30,
+    "techProgress": 0,
+    "clipProgress": 0.59,
+    "speed": 1,
+    "authoredUpper": 1,
+    "authoredLower": 1,
+    "movingShare": 0,
+    "endedBy": "finished"
+   },
+   {
+    "el": "air",
+    "action": "Vortex",
+    "clip": "air_vortex",
+    "clipShare": 0.83,
+    "frames": 24,
+    "techProgress": 0.97,
+    "clipProgress": 1,
+    "speed": 1.6,
+    "authoredUpper": 1,
+    "authoredLower": 1,
+    "movingShare": 0.17,
+    "endedBy": "finished"
+   },
+   {
+    "el": "air",
+    "action": "Crescent Air Kick",
+    "clip": "air_crescent_M",
+    "clipShare": 1,
+    "frames": 13,
+    "techProgress": 0.6,
+    "clipProgress": 0.65,
+    "speed": 1.65,
+    "authoredUpper": 1,
+    "authoredLower": 1,
+    "movingShare": 1,
+    "endedBy": "next technique"
+   },
+   {
+    "el": "air",
+    "action": "Air Palm",
+    "clip": "air_palm|U",
+    "clipShare": 1,
+    "frames": 12,
+    "techProgress": 0.5,
+    "clipProgress": 0.56,
+    "speed": 1.65,
+    "authoredUpper": 1,
+    "authoredLower": 1,
+    "movingShare": 1,
+    "endedBy": "next technique"
+   },
+   {
+    "el": "air",
+    "action": "Air Palm",
+    "clip": "air_palm_M|U",
+    "clipShare": 0.65,
+    "frames": 20,
+    "techProgress": 0.99,
+    "clipProgress": 1,
+    "speed": 1.65,
+    "authoredUpper": 1,
+    "authoredLower": 1,
+    "movingShare": 0.65,
+    "endedBy": "next technique"
+   },
+   {
+    "el": "air",
+    "action": "Air Palm",
+    "clip": "air_palm",
+    "clipShare": 1,
+    "frames": 10,
+    "techProgress": 0.55,
+    "clipProgress": 0.61,
+    "speed": 1.65,
+    "authoredUpper": 1,
+    "authoredLower": 1,
+    "movingShare": 0,
+    "endedBy": "hold"
+   },
+   {
+    "el": "air",
+    "action": "hold",
+    "clip": "air_push",
+    "clipShare": 1,
+    "frames": 24,
+    "techProgress": 0,
+    "clipProgress": 0.95,
+    "speed": 1,
+    "authoredUpper": 1,
+    "authoredLower": 1,
+    "movingShare": 0,
+    "endedBy": "finished"
+   },
+   {
+    "el": "air",
+    "action": "Crescent Air Kick",
+    "clip": "air_crescent_M",
+    "clipShare": 1,
+    "frames": 13,
+    "techProgress": 0.6,
+    "clipProgress": 0.65,
+    "speed": 1.65,
+    "authoredUpper": 1,
+    "authoredLower": 1,
+    "movingShare": 0,
+    "endedBy": "charge"
+   },
+   {
+    "el": "air",
+    "action": "charge",
+    "clip": "air_cyclone",
+    "clipShare": 1,
+    "frames": 17,
+    "techProgress": 0,
+    "clipProgress": 0.28,
+    "speed": null,
+    "authoredUpper": 1,
+    "authoredLower": 1,
+    "movingShare": 0,
+    "endedBy": "next technique"
+   },
+   {
+    "el": "air",
+    "action": "Cyclone",
+    "clip": "air_cyclone",
+    "clipShare": 1,
+    "frames": 24,
+    "techProgress": 0.97,
+    "clipProgress": 1,
+    "speed": 1.65,
+    "authoredUpper": 1,
+    "authoredLower": 1,
+    "movingShare": 0,
+    "endedBy": "finished"
+   }
+  ],
+  "marks": [
+   [
+    32,
+    "earth: run in, attack while running"
+   ],
+   [
+    88,
+    "earth: combination, standing"
+   ],
+   [
+    155,
+    "earth: dodge sideways and counter"
+   ],
+   [
+    205,
+    "earth: guard"
+   ],
+   [
+    245,
+    "earth: special"
+   ],
+   [
+    275,
+    "earth: strafe and attack"
+   ],
+   [
+    329,
+    "earth: hold HAND, then charged LEG"
+   ],
+   [
+    447,
+    "fire: run in, attack while running"
+   ],
+   [
+    508,
+    "fire: combination, standing"
+   ],
+   [
+    572,
+    "fire: dodge sideways and counter"
+   ],
+   [
+    616,
+    "fire: guard"
+   ],
+   [
+    656,
+    "fire: special"
+   ],
+   [
+    682,
+    "fire: strafe and attack"
+   ],
+   [
+    732,
+    "fire: hold HAND, then charged LEG"
+   ],
+   [
+    850,
+    "water: run in, attack while running"
+   ],
+   [
+    902,
+    "water: combination, standing"
+   ],
+   [
+    971,
+    "water: dodge sideways and counter"
+   ],
+   [
+    1025,
+    "water: guard"
+   ],
+   [
+    1065,
+    "water: special"
+   ],
+   [
+    1091,
+    "water: strafe and attack"
+   ],
+   [
+    1143,
+    "water: hold HAND, then charged LEG"
+   ],
+   [
+    1261,
+    "air: run in, attack while running"
+   ],
+   [
+    1311,
+    "air: combination, standing"
+   ],
+   [
+    1377,
+    "air: dodge sideways and counter"
+   ],
+   [
+    1429,
+    "air: guard"
+   ],
+   [
+    1469,
+    "air: special"
+   ],
+   [
+    1489,
+    "air: strafe and attack"
+   ],
+   [
+    1540,
+    "air: hold HAND, then charged LEG"
+   ]
+  ],
+  "errors": [],
+  "trace": [
+   {
+    "t": 0,
+    "from": "Idle_Loop",
+    "played": 0,
+    "to": "earth_idle",
+    "ts": 1,
+    "fade": 0.25,
+    "restart": false
+   },
+   {
+    "t": 2.78,
+    "from": "earth_idle",
+    "played": 0.99,
+    "to": "Walk_Loop",
+    "ts": 0.7,
+    "fade": 0.22,
+    "restart": false
+   },
+   {
+    "t": 2.85,
+    "from": "Walk_Loop",
+    "played": 0.05,
+    "to": "Jog_Fwd_Loop",
+    "ts": 0.8,
+    "fade": 0.22,
+    "restart": false
+   },
+   {
+    "t": 3.38,
+    "from": "Jog_Fwd_Loop",
+    "played": 0.77,
+    "to": "earth_punch2_M|U",
+    "ts": 1.45,
+    "fade": 0.14,
+    "restart": false
+   },
+   {
+    "t": 3.75,
+    "from": "earth_punch2_M|U",
+    "played": 0.66,
+    "to": "earth_punch|U",
+    "ts": 1.45,
+    "fade": 0.14,
+    "restart": false
+   },
+   {
+    "t": 4.56,
+    "from": "earth_punch|U",
+    "played": 0.91,
+    "to": "hit_b",
+    "ts": 1.1,
+    "fade": 0.05,
+    "restart": false
+   },
+   {
+    "t": 4.57,
+    "from": "hit_b",
+    "played": 0.01,
+    "to": "hit_b",
+    "ts": 1.1,
+    "fade": 0.05,
+    "restart": true
+   },
+   {
+    "t": 5.17,
+    "from": "hit_b",
+    "played": 0.55,
+    "to": "earth_kick",
+    "ts": 1.45,
+    "fade": 0.14,
+    "restart": false
+   },
+   {
+    "t": 5.47,
+    "from": "earth_kick",
+    "played": 0.37,
+    "to": "hit_a",
+    "ts": 1.1,
+    "fade": 0.05,
+    "restart": false
+   },
+   {
+    "t": 5.48,
+    "from": "hit_a",
+    "played": 0.01,
+    "to": "hit_a",
+    "ts": 1.1,
+    "fade": 0.05,
+    "restart": true
+   },
+   {
+    "t": 6.08,
+    "from": "hit_a",
+    "played": 0.6,
+    "to": "earth_punch2_M",
+    "ts": 1.45,
+    "fade": 0.14,
+    "restart": false
+   },
+   {
+    "t": 6.49,
+    "from": "earth_punch2_M",
+    "played": 0.74,
+    "to": "earth_punch2_M|U",
+    "ts": 1.45,
+    "fade": 0.14,
+    "restart": false
+   },
+   {
+    "t": 6.59,
+    "from": "earth_punch2_M|U",
+    "played": 0.92,
+    "to": "dodge_side",
+    "ts": 3.08,
+    "fade": 0.06,
+    "restart": false
+   },
+   {
+    "t": 6.82,
+    "from": "dodge_side",
+    "played": 0.72,
+    "to": "earth_idle|U",
+    "ts": 1,
+    "fade": 0.25,
+    "restart": false
+   },
+   {
+    "t": 7.12,
+    "from": "earth_idle|U",
+    "played": 0.21,
+    "to": "earth_punch|U",
+    "ts": 1.45,
+    "fade": 0.14,
+    "restart": false
+   },
+   {
+    "t": 7.19,
+    "from": "earth_punch|U",
+    "played": 0.07,
+    "to": "earth_punch",
+    "ts": 1.45,
+    "fade": 0.14,
+    "restart": false
+   },
+   {
+    "t": 7.75,
+    "from": "earth_punch",
+    "played": 0.71,
+    "to": "earth_kick",
+    "ts": 1.45,
+    "fade": 0.14,
+    "restart": false
+   },
+   {
+    "t": 8.03,
+    "from": "earth_kick",
+    "played": 0.34,
+    "to": "earth_guard",
+    "ts": 1,
+    "fade": 0.12,
+    "restart": false
+   },
+   {
+    "t": 9.03,
+    "from": "earth_guard",
+    "played": 1,
+    "to": "earth_idle",
+    "ts": 1,
+    "fade": 0.25,
+    "restart": false
+   },
+   {
+    "t": 9.36,
+    "from": "earth_idle",
+    "played": 0.24,
+    "to": "earth_pillar",
+    "ts": 1.7,
+    "fade": 0.14,
+    "restart": false
+   },
+   {
+    "t": 9.66,
+    "from": "earth_pillar",
+    "played": 0.28,
+    "to": "hit_b",
+    "ts": 1.5,
+    "fade": 0.05,
+    "restart": false
+   },
+   {
+    "t": 9.67,
+    "from": "hit_b",
+    "played": 0.01,
+    "to": "hit_b",
+    "ts": 1.5,
+    "fade": 0.05,
+    "restart": true
+   },
+   {
+    "t": 9.94,
+    "from": "hit_b",
+    "played": 0.33,
+    "to": "earth_idle",
+    "ts": 1,
+    "fade": 0.25,
+    "restart": false
+   },
+   {
+    "t": 10.27,
+    "from": "earth_idle",
+    "played": 0.24,
+    "to": "earth_idle|U",
+    "ts": 1,
+    "fade": 0.25,
+    "restart": false
+   },
+   {
+    "t": 10.47,
+    "from": "earth_idle|U",
+    "played": 0.38,
+    "to": "earth_kick",
+    "ts": 1.45,
+    "fade": 0.14,
+    "restart": false
+   },
+   {
+    "t": 10.98,
+    "from": "earth_kick",
+    "played": 0.63,
+    "to": "earth_punch2_M|U",
+    "ts": 1.45,
+    "fade": 0.14,
+    "restart": false
+   },
+   {
+    "t": 11.31,
+    "from": "earth_punch2_M|U",
+    "played": 0.6,
+    "to": "earth_punch|U",
+    "ts": 1.45,
+    "fade": 0.14,
+    "restart": false
+   },
+   {
+    "t": 11.62,
+    "from": "earth_punch|U",
+    "played": 0.34,
+    "to": "earth_punch",
+    "ts": 1.45,
+    "fade": 0.14,
+    "restart": false
+   },
+   {
+    "t": 11.95,
+    "from": "earth_punch",
+    "played": 0.72,
+    "to": "earth_punch2_M",
+    "ts": 1.45,
+    "fade": 0.14,
+    "restart": false
+   },
+   {
+    "t": 12.29,
+    "from": "earth_punch2_M",
+    "played": 0.6,
+    "to": "earth_lift",
+    "ts": 1,
+    "fade": 0.2,
+    "restart": false
+   },
+   {
+    "t": 13.02,
+    "from": "earth_lift",
+    "played": 0.41,
+    "to": "earth_idle",
+    "ts": 1,
+    "fade": 0.25,
+    "restart": false
+   },
+   {
+    "t": 13.39,
+    "from": "earth_idle",
+    "played": 0.26,
+    "to": "hit_a",
+    "ts": 1.1,
+    "fade": 0.05,
+    "restart": false
+   },
+   {
+    "t": 13.39,
+    "from": "hit_a",
+    "played": 0.01,
+    "to": "hit_a",
+    "ts": 1.1,
+    "fade": 0.05,
+    "restart": true
+   },
+   {
+    "t": 13.99,
+    "from": "hit_a",
+    "played": 0.6,
+    "to": "earth_idle",
+    "ts": 1,
+    "fade": 0.25,
+    "restart": false
+   },
+   {
+    "t": 15.33,
+    "from": "earth_idle",
+    "played": 0.95,
+    "to": "fire_idle",
+    "ts": 1,
+    "fade": 0.25,
+    "restart": false
+   },
+   {
+    "t": 15.73,
+    "from": "fire_idle",
+    "played": 0.13,
+    "to": "Walk_Loop",
+    "ts": 0.89,
+    "fade": 0.22,
+    "restart": false
+   },
+   {
+    "t": 15.76,
+    "from": "Walk_Loop",
+    "played": 0.02,
+    "to": "Jog_Fwd_Loop",
+    "ts": 0.8,
+    "fade": 0.22,
+    "restart": false
+   },
+   {
+    "t": 15.89,
+    "from": "Jog_Fwd_Loop",
+    "played": 0.17,
+    "to": "fire_idle|U",
+    "ts": 1,
+    "fade": 0.25,
+    "restart": false
+   },
+   {
+    "t": 16.09,
+    "from": "fire_idle|U",
+    "played": 0.07,
+    "to": "Jog_Fwd_Loop",
+    "ts": 0.83,
+    "fade": 0.22,
+    "restart": false
+   },
+   {
+    "t": 16.33,
+    "from": "Jog_Fwd_Loop",
+    "played": 0.28,
+    "to": "fire_punch_M|U",
+    "ts": 1.75,
+    "fade": 0.14,
+    "restart": false
+   },
+   {
+    "t": 16.8,
+    "from": "fire_punch_M|U",
+    "played": 1,
+    "to": "Jog_Fwd_Loop",
+    "ts": 1.32,
+    "fade": 0.22,
+    "restart": false
+   },
+   {
+    "t": 16.83,
+    "from": "Jog_Fwd_Loop",
+    "played": 0.05,
+    "to": "fire_punch2_M|U",
+    "ts": 1.75,
+    "fade": 0.14,
+    "restart": false
+   },
+   {
+    "t": 17.17,
+    "from": "fire_punch2_M|U",
+    "played": 1,
+    "to": "fire_punch_M|U",
+    "ts": 1.75,
+    "fade": 0.14,
+    "restart": false
+   },
+   {
+    "t": 17.64,
+    "from": "fire_punch_M|U",
+    "played": 1,
+    "to": "Walk_Loop",
+    "ts": 0.7,
+    "fade": 0.22,
+    "restart": false
+   },
+   {
+    "t": 17.68,
+    "from": "Walk_Loop",
+    "played": 0.02,
+    "to": "fire_idle",
+    "ts": 1,
+    "fade": 0.25,
+    "restart": false
+   },
+   {
+    "t": 17.78,
+    "from": "fire_idle",
+    "played": 0.03,
+    "to": "fire_punch2_M|U",
+    "ts": 1.75,
+    "fade": 0.14,
+    "restart": false
+   },
+   {
+    "t": 18.04,
+    "from": "fire_punch2_M|U",
+    "played": 0.88,
+    "to": "fire_round_M",
+    "ts": 1.75,
+    "fade": 0.14,
+    "restart": false
+   },
+   {
+    "t": 18.08,
+    "from": "fire_round_M",
+    "played": 0.06,
+    "to": "hit_b",
+    "ts": 1.5,
+    "fade": 0.05,
+    "restart": false
+   },
+   {
+    "t": 18.09,
+    "from": "hit_b",
+    "played": 0.01,
+    "to": "hit_b",
+    "ts": 1.5,
+    "fade": 0.05,
+    "restart": true
+   },
+   {
+    "t": 18.35,
+    "from": "hit_b",
+    "played": 0.33,
+    "to": "fire_spin",
+    "ts": 1.5,
+    "fade": 0.14,
+    "restart": false
+   },
+   {
+    "t": 18.92,
+    "from": "fire_spin",
+    "played": 0.67,
+    "to": "fire_punch_M",
+    "ts": 1.75,
+    "fade": 0.14,
+    "restart": false
+   },
+   {
+    "t": 19.39,
+    "from": "fire_punch_M",
+    "played": 1,
+    "to": "fire_idle",
+    "ts": 1,
+    "fade": 0.25,
+    "restart": false
+   },
+   {
+    "t": 19.53,
+    "from": "fire_idle",
+    "played": 0.04,
+    "to": "fire_idle|U",
+    "ts": 1,
+    "fade": 0.25,
+    "restart": false
+   },
+   {
+    "t": 19.66,
+    "from": "fire_idle|U",
+    "played": 0.09,
+    "to": "dodge_side",
+    "ts": 2.5,
+    "fade": 0.06,
+    "restart": false
+   },
+   {
+    "t": 19.96,
+    "from": "dodge_side",
+    "played": 0.75,
+    "to": "fire_idle|U",
+    "ts": 1,
+    "fade": 0.25,
+    "restart": false
+   },
+   {
+    "t": 20.03,
+    "from": "fire_idle|U",
+    "played": 0.02,
+    "to": "fire_punch2_M",
+    "ts": 1.75,
+    "fade": 0.14,
+    "restart": false
+   },
+   {
+    "t": 20.36,
+    "from": "fire_punch2_M",
+    "played": 1,
+    "to": "fire_idle",
+    "ts": 1,
+    "fade": 0.25,
+    "restart": false
+   },
+   {
+    "t": 20.43,
+    "from": "fire_idle",
+    "played": 0.02,
+    "to": "fire_round_M",
+    "ts": 1.75,
+    "fade": 0.14,
+    "restart": false
+   },
+   {
+    "t": 20.99,
+    "from": "fire_round_M",
+    "played": 0.85,
+    "to": "fire_guard",
+    "ts": 1,
+    "fade": 0.12,
+    "restart": false
+   },
+   {
+    "t": 21.99,
+    "from": "fire_guard",
+    "played": 0.5,
+    "to": "fire_idle",
+    "ts": 1,
+    "fade": 0.25,
+    "restart": false
+   },
+   {
+    "t": 22.33,
+    "from": "fire_idle",
+    "played": 0.11,
+    "to": "fire_orb",
+    "ts": 1.5,
+    "fade": 0.14,
+    "restart": false
+   },
+   {
+    "t": 23.06,
+    "from": "fire_orb",
+    "played": 1,
+    "to": "fire_idle",
+    "ts": 1,
+    "fade": 0.25,
+    "restart": false
+   },
+   {
+    "t": 23.19,
+    "from": "fire_idle",
+    "played": 0.04,
+    "to": "fire_idle|U",
+    "ts": 1,
+    "fade": 0.25,
+    "restart": false
+   },
+   {
+    "t": 23.39,
+    "from": "fire_idle|U",
+    "played": 0.11,
+    "to": "fire_round_M",
+    "ts": 1.75,
+    "fade": 0.14,
+    "restart": false
+   },
+   {
+    "t": 23.86,
+    "from": "fire_round_M",
+    "played": 0.7,
+    "to": "fire_punch_M|U",
+    "ts": 1.75,
+    "fade": 0.14,
+    "restart": false
+   },
+   {
+    "t": 24.23,
+    "from": "fire_punch_M|U",
+    "played": 0.8,
+    "to": "fire_punch2_M|U",
+    "ts": 1.75,
+    "fade": 0.14,
+    "restart": false
+   },
+   {
+    "t": 24.5,
+    "from": "fire_punch2_M|U",
+    "played": 0.9,
+    "to": "fire_idle|U",
+    "ts": 1,
+    "fade": 0.25,
+    "restart": false
+   },
+   {
+    "t": 24.54,
+    "from": "fire_idle|U",
+    "played": 0.01,
+    "to": "fire_idle",
+    "ts": 1,
+    "fade": 0.25,
+    "restart": false
+   },
+   {
+    "t": 24.71,
+    "from": "fire_idle",
+    "played": 0.07,
+    "to": "fire_punch_M",
+    "ts": 1.75,
+    "fade": 0.14,
+    "restart": false
+   },
+   {
+    "t": 25.01,
+    "from": "fire_punch_M",
+    "played": 0.66,
+    "to": "fire_stream",
+    "ts": 1,
+    "fade": 0.2,
+    "restart": false
+   },
+   {
+    "t": 25.72,
+    "from": "fire_stream",
+    "played": 0.25,
+    "to": "fire_idle",
+    "ts": 1,
+    "fade": 0.25,
+    "restart": false
+   },
+   {
+    "t": 26.09,
+    "from": "fire_idle",
+    "played": 0.12,
+    "to": "fire_round_M",
+    "ts": 1.75,
+    "fade": 0.14,
+    "restart": false
+   },
+   {
+    "t": 26.52,
+    "from": "fire_round_M",
+    "played": 0.65,
+    "to": "fire_fly",
+    "ts": 0,
+    "fade": 0.15,
+    "restart": false
+   },
+   {
+    "t": 27.09,
+    "from": "fire_fly",
+    "played": 0.22,
+    "to": "fire_fly",
+    "ts": 1.75,
+    "fade": 0.14,
+    "restart": true
+   },
+   {
+    "t": 27.79,
+    "from": "fire_fly",
+    "played": 1,
+    "to": "fire_idle",
+    "ts": 1,
+    "fade": 0.25,
+    "restart": false
+   },
+   {
+    "t": 28.09,
+    "from": "fire_idle",
+    "played": 0.1,
+    "to": "water_idle",
+    "ts": 1,
+    "fade": 0.25,
+    "restart": false
+   },
+   {
+    "t": 28.49,
+    "from": "water_idle",
+    "played": 0.13,
+    "to": "Walk_Loop",
+    "ts": 0.7,
+    "fade": 0.22,
+    "restart": false
+   },
+   {
+    "t": 28.55,
+    "from": "Walk_Loop",
+    "played": 0.05,
+    "to": "Jog_Fwd_Loop",
+    "ts": 0.8,
+    "fade": 0.22,
+    "restart": false
+   },
+   {
+    "t": 29.09,
+    "from": "Jog_Fwd_Loop",
+    "played": 0.78,
+    "to": "water_palm|U",
+    "ts": 2.3,
+    "fade": 0.14,
+    "restart": false
+   },
+   {
+    "t": 29.25,
+    "from": "water_palm|U",
+    "played": 0.21,
+    "to": "hit_a",
+    "ts": 1.1,
+    "fade": 0.05,
+    "restart": false
+   },
+   {
+    "t": 29.26,
+    "from": "hit_a",
+    "played": 0.01,
+    "to": "hit_a",
+    "ts": 1.1,
+    "fade": 0.05,
+    "restart": true
+   },
+   {
+    "t": 29.86,
+    "from": "hit_a",
+    "played": 0.6,
+    "to": "water_palm_M|U",
+    "ts": 2.3,
+    "fade": 0.14,
+    "restart": false
+   },
+   {
+    "t": 30.26,
+    "from": "water_palm_M|U",
+    "played": 0.51,
+    "to": "water_palm_M",
+    "ts": 2.3,
+    "fade": 0.14,
+    "restart": false
+   },
+   {
+    "t": 30.33,
+    "from": "water_palm_M",
+    "played": 0.6,
+    "to": "water_palm",
+    "ts": 2.3,
+    "fade": 0.14,
+    "restart": false
+   },
+   {
+    "t": 30.7,
+    "from": "water_palm",
+    "played": 0.48,
+    "to": "water_kick",
+    "ts": 1.45,
+    "fade": 0.14,
+    "restart": false
+   },
+   {
+    "t": 31.17,
+    "from": "water_kick",
+    "played": 0.64,
+    "to": "water_turn",
+    "ts": 1.45,
+    "fade": 0.14,
+    "restart": false
+   },
+   {
+    "t": 32.15,
+    "from": "water_turn",
+    "played": 1,
+    "to": "water_idle",
+    "ts": 1,
+    "fade": 0.25,
+    "restart": false
+   },
+   {
+    "t": 32.21,
+    "from": "water_idle",
+    "played": 0.02,
+    "to": "water_idle|U",
+    "ts": 1,
+    "fade": 0.25,
+    "restart": false
+   },
+   {
+    "t": 32.35,
+    "from": "water_idle|U",
+    "played": 0.07,
+    "to": "dodge_side",
+    "ts": 2,
+    "fade": 0.06,
+    "restart": false
+   },
+   {
+    "t": 32.75,
+    "from": "dodge_side",
+    "played": 0.8,
+    "to": "water_idle|U",
+    "ts": 1,
+    "fade": 0.25,
+    "restart": false
+   },
+   {
+    "t": 32.85,
+    "from": "water_idle|U",
+    "played": 0.03,
+    "to": "water_idle",
+    "ts": 1,
+    "fade": 0.25,
+    "restart": false
+   },
+   {
+    "t": 32.91,
+    "from": "water_idle",
+    "played": 0.06,
+    "to": "water_palm_M",
+    "ts": 2.3,
+    "fade": 0.14,
+    "restart": false
+   },
+   {
+    "t": 33.38,
+    "from": "water_palm_M",
+    "played": 0.6,
+    "to": "water_kick",
+    "ts": 1.45,
+    "fade": 0.14,
+    "restart": false
+   },
+   {
+    "t": 33.95,
+    "from": "water_kick",
+    "played": 0.78,
+    "to": "water_guard",
+    "ts": 1,
+    "fade": 0.12,
+    "restart": false
+   },
+   {
+    "t": 34.86,
+    "from": "water_guard",
+    "played": 0.33,
+    "to": "water_idle",
+    "ts": 1,
+    "fade": 0.25,
+    "restart": false
+   },
+   {
+    "t": 35.19,
+    "from": "water_idle",
+    "played": 0.11,
+    "to": "water_sphere",
+    "ts": 1.5,
+    "fade": 0.14,
+    "restart": false
+   },
+   {
+    "t": 36,
+    "from": "water_sphere",
+    "played": 0.93,
+    "to": "water_sphere|U",
+    "ts": 1.5,
+    "fade": 0.14,
+    "restart": false
+   },
+   {
+    "t": 36.06,
+    "from": "water_sphere|U",
+    "played": 1,
+    "to": "water_idle|U",
+    "ts": 1,
+    "fade": 0.25,
+    "restart": false
+   },
+   {
+    "t": 36.2,
+    "from": "water_idle|U",
+    "played": 0.04,
+    "to": "water_kick",
+    "ts": 1.45,
+    "fade": 0.14,
+    "restart": false
+   },
+   {
+    "t": 36.66,
+    "from": "water_kick",
+    "played": 0.63,
+    "to": "water_palm|U",
+    "ts": 2.3,
+    "fade": 0.14,
+    "restart": false
+   },
+   {
+    "t": 37.04,
+    "from": "water_palm|U",
+    "played": 0.48,
+    "to": "water_palm_M|U",
+    "ts": 2.3,
+    "fade": 0.14,
+    "restart": false
+   },
+   {
+    "t": 37.38,
+    "from": "water_palm_M|U",
+    "played": 0.43,
+    "to": "water_palm_M",
+    "ts": 2.3,
+    "fade": 0.14,
+    "restart": false
+   },
+   {
+    "t": 37.55,
+    "from": "water_palm_M",
+    "played": 0.65,
+    "to": "water_palm",
+    "ts": 2.3,
+    "fade": 0.14,
+    "restart": false
+   },
+   {
+    "t": 37.82,
+    "from": "water_palm",
+    "played": 0.34,
+    "to": "water_draw",
+    "ts": 1,
+    "fade": 0.2,
+    "restart": false
+   },
+   {
+    "t": 38.65,
+    "from": "water_draw",
+    "played": 0.21,
+    "to": "water_idle",
+    "ts": 1,
+    "fade": 0.25,
+    "restart": false
+   },
+   {
+    "t": 39.05,
+    "from": "water_idle",
+    "played": 0.13,
+    "to": "water_kick",
+    "ts": 1.45,
+    "fade": 0.14,
+    "restart": false
+   },
+   {
+    "t": 39.52,
+    "from": "water_kick",
+    "played": 0.63,
+    "to": "water_tidal",
+    "ts": 0,
+    "fade": 0.15,
+    "restart": false
+   },
+   {
+    "t": 39.96,
+    "from": "water_tidal",
+    "played": 0.2,
+    "to": "water_tidal",
+    "ts": 2,
+    "fade": 0.14,
+    "restart": true
+   },
+   {
+    "t": 40.96,
+    "from": "water_tidal",
+    "played": 0.77,
+    "to": "air_idle",
+    "ts": 1,
+    "fade": 0.25,
+    "restart": false
+   },
+   {
+    "t": 41.36,
+    "from": "air_idle",
+    "played": 0.04,
+    "to": "Walk_Loop",
+    "ts": 0.93,
+    "fade": 0.22,
+    "restart": false
+   },
+   {
+    "t": 41.39,
+    "from": "Walk_Loop",
+    "played": 0.02,
+    "to": "Jog_Fwd_Loop",
+    "ts": 0.8,
+    "fade": 0.22,
+    "restart": false
+   },
+   {
+    "t": 41.96,
+    "from": "Jog_Fwd_Loop",
+    "played": 0.98,
+    "to": "air_palm_M|U",
+    "ts": 1.65,
+    "fade": 0.14,
+    "restart": false
+   },
+   {
+    "t": 42.29,
+    "from": "air_palm_M|U",
+    "played": 0.61,
+    "to": "air_palm|U",
+    "ts": 1.65,
+    "fade": 0.14,
+    "restart": false
+   },
+   {
+    "t": 42.62,
+    "from": "air_palm|U",
+    "played": 0.61,
+    "to": "air_palm_M|U",
+    "ts": 1.65,
+    "fade": 0.14,
+    "restart": false
+   },
+   {
+    "t": 43.12,
+    "from": "air_palm_M|U",
+    "played": 0.92,
+    "to": "air_palm_M",
+    "ts": 1.65,
+    "fade": 0.14,
+    "restart": false
+   },
+   {
+    "t": 43.19,
+    "from": "air_palm_M",
+    "played": 1,
+    "to": "air_idle",
+    "ts": 1,
+    "fade": 0.25,
+    "restart": false
+   },
+   {
+    "t": 43.22,
+    "from": "air_idle",
+    "played": 0,
+    "to": "air_palm|U",
+    "ts": 1.65,
+    "fade": 0.14,
+    "restart": false
+   },
+   {
+    "t": 43.49,
+    "from": "air_palm|U",
+    "played": 0.49,
+    "to": "air_palm",
+    "ts": 1.65,
+    "fade": 0.14,
+    "restart": false
+   },
+   {
+    "t": 43.56,
+    "from": "air_palm",
+    "played": 0.61,
+    "to": "air_crescent_M",
+    "ts": 1.65,
+    "fade": 0.14,
+    "restart": false
+   },
+   {
+    "t": 44.01,
+    "from": "air_crescent_M",
+    "played": 0.67,
+    "to": "air_whirl",
+    "ts": 1.65,
+    "fade": 0.14,
+    "restart": false
+   },
+   {
+    "t": 45.08,
+    "from": "air_whirl",
+    "played": 0.93,
+    "to": "dodge_side",
+    "ts": 2.22,
+    "fade": 0.06,
+    "restart": false
+   },
+   {
+    "t": 45.42,
+    "from": "dodge_side",
+    "played": 0.74,
+    "to": "air_idle|U",
+    "ts": 1,
+    "fade": 0.25,
+    "restart": false
+   },
+   {
+    "t": 45.78,
+    "from": "air_idle|U",
+    "played": 0.04,
+    "to": "air_palm_M|U",
+    "ts": 1.65,
+    "fade": 0.14,
+    "restart": false
+   },
+   {
+    "t": 45.85,
+    "from": "air_palm_M|U",
+    "played": 0.12,
+    "to": "air_palm_M",
+    "ts": 1.65,
+    "fade": 0.14,
+    "restart": false
+   },
+   {
+    "t": 46.18,
+    "from": "air_palm_M",
+    "played": 0.73,
+    "to": "air_crescent_M",
+    "ts": 1.65,
+    "fade": 0.14,
+    "restart": false
+   },
+   {
+    "t": 46.65,
+    "from": "air_crescent_M",
+    "played": 0.7,
+    "to": "air_guard",
+    "ts": 1,
+    "fade": 0.12,
+    "restart": false
+   },
+   {
+    "t": 47.59,
+    "from": "air_guard",
+    "played": 0.59,
+    "to": "air_idle",
+    "ts": 1,
+    "fade": 0.25,
+    "restart": false
+   },
+   {
+    "t": 47.92,
+    "from": "air_idle",
+    "played": 0.04,
+    "to": "air_vortex",
+    "ts": 1.6,
+    "fade": 0.14,
+    "restart": false
+   },
+   {
+    "t": 48.59,
+    "from": "air_vortex",
+    "played": 0.84,
+    "to": "air_vortex|U",
+    "ts": 1.6,
+    "fade": 0.14,
+    "restart": false
+   },
+   {
+    "t": 48.72,
+    "from": "air_vortex|U",
+    "played": 1,
+    "to": "air_idle|U",
+    "ts": 1,
+    "fade": 0.25,
+    "restart": false
+   },
+   {
+    "t": 48.79,
+    "from": "air_idle|U",
+    "played": 0.01,
+    "to": "air_crescent_M",
+    "ts": 1.65,
+    "fade": 0.14,
+    "restart": false
+   },
+   {
+    "t": 49.22,
+    "from": "air_crescent_M",
+    "played": 0.65,
+    "to": "air_palm|U",
+    "ts": 1.65,
+    "fade": 0.14,
+    "restart": false
+   },
+   {
+    "t": 49.53,
+    "from": "air_palm|U",
+    "played": 0.56,
+    "to": "air_palm_M|U",
+    "ts": 1.65,
+    "fade": 0.14,
+    "restart": false
+   },
+   {
+    "t": 49.87,
+    "from": "air_palm_M|U",
+    "played": 0.63,
+    "to": "air_palm_M",
+    "ts": 1.65,
+    "fade": 0.14,
+    "restart": false
+   },
+   {
+    "t": 50.11,
+    "from": "air_palm_M",
+    "played": 1,
+    "to": "air_palm",
+    "ts": 1.65,
+    "fade": 0.14,
+    "restart": false
+   },
+   {
+    "t": 50.44,
+    "from": "air_palm",
+    "played": 0.61,
+    "to": "air_push",
+    "ts": 1,
+    "fade": 0.2,
+    "restart": false
+   },
+   {
+    "t": 51.24,
+    "from": "air_push",
+    "played": 0.14,
+    "to": "air_idle",
+    "ts": 1,
+    "fade": 0.25,
+    "restart": false
+   },
+   {
+    "t": 51.64,
+    "from": "air_idle",
+    "played": 0.04,
+    "to": "air_crescent_M",
+    "ts": 1.65,
+    "fade": 0.14,
+    "restart": false
+   },
+   {
+    "t": 52.07,
+    "from": "air_crescent_M",
+    "played": 0.65,
+    "to": "air_cyclone",
+    "ts": 0,
+    "fade": 0.15,
+    "restart": false
+   },
+   {
+    "t": 52.55,
+    "from": "air_cyclone",
+    "played": 0.28,
+    "to": "air_cyclone",
+    "ts": 1.65,
+    "fade": 0.14,
+    "restart": true
+   },
+   {
+    "t": 53.35,
+    "from": "air_cyclone",
+    "played": 1,
+    "to": "air_idle",
+    "ts": 1,
+    "fade": 0.25,
+    "restart": false
+   }
+  ]
+ }
+}
