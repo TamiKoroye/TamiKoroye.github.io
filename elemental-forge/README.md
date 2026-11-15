@@ -1,98 +1,96 @@
 # Elemental Forge
 
-A browser-playable third-person elemental combat game for Android phones, played in landscape in Chrome on a Samsung Galaxy S25 Ultra. It uses Three.js r170, vendored locally, with no build step and no external downloads at runtime.
+A browser-playable third-person elemental martial-arts game for Android phones, played in landscape in Chrome on a Samsung Galaxy S25 Ultra. It uses Three.js r170, vendored locally, with no build step and no external downloads at runtime.
 
 Live build: https://tamikoroye.github.io/elemental-forge/
 
-**Current build: Stage A (architecture and combat foundation).** Earth is the only playable element. Fire, Water and Air are Stage B.
+**Current build:** the martial-arts and elemental manipulation overhaul (Phases A–D of the brief), plus the camera parts of Phase E. All four elements are playable, each with its own fighting style.
+
+| Element | Martial art | Character |
+|---|---|---|
+| Earth | Hung Gar | low, wide, rooted stance; forceful hip-driven punches; short grounded kicks; stomps |
+| Fire | Northern Shaolin | long bow stance with a light bounce; fully extended punches; high, spinning and flying kicks |
+| Water | Tai Chi Chuan | upright, rounded arms that never stop circling; weight shifting; crescent and turning kicks |
+| Air | Baguazhang | toe-in circle-walking stance; open palms; constant spinning kicks; fastest movement |
 
 ## Launching
 - **Phone:** open the live link in Chrome and tap FIGHT. To install it like an app, open Chrome's menu and choose *Add to Home screen*.
-- **Locally:** `cd elemental-forge && python3 -m http.server 8765`, then open http://localhost:8765/. ES modules don't load from `file://`, so opening `index.html` directly won't work.
+- **Locally:** `cd elemental-forge && python3 -m http.server 8765`, then open http://localhost:8765/. Opening `index.html` directly from disk won't work.
 
-## Controls (touch)
-- **Move:** left thumb on the left half. Partial push walks, full push runs. Holding the stick at its rim sprints, when not locked on.
-- **Aim / camera:** drag on the right half. LOCK picks the rival nearest the centre of your view.
-- **STRIKE:**
-  - tap: jab, cross, spinning kick
-  - short hold: heavy palm strike (staggers, breaks guards)
-  - long hold, until the fists glow: charged axe-kick slam with a ground shockwave that knocks down
-- **GUARD (hold):** stone shield. Raised just before impact it becomes a perfect guard:
-  - a rock is deflected back at its thrower
-  - a melee attacker is staggered
-  - the next STRIKE becomes a spinning counter
-- **DODGE:** roll toward the stick. While locked on: sidestep or backstep.
-- **Cancels and buffering:** dodge and jump cancel attack recovery, and inputs pressed slightly early are buffered.
-- **BEND:** tap to raise and throw a rock at the reticle; hold to keep it suspended.
-- **Keyboard:** WASD, C (sprint), mouse, left/right click, Q, Space, Shift, Tab, Esc.
+## Controls (touch, landscape)
+- **Left thumb:** move. Light push walks, full push runs, holding the stick at its rim sprints (not while locked on).
+- **Right-half drag:** aim and camera. **LOCK:** frame the rival.
+- **Elements (top left):** instant switch, even mid-run. The dots show the objects you are holding for each element.
+- **Action star (bottom right):** JUMP top, GUARD upper-left, DODGE upper-right, HAND lower-left, LEG lower-right, SPECIAL centre. Size and spacing can be adjusted in the pause menu.
 
-## Code layout
+| | Earth | Fire | Water | Air |
+|---|---|---|---|---|
+| HAND tap | stone punch (bursts a rock from the ground, or launches a held rock) | fire fist / fireball (or launches a flame orb) | water palm (or launches a held globe) | air palm gust (or launches a vortex) |
+| HAND hold | boulder lift: up to 3 orbiting rocks, taking loose stones first | sustained fire stream (burns the ground) | draw water from a pool (or condense it slowly) into 3 globes; with 3 held it becomes a water whip | sustained wind push (shoves fighters and projectiles) |
+| LEG tap (×2) | earth kick, then a low sweep firing 3 stones | flame kick arc, then a spinning flame kick ring | crescent water arc (spends a globe), then a turning wave | crescent air blade, then a jumping whirlwind (3 blades) |
+| LEG hold, release | seismic stomp: shockwave plus a line of rising spikes | flying dragon kick | tidal sweep (bigger with held water) | cyclone |
+| GUARD | stone wall (blocks everything) | fire wall (burns fire and air; rocks get through at half force) | water shield (douses fire, slows rocks) | air deflection (turns projectiles aside) |
+| Perfect GUARD (just before impact) | sends rocks back | sends fire and rocks back | redirects any projectile | sends any projectile back |
+| SPECIAL | stone pillar (stand on it; erupts under a locked rival) | flame orb (the 4th press fires a volley of 3) | water sphere that traps | vortex (the 4th press merges 3 into a large pulling vortex) |
+| DODGE | roll (sidestep or backstep while locked on) | flame dash | water slide | air dash |
+| JUMP | — | flame-boosted | double jump, plus hold to glide | — |
+
+**Keyboard:** WASD to move, C sprint, mouse to aim, left click HAND, right click LEG, Q guard, E special, Space jump, Shift dodge, 1–4 elements, Tab lock.
+
+## Architecture
 | File | Role |
 |---|---|
-| `js/main.js` | Renderer, lighting, game loop, player input mapping, aiming, lock-on target selection, HUD, rounds, menus, test hooks |
-| `js/character.js` | Skinned character generator: one continuous weighted mesh on a `THREE.Skeleton` (17 bones), vertex-coloured clothing |
-| `js/fighter.js` | Fighter state machine: movement, stamina, actions with phases (startup, active, cancel, recovery), input buffer, dodges, hit levels, layered procedural animation |
-| `js/combat.js` | Rocks, stone shields, melee resolution, perfect guard and deflection, charged slam shockwave, damage |
-| `js/camera.js` | Over-the-shoulder follow camera: auto-follow, lock-on framing, collision pull-in, shake, FOV kick |
-| `js/controls.js` | Multi-touch floating stick, aim drag, buttons, keyboard/mouse |
-| `js/arena.js` | Arena geometry, ramps and ledges (slopes), colliders, ground and collision queries |
-| `js/ai.js` | Opponent decision-making (Milestone 1 level; Stage C rebuilds this) |
-| `js/fx.js`, `js/audio.js` | Pooled particles and decals; synthesised sound (no audio files) |
-| `tests/` | Automated play test, pose gallery, deterministic gameplay recorder |
+| `js/pose.js` | Shared pose primitives: 17-joint pose array, arm/leg setters, two-bone leg IK, stance helper |
+| `js/styles.js` | The four martial-arts styles as data: stance, locomotion profile, dodge, jump, and keyframed techniques (hand, two leg variants, charged, sustained hold pose, guard pose, special) with timing, events, melee windows, spins and jumps |
+| `js/fighter.js` | One technique runner for every element: input model (tap, hold, charge, buffer, cancel), movement, stamina, dodges, reactions, pose layering and smoothing (with a joint-velocity cap) |
+| `js/elements.js` | Bending system: controlled orbiting objects, projectiles with per-element physics, sustained techniques, defences with collision rules, element-vs-element clash rules, burning ground, seismic spikes, pillars, restraint |
+| `js/character.js` | Skinned character on a `THREE.Skeleton`; the sash recolours to the element |
+| `js/combat.js` | Lunge, melee checks, damage, front blocking and perfect guard, slam shockwave |
+| `js/arena.js` | Arena, ramps, ledge, water pools, loose stones, walkable boulders, collision and ground queries |
+| `js/camera.js` | Follow camera: lock-on framing, collision, rises over low obstructions so platform edges don't hide the fighter |
+| `js/main.js`, `js/controls.js` | Loop, star layout, HUD, multi-touch input, settings |
 
-## Stage A audit (summary)
-Findings that drove the work:
-
-1. **Bodies were about 40 rigid primitives per fighter.** Segments pivoted visibly apart at joints, and each fighter cost about 40 draw calls (80 with shadows).
-   **Fix:** one generated skinned mesh per fighter. Lofted tubes are weight-blended across the shoulders, elbows, waist, hips, knees and ankles, and clothing is vertex-coloured, so each body is a single draw call.
-2. **Locomotion had a single run cycle.** There was no walk or sprint, no banking or acceleration lean, and no footsteps.
-   **Fix:** a speed-scaled walk/run/sprint cycle (stride, knee lift, arm pump, lean), banking into turns, leaning with acceleration, settling when stopping, and footstep sounds.
-3. **Combat was gated by long fixed animations.** There was no input buffering and no cancelling, and every hit produced the same flinch.
-   **Fix:** actions now have explicit active and cancel phases, a 0.15 to 0.25 s input buffer, and dodge/jump/attack cancels. Moves: heavy and charged attacks, a perfect guard with counter, directional dodges (roll, sidestep, backstep). Hits are graded: flinch, stagger, or knockdown with get-up.
-4. **Terrain was flat apart from steps.**
-   **Fix:** ramps up to the platforms and a 1.6 m stone ledge, with slope-aware ground, collision and projectile queries.
-5. **Camera:** lock-on now picks the best target (view angle plus distance), with an FOV kick when sprinting. Sprint no longer overrides strafing while locked on (a bug found in testing).
-6. **Kept unchanged**, because they worked: the renderer, arena, rock and shield systems, aiming and reticle, touch controls, and the round flow.
-
-**Rigged asset evaluation.** No suitable authorised rigged martial-artist model or animation set was reachable from the build environment. The CC0 KayKit characters are chibi-proportioned. The three.js example `Xbot` is a Mixamo-derived mannequin with unclear redistribution terms and no martial-arts clips. Mixamo, Quaternius and similar sources were not reachable. So the characters are generated in code, and the animation is procedural on a real skeleton. If you can supply licensed rigged GLB characters and animations, the skeleton layout in `character.js` is the integration point.
-
-## Status
-**Implemented and verified (automated, 42/42 checks; see `tests/evidence/results.json`):**
-- walk, run and sprint by stick deflection
-- slope climbing
-- heavy and charged attacks
-- knockdown and get-up
-- dodge cancel
-- input buffering
-- sidestep and backstep
-- perfect guard deflecting a rock back into its thrower, followed by a counter attack
-- the single-mesh skinned characters
-- all Milestone 1 checks:
-  - movement and camera
-  - multi-touch
-  - aiming and reticle accuracy
-  - shield blocking
-  - combo
-  - AI round
-  - portrait prompt
-
-**Implemented, not verified on device:** performance, touch feel and audio on the Galaxy S25 Ultra. Tests use a software renderer at about 20 fps, so they say nothing about real frame rate.
-
-**Planned:**
-- Stage B: fire, water and air, plus element interactions
-- Stage C: enemy archetypes and AI
-- Stage D: the Stone Highlands chapter
-- Stages E to G: advanced disciplines, campaign and polish
+**Element interactions (rules in `elements.js`):**
+- water puts out fireballs, fire walls and burning ground
+- rocks smother fire and push through fire walls at half force
+- water slows rocks
+- wind nudges rocks and blows fire and water back at their caster
+- the same element meeting itself cancels out
+- held objects act as a defensive formation and intercept projectiles
 
 ## Testing
     cd elemental-forge && python3 -m http.server 8765 &
-    node tests/play-test.mjs http://localhost:8765/ ./test-shots          # 42 automated checks with real CDP multi-touch
-    node tests/pose-gallery.mjs http://localhost:8765/ ./poses           # close-up stills of every pose
-    node tests/record-gameplay.mjs http://localhost:8765/ ./gameplay.mp4  # deterministic 30 fps gameplay capture
+    node tests/play-test.mjs http://localhost:8765/ ./test-shots        # 86 automated checks
+    node tests/style-gallery.mjs http://localhost:8765/ ./style-shots   # every pose of every style
+    node tests/record-styles.mjs http://localhost:8765/ ./style-videos  # one clip per element, same input
+    node tests/record-gameplay.mjs http://localhost:8765/ ./gameplay.mp4
 
-The recorder advances the game in exact 1/30 s steps and screenshots each frame. The footage therefore plays at true game speed, even though the headless browser renders far slower than a phone.
+The play test drives the real on-screen controls with DevTools multi-touch events. It steps the game in exact 1/30 s frames, so timing-sensitive mechanics are checked deterministically. It covers 16 areas:
+1. star layout geometry and overlap, at default and maximum size
+2. walk, run and sprint
+3. two-finger camera control while moving
+4. strafing
+5. jump and air double jump
+6. slopes
+7. distinct stances, speeds and dodges per style
+8. element switching mid-run
+9. HAND, LEG, sustained hold, multiple held objects, defence, perfect guard and charged technique for every element
+10. full-body kick mechanics: kicking hip raised, supporting foot planted, torso engaged
+11. movement during bending
+12. element interactions
+13. pillars, boulders and loose stones
+14. combination flow without pose snapping
+15. camera over platform edges and during spins
+16. live AI, NaN regression and the portrait prompt
+
+**Not verified on a physical Samsung device:** frame rate, touch feel and audio. The tests use a software renderer.
 
 ## Known limitations
-- The characters are generated in code. They are a large step up from the primitives, but not equal to artist-made models; facial detail is minimal and there are no fingers.
-- The AI is still the Milestone 1 brain. It reacts to the new hit levels but doesn't yet use heavy, charged or counter moves.
-- The free-aim rock impact point can land up to about 1 m short on very shallow floor shots, because of the rock's radius.
+- The characters are generated in code with procedural animation, not artist-made or motion-captured. Every technique uses coordinated legs, hips, torso and arms, but the result is stylised, not cinematic.
+- The opponent AI uses each element's techniques by range but is still the first-pass brain. Stage C replaces it with archetype-specific behaviour.
+- Not yet built:
+  - advanced disciplines (lightning, ice, bloodbending, metal, lava, sand, flight, air removal)
+  - Toph's Southern Praying Mantis variant
+  - water and ice traversal (ice bridges)
+  - the campaign and progression
+- Air push moves fighters and projectiles but not static arena boulders.

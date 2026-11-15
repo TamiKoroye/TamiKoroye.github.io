@@ -3,6 +3,8 @@ import * as THREE from 'three';
 import { Arena, HALF } from './arena.js';
 import { Fighter } from './fighter.js';
 import { Combat } from './combat.js';
+import { Bending } from './elements.js';
+import { STYLES, ELEMENTS } from './styles.js';
 import { FollowCam } from './camera.js';
 import { Controls } from './controls.js';
 import { AI } from './ai.js';
@@ -47,6 +49,7 @@ const world = {
 };
 world.arena = new Arena(scene, renderer);
 world.combat = new Combat(world);
+world.bending = new Bending(world);
 const camCtl = new FollowCam(camera, world.arena);
 
 const player = new Fighter(world, { name: 'YOU', team: 0, skin: 0x8c5a3c, pants: 0x5b3a22, sash: 0xd88a2a, wrap: 0xd8cbb0, build: 1.04, bulk: 1.05 });
@@ -58,7 +61,7 @@ const ai = new AI(world, opp, player, 'normal');
 
 // ------------------------------------------------------------------ settings / state
 const state = {
-  difficulty: 'normal', quality: 'high', locked: true, aimHold: 0,
+  difficulty: 'normal', quality: 'high', locked: true, aimHold: 0, rivalEl: 'random', btnSize: 1, btnSpread: 1,
   round: 1, wins: [0, 0], phase: 'menu', phaseT: 0, paused: false,
   pixelRatio: 1, frameAvg: 16, perfT: 0, stickFullT: 0, manual: false,
 };
@@ -100,7 +103,7 @@ window.addEventListener('resize', resize);
 
 // ------------------------------------------------------------------ rounds
 function placeFighters() {
-  world.combat.clear();
+  world.bending.clear();
   player.reset(0, -12, 0);
   opp.reset(0, 12, Math.PI);
   camCtl.snapBehind(player);
@@ -110,6 +113,8 @@ function startMatch() {
   state.wins = [0, 0]; state.round = 1;
   ai.setDifficulty(state.difficulty);
   startRound();
+  opp.setElement(state.rivalEl === 'random' ? ELEMENTS[Math.floor(Math.random() * 4)] : state.rivalEl, true);
+  $('opp-name').textContent = 'RIVAL · ' + opp.style.name.toUpperCase();
 }
 function startRound() {
   placeFighters();
@@ -186,13 +191,13 @@ function playerInput(inp) {
   pi.mx = rx * inp.mx + fx * inp.my;
   pi.mz = rz * inp.mx + fz * inp.my;
   const b = inp.btn, pr = inp.pressed;
-  pi.attack = pr.attack; pi.attackHeld = b.attack; pi.jump = pr.jump; pi.dodge = pr.dodge;
+  pi.hand = pr.hand; pi.handHeld = b.hand; pi.leg = pr.leg; pi.legHeld = b.leg; pi.special = pr.special;
+  pi.jump = pr.jump; pi.jumpHeld = b.jump; pi.dodge = pr.dodge; pi.guard = b.guard;
   // sprint: push the stick to its rim and hold (or hold C on a keyboard)
   const mag = Math.hypot(inp.mx, inp.my);
   state.stickFullT = mag > 0.92 ? state.stickFullT + inp.dt : 0;
 
-  pi.bend = b.bend || pr.bend; pi.guard = b.guard;
-  if (pr.attack || pr.bend || b.bend || b.guard) state.aimHold = 1.4;
+  if (pr.hand || pr.leg || pr.special || b.hand || b.leg || b.guard) state.aimHold = 1.4;
   pi.strafe = state.locked || state.aimHold > 0;
   // auto-sprint only when not strafing (lock-on or aiming), so full-stick strafing stays locked to the target
   pi.sprint = (!pi.strafe && state.stickFullT > 0.35) || controls.keys.has('KeyC');
@@ -204,7 +209,39 @@ function playerInput(inp) {
 }
 
 // ------------------------------------------------------------------ HUD
-const hud = { php: $('p-hp'), pen: $('p-en'), ohp: $('o-hp'), oen: $('o-en'), omini: $('o-hp-mini'), ret: $('reticle'), lock: $('lock-marker'), tag: $('opp-tag'), lockBtn: $('btn-lock'), atk: $('btn-attack'), stick: $('stick-base') };
+const hud = { php: $('p-hp'), pen: $('p-en'), ohp: $('o-hp'), oen: $('o-en'), omini: $('o-hp-mini'), ret: $('reticle'), lock: $('lock-marker'), tag: $('opp-tag'), lockBtn: $('btn-lock'), leg: $('btn-leg'), hand: $('btn-hand'), stick: $('stick-base'), pad: $('action-pad') };
+// Element HUD: button sub-labels, active element, held-object pips
+let hudEl = null;
+function refreshElementHUD() {
+  const st = player.style;
+  hudEl = player.el;
+  for (const b of document.querySelectorAll('.el')) b.classList.toggle('active', b.dataset.el === player.el);
+  const set = (id, t) => { const sm = $(id).querySelector('small'); if (sm) sm.textContent = t; };
+  set('btn-hand', st.labels.hand); set('btn-leg', st.labels.leg); set('btn-guard', st.labels.guard); set('btn-special', st.labels.special);
+  hud.pad.style.setProperty('--elc', '#' + st.color.toString(16).padStart(6, '0'));
+  $('style-tag').textContent = st.art.toUpperCase();
+}
+// Star layout: JUMP top, GUARD upper-left, DODGE upper-right, HAND lower-left, LEG lower-right, SPECIAL centre.
+function layoutStar() {
+  const W = window.innerWidth, H = window.innerHeight;
+  let k = state.btnSize, R = 92 * state.btnSpread * Math.max(k, 0.9);
+  // keep the whole star below the HUD bars (top 92 px) and above the bottom edge
+  const need = R + 30 * k + R * Math.sin(54 * Math.PI / 180) + 40 * k + 12, avail = H - 92;
+  if (need > avail) { const f = avail / need; R *= f; k *= f; }
+  const sz = { jump: 58, guard: 62, dodge: 62, hand: 80, leg: 80, special: 66 };
+  const ang = { jump: 90, dodge: 18, leg: -54, hand: 234, guard: 162 };
+  const safeR = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--safe-r')) || 0;
+  const halfW = R * Math.cos(18 * Math.PI / 180) + 40 * k, below = R * Math.sin(54 * Math.PI / 180) + 40 * k;
+  const cx = W - 14 - safeR - halfW, cy = H - 12 - below;
+  for (const id of Object.keys(sz)) {
+    const el = $('btn-' + id), d = sz[id] * k;
+    let x = cx, y = cy;
+    if (ang[id] !== undefined) { const a = ang[id] * Math.PI / 180; x = cx + Math.cos(a) * R; y = cy - Math.sin(a) * R; }
+    el.style.width = el.style.height = d + 'px'; el.style.left = (x - W) + 'px'; el.style.top = (y - H) + 'px';
+    el.style.fontSize = (d > 70 ? 13 : 10.5) * Math.min(1.15, k) + 'px';
+  }
+}
+window.addEventListener('resize', layoutStar);
 const _s = new THREE.Vector3();
 function toScreen(v) { _s.copy(v).project(camera); return { x: (_s.x * 0.5 + 0.5) * window.innerWidth, y: (-_s.y * 0.5 + 0.5) * window.innerHeight, vis: _s.z < 1 && _s.z > -1 }; }
 function popup(f, text, block) {
@@ -222,8 +259,14 @@ function updateHUD(dt) {
   hud.oen.style.width = (opp.en / opp.maxEn * 100) + '%';
   hud.omini.style.width = (opp.hp / opp.maxHp * 100) + '%';
   hud.lockBtn.classList.toggle('on', state.locked);
-  hud.atk.style.setProperty('--charge', player.charging ? Math.min(1, player.chargeT / 0.7).toFixed(2) : 0);
-  hud.atk.classList.toggle('charged', player.charging && player.chargeT >= 0.7);
+  hud.leg.style.setProperty('--charge', player.charging ? Math.min(1, player.chargeT / 0.55).toFixed(2) : 0);
+  hud.leg.classList.toggle('charged', player.charging && player.chargeT >= 0.55);
+  hud.hand.classList.toggle('sustain', player.holding);
+  if (hudEl !== player.el) refreshElementHUD();
+  for (const b of document.querySelectorAll('.el')) {
+    const n = world.bending.held(player, b.dataset.el), pips = b.querySelector('.pips');
+    if (pips.childElementCount !== n) pips.innerHTML = '<span></span>'.repeat(n);
+  }
   hud.stick.classList.toggle('sprint', player.sprinting);
   const W = window.innerWidth, H = window.innerHeight;
   let tx = W / 2, ty = H / 2;
@@ -265,11 +308,12 @@ function step(dt) {
   inp.dt = dt;
   if (inp.pressed.lock) { state.locked = !state.locked; if (state.locked) { const t = pickTarget(); if (t) { player.target = t; } else state.locked = false; } }
   if (opp.dead && state.locked) state.locked = state.phase === 'fight';
+  if (inp.pressed.el && state.phase !== 'menu') player.setElement(inp.pressed.el);
   state.aimHold -= dt;
 
   const active = state.phase === 'fight' || state.phase === 'intro' || state.phase === 'ko';
   if (state.phase === 'fight') playerInput(inp);
-  else { const pi = player.input; pi.mx = pi.mz = 0; pi.attack = pi.jump = pi.dodge = pi.bend = pi.guard = false; computeAim(); }
+  else { const pi = player.input; pi.mx = pi.mz = 0; pi.hand = pi.handHeld = pi.leg = pi.legHeld = pi.special = pi.jump = pi.jumpHeld = pi.dodge = pi.guard = false; computeAim(); }
   ai.update(dt);
   for (const f of world.fighters) f.update(dt);
   // fighter-fighter separation
@@ -277,7 +321,7 @@ function step(dt) {
   if (d < m && d > 1e-4 && Math.abs(opp.pos.y - player.pos.y) < 1.5) {
     const push = (m - d) / 2; player.pos.x -= dx / d * push; player.pos.z -= dz / d * push; opp.pos.x += dx / d * push; opp.pos.z += dz / d * push;
   }
-  world.combat.update(dt);
+  world.bending.update(dt);
   world.fx.update(dt, (x, z, y) => world.arena.groundAt(x, z, y));
   if (active) {
     const look = { x: inp.lookX, y: inp.lookY };
@@ -302,6 +346,12 @@ segment('difficulty', 'd', v => { state.difficulty = v; });
 segment('quality', 'q', v => { state.quality = v; applyQuality(); });
 segment('autocam', 'a', v => { camCtl.autoCam = v === 'on'; });
 $('sens').addEventListener('input', e => { controls.sens = parseFloat(e.target.value); });
+segment('rival-el', 'r', v => { state.rivalEl = v; });
+const loadPrefs = () => { try { const p = JSON.parse(localStorage.getItem('ef-controls') || '{}'); if (p.size) state.btnSize = p.size; if (p.spread) state.btnSpread = p.spread; } catch (_) {} $('btn-size').value = state.btnSize; $('btn-spread').value = state.btnSpread; };
+const savePrefs = () => { try { localStorage.setItem('ef-controls', JSON.stringify({ size: state.btnSize, spread: state.btnSpread })); } catch (_) {} };
+$('btn-size').addEventListener('input', e => { state.btnSize = parseFloat(e.target.value); layoutStar(); savePrefs(); });
+$('btn-spread').addEventListener('input', e => { state.btnSpread = parseFloat(e.target.value); layoutStar(); savePrefs(); });
+loadPrefs();
 
 async function goFullscreen() {
   const touch = matchMedia('(pointer: coarse)').matches;
@@ -311,7 +361,7 @@ async function goFullscreen() {
 }
 function showGame() {
   $('menu').classList.add('hidden'); $('end').classList.add('hidden'); $('pause').classList.add('hidden');
-  $('hud').classList.remove('hidden'); $('rotate').classList.add('armed');
+  $('hud').classList.remove('hidden'); $('rotate').classList.add('armed'); layoutStar();
   controls.enabled = true; state.paused = false;
 }
 $('btn-start').addEventListener('click', () => { world.audio.unlock(); goFullscreen(); showGame(); startMatch(); });
@@ -328,16 +378,13 @@ $('btn-pause').addEventListener('pointerdown', (e) => { e.stopPropagation(); pau
 $('btn-resume').addEventListener('click', () => { state.paused = false; $('pause').classList.add('hidden'); last = performance.now(); });
 window.addEventListener('keydown', e => { if (e.code === 'Escape' || e.code === 'KeyP') { if (state.paused) { state.paused = false; $('pause').classList.add('hidden'); } else pause(); } });
 document.addEventListener('visibilitychange', () => { if (document.hidden) pause(); });
-for (const b of document.querySelectorAll('.el')) {
-  b.addEventListener('pointerdown', (e) => {
-    e.stopPropagation();
-    if (b.classList.contains('locked')) popup(player, `${b.dataset.el.toUpperCase()}: MILESTONE 4`, true);
-  });
-}
+
 
 // ------------------------------------------------------------------ boot
 applyQuality();
 placeFighters();
+layoutStar();
+refreshElementHUD();
 state.phase = 'menu';
 // idle menu camera: slow orbit around the dais
 const menuOrbit = (t) => { const a = t * 0.00008; camera.position.set(Math.sin(a) * 20, 7, Math.cos(a) * 20); camera.lookAt(0, 1, 0); };
@@ -346,6 +393,6 @@ $('loading').classList.add('hidden');
 requestAnimationFrame(frame);
 
 // test / debug handle (used by the automated browser tests)
-window.__EF = { world, player, opp, camCtl, controls, state, ai, aimPoint: () => aimPoint.clone(), stats,
+window.__EF = { world, player, opp, camCtl, controls, state, ai, aimPoint: () => aimPoint.clone(), stats, layoutStar, STYLES,
   // deterministic stepping for frame-accurate gameplay capture in tests
   step: (dt) => step(dt), render: () => renderer.render(scene, camera), info: () => ({ calls: renderer.info.render.calls, triangles: renderer.info.render.triangles, programs: renderer.info.programs.length }) };

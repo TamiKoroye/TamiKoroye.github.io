@@ -40,7 +40,7 @@ export class FX {
     // --- dust / spark sprites
     this.soft = softTexture();
     this.sprites = [];
-    for (let i = 0; i < 90; i++) {
+    for (let i = 0; i < 260; i++) {
       const m = new THREE.SpriteMaterial({ map: this.soft, transparent: true, depthWrite: false, opacity: 0 });
       const s = new THREE.Sprite(m); s.visible = false; scene.add(s);
       this.sprites.push({ s, life: 0, max: 1, vel: new THREE.Vector3(), grow: 1, base: 1, alpha: 1 });
@@ -78,13 +78,23 @@ export class FX {
     }
   }
 
-  puff(pos, vel, size, life, color, alpha = 0.6, grow = 2.5) {
-    let sp = this.sprites.find(x => x.life <= 0);
-    if (!sp) sp = this.sprites[Math.floor(Math.random() * this.sprites.length)];
-    sp.s.position.copy(pos); sp.vel.copy(vel); sp.base = size; sp.grow = grow; sp.life = sp.max = life; sp.alpha = alpha;
-    sp.s.material.color.setHex(color); sp.s.material.blending = THREE.NormalBlending; sp.s.visible = true;
+  puff(pos, vel, size, life, color, alpha = 0.6, grow = 2.5, additive = false, rise = 0) {
+    // ring-buffer allocation: O(1) and recycles the oldest sprite when the pool is saturated
+    this._ix = ((this._ix || 0) + 1) % this.sprites.length;
+    const sp = this.sprites[this._ix];
+    sp.s.position.copy(pos); sp.vel.copy(vel); sp.base = size; sp.grow = grow; sp.life = sp.max = life; sp.alpha = alpha; sp.rise = rise;
+    sp.s.material.color.setHex(color); sp.s.material.blending = additive ? THREE.AdditiveBlending : THREE.NormalBlending; sp.s.visible = true;
     return sp;
   }
+  // element particles
+  fire(pos, vel, size = 0.45, life = 0.35) {
+    const hot = Math.random() < 0.4;
+    return this.puff(pos, vel, size * (0.7 + Math.random() * 0.6), life * (0.7 + Math.random() * 0.6), hot ? 0xffd27a : (Math.random() < 0.5 ? 0xff7a2a : 0xff4a1a), 0.95, 1.1, true, 1.5);
+  }
+  smoke(pos, size = 0.5) { return this.puff(pos, new THREE.Vector3(rand(-0.3, 0.3), 1.2, rand(-0.3, 0.3)), size, 0.9, 0x55504c, 0.35, 2.2); }
+  steam(pos, n = 8) { for (let i = 0; i < n; i++) this.puff(pos.clone().add(new THREE.Vector3(rand(-0.3, 0.3), rand(0, 0.3), rand(-0.3, 0.3))), new THREE.Vector3(rand(-1, 1), rand(1.5, 3), rand(-1, 1)), 0.5, 0.9, 0xe8eef2, 0.55, 2.5); }
+  splash(pos, n = 10, color = 0x6fb6ee) { for (let i = 0; i < n; i++) { const v = new THREE.Vector3(rand(-1, 1), rand(0.6, 2), rand(-1, 1)).normalize().multiplyScalar(rand(2, 5)); this.puff(pos, v, 0.18, 0.5, color, 0.85, 0.6); } }
+  wind(pos, vel, size = 0.5, life = 0.4) { return this.puff(pos, vel, size, life, 0xf2f6ff, 0.28, 1.8); }
   dust(pos, n = 8, spread = 2, color = 0xb5a48e) {
     for (let i = 0; i < n; i++) {
       const a = Math.random() * 6.28;
@@ -144,7 +154,7 @@ export class FX {
       sp.life -= dt;
       if (sp.life <= 0) { sp.s.visible = false; continue; }
       const k = 1 - sp.life / sp.max;
-      sp.s.position.addScaledVector(sp.vel, dt);
+      sp.s.position.addScaledVector(sp.vel, dt); if (sp.rise) sp.vel.y += sp.rise * dt;
       sp.vel.multiplyScalar(Math.exp(-2.5 * dt));
       const sc = sp.base * (1 + k * sp.grow);
       sp.s.scale.set(sc, sc, 1);

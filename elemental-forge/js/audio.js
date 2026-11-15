@@ -31,5 +31,9 @@ export class Audio {
   impact(k = 1) { this.noise(0.35, 'lowpass', 1400, 120, 0.6 * k, 0.8); this.tone(0.25, 120, 45, 0.5 * k); }
   rumble(k = 0.6) { this.noise(0.5, 'lowpass', 300, 60, 0.6 * k, 0.7); this.tone(0.4, 70, 40, 0.35 * k, 'triangle'); }
   step(k = 0.5) { if (!this.ctx) return; const t = this.ctx.currentTime; if (t - (this._lastStep || 0) < 0.12) return; this._lastStep = t; this.noise(0.07, 'lowpass', 900, 200, 0.12 * k + 0.02, 0.7); }
+  fireWhoosh(k = 0.6) { if (!this.ctx) return; const t = this.ctx.currentTime; if (t - (this._lf || 0) < 0.06) return; this._lf = t; this.noise(0.35 * (0.6 + k * 0.4), 'bandpass', 380, 1600, 0.3 * k + 0.05, 0.6); this.noise(0.25, 'highpass', 2500, 4000, 0.06 * k); }
+  fireHit(k = 0.6) { this.noise(0.4, 'lowpass', 2200, 300, 0.45 * k, 0.6); this.noise(0.3, 'highpass', 3000, 5000, 0.1 * k); }
+  splash(k = 0.6) { if (!this.ctx) return; const t = this.ctx.currentTime; if (t - (this._ls || 0) < 0.06) return; this._ls = t; this.noise(0.3, 'bandpass', 1200, 500, 0.35 * k, 2.5); this.tone(0.12, 900, 300, 0.08 * k); }
+  gust(k = 0.6) { if (!this.ctx) return; const t = this.ctx.currentTime; if (t - (this._lg || 0) < 0.06) return; this._lg = t; this.noise(0.45, 'bandpass', 300, 2400, 0.3 * k + 0.04, 0.8); }
   hit(k = 0.6) { this.noise(0.12, 'highpass', 1800, 800, 0.35 * k); this.tone(0.14, 220, 80, 0.4 * k, 'square'); }
 }

@@ -22,8 +22,8 @@ export class AI {
 
   update(dt) {
     const f = this.f, foe = this.foe, P = this.P, inp = f.input, w = this.world;
-    inp.attack = inp.jump = inp.dodge = false;
-    if (f.dead || foe.dead || !w.fighting) { inp.mx = inp.mz = 0; inp.bend = inp.guard = false; return; }
+    inp.hand = inp.leg = inp.special = inp.jump = inp.dodge = false;
+    if (f.dead || foe.dead || !w.fighting) { inp.mx = inp.mz = 0; inp.handHeld = inp.legHeld = inp.guard = false; return; }
 
     const dx = foe.pos.x - f.pos.x, dz = foe.pos.z - f.pos.z, dist = Math.hypot(dx, dz) || 1;
     const tx = dx / dist, tz = dz / dist;
@@ -65,8 +65,8 @@ export class AI {
     const spd = P.speed * (this.d === 'training' ? 0.6 : 1);
     inp.mx = mx / l2 * spd; inp.mz = mz / l2 * spd;
 
-    // ---- reactions to incoming rocks
-    for (const r of w.combat.rocks) {
+    // ---- reactions to incoming projectiles (any element)
+    for (const r of w.bending.objs) {
       if (r.owner === f || r.state !== 'flying' || this.seen.has(r)) continue;
       const rx = f.pos.x - r.pos.x, rz = f.pos.z - r.pos.z, rd = Math.hypot(rx, rz);
       const closing = (r.vel.x * rx + r.vel.z * rz) / (rd * Math.hypot(r.vel.x, r.vel.z) || 1);
@@ -88,17 +88,27 @@ export class AI {
     this.guardT -= dt;
     inp.guard = this.guardT > 0;
 
-    // ---- offense
-    this.throwT -= dt; this.meleeT -= dt;
-    if (this.holdT > 0) { this.holdT -= dt; inp.bend = this.holdT > 0; }
-    else inp.bend = false;
-    if (!inp.guard && this.throwT <= 0 && dist > 3.5 && dist < 26 && f.en > 25 && !f.action) {
-      inp.bend = true; this.holdT = this.d === 'master' ? rand(0.35, 0.5) : rand(0.4, 0.8);
+    // ---- offense: element techniques chosen by range (Stage C will give each archetype its own brain)
+    this.throwT -= dt; this.meleeT -= dt; this.holdT -= dt; this.specialT = (this.specialT ?? rand(4, 7)) - dt;
+    inp.handHeld = this.holdT > 0 && this.holdKind === 'hand';
+    inp.legHeld = this.holdT > 0 && this.holdKind === 'leg';
+    if (inp.guard || f.action || f.dodgeT > 0) return;
+    const held = w.bending.held(f);
+    if (dist < 2.6 && this.meleeT <= 0) {
+      // close range: hand / leg combinations
+      if (Math.random() < P.melee) { if (Math.random() < 0.55) { inp.hand = true; } else { inp.leg = true; } }
+      this.meleeT = this.d === 'master' ? 0.3 : 0.55;
+    } else if (this.throwT <= 0 && dist > 3 && dist < 24 && f.en > 22) {
       this.throwT = rand(P.throwGap[0], P.throwGap[1]);
-    }
-    if (dist < 2.4 && this.meleeT <= 0 && !inp.guard && !f.holding) {
-      if (Math.random() < P.melee) inp.attack = true;
-      this.meleeT = this.d === 'master' ? 0.28 : 0.5;
+      const roll = Math.random();
+      if (held > 0 || roll < 0.45) inp.hand = true;                         // launch held object / hand technique
+      else if (roll < 0.7) inp.leg = true;                                   // kick projectile
+      else if (this.d !== 'training') { inp.hand = true; this.holdKind = 'hand'; this.holdT = rand(0.9, 1.6); }  // sustained bending
+      else inp.hand = true;
+    } else if (this.specialT <= 0 && dist < 16 && f.en > 30) {
+      inp.special = true; this.specialT = this.d === 'master' ? rand(3, 5) : rand(6, 10);
+    } else if (this.d === 'master' && dist < 4 && Math.random() < dt * 0.6 && f.en > 30) {
+      inp.leg = true; this.holdKind = 'leg'; this.holdT = 0.9;               // charged technique
     }
     // close in for melee sometimes (normal / master)
     if (this.d !== 'training' && dist < 4.5 && !lowHp && Math.random() < dt * P.melee) { inp.mx = tx; inp.mz = tz; }

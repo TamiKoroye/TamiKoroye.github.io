@@ -1,211 +1,517 @@
 [
   {
+    "section": "Load and render",
     "name": "page loads without errors",
     "ok": true,
     "detail": ""
   },
   {
+    "section": "Load and render",
     "name": "WebGL context available",
     "ok": true,
     "detail": ""
   },
   {
+    "section": "Load and render",
     "name": "fight phase begins",
     "ok": true,
-    "detail": "fight"
+    "detail": ""
   },
   {
-    "name": "scene populated with meshes",
-    "ok": true,
-    "detail": "130 meshes (each fighter is now a single skinned mesh)"
-  },
-  {
-    "name": "player visible on screen",
+    "section": "Load and render",
+    "name": "player and rival both on screen",
     "ok": true,
     "detail": ""
   },
   {
-    "name": "opponent visible on screen",
+    "section": "Star-shaped mobile controls",
+    "name": "default size: five-point star around a centre SPECIAL",
+    "ok": true,
+    "detail": "JUMP top, GUARD upper-left, DODGE upper-right, HAND lower-left, LEG lower-right"
+  },
+  {
+    "section": "Star-shaped mobile controls",
+    "name": "default size: no overlapping button hitboxes",
+    "ok": true,
+    "detail": "smallest gap 19.0 px (hand/special)"
+  },
+  {
+    "section": "Star-shaped mobile controls",
+    "name": "default size: all buttons on screen, clear of the health bars",
     "ok": true,
     "detail": ""
   },
   {
-    "name": "stick forward moves the player",
+    "section": "Star-shaped mobile controls",
+    "name": "largest size and spacing: five-point star around a centre SPECIAL",
     "ok": true,
-    "detail": "moved 18.24 m, speed 9.40"
+    "detail": "JUMP top, GUARD upper-left, DODGE upper-right, HAND lower-left, LEG lower-right"
   },
   {
-    "name": "right-half drag rotates camera while moving (multi-touch)",
+    "section": "Star-shaped mobile controls",
+    "name": "largest size and spacing: no overlapping button hitboxes",
     "ok": true,
-    "detail": "yaw delta -0.61 rad"
+    "detail": "smallest gap 50.4 px (hand/special)"
   },
   {
-    "name": "player decelerates to a stop on release",
-    "ok": true,
-    "detail": "speed 0.00"
-  },
-  {
-    "name": "locked strafe: faces rival while moving sideways",
-    "ok": true,
-    "detail": "face error 0.09 rad, move vs facing 1.63 rad"
-  },
-  {
-    "name": "jump leaves the ground",
-    "ok": true,
-    "detail": "height 1.05 m"
-  },
-  {
-    "name": "dodge dashes the player",
-    "ok": true,
-    "detail": "8.16 m"
-  },
-  {
-    "name": "BEND raises a rock from the ground",
-    "ok": true,
-    "detail": "rising,held"
-  },
-  {
-    "name": "thrown rock hits the rival",
-    "ok": true,
-    "detail": "rival hp 87"
-  },
-  {
-    "name": "holding BEND keeps the rock suspended",
-    "ok": true,
-    "detail": "[\"held\"]"
-  },
-  {
-    "name": "free-aim rock impacts at the reticle point",
-    "ok": true,
-    "detail": "impact 13.0,0.1,-13.5 vs aim 13.3,0.0,-12.9 (err 0.64 m)"
-  },
-  {
-    "name": "GUARD raises a stone shield",
-    "ok": true,
-    "detail": "1 shield(s)"
-  },
-  {
-    "name": "shield intercepts the rock (no damage taken)",
-    "ok": true,
-    "detail": "player hp 100, shield hp 51.8"
-  },
-  {
-    "name": "shield sinks when GUARD released",
+    "section": "Star-shaped mobile controls",
+    "name": "largest size and spacing: all buttons on screen, clear of the health bars",
     "ok": true,
     "detail": ""
   },
   {
-    "name": "same rock without guard damages the player",
+    "section": "Star-shaped mobile controls",
+    "name": "HAND and LEG are the largest buttons",
     "ok": true,
-    "detail": "player hp 87"
+    "detail": ""
   },
   {
-    "name": "STRIKE combo damages the rival",
+    "section": "Movement, camera and multi-touch",
+    "name": "partial stick deflection walks",
     "ok": true,
-    "detail": "rival hp 81"
+    "detail": "2.09 m/s"
   },
   {
-    "name": "analogue stick: partial deflection walks",
-    "ok": true,
-    "detail": "1.69 m/s"
-  },
-  {
+    "section": "Movement, camera and multi-touch",
     "name": "full deflection runs",
     "ok": true,
-    "detail": "6.60 m/s"
+    "detail": "5.90 m/s"
   },
   {
+    "section": "Movement, camera and multi-touch",
     "name": "holding the stick at its rim sprints",
     "ok": true,
-    "detail": "9.40 m/s"
+    "detail": "8.40 m/s"
   },
   {
-    "name": "ramp: player climbs the slope onto the 1.6 m ledge",
+    "section": "Movement, camera and multi-touch",
+    "name": "right-half drag turns the camera while running (two fingers)",
+    "ok": true,
+    "detail": "yaw change -0.61 rad"
+  },
+  {
+    "section": "Movement, camera and multi-touch",
+    "name": "player decelerates to a stop on release",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "section": "Movement, camera and multi-touch",
+    "name": "locked strafe: faces the rival while moving sideways",
+    "ok": true,
+    "detail": "face error 0.07, move vs facing 1.63 rad"
+  },
+  {
+    "section": "Movement, camera and multi-touch",
+    "name": "jump leaves the ground",
+    "ok": true,
+    "detail": "1.12 m"
+  },
+  {
+    "section": "Movement, camera and multi-touch",
+    "name": "air: air-assisted double jump goes higher",
+    "ok": true,
+    "detail": "air 2.37 m vs earth 1.12 m"
+  },
+  {
+    "section": "Movement, camera and multi-touch",
+    "name": "slope: runs up the ramp onto the 1.6 m ledge",
     "ok": true,
     "detail": "max height 1.60 m"
   },
   {
-    "name": "hold STRIKE: light jab then charge stance",
+    "section": "Four distinct martial-arts styles",
+    "name": "each element has its own stance (pose distance between every pair)",
+    "ok": true,
+    "detail": "closest pair earth/water: 2.11 rad"
+  },
+  {
+    "section": "Four distinct martial-arts styles",
+    "name": "earth stance is the lowest (rooted Hung Gar)",
+    "ok": true,
+    "detail": "earth -0.24, fire -0.15, water -0.12, air -0.13"
+  },
+  {
+    "section": "Four distinct martial-arts styles",
+    "name": "air is the fastest and earth the slowest mover",
+    "ok": true,
+    "detail": "earth 8.4, fire 9.8, water 8.8, air 10.6 m/s sprint"
+  },
+  {
+    "section": "Four distinct martial-arts styles",
+    "name": "each element dodges differently",
+    "ok": true,
+    "detail": "earth: roll, fire: dash, water: slide, air: airdash"
+  },
+  {
+    "section": "Four distinct martial-arts styles",
+    "name": "styles named after their martial arts",
     "ok": true,
     "detail": ""
   },
   {
-    "name": "short hold releases a heavy palm strike that staggers",
+    "section": "Element switching",
+    "name": "element buttons switch instantly while running (touch)",
     "ok": true,
-    "detail": "actions heavy,; rival hp 82"
+    "detail": "fire -> water -> air -> earth"
   },
   {
-    "name": "long hold releases a charged slam that knocks the rival down",
+    "section": "Element switching",
+    "name": "switching does not interrupt movement",
     "ok": true,
-    "detail": "rival states ,down; hp 78"
+    "detail": "9.8, 8.8, 10.6, 8.4 m/s"
   },
   {
-    "name": "knocked-down rival gets back up",
-    "ok": true,
-    "detail": ""
-  },
-  {
-    "name": "dodge cancels attack recovery",
-    "ok": true,
-    "detail": "before: {\"a\":\"jab\",\"u\":0.44,\"ph\":\"fight\",\"stun\":-0.41666666666666663,\"hold\":-1,\"ch\":false,\"guard\":false,\"dead\":false}, after: dodging=true"
-  },
-  {
-    "name": "attack pressed during a dodge is buffered and fires",
+    "section": "Element switching",
+    "name": "the sash takes each element's colour",
     "ok": true,
     "detail": ""
   },
   {
-    "name": "locked-on lateral dodge is a sidestep",
+    "section": "EARTH: HAND, LEG, sustained control, defence, charged technique",
+    "name": "earth: HAND sends an element projectile that hits",
     "ok": true,
-    "detail": "side"
+    "detail": "projectile rock; rival hp 91"
   },
   {
-    "name": "locked-on backward dodge is a backstep",
+    "section": "EARTH: HAND, LEG, sustained control, defence, charged technique",
+    "name": "earth: LEG kick launches its technique and staggers the rival",
     "ok": true,
-    "detail": "back"
+    "detail": "rival hp 85; reactions stagger"
   },
   {
-    "name": "perfect guard deflects the rock back into the thrower",
+    "section": "EARTH: HAND, LEG, sustained control, defence, charged technique",
+    "name": "earth: full-body kick (leg raised, supporting foot planted, hips/torso engaged)",
     "ok": true,
-    "detail": "{\"fired\":true,\"perfect\":1,\"counter\":true,\"oppHp\":87,\"php\":100,\"guarding\":true,\"gCd\":-28.26,\"act\":null,\"dodge\":0,\"btn\":true,\"en\":95}"
+    "detail": "kicking hip 1.52 rad, support ankle 0.11 m above ground, torso 0.24 rad"
   },
   {
-    "name": "strike during the counter window performs a counter attack",
+    "section": "EARTH: HAND, LEG, sustained control, defence, charged technique",
+    "name": "earth: holding HAND lifts three rocks that orbit the player",
     "ok": true,
-    "detail": "counter"
+    "detail": "holding=true, held objects 3, rival hp 91"
   },
   {
-    "name": "each fighter is one skinned mesh",
+    "section": "EARTH: HAND, LEG, sustained control, defence, charged technique",
+    "name": "earth: can move while sustaining bending",
     "ok": true,
-    "detail": "3832 triangles per fighter; frame: 90 draw calls, 108256 triangles"
+    "detail": "2.6 m/s while bending"
   },
   {
-    "name": "stick stays active while tapping BEND with the other thumb",
+    "section": "EARTH: HAND, LEG, sustained control, defence, charged technique",
+    "name": "earth: held rocks are launched one at a time by punches and kicks",
     "ok": true,
-    "detail": "stick held=true, deflection 1.00, speed 4.40 m/s"
+    "detail": "3 -> 2 (punch) -> 1 (kick)"
   },
   {
-    "name": "AI opponent moves and fights",
+    "section": "EARTH: HAND, LEG, sustained control, defence, charged technique",
+    "name": "earth: GUARD defence works: stone wall stops a rock",
     "ok": true,
-    "detail": "{\"php\":74,\"ohp\":87,\"opos\":[18.4,0,-8.1],\"fps\":\"23.2\"}"
+    "detail": "player hp 100, blocks 1"
   },
   {
-    "name": "fighter state stays finite after reload (no NaN poses)",
+    "section": "EARTH: HAND, LEG, sustained control, defence, charged technique",
+    "name": "earth: perfect guard sends the rock back into the thrower",
+    "ok": true,
+    "detail": "{\"perfect\":1,\"ohp\":88,\"php\":100}"
+  },
+  {
+    "section": "EARTH: HAND, LEG, sustained control, defence, charged technique",
+    "name": "earth: hold-and-release LEG performs the charged technique",
+    "ok": true,
+    "detail": "Seismic Stomp; rival hp 86; reactions down"
+  },
+  {
+    "section": "FIRE: HAND, LEG, sustained control, defence, charged technique",
+    "name": "fire: HAND sends an element projectile that hits",
+    "ok": true,
+    "detail": "projectile fireball; rival hp 89"
+  },
+  {
+    "section": "FIRE: HAND, LEG, sustained control, defence, charged technique",
+    "name": "fire: LEG kick launches its technique and staggers the rival",
+    "ok": true,
+    "detail": "rival hp 89; reactions stagger"
+  },
+  {
+    "section": "FIRE: HAND, LEG, sustained control, defence, charged technique",
+    "name": "fire: full-body kick (leg raised, supporting foot planted, hips/torso engaged)",
+    "ok": true,
+    "detail": "kicking hip 1.94 rad, support ankle 0.08 m above ground, torso 0.30 rad"
+  },
+  {
+    "section": "FIRE: HAND, LEG, sustained control, defence, charged technique",
+    "name": "fire: holding HAND sustains a fire stream that burns the rival",
+    "ok": true,
+    "detail": "holding=true, held objects 0, rival hp 75"
+  },
+  {
+    "section": "FIRE: HAND, LEG, sustained control, defence, charged technique",
+    "name": "fire: can move while sustaining bending",
+    "ok": true,
+    "detail": "2.4 m/s while bending"
+  },
+  {
+    "section": "FIRE: HAND, LEG, sustained control, defence, charged technique",
+    "name": "fire: SPECIAL builds up three controlled flame orbs, then releases them together",
+    "ok": true,
+    "detail": "held 3, then flying: fireOrb"
+  },
+  {
+    "section": "FIRE: HAND, LEG, sustained control, defence, charged technique",
+    "name": "fire: GUARD defence works: fire wall burns away a fireball",
+    "ok": true,
+    "detail": "player hp 100, blocks 1"
+  },
+  {
+    "section": "FIRE: HAND, LEG, sustained control, defence, charged technique",
+    "name": "fire: perfect guard sends the fireball back into the thrower",
+    "ok": true,
+    "detail": "{\"perfect\":1,\"ohp\":89,\"php\":100}"
+  },
+  {
+    "section": "FIRE: HAND, LEG, sustained control, defence, charged technique",
+    "name": "fire: hold-and-release LEG performs the charged technique",
+    "ok": true,
+    "detail": "Flying Dragon Kick; rival hp 88; reactions down"
+  },
+  {
+    "section": "WATER: HAND, LEG, sustained control, defence, charged technique",
+    "name": "water: HAND sends an element projectile that hits",
+    "ok": true,
+    "detail": "projectile droplet; rival hp 96"
+  },
+  {
+    "section": "WATER: HAND, LEG, sustained control, defence, charged technique",
+    "name": "water: LEG kick launches its technique and staggers the rival",
+    "ok": true,
+    "detail": "rival hp 94; reactions stagger"
+  },
+  {
+    "section": "WATER: HAND, LEG, sustained control, defence, charged technique",
+    "name": "water: full-body kick (leg raised, supporting foot planted, hips/torso engaged)",
+    "ok": true,
+    "detail": "kicking hip 1.39 rad, support ankle 0.09 m above ground, torso 0.11 rad"
+  },
+  {
+    "section": "WATER: HAND, LEG, sustained control, defence, charged technique",
+    "name": "water: holding HAND near a pool draws three water globes",
+    "ok": true,
+    "detail": "holding=true, held objects 3, rival hp 90"
+  },
+  {
+    "section": "WATER: HAND, LEG, sustained control, defence, charged technique",
+    "name": "water: can move while sustaining bending",
+    "ok": true,
+    "detail": "3.2 m/s while bending"
+  },
+  {
+    "section": "WATER: HAND, LEG, sustained control, defence, charged technique",
+    "name": "water: a kick spends one held globe as a water arc",
+    "ok": true,
+    "detail": "globes 3 -> 2; rival hp 81"
+  },
+  {
+    "section": "WATER: HAND, LEG, sustained control, defence, charged technique",
+    "name": "water: holding HAND with full globes becomes a water whip",
+    "ok": true,
+    "detail": "mode whip, rival hp 74"
+  },
+  {
+    "section": "WATER: HAND, LEG, sustained control, defence, charged technique",
+    "name": "water: GUARD defence works: water shield douses a fireball",
+    "ok": true,
+    "detail": "player hp 100, blocks 1"
+  },
+  {
+    "section": "WATER: HAND, LEG, sustained control, defence, charged technique",
+    "name": "water: perfect guard sends the rock back into the thrower",
+    "ok": true,
+    "detail": "{\"perfect\":1,\"ohp\":88,\"php\":100}"
+  },
+  {
+    "section": "WATER: HAND, LEG, sustained control, defence, charged technique",
+    "name": "water: hold-and-release LEG performs the charged technique",
+    "ok": true,
+    "detail": "Tidal Sweep; rival hp 94; reactions stagger"
+  },
+  {
+    "section": "AIR: HAND, LEG, sustained control, defence, charged technique",
+    "name": "air: HAND sends an element projectile that hits",
+    "ok": true,
+    "detail": "projectile gust; rival hp 96"
+  },
+  {
+    "section": "AIR: HAND, LEG, sustained control, defence, charged technique",
+    "name": "air: LEG kick launches its technique and staggers the rival",
+    "ok": true,
+    "detail": "rival hp 93; reactions stagger"
+  },
+  {
+    "section": "AIR: HAND, LEG, sustained control, defence, charged technique",
+    "name": "air: full-body kick (leg raised, supporting foot planted, hips/torso engaged)",
+    "ok": true,
+    "detail": "kicking hip 2.07 rad, support ankle 0.07 m above ground, torso 0.47 rad"
+  },
+  {
+    "section": "AIR: HAND, LEG, sustained control, defence, charged technique",
+    "name": "air: holding HAND pushes the rival back with a sustained wind",
+    "ok": true,
+    "detail": "holding=true, held objects 0, rival hp 94, rival pushed to z 1.5 (from -5)"
+  },
+  {
+    "section": "AIR: HAND, LEG, sustained control, defence, charged technique",
+    "name": "air: can move while sustaining bending",
+    "ok": true,
+    "detail": "3.5 m/s while bending"
+  },
+  {
+    "section": "AIR: HAND, LEG, sustained control, defence, charged technique",
+    "name": "air: SPECIAL builds up three controlled vortices, then releases them together",
+    "ok": true,
+    "detail": "held 3, then flying: vortex"
+  },
+  {
+    "section": "AIR: HAND, LEG, sustained control, defence, charged technique",
+    "name": "air: GUARD defence works: air deflection turns a rock aside",
+    "ok": true,
+    "detail": "player hp 100, blocks 1, rock heading changed 2.36 rad"
+  },
+  {
+    "section": "AIR: HAND, LEG, sustained control, defence, charged technique",
+    "name": "air: perfect guard sends the rock back into the thrower",
+    "ok": true,
+    "detail": "{\"perfect\":1,\"ohp\":88,\"php\":100}"
+  },
+  {
+    "section": "AIR: HAND, LEG, sustained control, defence, charged technique",
+    "name": "air: hold-and-release LEG performs the charged technique",
+    "ok": true,
+    "detail": "Cyclone; rival hp 96; reactions stagger"
+  },
+  {
+    "section": "Elemental interactions and environment",
+    "name": "water projectile puts out a fireball in mid-air",
+    "ok": true,
+    "detail": "{\"fire\":0,\"water\":1}"
+  },
+  {
+    "section": "Elemental interactions and environment",
+    "name": "water extinguishes burning ground",
     "ok": true,
     "detail": ""
   },
   {
-    "name": "player on screen during live AI round",
+    "section": "Elemental interactions and environment",
+    "name": "air gust blows a fireball back at its caster",
+    "ok": true,
+    "detail": "{\"ohp\":89,\"php\":100}"
+  },
+  {
+    "section": "Elemental interactions and environment",
+    "name": "a rock punches through a fire wall at reduced force",
+    "ok": true,
+    "detail": "player hp 94 (unguarded rock does 12)"
+  },
+  {
+    "section": "Elemental interactions and environment",
+    "name": "earth SPECIAL raises a solid stone pillar",
+    "ok": true,
+    "detail": "{\"x\":0.8970749039705801,\"z\":-11.991205183034818,\"top\":1.45}"
+  },
+  {
+    "section": "Elemental interactions and environment",
+    "name": "player can jump onto the pillar and stand on it",
+    "ok": true,
+    "detail": "standing height 1.45 m"
+  },
+  {
+    "section": "Elemental interactions and environment",
+    "name": "player can jump onto a boulder and stand on it",
+    "ok": true,
+    "detail": "boulder top 1.22 m, standing at 1.22 m"
+  },
+  {
+    "section": "Elemental interactions and environment",
+    "name": "earth lifts an existing loose stone from the arena",
+    "ok": true,
+    "detail": "{\"taken\":true,\"kinds\":[\"rock\",\"boulder\"]}"
+  },
+  {
+    "section": "Combinations and animation continuity",
+    "name": "earth: HAND / LEG / dodge / SPECIAL chain flows without pose snapping",
+    "ok": true,
+    "detail": "5 techniques, largest single-frame joint change 0.67 rad"
+  },
+  {
+    "section": "Combinations and animation continuity",
+    "name": "fire: HAND / LEG / dodge / SPECIAL chain flows without pose snapping",
+    "ok": true,
+    "detail": "5 techniques, largest single-frame joint change 0.67 rad"
+  },
+  {
+    "section": "Combinations and animation continuity",
+    "name": "water: HAND / LEG / dodge / SPECIAL chain flows without pose snapping",
+    "ok": true,
+    "detail": "5 techniques, largest single-frame joint change 0.67 rad"
+  },
+  {
+    "section": "Combinations and animation continuity",
+    "name": "air: HAND / LEG / dodge / SPECIAL chain flows without pose snapping",
+    "ok": true,
+    "detail": "5 techniques, largest single-frame joint change 0.67 rad"
+  },
+  {
+    "section": "Combinations and animation continuity",
+    "name": "earth combo: lift a rock, strafe while holding it, kick it into the rival",
+    "ok": true,
+    "detail": "held 1 at 5.9 m/s, rival hp 79"
+  },
+  {
+    "section": "Camera",
+    "name": "camera rises over a raised platform edge instead of being blocked",
+    "ok": true,
+    "detail": "pitch lift 0.12 rad, player at screen y -0.14"
+  },
+  {
+    "section": "Camera",
+    "name": "camera stays steady through spinning kicks",
+    "ok": true,
+    "detail": "spinning kicks 1, body turned 6.3 rad, camera yaw drift 0.000 rad"
+  },
+  {
+    "section": "AI, performance and regression",
+    "name": "AI rival fights with its element techniques",
+    "ok": true,
+    "detail": "water: {\"Water Palm\":2,\"Water Sphere\":1}, player hp 88"
+  },
+  {
+    "section": "AI, performance and regression",
+    "name": "fighter state stays finite (no NaN poses)",
     "ok": true,
     "detail": ""
   },
   {
-    "name": "portrait shows rotate-phone prompt",
+    "section": "AI, performance and regression",
+    "name": "simulation cost per frame is small",
     "ok": true,
-    "detail": "flex"
+    "detail": "0.34 ms per simulated frame (includes HUD; software renderer not included)"
   },
   {
-    "name": "no runtime errors during test",
+    "section": "AI, performance and regression",
+    "name": "render cost stays bounded",
+    "ok": true,
+    "detail": "42 draw calls, 105650 triangles"
+  },
+  {
+    "section": "AI, performance and regression",
+    "name": "portrait shows the rotate-phone prompt",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "section": "AI, performance and regression",
+    "name": "no runtime errors during the whole test",
     "ok": true,
     "detail": ""
   }

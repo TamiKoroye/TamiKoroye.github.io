@@ -29,6 +29,7 @@ class MeshBuilder {
   constructor(boneIndex) {
     this.bi = boneIndex;
     this.pos = []; this.nrm = []; this.col = []; this.si = []; this.sw = []; this.idx = [];
+    this.sashRef = null; this.sashIdx = [];
   }
   // Append a BufferGeometry (indexed) with a per-vertex colour and weight function.
   add(geo, colorFn, weightFn) {
@@ -41,6 +42,7 @@ class MeshBuilder {
       this.pos.push(v.x, v.y, v.z);
       this.nrm.push(n.getX(i), n.getY(i), n.getZ(i));
       const c = colorFn(v); this.col.push(c.r, c.g, c.b);
+      if (c === this.sashRef) this.sashIdx.push(base + i);
       const w = weightFn(v).filter(e => e[1] > 1e-4).sort((a, b) => b[1] - a[1]).slice(0, 4);
       let sum = 0; for (const e of w) sum += e[1];
       for (let k = 0; k < 4; k++) {
@@ -137,6 +139,7 @@ export function buildSkinnedFighter(opts) {
   const W = {}; for (const n in J) W[n] = J[n].getWorldPosition(new THREE.Vector3());
 
   const mb = new MeshBuilder(boneIndex);
+  mb.sashRef = C.sash;
   const colOf = (geo) => (v) => C[geo.userData.cols[0]] || C.skin;
   const perVertexCol = (geo) => { const cols = geo.userData.cols; let i = 0; return () => C[cols[i++]] || C.skin; };
 
@@ -236,5 +239,5 @@ export function buildSkinnedFighter(opts) {
   root.updateMatrixWorld(true);
   const skeleton = new THREE.Skeleton(bones);
   mesh.bind(skeleton);
-  return { root, tumble, J, mesh, material, skeleton, triangles: geometry.index.count / 3 };
+  return { root, tumble, J, mesh, material, skeleton, triangles: geometry.index.count / 3, sashIdx: mb.sashIdx };
 }
