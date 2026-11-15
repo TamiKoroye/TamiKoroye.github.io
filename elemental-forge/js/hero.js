@@ -76,6 +76,7 @@ export class Hero {
     this.sashIdx = [];
     for (const m of this.meshes) this.dress(m);
     this.outline();
+    this.face();
 
     // ---- rest data for retargeting (both rigs are in their rest poses at construction)
     this.scene.updateMatrixWorld(true);
@@ -117,6 +118,7 @@ export class Hero {
       let best = -1, bw = -1;
       for (let k = 0; k < 4; k++) { const w = sw.getComponent(i, k); if (w > bw) { bw = w; best = si.getComponent(i, k); } }
       const bn = bones[best] || '', y = pos.getY(i), x = Math.abs(pos.getX(i));
+      if (!joints && bn === 'DEF-head') (this.headBox = this.headBox || new THREE.Box3()).expandByPoint(_v.fromBufferAttribute(pos, i));
       let c = joints ? skinD : skin, inflate = 0;
       if ((/thigh|shin/.test(bn) && y > 0.2) || (/hips/.test(bn) && y < 1.02) || (/spine001/.test(bn) && y < 0.98)) { c = pants; inflate = /shin/.test(bn) ? 0.012 : 0.02; }
       if (y > 0.975 && y < 1.035 && x < 0.2 && /hips|spine001/.test(bn)) { c = sash; inflate = 0.024; }
@@ -129,6 +131,24 @@ export class Hero {
     g.setAttribute('color', new THREE.BufferAttribute(col, 3));
     mesh.material = this.material;
     mesh.castShadow = true; mesh.receiveShadow = false; mesh.frustumCulled = false;
+  }
+  // the mannequin's head is a smooth egg: add ears, nose, brow and eyes (placed from the head's own bounds)
+  face() {
+    const B = this.headBox; if (!B) return;
+    const head = this.bones['DEF-head'];
+    this.scene.updateMatrixWorld(true);
+    const toHead = new THREE.Matrix4().copy(head.matrixWorld).invert().multiply(this.parent.matrixWorld);
+    const h = B.max.y - B.min.y, cz = (B.max.z + B.min.z) / 2, skin = new THREE.MeshToonMaterial({ color: this.colors.skin, gradientMap: TOON_RAMP });
+    const dark = new THREE.MeshBasicMaterial({ color: 0x1a1010 });
+    const add = (geo, mat, x, y, z, sx, sy, sz) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z).applyMatrix4(toHead); m.scale.set(sx, sy, sz); m.quaternion.copy(new THREE.Quaternion().setFromRotationMatrix(toHead)); m.castShadow = true; head.add(m); return m; };
+    const sph = new THREE.SphereGeometry(1, 10, 8);
+    for (const s of [1, -1]) {
+      add(sph, skin, s * (B.max.x - 0.004), B.min.y + h * 0.52, cz - 0.005, 0.016, 0.03, 0.02);                    // ears
+      add(sph, dark, s * 0.034, B.min.y + h * 0.6, B.max.z - 0.012, 0.012, 0.007, 0.006);                          // eyes
+    }
+    add(sph, skin, 0, B.min.y + h * 0.48, B.max.z + 0.004, 0.016, 0.026, 0.02);                                     // nose
+    add(sph, skin, 0, B.min.y + h * 0.66, B.max.z - 0.006, 0.062, 0.012, 0.016);                                    // brow ridge
+    this.skinMat = skin;
   }
   setSash(hex) {
     const c = new THREE.Color(hex);

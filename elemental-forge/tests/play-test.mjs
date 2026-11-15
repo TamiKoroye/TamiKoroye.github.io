@@ -365,7 +365,7 @@ check('earth combo: lift a rock, strafe while holding it, kick it into the rival
 head('Camera');
 await setup({ el: 'earth', locked: false, p: [-20, 0.9, -15.4], o: [20, 0, 20] });
 // player stands just north of the stepped platform, camera looks north so it sits above the platform behind them
-await S(() => { const E = window.__EF; E.player.pos.set(-20, 0, -13.6); E.player.faceYaw = E.player.yaw = 0; E.camCtl.snapBehind(E.player); E.camCtl.yaw = 0; E.camCtl.pitch = -0.12; E.camCtl.autoCam = false; });
+await S(() => { const E = window.__EF; E.player.pos.set(-20, 0, -13.6); E.player.faceYaw = E.player.yaw = 0; E.camCtl.snapBehind(E.player); E.camCtl.yaw = 0; E.camCtl.pitch = -0.32; E.camCtl.autoCam = false; });
 await stepN(20);
 const cam = await S(() => { const E = window.__EF, v = E.player.pos.clone(); v.y += 1; v.project(E.world.camera); return { lift: E.camCtl.pitchLift, py: v.y }; });
 await shot('17-camera-platform');

@@ -4,7 +4,12 @@ A browser-playable third-person elemental martial-arts game for Android phones, 
 
 Live build: https://tamikoroye.github.io/elemental-forge/
 
-**Current build:** the martial-arts and elemental manipulation overhaul (Phases A–D of the brief), plus the camera parts of Phase E. All four elements are playable, each with its own fighting style.
+**Current build:** visual-quality rebuild (development branch). This milestone is a combat demo that can be compared directly with the reference footage. See `docs/QUALITY-GAP.md` for the five-video analysis and the engine and asset assessment.
+
+- **Characters:** a properly rigged humanoid, the CC0 Quaternius *Universal Animation Library* mannequin (53 bones, fingers). It is recoloured into a shirtless fighter with trousers, sash and wraps; given a face (ears, nose, brow, eyes); cel-shaded; and ink-outlined.
+- **Animation:** authored clips (idle, walk, jog, sprint, jump, roll, hit reactions) run through an animation mixer with crossfades. They blend per body half with the procedural martial-arts system, which is retargeted bone by bone onto the rigged skeleton (stances, kicks, palm strikes, guards, bending gestures).
+- **Effects:** solid cel-shaded flame blobs (yellow to orange to red to smoke), faceted light-blue water chunks, and ribbon trails for air and water (all ribbons in one draw call).
+- **Look:** cel shading across the arena, flat bright lighting without filmic tone mapping, the reference palette, and closer camera framing (the fighter fills about 40% of the screen height).
 
 | Element | Martial art | Character |
 |---|---|---|
@@ -86,11 +91,7 @@ The play test drives the real on-screen controls with DevTools multi-touch event
 **Not verified on a physical Samsung device:** frame rate, touch feel and audio. The tests use a software renderer.
 
 ## Known limitations
-- The characters are generated in code with procedural animation, not artist-made or motion-captured. Every technique uses coordinated legs, hips, torso and arms, but the result is stylised, not cinematic.
-- The opponent AI uses each element's techniques by range but is still the first-pass brain. Stage C replaces it with archetype-specific behaviour.
-- Not yet built:
-  - advanced disciplines (lightning, ice, bloodbending, metal, lava, sand, flight, air removal)
-  - Toph's Southern Praying Mantis variant
-  - water and ice traversal (ice bridges)
-  - the campaign and progression
-- Air push moves fighters and projectiles but not static arena boulders.
+- The kicks and the four style forms are still procedural, now retargeted onto the rigged character. The CC0 library has no kicks or martial-arts forms. Authored clips from Mixamo (you would download them with your free Adobe account) or a purchased martial-arts pack would close most of the remaining animation gap; the bone mapping in `js/hero.js` is ready for them.
+- The character is a recoloured mannequin. It has added facial features but no textured clothing.
+- Not built yet: breakable wooden cover, ice slabs you can ride, climbing (all seen in the references); advanced disciplines; the campaign.
+- Frame rate on the S25 Ultra for this build is not yet measured. The previous build ran at about 60 fps on the device, measured from your screen recording.

@@ -7,7 +7,7 @@ export class FollowCam {
   constructor(camera, arena) {
     this.cam = camera; this.arena = arena;
     this.yaw = 0; this.pitch = 0.2;
-    this.dist = 3.9; this.curDist = 3.9;
+    this.dist = 3.5; this.curDist = 3.5;
     this.shoulder = 0.55;
     this.pivot = new THREE.Vector3();
     this.lockOffsetYaw = 0;
@@ -65,7 +65,7 @@ export class FollowCam {
     // over-the-shoulder offset widens during lock-on so the rival is framed beside / above the player
     // framing matches the references: the fighter fills ~40% of the screen height, over the right shoulder
     this.shoulder = damp(this.shoulder, locked && target && !target.dead ? 0.8 : 0.5, 4, dt);
-    this.dist = locked && target && !target.dead ? 4.4 : 3.9;
+    this.dist = locked && target && !target.dead ? 3.8 : 3.5;
     // build view
     // Low obstructions (platform edges, ledges, boulders, pillars) are cleared by raising the camera over them;
     // only tall ones (walls, spires) make it pull in. This keeps the lower part of the view open on raised terrain.
