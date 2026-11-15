@@ -42,7 +42,7 @@ for (const el of Object.keys(ROWS)) {
   md += `\n## ${el[0].toUpperCase() + el.slice(1)}\n\n| Control | Technique | Clip(s) shown | Source | Speed | Touch: n / shown / authored upper-lower / moving | Touch: ended by | Demo: n / shown / authored upper-lower | Demo: ended by |\n|---|---|---|---|---|---|---|---|---|\n`;
   for (const [ctl, name] of ROWS[el]) {
     const t = summary(A.touch.techniques.filter(x => x.el === el && x.action === name));
-    const d = summary(A.demo.techniques.filter(x => x.el === el && x.action === name));
+    const d = A.demo ? summary(A.demo.techniques.filter(x => x.el === el && x.action === name)) : null;
     const any = t || d;
     if (!any) { md += `| ${ctl} | ${name} | not exercised | | | | | | |\n`; continue; }
     md += `| ${ctl} | ${name === 'guard' ? 'guard hold' : name === 'hold' ? 'sustained bending' : name} | ${any.clips.join(', ')}${t && t.layered ? ' (upper body over authored footwork while moving)' : ''} | ${any.clips.map(src).join('; ')} | ${any.speed}x | ${t ? `${t.n} / ${pct(t.shown)} / ${pct(t.up)}-${pct(t.low)} / ${pct(t.moving)}` : '-'} | ${t ? t.ends : '-'} | ${d ? `${d.n} / ${pct(d.shown)} / ${pct(d.up)}-${pct(d.low)}` : '-'} | ${d ? d.ends : '-'} |\n`;
@@ -50,7 +50,7 @@ for (const el of Object.keys(ROWS)) {
 }
 const all = (m) => A[m].techniques;
 const other = (m, k) => all(m).filter(t => t.action === k);
-md += `\n## Dodges and charge-up\n\n| | Touch: clips | Demo: clips |\n|---|---|---|\n| dodge | ${other('touch', 'dodge').map(t => t.clip).join(', ')} | ${other('demo', 'dodge').map(t => t.clip).join(', ')} |\n| charge-up (LEG held) | ${other('touch', 'charge').map(t => t.clip + ' ' + pct(t.authoredUpper)).join(', ')} | ${other('demo', 'charge').map(t => t.clip + ' ' + pct(t.authoredUpper)).join(', ')} |\n`;
-md += `\nPage errors: touch ${A.touch.errors.length}, demo ${A.demo.errors.length}.\n`;
+md += `\n## Dodges and charge-up\n\n| | Touch: clips | Demo: clips |\n|---|---|---|\n| dodge | ${other('touch', 'dodge').map(t => t.clip).join(', ')} | ${A.demo ? other('demo', 'dodge').map(t => t.clip).join(', ') : '-'} |\n| charge-up (LEG held) | ${other('touch', 'charge').map(t => t.clip + ' ' + pct(t.authoredUpper)).join(', ')} | ${A.demo ? other('demo', 'charge').map(t => t.clip + ' ' + pct(t.authoredUpper)).join(', ') : '-'} |\n`;
+md += `\nPage errors: touch ${A.touch.errors.length}${A.demo ? ', demo ' + A.demo.errors.length : ''}.\n`;
 fs.writeFileSync(OUT, md);
 console.log('wrote', OUT);

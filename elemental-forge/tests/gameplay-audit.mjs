@@ -47,7 +47,7 @@ function buildScript() {
   return { ev, total: f + 10 };
 }
 
-const browser = await chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
+const browser = await chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'], ...(process.env.HTTPS_PROXY && !/localhost|127\.0\.0\.1/.test(BASE) ? { proxy: { server: process.env.HTTPS_PROXY } } : {}) });
 async function session(mode) {
   const ctx = await browser.newContext({ viewport: { width: 891, height: 412 }, deviceScaleFactor: 1, hasTouch: true, isMobile: true });
   const page = await ctx.newPage(); const errors = [];
@@ -119,7 +119,8 @@ async function session(mode) {
       g.strokeStyle = '#fff'; g.lineWidth = 2; g.strokeRect(W - s - 6, H - s - 6, s, s);
       g.font = 'bold 15px sans-serif'; g.fillStyle = '#fff'; g.shadowColor = '#000'; g.shadowBlur = 4;
       const m = E.MOCAP[(row.clip || '').split('|')[0]], lowN = h && h.low ? h.lowName.split('|')[0] : null;
-      g.fillText(`${mode === 'touch' ? 'TOUCH CONTROLS, AI fighting back' : 'DEMO METHOD (scripted presses, passive rival)'}  -  ${p.el.toUpperCase()}`, 10, 22);
+      const LD = window.__LOAD || {};
+      g.fillText(`${mode === 'touch' ? 'TOUCH CONTROLS, AI fighting back (Normal)' : 'DEMO METHOD (scripted presses, passive rival)'}  -  ${p.el.toUpperCase()}   [${location.host}${location.pathname}  clips decoded ${LD.clipsDecoded}/${LD.clipsExpected}]`, 10, 22);
       g.fillText(`technique: ${row.tech || row.act || (row.guard ? 'GUARD' : row.hold ? 'HOLD' : row.charge ? 'CHARGE' : row.dodge ? 'DODGE' : '-')}`, 10, 44);
       g.fillText(`clip: ${(row.clip || '').split('|')[0]}${(row.clip || '').endsWith('|U') ? ' (upper body)' : ''}  [${m ? m.src.replace(/ \[.*\]/, '') : 'core library'}]  ${Math.round((row.ct || 0) * 100)}%  x${row.ts}`, 10, 64);
       if (lowN) g.fillText(`legs: ${lowN} [${E.MOCAP[lowN] ? E.MOCAP[lowN].src.replace(/ \[.*\]/, '') : 'core library'}]`, 10, 104);

@@ -17,7 +17,8 @@ const BASE = process.argv[2] || 'http://localhost:8765/';
 const OUT = path.resolve(process.argv[3] || './acceptance'); fs.mkdirSync(OUT, { recursive: true });
 const results = []; const check = (name, ok, detail = '') => { results.push({ name, ok: !!ok, detail }); console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}${detail ? '  -- ' + detail : ''}`); };
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
-const browser = await chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
+// behind an HTTPS proxy (CI / cloud sandboxes) the test's own re-fetches in page.route must use it too
+const browser = await chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'], ...(process.env.HTTPS_PROXY && !/localhost|127\.0\.0\.1/.test(BASE) ? { proxy: { server: process.env.HTTPS_PROXY } } : {}) });
 
 async function open(opts = {}) {
   const ctx = await browser.newContext({ viewport: { width: 891, height: 412 }, deviceScaleFactor: 1, hasTouch: true, isMobile: true });

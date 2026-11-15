@@ -23,7 +23,14 @@ Live build: https://tamikoroye.github.io/elemental-forge/
 | Air | Baguazhang | toe-in circle-walking stance; open palms; constant spinning kicks; fastest movement |
 
 ## Checking which build is running
-The menu shows a build stamp in the bottom-left corner (for example `dev 2026-11-15 r3 · 68 martial-arts clips loaded`). If it says "NO martial-arts clips", the animation pack failed to load and the game has fallen back to procedural techniques. Add `?debug=anim` to the address to see, live, which clip the character is playing, which captured take it comes from, its speed, the leg layer and how much of the body is authored.
+- **Development test build** (full screen in Chrome): https://tamikoroye.github.io/elemental-forge-dev/
+- **Build stamp:** the menu shows a stamp in the bottom-left corner with the ACTUAL loading result, for example `dev 2026-11-15 r5 · commit 042214e · character OK · 68/68 martial-arts clips decoded`.
+- **Loading gate:** if the character or any required clip fails to load, FIGHT is disabled and the exact error is shown on the menu. The game never falls back to the old procedural bodies on its own. See `docs/LOADING-FAILURE.md`.
+- **Live readout:** add `?debug=anim` to the address to see which clip is playing, which captured take it comes from, its speed, the leg layer and how much of the body is authored.
+- **Assets load as JavaScript modules, not fetch requests**, so they also load in embedded viewers that block fetch:
+  - the character is `assets/characters/ual-mannequin.glb.js`
+  - the clips are `assets/animations/martial.js`
+  - rebuild both with `node tools/pack-assets.mjs` after baking
 
 ## Launching
 - **Phone:** open the live link in Chrome and tap FIGHT. To install it like an app, open Chrome's menu and choose *Add to Home screen*.
@@ -78,6 +85,7 @@ The menu shows a build stamp in the bottom-left corner (for example `dev 2026-11
     node tests/record-gameplay.mjs http://localhost:8765/ ./gameplay.mp4
     node tests/record-mocap-demo.mjs http://localhost:8765/ ./mocap-demo.mp4   # procedural vs motion capture, side by side
     node tests/defence-test.mjs http://localhost:8765/ ./defence-shots      # 17 defence checks
+    node tests/acceptance-test.mjs https://tamikoroye.github.io/elemental-forge-dev/ ./acceptance   # Stage 1 acceptance against the DEPLOYED build
     node tests/gameplay-audit.mjs http://localhost:8765/ ./audit            # touch-driven play vs demo method: per-technique clip log + videos
     node tests/audit-report.mjs ./audit/audit.json docs/ANIMATION-RUNTIME-AUDIT.md
     node tests/record-stage1.mjs http://localhost:8765/ ./stage1            # per element: body only (effects hidden) and full gameplay
