@@ -31,6 +31,13 @@ const RIGS = {
       thigh: S + 'UpLeg', shin: S + 'Leg', foot: S + 'Foot', toe: S + 'ToeBase',
       thumb: [1, 2, 3].map(i => S + 'HandThumb' + i), index: [1, 2, 3].map(i => S + 'HandIndex' + i), middle: [1, 2, 3].map(i => S + 'HandMiddle' + i),
       ring: [1, 2, 3].map(i => S + 'HandRing' + i), pinky: [1, 2, 3].map(i => S + 'HandPinky' + i) }) },
+  // Unreal-style skeleton (pelvis, spine_01..03, clavicle_l, upperarm_l, calf_l, ball_l), e.g. the KinemIQ /
+  // Verge3D GLB and FBX clips supplied on 15 Nov
+  ue: { hips: 'pelvis', spine: ['spine_01', 'spine_02', 'spine_03'], neck: 'neck_01', head: 'Head',
+    side: (S) => { const s = S === 'Left' ? 'l' : 'r'; return { shoulder: 'clavicle_' + s, arm: 'upperarm_' + s, fore: 'lowerarm_' + s, hand: 'hand_' + s, handChild: 'middle_01_' + s,
+      thigh: 'thigh_' + s, shin: 'calf_' + s, foot: 'foot_' + s, toe: 'ball_' + s,
+      thumb: [1, 2, 3].map(i => `thumb_0${i}_${s}`), index: [1, 2, 3].map(i => `index_0${i}_${s}`), middle: [1, 2, 3].map(i => `middle_0${i}_${s}`),
+      ring: [1, 2, 3].map(i => `ring_0${i}_${s}`), pinky: [1, 2, 3].map(i => `pinky_0${i}_${s}`) }; } },
   rokoko: { hips: 'Hips', spine: ['Spine1', 'Spine2', 'Spine4'], neck: 'Neck', head: 'Head',
     side: (S) => ({ shoulder: S + 'Shoulder', arm: S + 'Arm', fore: S + 'ForeArm', hand: S + 'Hand', handChild: S + 'Finger3Proximal',
       thigh: S + 'Thigh', shin: S + 'Shin', foot: S + 'Foot', toe: S + 'Toe',
@@ -45,6 +52,7 @@ const wp = (o) => o.getWorldPosition(new THREE.Vector3());
 export function detectRig(names) {
   const has = (n) => names.includes(n);
   if (has('LowerBack')) return 'cmu';
+  if (has('pelvis') && has('calf_l')) return 'ue';
   if (has('LeftThigh') && has('Spine4')) return 'rokoko';
   if (has('Hips') && has('Spine2') && has('LeftUpLeg')) return 'mixamo';
   return null;

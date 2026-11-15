@@ -67,7 +67,7 @@ const earth = {
         [1.0, () => {}],
       ] }),
     leg: [
-      T({ name: 'Earth Kick', clip: 'earth_kick', dur: 0.6, cost: 10, cancel: 0.72, move: 0.6, lunge: 4,
+      T({ name: 'Earth Kick', clip: ['earth_kick', 'earth_backkick'], dur: 0.6, cost: 10, cancel: 0.72, move: 0.6, lunge: 4,
         active: { from: 0.4, to: 0.56, dmg: 9, range: 2.0, arc: 0.3, knock: 6, level: 1 },
         events: [[0.42, 'earth.leg']],
         keys: [
@@ -149,7 +149,7 @@ const fire = {
           [0.62, (p, c) => { lunge(p, c.s, -0.1, 0.45, -0.4, 0.1); arm(p, c.s, -1.2, 0.2, 0, 0.6); arm(p, -c.s, -0.6, 0.55, 0, 2.0); }],
           [1.0, () => {}],
         ] }),
-      T({ name: 'Spinning Flame Kick', clip: 'fire_spin', dur: 0.56, cost: 12, cancel: 0.72, move: 1.5, spin: [0.05, 0.72, -1], lunge: 4,
+      T({ name: 'Spinning Flame Kick', clip: ['fire_spin', 'fire_spinback'], dur: 0.56, cost: 12, cancel: 0.72, move: 1.5, spin: [0.05, 0.72, -1], lunge: 4,
         active: { from: 0.3, to: 0.62, dmg: 10, range: 2.3, arc: -1.1, knock: 7, level: 1 },
         events: [[0.42, 'fire.spin']],
         keys: [
@@ -192,7 +192,7 @@ const water = {
   loco: { walk: 2.8, run: 6.2, sprint: 8.8, accel: 26, stride: 1.0, bob: 0.35, knee: 0.7, lean: 0.6, swing: 0.35, elbow: 0.8, carry: -0.55, out: 0.07, heavy: 0.6, flow: 1 },
   jump: { v: 7.4, air: 0 },
   dodge: { kind: 'slide', dur: 0.4, speed: 13, iframes: 0.7, trail: 'water' },
-  labels: { hand: 'WATER PALM', leg: 'WATER KICK', guard: 'WATER SHIELD', special: 'WATER SPHERE' },
+  labels: { hand: 'WATER PALM', leg: 'WATER KICK', guard: 'WATER SHIELD', special: 'SPIRAL STREAMS' },
   tech: {
     hand: T({ name: 'Water Palm', clip: 'water_palm', dur: 0.5, cost: 6, cancel: 0.62, upper: true, move: 3.8, lunge: 3,
       active: { from: 0.5, to: 0.64, dmg: 5, range: 1.9, arc: 0.4, knock: 4, level: 0 },
@@ -241,7 +241,7 @@ const water = {
     guard: (p, c) => { const a = Math.sin((c ? c.t : 0) * 2.2);
       stanceLegs(p, -0.18, 0.22, 0.16, -0.12, 0.16); S(p, 'hips', 0, 0.15 * a, 0); S(p, 'spine', 0.05, 0, 0);
       arm(p, 1, -1.15 + 0.15 * a, 0.75, 0.6, 1.0, 0.4); arm(p, -1, -1.15 - 0.15 * a, 0.75, 0.6, 1.0, 0.4); },
-    special: T({ name: 'Water Sphere', clip: 'water_sphere', dur: 0.6, cost: 12, cancel: 0.72, move: 2, upper: true,
+    special: T({ name: 'Spiral Streams', clip: 'water_sphere', dur: 0.6, cost: 20, cancel: 0.72, move: 2, upper: true,
       events: [[0.52, 'water.special']],
       keys: [
         [0.0, () => {}],
@@ -320,3 +320,13 @@ const air = {
 
 export const STYLES = { earth, fire, water, air };
 export const ELEMENTS = ['earth', 'fire', 'water', 'air'];
+
+// Kick while stepping forward: one shared authored take; each element supplies its own effect at the impact.
+// LEG while running uses it, so attacks keep the fighter's momentum instead of stopping the run.
+const MOVE_EVENT = { earth: 'earth.leg', fire: 'fire.leg', water: 'water.leg', air: 'air.leg' };
+for (const st of Object.values(STYLES)) {
+  st.tech.legMove = T({ name: 'Running Kick', clip: 'move_kick', dur: 0.55, cost: 9, cancel: 0.7, move: 4.6, lunge: 3,
+    active: { from: 0.4, to: 0.58, dmg: 8, range: 2.3, arc: 0.45, knock: 6, level: 1 },
+    events: [[0.45, MOVE_EVENT[st.key]]],
+    keys: [[0.0, () => {}], [1.0, () => {}]] });
+}

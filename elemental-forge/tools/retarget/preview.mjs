@@ -31,12 +31,12 @@ for (const name of NAMES.split(',')) {
     // source skeleton
     let srcRoot, srcClip, sm = null, holder = new THREE.Group();
     if (s.bvh) { const b = new BVHLoader().parse(bvhText); srcRoot = b.skeleton.bones[0]; srcClip = b.clip; holder.add(srcRoot); }
-    else { const f = await new FBXLoader().loadAsync(s.src); srcClip = f.animations.slice().sort((a, b) => b.duration - a.duration)[0]; f.traverse(o => { if (o.isMesh) o.visible = false; }); holder.add(f); srcRoot = f; }
+    else { let f; if (/\.glb$/i.test(s.src)) { const g = await new GLTFLoader().loadAsync(s.src); f = g.scene; f.animations = g.animations; f.updateMatrixWorld(true); let sk = null; f.traverse(o => { if (o.isSkinnedMesh && !sk) sk = o.skeleton; }); if (sk) sk.pose(); } else f = await new FBXLoader().loadAsync(s.src); srcClip = f.animations.slice().sort((a, b) => b.duration - a.duration)[0]; f.traverse(o => { if (o.isMesh) o.visible = false; }); holder.add(f); srcRoot = f; }
     scene.add(holder);
     const sh = new THREE.SkeletonHelper(srcRoot); sh.material.depthTest = false; sh.renderOrder = 9; scene.add(sh);
     holder.updateMatrixWorld(true);
-    const hipsB = (() => { let h = null; srcRoot.traverse(o => { if (!h && /Hips$/.test(o.name)) h = o; }); return h; })();
-    const footB = (() => { let h = null; srcRoot.traverse(o => { if (!h && /(LeftFoot)$/.test(o.name)) h = o; }); return h; })();
+    const hipsB = (() => { let h = null; srcRoot.traverse(o => { if (!h && /(Hips|pelvis)$/.test(o.name)) h = o; }); return h; })();
+    const footB = (() => { let h = null; srcRoot.traverse(o => { if (!h && /(LeftFoot|foot_l)$/.test(o.name)) h = o; }); return h; })();
     const hy = hipsB.getWorldPosition(new THREE.Vector3()).y - footB.getWorldPosition(new THREE.Vector3()).y;
     holder.scale.setScalar(0.83 / hy);
     sm = new THREE.AnimationMixer(srcRoot); sm.clipAction(srcClip).play();

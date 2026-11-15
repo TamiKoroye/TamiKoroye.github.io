@@ -8,7 +8,7 @@ const src = (clip) => { const b = (clip || '').split('|')[0].replace(/_M$/, '');
 const ROWS = {
   earth: [['HAND', 'Stone Punch'], ['LEG 1', 'Earth Kick'], ['LEG 2', 'Earth Sweep'], ['GUARD', 'guard'], ['SPECIAL', 'Stone Pillar'], ['HAND held', 'hold'], ['LEG held', 'Seismic Stomp']],
   fire: [['HAND', 'Fire Fist'], ['LEG 1', 'Flame Kick'], ['LEG 2', 'Spinning Flame Kick'], ['GUARD', 'guard'], ['SPECIAL', 'Flame Orb'], ['HAND held', 'hold'], ['LEG held', 'Flying Dragon Kick']],
-  water: [['HAND', 'Water Palm'], ['LEG 1', 'Crescent Water Kick'], ['LEG 2', 'Turning Wave Kick'], ['GUARD', 'guard'], ['SPECIAL', 'Water Sphere'], ['HAND held', 'hold'], ['LEG held', 'Tidal Sweep']],
+  water: [['HAND', 'Water Palm'], ['LEG 1', 'Crescent Water Kick'], ['LEG 2', 'Turning Wave Kick'], ['GUARD', 'guard'], ['SPECIAL', 'Spiral Streams'], ['HAND held', 'hold'], ['LEG held', 'Tidal Sweep']],
   air: [['HAND', 'Air Palm'], ['LEG 1', 'Crescent Air Kick'], ['LEG 2', 'Whirlwind Kick'], ['GUARD', 'guard'], ['SPECIAL', 'Vortex'], ['HAND held', 'hold'], ['LEG held', 'Cyclone']],
 };
 const pct = (v) => Math.round(v * 100) + '%';

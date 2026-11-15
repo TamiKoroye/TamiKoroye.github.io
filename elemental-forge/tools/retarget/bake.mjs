@@ -34,9 +34,9 @@ const pack = await page.evaluate(async ([spec, texts, keep]) => {
   const source = async (s) => {
     const key = s.src || s.bvh;
     if (s.bvh) { const b = new BVHLoader().parse(texts[s.bvh]); return { root: b.skeleton.bones[0], clip: b.clip, restTime: 0 }; }   // BVH re-parsed each time
-    if (!cache[key]) cache[key] = await new FBXLoader().loadAsync(s.src);
+    if (!cache[key]) cache[key] = /\.glb$/i.test(s.src) ? await (async () => { const { GLTFLoader: GL } = await import('three/addons/loaders/GLTFLoader.js'); const g = await new GL().loadAsync(s.src); g.scene.animations = g.animations; g.scene.updateMatrixWorld(true); let sk = null; g.scene.traverse(o => { if (o.isSkinnedMesh && !sk) sk = o.skeleton; }); if (sk) sk.pose(); return g.scene; })() : await new FBXLoader().loadAsync(s.src);
     const f = cache[key]; const clip = f.animations.slice().sort((a, b) => b.duration - a.duration)[0];
-    const root = f.children.find(c => c.isBone) || f.getObjectByProperty('isBone', true).parent;
+    const root = f.children.find(c => c.isBone) || (f.getObjectByProperty('isBone', true) || f).parent;
     return { root, clip };
   };
   const r4 = (v) => Math.round(v * 1e4) / 1e4;

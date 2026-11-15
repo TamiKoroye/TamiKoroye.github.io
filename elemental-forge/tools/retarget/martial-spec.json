@@ -41,5 +41,8 @@
   {"name": "dodge_side", "src": ".anim-src/mixamo/Dodging Right.fbx", "start": 0.1, "end": 1.1, "note": "side dodge (mirror = left)"},
   {"name": "dodge_back", "src": ".anim-src/mixamo/Backflip.fbx", "mirror": false, "note": "back flip"},
   {"name": "block_hit", "src": ".anim-src/mixamo/Blocking.fbx", "mirror": false, "note": "blocking impact"},
-  {"name": "strafe", "src": ".anim-src/mixamo/Standing Aim Walk Left.fbx", "loop": true, "aim": "hips", "note": "sidestep walk to the left (legs only are used; mirror = right)"}
+  {"name": "strafe", "src": ".anim-src/mixamo/Standing Aim Walk Left.fbx", "loop": true, "aim": "hips", "note": "sidestep walk to the left (legs only are used; mirror = right)"},
+  {"name": "fire_spinback", "src": ".anim-src/new/Kick_-_spinning_back_kick.glb", "start": 0.55, "end": 2.0, "impact": 1.2, "limb": "kL", "note": "spinning back kick (upload 15 Nov, UE skeleton)"},
+  {"name": "earth_backkick", "src": ".anim-src/new/Kick_-_back_kick.glb", "start": 0.4, "end": 1.75, "impact": 1.0, "limb": "kR", "note": "back kick (upload 15 Nov)"},
+  {"name": "move_kick", "src": ".anim-src/new/Does_a_kick_while_moving_forward.fbx", "start": 1.65, "end": 2.9, "impact": 2.2, "limb": "kR", "note": "kick while stepping forward (upload 15 Nov)"}
 ]
