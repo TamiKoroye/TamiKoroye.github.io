@@ -7,7 +7,9 @@ Live build: https://tamikoroye.github.io/elemental-forge/
 **Current build:** visual-quality rebuild (development branch). This milestone is a combat demo that can be compared directly with the reference footage. See `docs/QUALITY-GAP.md` for the five-video analysis and the engine and asset assessment.
 
 - **Characters:** a properly rigged humanoid, the CC0 Quaternius *Universal Animation Library* mannequin (53 bones, fingers). It is recoloured into a shirtless fighter with trousers, sash and wraps; given a face (ears, nose, brow, eyes); cel-shaded; and ink-outlined.
-- **Animation:** authored clips (idle, walk, jog, sprint, jump, roll, hit reactions) run through an animation mixer with crossfades. They blend per body half with the procedural martial-arts system, which is retargeted bone by bone onto the rigged skeleton (stances, kicks, palm strikes, guards, bending gestures).
+- **Animation:** authored clips (idle, walk, jog, sprint, jump, roll, hit reactions) run through an animation mixer with crossfades.
+- **Martial-arts techniques from motion capture:** 14 strikes and kicks (punches, front, side, roundhouse, spinning and flying kicks) come from the CMU motion-capture database, retargeted onto the 53-bone skeleton and stored with mirrored copies for either side. Each one replaces the procedural pose for its technique and is retimed so its impact frame matches the hit and the element effect. See `assets/animations/README.md` for the takes and `tools/retarget/` for the pipeline. Add `?mocap=0` to the URL to compare against the old procedural techniques.
+- **Still procedural:** stances, guards, sustained bending poses, the earth stomp, the specials, and the arms over the running legs.
 - **Effects:** solid cel-shaded flame blobs (yellow to orange to red to smoke), faceted light-blue water chunks, and ribbon trails for air and water (all ribbons in one draw call).
 - **Look:** cel shading across the arena, flat bright lighting without filmic tone mapping, the reference palette, and closer camera framing (the fighter fills about 40% of the screen height).
 
@@ -69,6 +71,7 @@ Live build: https://tamikoroye.github.io/elemental-forge/
     node tests/style-gallery.mjs http://localhost:8765/ ./style-shots   # every pose of every style
     node tests/record-styles.mjs http://localhost:8765/ ./style-videos  # one clip per element, same input
     node tests/record-gameplay.mjs http://localhost:8765/ ./gameplay.mp4
+    node tests/record-mocap-demo.mjs http://localhost:8765/ ./mocap-demo.mp4   # procedural vs motion capture, side by side
 
 The play test drives the real on-screen controls with DevTools multi-touch events. It steps the game in exact 1/30 s frames, so timing-sensitive mechanics are checked deterministically. It covers 16 areas:
 1. star layout geometry and overlap, at default and maximum size
@@ -91,7 +94,7 @@ The play test drives the real on-screen controls with DevTools multi-touch event
 **Not verified on a physical Samsung device:** frame rate, touch feel and audio. The tests use a software renderer.
 
 ## Known limitations
-- The kicks and the four style forms are still procedural, now retargeted onto the rigged character. The CC0 library has no kicks or martial-arts forms. Authored clips from Mixamo (you would download them with your free Adobe account) or a purchased martial-arts pack would close most of the remaining animation gap; the bone mapping in `js/hero.js` is ready for them.
+- The motion-capture techniques come from karate, general kicking and acrobatics takes. The CMU database has no Hung Gar, Northern Shaolin or Baguazhang recordings, and its tai chi take is too slow and small for game strikes. The styles are therefore told apart by take choice, speed and effects rather than authentic forms. Clips from Rokoko, Mixamo or ActorCore can be fed through the same pipeline once downloaded as FBX or BVH.
 - The character is a recoloured mannequin. It has added facial features but no textured clothing.
 - Not built yet: breakable wooden cover, ice slabs you can ride, climbing (all seen in the references); advanced disciplines; the campaign.
 - Frame rate on the S25 Ultra for this build is not yet measured. The previous build ran at about 60 fps on the device, measured from your screen recording.

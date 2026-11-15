@@ -114,7 +114,7 @@ export class Fighter {
     if (this.en < (def.cost || 0)) { this.world.popup(this, 'NO ENERGY', true); return false; }
     this.en -= def.cost || 0;
     this.action = 'tech'; this.tech = def; this.actionT = 0; this.evIdx = 0; this.hitDone = false; this.jumped = false; this.spinYaw = 0;
-    this.techSide = side || 1;
+    this.techSide = side || 1; this.techN = (this.techN || 0) + 1;
     this.world.combat.lunge(this, def);
     const n = def.name || 'tech'; this.stats.techniques[n] = (this.stats.techniques[n] || 0) + 1;
     return true;
@@ -201,7 +201,7 @@ export class Fighter {
           this.legHoldT = -1;
         } else {
           this.legHoldT += dt;
-          const kickDone = !this.action || (this.action === 'tech' && this.actionU > 0.6);
+          const kickDone = !this.action || (this.action === 'tech' && this.actionU > Math.min(0.6, this.tech.cancel ?? 0.6));
           if (!this.charging && this.legHoldT > 0.3 && kickDone && !this.guarding && !this.reacting()) { this.charging = true; this.chargeT = 0; this.action = null; this.tech = null; }
         }
       }

@@ -1,0 +1,16 @@
+[
+  {"name": "earth_punch", "bvh": "135_09.bvh", "start": 2.2, "end": 3.0, "impact": 2.5, "limb": "pR", "note": "karate oi-zuki lunge punch"},
+  {"name": "earth_kick", "bvh": "135_04.bvh", "start": 2.6, "end": 3.8, "impact": 3.1, "limb": "kR", "note": "karate mae-geri front kick"},
+  {"name": "earth_side", "bvh": "135_11.bvh", "start": 2.4, "end": 3.6, "impact": 2.9, "limb": "kR", "note": "karate yoko-geri side kick"},
+  {"name": "fire_punch", "bvh": "135_09.bvh", "start": 4.1, "end": 4.9, "impact": 4.4, "limb": "pL", "note": "karate reverse punch"},
+  {"name": "fire_round", "bvh": "135_07.bvh", "start": 5.95, "end": 7.15, "impact": 6.45, "limb": "kR", "note": "karate mawashi-geri roundhouse"},
+  {"name": "fire_spin", "bvh": "88_06.bvh", "start": 0.15, "end": 1.4, "impact": 0.7, "limb": "kL", "note": "jumping spin kick"},
+  {"name": "fire_fly", "bvh": "90_05.bvh", "start": 1.75, "end": 3.2, "impact": 2.5, "limb": "kL", "noRise": true, "note": "flying jump kick"},
+  {"name": "water_palm", "bvh": "135_10.bvh", "start": 1.6, "end": 2.5, "impact": 2.0, "limb": "pR", "note": "karate shuto-uke knife-hand (open palm)"},
+  {"name": "water_kick", "bvh": "144_09.bvh", "start": 4.95, "end": 6.0, "impact": 5.3, "limb": "kL", "note": "slow controlled front kick"},
+  {"name": "water_turn", "bvh": "135_07.bvh", "start": 3.2, "end": 4.4, "impact": 3.7, "limb": "kL", "note": "roundhouse (turning) kick"},
+  {"name": "air_palm", "bvh": "78_13.bvh", "start": 0.2, "end": 1.35, "impact": 1.15, "limb": "pL", "note": "spinning strike"},
+  {"name": "air_crescent", "bvh": "135_07.bvh", "start": 8.95, "end": 10.1, "impact": 9.4, "limb": "kL", "note": "roundhouse (whipping crescent) kick"},
+  {"name": "air_whirl", "bvh": "87_01.bvh", "start": 1.65, "end": 2.95, "impact": 2.3, "limb": "kL", "noRise": true, "note": "jump spin kick"},
+  {"name": "air_cyclone", "bvh": "88_04.bvh", "start": 7.6, "end": 8.9, "impact": 8.3, "limb": "kL", "note": "double spin kick"}
+]

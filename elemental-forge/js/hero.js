@@ -9,6 +9,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import { HIP_H } from './character.js';
+import { MOCAP, clipFor } from './mocap.js';
 
 let TEMPLATE = null, CLIPS = null;
 export const heroReady = () => !!TEMPLATE;
@@ -101,6 +102,11 @@ export class Hero {
       if (!/Loop/.test(name)) { a.setLoop(THREE.LoopOnce, 1); a.clampWhenFinished = true; }
       this.actions[name] = a;
     }
+    // retargeted motion-capture techniques (played once, held on the last frame until the next state)
+    for (const [name, m] of Object.entries(MOCAP)) {
+      const a = this.mixer.clipAction(m.clip); a.setLoop(THREE.LoopOnce, 1); a.clampWhenFinished = true; this.actions[name] = a;
+    }
+    this.techN = -1;
     this.cur = null; this.play('Idle_Loop', 0);
     this.wU = 1; this.wL = 1;
     this.target = { _rigQ: new Map() };
@@ -170,6 +176,7 @@ export class Hero {
     const a = this.actions[name]; if (!a) return;
     a.timeScale = timeScale;
     if (this.cur === a && !restart) return;
+    if (this.cur === a) { a.reset(); a.setEffectiveWeight(1); a.play(); return; }
     a.reset(); a.enabled = true; a.setEffectiveWeight(1); a.play();
     if (this.cur && fade > 0) this.cur.crossFadeTo(a, fade, false); else if (this.cur) this.cur.stop();
     this.cur = a; this.curName = name;
@@ -182,6 +189,12 @@ export class Hero {
     const free = (!A || A.soft) && !f.guarding && !f.holding && !f.charging && !(f.restrainT > 0) && f.dodgeT <= 0 && !f.dead;
     if (f.dodgeT > 0 && f.dodgeKind === 'roll') { clip = 'Roll'; wU = wL = 0; ts = 1.46 / (f.dodgeDur * 1.7); }
     else if (f.action === 'hit') { clip = f.hitAlt ? 'Hit_Head' : 'Hit_Chest'; wU = wL = 0; }
+    else if (f.action === 'tech' && f.tech.clip && MOCAP[f.tech.clip]) {
+      // authored technique: the captured clip drives the whole body; running legs stay procedural for upper-body techs
+      clip = clipFor(f.tech, f.techSide); ts = f.tech.clipTS || 1; wU = 0;
+      wL = f.tech.upper && f.onGround && sp > 0.5 ? 1 : 0;
+      if (f.techN !== this.techN) { this.techN = f.techN; this.play(clip, 0.08, ts, true); }
+    }
     else if (free && !f.onGround) { clip = f.vel.y > 1.5 && f.airTime < 0.3 ? 'Jump_Start' : 'Jump_Loop'; wU = wL = 0; ts = f.vel.y > 1.5 ? 1.6 : 1; }
     else if (free && sp > 0.5 && fwd > 0.7) {
       // authored locomotion, matched to ground speed
@@ -193,7 +206,8 @@ export class Hero {
       // upper-body technique over authored running legs
       clip = sp < 7.6 ? 'Jog_Fwd_Loop' : 'Sprint_Loop'; ts = THREE.MathUtils.clamp(sp / 4.2, 0.8, 1.7); wU = 1; wL = 0;
     }
-    if (clip === 'Roll' && this.curName !== 'Roll') this.play('Roll', 0.06, ts, true);
+    if (MOCAP[clip]) { /* started above */ }
+    else if (clip === 'Roll' && this.curName !== 'Roll') this.play('Roll', 0.06, ts, true);
     else if (clip === 'Hit_Chest' || clip === 'Hit_Head') { if (this.curName !== clip || f.actionT < dt * 1.5) this.play(clip, 0.05, 1.2, true); }
     else this.play(clip, 0.18, ts);
     if (this.cur) this.cur.timeScale = ts;

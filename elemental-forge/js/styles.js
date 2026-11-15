@@ -56,7 +56,7 @@ const earth = {
   dodge: { kind: 'roll', dur: 0.44, speed: 12, iframes: 0.7 },
   labels: { hand: 'STONE PUNCH', leg: 'EARTH KICK', guard: 'WALL', special: 'PILLAR' },
   tech: {
-    hand: T({ name: 'Stone Punch', dur: 0.42, cost: 9, cancel: 0.6, upper: true, move: 3.2, lunge: 5,
+    hand: T({ name: 'Stone Punch', clip: 'earth_punch', dur: 0.42, cost: 9, cancel: 0.6, upper: true, move: 3.2, lunge: 5,
       active: { from: 0.33, to: 0.5, dmg: 7, range: 1.8, arc: 0.4, knock: 3, level: 0 },
       events: [[0.34, 'earth.hand']],
       keys: [
@@ -67,7 +67,7 @@ const earth = {
         [1.0, () => {}],
       ] }),
     leg: [
-      T({ name: 'Earth Kick', dur: 0.6, cost: 10, cancel: 0.72, move: 0.6, lunge: 4,
+      T({ name: 'Earth Kick', clip: 'earth_kick', dur: 0.6, cost: 10, cancel: 0.72, move: 0.6, lunge: 4,
         active: { from: 0.4, to: 0.56, dmg: 9, range: 2.0, arc: 0.3, knock: 6, level: 1 },
         events: [[0.42, 'earth.leg']],
         keys: [
@@ -79,7 +79,7 @@ const earth = {
           [0.7, (p, c) => { stanceLegs(p, -0.3, 0.36, 0.3, -0.16, 0.3, c.s); S(p, 'spine', 0.22, 0, 0); arm(p, 1, -0.6, 0.3, 0, 0.4, 1.0); arm(p, -1, -0.6, 0.3, 0, 0.4, 1.0); }],
           [1.0, () => {}],
         ] }),
-      T({ name: 'Earth Sweep', dur: 0.62, cost: 12, cancel: 0.75, move: 0.5, spin: [0.08, 0.7, 1],
+      T({ name: 'Earth Sweep', clip: 'earth_side', dur: 0.62, cost: 12, cancel: 0.75, move: 0.5, spin: [0.08, 0.7, 1],
         active: { from: 0.35, to: 0.6, dmg: 7, range: 2.2, arc: -1.1, knock: 4, level: 1 },
         events: [[0.45, 'earth.sweep']],
         keys: [
@@ -126,7 +126,7 @@ const fire = {
   dodge: { kind: 'dash', dur: 0.32, speed: 17, iframes: 0.75, trail: 'fire' },
   labels: { hand: 'FIRE FIST', leg: 'FLAME KICK', guard: 'FIRE WALL', special: 'FLAME ORB' },
   tech: {
-    hand: T({ name: 'Fire Fist', dur: 0.27, cost: 6, cancel: 0.5, upper: true, move: 4.2, lunge: 5,
+    hand: T({ name: 'Fire Fist', clip: 'fire_punch', dur: 0.27, cost: 6, cancel: 0.5, upper: true, move: 4.2, lunge: 5,
       active: { from: 0.28, to: 0.5, dmg: 5, range: 1.9, arc: 0.4, knock: 2, level: 0 },
       events: [[0.3, 'fire.hand']],
       keys: [
@@ -137,7 +137,7 @@ const fire = {
         [1.0, () => {}],
       ] }),
     leg: [
-      T({ name: 'Flame Kick', dur: 0.46, cost: 9, cancel: 0.65, move: 1.0, lunge: 6,
+      T({ name: 'Flame Kick', clip: 'fire_round', dur: 0.46, cost: 9, cancel: 0.65, move: 1.0, lunge: 6,
         active: { from: 0.38, to: 0.55, dmg: 8, range: 2.2, arc: 0.35, knock: 5, level: 1 },
         events: [[0.42, 'fire.leg']],
         keys: [
@@ -149,7 +149,7 @@ const fire = {
           [0.62, (p, c) => { lunge(p, c.s, -0.1, 0.45, -0.4, 0.1); arm(p, c.s, -1.2, 0.2, 0, 0.6); arm(p, -c.s, -0.6, 0.55, 0, 2.0); }],
           [1.0, () => {}],
         ] }),
-      T({ name: 'Spinning Flame Kick', dur: 0.56, cost: 12, cancel: 0.72, move: 1.5, spin: [0.05, 0.72, -1], lunge: 4,
+      T({ name: 'Spinning Flame Kick', clip: 'fire_spin', dur: 0.56, cost: 12, cancel: 0.72, move: 1.5, spin: [0.05, 0.72, -1], lunge: 4,
         active: { from: 0.3, to: 0.62, dmg: 10, range: 2.3, arc: -1.1, knock: 7, level: 1 },
         events: [[0.42, 'fire.spin']],
         keys: [
@@ -160,7 +160,7 @@ const fire = {
           [1.0, () => {}],
         ] }),
     ],
-    charged: T({ name: 'Flying Dragon Kick', dur: 0.72, cost: 20, cancel: 0.82, move: 7, jumpAt: [0.08, 6.4], lunge: 9, spin: [0.08, 0.6, -1],
+    charged: T({ name: 'Flying Dragon Kick', clip: 'fire_fly', dur: 0.72, cost: 20, cancel: 0.82, move: 7, jumpAt: [0.08, 6.4], lunge: 9, spin: [0.08, 0.6, -1],
       active: { from: 0.35, to: 0.62, dmg: 12, range: 2.4, arc: -1.1, knock: 9, level: 2 },
       events: [[0.45, 'fire.charged']],
       keys: [
@@ -194,7 +194,7 @@ const water = {
   dodge: { kind: 'slide', dur: 0.4, speed: 13, iframes: 0.7, trail: 'water' },
   labels: { hand: 'WATER PALM', leg: 'WATER KICK', guard: 'WATER SHIELD', special: 'WATER SPHERE' },
   tech: {
-    hand: T({ name: 'Water Palm', dur: 0.5, cost: 6, cancel: 0.62, upper: true, move: 3.8, lunge: 3,
+    hand: T({ name: 'Water Palm', clip: 'water_palm', dur: 0.5, cost: 6, cancel: 0.62, upper: true, move: 3.8, lunge: 3,
       active: { from: 0.5, to: 0.64, dmg: 5, range: 1.9, arc: 0.4, knock: 4, level: 0 },
       events: [[0.52, 'water.hand']],
       keys: [
@@ -205,7 +205,7 @@ const water = {
         [1.0, () => {}],
       ] }),
     leg: [
-      T({ name: 'Crescent Water Kick', dur: 0.62, cost: 9, cancel: 0.75, move: 1.2, lunge: 3,
+      T({ name: 'Crescent Water Kick', clip: 'water_kick', dur: 0.62, cost: 9, cancel: 0.75, move: 1.2, lunge: 3,
         active: { from: 0.42, to: 0.6, dmg: 7, range: 2.1, arc: 0.1, knock: 6, level: 1 },
         events: [[0.5, 'water.leg']],
         keys: [
@@ -216,7 +216,7 @@ const water = {
           [0.75, (p, c) => { p[PY] = -0.14; legIK(p, c.s, 0.28, hipDown(-0.14), 0.12); legIK(p, -c.s, -0.1, hipDown(-0.14), 0.14); arm(p, 1, -0.8, 0.5, 0.4, 0.9, 0.3); arm(p, -1, -0.6, 0.4, 0.4, 1.1, 0.3); }],
           [1.0, () => {}],
         ] }),
-      T({ name: 'Turning Wave Kick', dur: 0.7, cost: 11, cancel: 0.8, move: 1.0, spin: [0.05, 0.8, 1],
+      T({ name: 'Turning Wave Kick', clip: 'water_turn', dur: 0.7, cost: 11, cancel: 0.8, move: 1.0, spin: [0.05, 0.8, 1],
         active: { from: 0.35, to: 0.7, dmg: 7, range: 2.2, arc: -1.1, knock: 6, level: 1 },
         events: [[0.55, 'water.leg2']],
         keys: [
@@ -261,7 +261,7 @@ const air = {
   dodge: { kind: 'airdash', dur: 0.36, speed: 19, iframes: 0.85, trail: 'air' },
   labels: { hand: 'AIR PALM', leg: 'AIR KICK', guard: 'DEFLECT', special: 'VORTEX' },
   tech: {
-    hand: T({ name: 'Air Palm', dur: 0.32, cost: 6, cancel: 0.52, upper: true, move: 5, lunge: 4,
+    hand: T({ name: 'Air Palm', clip: 'air_palm', dur: 0.32, cost: 6, cancel: 0.52, upper: true, move: 5, lunge: 4,
       active: { from: 0.3, to: 0.5, dmg: 4, range: 1.9, arc: 0.4, knock: 6, level: 0 },
       events: [[0.32, 'air.hand']],
       keys: [
@@ -272,7 +272,7 @@ const air = {
         [1.0, () => {}],
       ] }),
     leg: [
-      T({ name: 'Crescent Air Kick', dur: 0.48, cost: 8, cancel: 0.66, move: 2.5, spin: [0.04, 0.62, -1], lunge: 4,
+      T({ name: 'Crescent Air Kick', clip: 'air_crescent', dur: 0.48, cost: 8, cancel: 0.66, move: 2.5, spin: [0.04, 0.62, -1], lunge: 4,
         active: { from: 0.3, to: 0.55, dmg: 6, range: 2.2, arc: -1.1, knock: 7, level: 1 },
         events: [[0.4, 'air.leg']],
         keys: [
@@ -282,7 +282,7 @@ const air = {
           [0.6, (p, c) => { p[PY] = 0.0; legRaw(p, c.s, -1.2, 0.3, 0.3, 0.1); legIK(p, -c.s, 0.0, hipDown(0) - 0.02, 0.04); arm(p, 1, -1.2, 0.9, -0.8, 0.3, -1.0); arm(p, -1, -1.0, 1.0, -0.8, 0.3, -1.0); }],
           [1.0, () => {}],
         ] }),
-      T({ name: 'Whirlwind Kick', dur: 0.6, cost: 11, cancel: 0.75, move: 4, spin: [0.05, 0.7, -1], jumpAt: [0.1, 5.2], lunge: 5,
+      T({ name: 'Whirlwind Kick', clip: 'air_whirl', dur: 0.6, cost: 11, cancel: 0.75, move: 4, spin: [0.05, 0.7, -1], jumpAt: [0.1, 5.2], lunge: 5,
         active: { from: 0.3, to: 0.65, dmg: 8, range: 2.3, arc: -1.1, knock: 8, level: 1 },
         events: [[0.45, 'air.leg2']],
         keys: [
@@ -292,7 +292,7 @@ const air = {
           [1.0, () => {}],
         ] }),
     ],
-    charged: T({ name: 'Cyclone', dur: 0.95, cost: 20, cancel: 0.9, move: 2.5, spin: [0.05, 0.9, -2],
+    charged: T({ name: 'Cyclone', clip: 'air_cyclone', dur: 0.95, cost: 20, cancel: 0.9, move: 2.5, spin: [0.05, 0.9, -2],
       events: [[0.3, 'air.charged'], [0.55, 'air.charged'], [0.8, 'air.charged']],
       keys: [
         [0.0, () => {}],

@@ -11,7 +11,8 @@ import { AI } from './ai.js';
 import { FX } from './fx.js';
 import { Audio } from './audio.js';
 import { clamp, damp } from './util.js';
-import { loadHeroAssets, TOON_RAMP } from './hero.js';
+import { loadHeroAssets, TOON_RAMP, heroReady } from './hero.js';
+import { loadMocap, adoptTiming } from './mocap.js';
 
 const $ = (id) => document.getElementById(id);
 window.addEventListener('error', (e) => { const el = $('err'); el.textContent = 'Error: ' + e.message + '\n' + (e.filename || '') + ':' + (e.lineno || ''); el.classList.remove('hidden'); });
@@ -69,6 +70,10 @@ const camCtl = new FollowCam(camera, world.arena);
 
 // rigged character + animation clips (CC0); the game still runs with procedural bodies if this fails
 try { await loadHeroAssets(); } catch (e) { console.warn('character asset failed to load, using procedural bodies', e); }
+// authored martial-arts techniques (motion capture); without them the procedural techniques are used
+if (heroReady() && !/[?&]mocap=0/.test(location.search)) {
+  try { await loadMocap(); adoptTiming(STYLES); } catch (e) { console.warn('martial-arts clips failed to load, using procedural techniques', e); }
+}
 const player = new Fighter(world, { name: 'YOU', team: 0, skin: 0x8c5a3c, pants: 0x26324f, sash: 0xd88a2a, wrap: 0xd8cbb0, build: 1.04, bulk: 1.05 });
 const opp = new Fighter(world, { name: 'RIVAL', team: 1, skin: 0x6e4630, pants: 0x4a5531, sash: 0x3a7fc4, wrap: 0xb9c3cf, build: 1.0, bulk: 0.97 });
 player.target = opp; opp.target = player;

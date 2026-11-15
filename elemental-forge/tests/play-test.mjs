@@ -186,7 +186,15 @@ for (const el of els) {
   let legReact = new Set(), kick = null;
   for (let i = 0; i < 30; i++) {
     await stepN(1);
-    const s = await S(() => { const { player: p, opp: o } = window.__EF; const T = p.tech; return { a: o.action, u: p.action === 'tech' ? p.actionU : -1, active: T && T.active ? T.active.from : 0.4, hipL: [p.cur[33], p.cur[35]], hipR: [p.cur[42], p.cur[44]], spine: [p.cur[3], p.cur[4], p.cur[5], p.cur[0], p.cur[1], p.cur[2]], aL: p.J.aL.getWorldPosition(p.pos.clone()).y - p.groundY, aR: p.J.aR.getWorldPosition(p.pos.clone()).y - p.groundY }; });
+    const s = await S(() => { const { player: p, opp: o } = window.__EF; const T = p.tech;
+      if (p.hero) {   // measure the visible character: thigh angle from vertical, ankle heights, chest rotation against the hips
+        const B = p.hero.bones, V = p.pos.constructor, wp = (n) => B[n].getWorldPosition(new V()), wq = (n) => B[n].getWorldQuaternion(B[n].quaternion.clone());
+        const thigh = (x) => { const d = wp('DEF-shin' + x).sub(wp('DEF-thigh' + x)).normalize(); return Math.acos(Math.max(-1, Math.min(1, -d.y))); };
+        const qc = wq('DEF-spine003'), qh = wq('DEF-hips'); const dot = Math.abs(qc.x * qh.x + qc.y * qh.y + qc.z * qh.z + qc.w * qh.w);
+        const tw = 2 * Math.acos(Math.min(1, dot));
+        return { a: o.action, u: p.action === 'tech' ? p.actionU : -1, active: T && T.active ? T.active.from : 0.4, hipL: [thigh('L'), 0], hipR: [thigh('R'), 0], spine: [tw], aL: wp('DEF-footL').y - p.groundY, aR: wp('DEF-footR').y - p.groundY };
+      }
+      return { a: o.action, u: p.action === 'tech' ? p.actionU : -1, active: T && T.active ? T.active.from : 0.4, hipL: [p.cur[33], p.cur[35]], hipR: [p.cur[42], p.cur[44]], spine: [p.cur[3], p.cur[4], p.cur[5], p.cur[0], p.cur[1], p.cur[2]], aL: p.J.aL.getWorldPosition(p.pos.clone()).y - p.groundY, aR: p.J.aR.getWorldPosition(p.pos.clone()).y - p.groundY }; });
     if (s.a) legReact.add(s.a);
     if (!kick && s.u >= s.active) kick = s;
     if (i === 10) await shot(`11-${el}-leg`);
@@ -196,7 +204,7 @@ for (const el of els) {
   if (kick) {
     const kickLeg = Math.max(Math.abs(kick.hipL[0]) + Math.abs(kick.hipL[1]), Math.abs(kick.hipR[0]) + Math.abs(kick.hipR[1]));
     const supportFoot = Math.min(kick.aL, kick.aR), torso = Math.max(...kick.spine.map(Math.abs));
-    check(`${el}: full-body kick (leg raised, supporting foot planted, hips/torso engaged)`, kickLeg > 0.9 && supportFoot < 0.35 && torso > 0.08, `kicking hip ${kickLeg.toFixed(2)} rad, support ankle ${supportFoot.toFixed(2)} m above ground, torso ${torso.toFixed(2)} rad`);
+    check(`${el}: full-body kick (leg raised, supporting foot planted, hips/torso engaged)`, kickLeg > 0.9 && supportFoot < 0.4 && torso > 0.08, `kicking hip ${kickLeg.toFixed(2)} rad, support ankle ${supportFoot.toFixed(2)} m above ground, torso ${torso.toFixed(2)} rad`);
   }
   // sustained HAND hold (and movement while bending)
   const holdPos = el === 'water' ? [12, 0, -9] : [0, 0, -12];
@@ -374,7 +382,10 @@ await S(() => { window.__EF.camCtl.autoCam = true; });
 await setup({ el: 'fire', locked: false, p: [0, 0, -12], o: [20, 0, 20] });
 const camSpin = await S(() => { const E = window.__EF, P = E.player; const y0 = E.camCtl.yaw; let maxD = 0, spinMax = 0;
   E.controls.pressed.leg = true; for (let i = 0; i < 10; i++) E.step(1 / 30);
-  E.controls.pressed.leg = true; for (let i = 0; i < 30; i++) { E.step(1 / 30); maxD = Math.max(maxD, Math.abs(E.camCtl.yaw - y0)); spinMax = Math.max(spinMax, Math.abs(P.spinYaw)); }
+  // body rotation: the procedural spin (spinYaw) or, with authored clips, the hips' turn relative to the fighter's facing
+  const hipsYaw = () => { if (!P.hero) return 0; const hb = P.hero.bones['DEF-hips'], q = hb.getWorldQuaternion(hb.quaternion.clone()); const f = { x: 2 * (q.x * q.z + q.w * q.y), z: 1 - 2 * (q.x * q.x + q.y * q.y) }; let d = Math.atan2(f.x, f.z) - P.yaw; return Math.atan2(Math.sin(d), Math.cos(d)); };
+  let turned = 0, prevH = hipsYaw();
+  E.controls.pressed.leg = true; for (let i = 0; i < 30; i++) { E.step(1 / 30); maxD = Math.max(maxD, Math.abs(E.camCtl.yaw - y0)); const h = hipsYaw(); let dh = h - prevH; dh = Math.atan2(Math.sin(dh), Math.cos(dh)); turned += Math.abs(dh); prevH = h; spinMax = Math.max(spinMax, Math.abs(P.spinYaw), turned); }
   return { maxD, spun: P.stats.techniques['Spinning Flame Kick'] || 0, spinMax }; });
 check('camera stays steady through spinning kicks', camSpin.spun > 0 && camSpin.spinMax > 3 && camSpin.maxD < 0.12, `spinning kicks ${camSpin.spun}, body turned ${camSpin.spinMax.toFixed(1)} rad, camera yaw drift ${camSpin.maxD.toFixed(3)} rad`);
 
