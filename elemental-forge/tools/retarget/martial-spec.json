@@ -40,5 +40,6 @@
   {"name": "getup", "src": ".anim-src/mixamo/Getting Up.fbx", "mirror": false, "aim": "hips", "note": "get up"},
   {"name": "dodge_side", "src": ".anim-src/mixamo/Dodging Right.fbx", "start": 0.1, "end": 1.1, "note": "side dodge (mirror = left)"},
   {"name": "dodge_back", "src": ".anim-src/mixamo/Backflip.fbx", "mirror": false, "note": "back flip"},
-  {"name": "block_hit", "src": ".anim-src/mixamo/Blocking.fbx", "mirror": false, "note": "blocking impact"}
+  {"name": "block_hit", "src": ".anim-src/mixamo/Blocking.fbx", "mirror": false, "note": "blocking impact"},
+  {"name": "strafe", "src": ".anim-src/mixamo/Standing Aim Walk Left.fbx", "loop": true, "aim": "hips", "note": "sidestep walk to the left (legs only are used; mirror = right)"}
 ]

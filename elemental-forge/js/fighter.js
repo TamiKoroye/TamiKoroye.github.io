@@ -70,7 +70,7 @@ export class Fighter {
     const old = this.el;
     if (old && this.world.bending) { this.world.bending.dropAll(this, old); if (this.guarding) { this.guarding = false; this.world.bending.guardEnd(this); } }
     this.holding = false; this.charging = false; this.handHoldT = -1; this.legHoldT = -1;
-    if (this.action === 'tech') this.action = null;
+    if (this.action === 'tech') { this.action = null; this.tech = null; }   // switching is instant: the technique in progress stops
     this.el = el; this.style = STYLES[el];
     // the sash takes the element's colour
     const col = this.mesh.geometry.attributes.color, c = new THREE.Color(this.style.sash);
@@ -112,6 +112,8 @@ export class Fighter {
   startAction(name) { this.action = name; this.tech = null; this.actionT = 0; this.evIdx = 0; this.hitDone = false; this.jumped = false; this.spinYaw = 0; }
   startTech(def, side) {
     if (!def) return false;
+    // alternating authored takes (e.g. hook / lunge punch) each carry their own timing
+    if (def.variants) { this.altN = (this.altN || 0) + 1; def = def.variants[this.altN % def.variants.length]; }
     if (this.en < (def.cost || 0)) { this.world.popup(this, 'NO ENERGY', true); return false; }
     this.en -= def.cost || 0;
     this.action = 'tech'; this.tech = def; this.actionT = 0; this.evIdx = 0; this.hitDone = false; this.jumped = false; this.spinYaw = 0;
@@ -190,8 +192,8 @@ export class Fighter {
           this.handHoldT += dt;
           // a held HAND turns into the sustained technique straight away: a punch that has not landed yet is abandoned
           const T = this.tech, ev = T && T.events && T.events.length ? T.events[0][0] : 0.3;
-          const ready = !this.action || (this.action === 'tech' && T === st.tech.hand && (this.actionU < ev || this.actionU > (T.cancel || 0.6)));
-          if (!this.holding && this.handHoldT > 0.22 && ready && !this.guarding && !this.reacting()) {
+          const ready = !this.action || (this.action === 'tech' && (T === st.tech.hand || T.variantOf === st.tech.hand) && (this.actionU < ev || this.actionU > (T.cancel || 0.6)));
+          if (!this.holding && this.handHoldT > 0.3 && ready && !this.guarding && !this.reacting()) {
             this.holding = true; this.holdPh = 0; this.action = null; this.tech = null; B.holdStart(this);
           }
         }
@@ -205,14 +207,14 @@ export class Fighter {
       // LEG held -> gather force, release for the element's charged technique
       if (this.legHoldT >= 0) {
         if (!inp.legHeld) {
-          if (this.charging) { this.charging = false; if (this.chargeT >= 0.55) this.startTech(st.tech.charged, 1); }
+          if (this.charging) { this.charging = false; if (this.chargeT >= 0.3 && this.legHoldT >= 0.85) this.startTech(st.tech.charged, 1); }   // judged on the whole hold, so a kick's hit-stop cannot eat it
           this.legHoldT = -1;
         } else {
           this.legHoldT += dt;
           // a held LEG starts gathering force straight away: a kick that has not landed yet is abandoned
           const K = this.tech, kev = K && K.events && K.events.length ? K.events[0][0] : 0.3;
           const kickDone = !this.action || (this.action === 'tech' && (this.actionU < kev || this.actionU > Math.min(0.6, K.cancel ?? 0.6)));
-          if (!this.charging && this.legHoldT > 0.3 && kickDone && !this.guarding && !this.reacting()) { this.charging = true; this.chargeT = 0; this.action = null; this.tech = null; }
+          if (!this.charging && this.legHoldT > 0.38 && kickDone && !this.guarding && !this.reacting()) { this.charging = true; this.chargeT = 0; this.action = null; this.tech = null; }
         }
       }
       if (this.charging) {
@@ -336,8 +338,8 @@ export class Fighter {
     else w.audio.whoosh(0.4);
   }
   chargeFx() {
-    const w = this.world, h = this.handPos(Math.random() < 0.5 ? 'L' : 'R', _v), full = this.chargeT >= 0.55;
-    if (this.el === 'fire') w.fx.fire(h, _v2.set(rand(-0.5, 0.5), 1, rand(-0.5, 0.5)), full ? 0.45 : 0.25, 0.3);
+    const w = this.world, h = this.handPos(Math.random() < 0.5 ? 'L' : 'R', _v), full = this.chargeT >= 0.3 && this.legHoldT >= 0.85;
+    if (this.el === 'fire') { if (Math.random() < 0.6) w.fx.fire(h, _v2.set(rand(-0.4, 0.4), 1, rand(-0.4, 0.4)), full ? 0.3 : 0.18, 0.25); }   // small: the body must stay readable
     else if (this.el === 'water') w.fx.splash(h, 1);
     else if (this.el === 'air') w.fx.wind(h, _v2.set(rand(-2, 2), 0.5, rand(-2, 2)), 0.4, 0.3);
     else w.fx.debrisBurst(this.pos.clone().setY(this.pos.y + 0.05), 1, 1.2, 0.06, 0x7a6a58, 0.5);

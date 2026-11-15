@@ -55,6 +55,9 @@ const UAL_CHILD = { 'DEF-hips': 'DEF-spine001', 'DEF-spine001': 'DEF-spine002', 
   'DEF-upper_armL': 'DEF-forearmL', 'DEF-forearmL': 'DEF-handL', 'DEF-handL': 'DEF-f_middle01L', 'DEF-upper_armR': 'DEF-forearmR', 'DEF-forearmR': 'DEF-handR', 'DEF-handR': 'DEF-f_middle01R',
   'DEF-thighL': 'DEF-shinL', 'DEF-shinL': 'DEF-footL', 'DEF-footL': 'DEF-toeL', 'DEF-thighR': 'DEF-shinR', 'DEF-shinR': 'DEF-footR', 'DEF-footR': 'DEF-toeR' };
 
+// bones driven by the upper-body layer (everything above the hips)
+const UPPER_RE = /spine|neck|head|shoulder|upper_arm|forearm|hand|f_|thumb/;
+
 const _q = new THREE.Quaternion(), _q2 = new THREE.Quaternion(), _v = new THREE.Vector3(), _m = new THREE.Matrix4();
 
 function rigQuat(o, stop, out) { out.identity(); for (let x = o; x && x !== stop; x = x.parent) out.premultiply(x.quaternion); return out; }
@@ -108,7 +111,7 @@ export class Hero {
       if (!m.loop) { a.setLoop(THREE.LoopOnce, 1); a.clampWhenFinished = true; }
       this.actions[name] = a;
     }
-    this.techN = -1;
+    this.techN = -1; this.trace = []; this.clock = 0;
     this.cur = null; this.play('Idle_Loop', 0);
     this.wU = 1; this.wL = 1;
     this.target = { _rigQ: new Map() };
@@ -174,25 +177,64 @@ export class Hero {
     }
   }
 
+  // Actions by name. "clip|U" and "clip|L" are on-demand copies holding only the upper-body (spine, arms, head,
+  // hands) or lower-body (hips, legs) tracks, so an authored technique can run over authored footwork.
+  act(name) {
+    if (!name) return null;
+    if (this.actions[name]) return this.actions[name];
+    const bar = name.indexOf('|'); if (bar < 0) return null;
+    const base = this.actions[name.slice(0, bar)]; if (!base) return null;
+    const upper = name.endsWith('|U'), src = base.getClip();
+    const keep = (t) => { const bone = t.name.split('.')[0]; const up = UPPER_RE.test(bone); return upper ? up : !up; };
+    const clip = new THREE.AnimationClip(name, src.duration, src.tracks.filter(keep));
+    const a = this.mixer.clipAction(clip);
+    if (base.loop === THREE.LoopOnce) { a.setLoop(THREE.LoopOnce, 1); a.clampWhenFinished = true; }
+    return (this.actions[name] = a);
+  }
+
   play(name, fade = 0.15, timeScale = 1, restart = false) {
-    const a = this.actions[name]; if (!a) return;
+    const a = this.act(name); if (!a) return;
     a.timeScale = timeScale;
     if (this.cur === a && !restart) return;
+    // animation trace (debug overlay and gameplay audits): what replaced what, and how much of it had played
+    if (this.cur) {
+      const c = this.cur, d = c.getClip().duration;
+      this.trace.push({ t: +this.clock.toFixed(2), from: this.curName, played: +(Math.min(1, c.time / d)).toFixed(2), to: name, ts: +timeScale.toFixed(2), fade, restart: this.cur === a });
+      if (this.trace.length > 400) this.trace.shift();
+    }
     if (this.cur === a) { a.reset(); a.setEffectiveWeight(1); a.play(); return; }
-    a.reset(); a.enabled = true; a.setEffectiveWeight(1); a.play();
+    // switching between the full and the upper-body copy of the same clip keeps its place
+    const same = this.curName && this.curName.split('|')[0] === name.split('|')[0] && !restart;
+    const t0 = same ? this.cur.time : 0;
+    a.reset(); a.enabled = true; a.setEffectiveWeight(1); a.play(); if (same) a.time = t0;
     if (this.cur && fade > 0) this.cur.crossFadeTo(a, fade, false); else if (this.cur) this.cur.stop();
     this.cur = a; this.curName = name;
   }
+  // the lower-body footwork layer (null fades it out)
+  playLower(name, ts, fade = 0.2) {
+    const a = this.act(name);
+    if (this.low === a) { if (a) a.timeScale = ts; return; }
+    if (this.low) this.low.fadeOut(fade);
+    if (a) { a.reset(); a.enabled = true; a.timeScale = ts; a.setEffectiveWeight(1); a.fadeIn(fade); a.play(); }
+    this.low = a; this.lowName = name;
+  }
 
-  // choose authored clip + procedural weights from the fighter's state. Priority: knockdown / KO, hit reactions,
-  // dodges, techniques, guard, sustained bending, airborne, locomotion, then the element's combat stance.
-  // Procedural motion only fills in what no clip covers (running legs under upper-body moves, sideways steps).
+  // Choose the authored clip(s) from the fighter's state. Priority: knockdown / KO, hit reactions, dodges,
+  // techniques, charge, guard, sustained bending, airborne, locomotion, then the element's combat stance.
+  // When the fighter is moving under an upper-body action (a punch, guard, hold or the stance), the action's
+  // upper-body tracks run over an authored walk / jog / sidestep for the legs. Procedural motion is a fallback only.
   drive(f, dt) {
-    let wU = 1, wL = 1, clip = 'Idle_Loop', ts = 1, fade = 0.18, restart = false;
-    const A = f.A, sp = Math.hypot(f.vel.x, f.vel.z), fwd = f.moveLocal.y, moving = sp > 0.6;
+    let wU = 1, wL = 1, clip = 'Idle_Loop', ts = 1, fade = 0.18, restart = false, layered = false;
+    const A = f.A, sp = Math.hypot(f.vel.x, f.vel.z), fwd = f.moveLocal.y, side = f.moveLocal.x, moving = sp > 0.6 && f.onGround;
     const L = LOOPS[f.el] || {}, has = (n) => n && this.actions[n];
     const free = (!A || A.soft) && !f.guarding && !f.holding && !f.charging && !(f.restrainT > 0) && f.dodgeT <= 0 && !f.dead;
     const once = (name, scale, fd = 0.08) => { clip = name; ts = scale; wU = wL = 0; fade = fd; if (this.curName !== name) restart = true; };
+    // authored footwork for the current movement direction and speed
+    const loco = () => {
+      if (fwd > 0.55) return sp < 2.4 ? ['Walk_Loop', THREE.MathUtils.clamp(sp / 1.5, 0.7, 1.6)] : sp < 7.6 ? ['Jog_Fwd_Loop', THREE.MathUtils.clamp(sp / 4.2, 0.8, 1.7)] : ['Sprint_Loop', THREE.MathUtils.clamp(sp / 7.4, 0.9, 1.5)];
+      if (fwd < -0.55) return ['Walk_Loop', -THREE.MathUtils.clamp(sp / 1.5, 0.7, 1.8)];
+      return [side > 0 ? 'strafe' : 'strafe_M', THREE.MathUtils.clamp(sp / 1.5, 0.7, 2.2)];
+    };
     if (f.dead && has('ko')) once('ko', 1.1, 0.12);
     else if (f.action === 'down' && has('ko')) once('ko', 1.6, 0.1);
     else if (f.action === 'getup' && has('getup')) { once('getup', this.actions.getup.getClip().duration / Math.max(0.3, f.A.dur) * 0.75, 0.1); }
@@ -201,20 +243,26 @@ export class Hero {
       if (has(n)) { clip = n; ts = f.action === 'stagger' ? 1.1 : 1.5; wU = wL = 0; fade = 0.05; if (f.actionT < dt * 1.5 || this.curName !== n) restart = true; }
       else { clip = f.hitAlt ? 'Hit_Head' : 'Hit_Chest'; wU = wL = 0; if (this.curName !== clip || f.actionT < dt * 1.5) restart = true; ts = 1.2; fade = 0.05; }
     }
-    else if (f.dodgeT > 0 && f.dodgeKind === 'roll') { clip = 'Roll'; wU = wL = 0; ts = 1.46 / (f.dodgeDur * 1.7); fade = 0.06; if (this.curName !== 'Roll') restart = true; }
-    else if (f.dodgeT > 0 && has('dodge_side')) {
-      // dodge direction relative to facing picks the clip: backwards flips (air), sideways steps aside
+    else if (f.dodgeT > 0) {
+      // dodge direction relative to facing picks the clip: sideways steps aside, backwards flips (air), anything
+      // else is an authored roll
       const c = Math.cos(f.yaw), s = Math.sin(f.yaw), lx = f.dodgeDir.x * c - f.dodgeDir.z * s, lz = f.dodgeDir.x * s + f.dodgeDir.z * c;
-      const n = lz < -0.6 && f.el === 'air' ? 'dodge_back' : Math.abs(lx) > 0.4 ? (lx < 0 ? 'dodge_side' : 'dodge_side_M') : null;
-      if (n && has(n)) once(n, this.actions[n].getClip().duration / Math.max(0.2, f.dodgeDur) * 0.8, 0.06);
+      const n = f.dodgeKind !== 'roll' && Math.abs(lx) > 0.5 && has('dodge_side') ? (lx < 0 ? 'dodge_side' : 'dodge_side_M') : lz < -0.6 && f.el === 'air' && has('dodge_back') ? 'dodge_back' : 'Roll';
+      if (n === 'Roll') { clip = 'Roll'; wU = wL = 0; ts = 1.46 / (f.dodgeDur * 1.7); fade = 0.06; if (this.curName !== 'Roll') restart = true; }
+      else once(n, this.actions[n].getClip().duration / Math.max(0.2, f.dodgeDur) * 0.8, 0.06);
     }
     if (clip === 'Idle_Loop' && f.action === 'tech' && f.tech.clip) {
-      // authored technique: the captured clip drives the whole body; running legs stay procedural for upper-body techs
-      const [n, scale] = clipFor(f.tech, f.techSide, f.techN);
+      const [n, scale] = clipFor(f.tech, f.techSide);
       if (has(n)) {
-        clip = n; ts = scale; wU = 0; wL = f.tech.upper && f.onGround && moving ? 1 : 0; fade = 0.1;
+        clip = n; ts = scale; wU = wL = 0; fade = 0.14;
         if (f.techN !== this.techN) { this.techN = f.techN; restart = true; }
+        if (f.tech.upper && moving) layered = true;
       }
+    }
+    if (clip === 'Idle_Loop' && f.charging) {
+      // gathering force: the charged technique's own wind-up, held
+      const T = f.style.tech.charged, n = T && T.clip;
+      if (has(n)) { clip = n; ts = 0; wU = wL = 0; fade = 0.15; if (this.curName !== n) { restart = true; this.chargeHold = MOCAP[n].impact * 0.55; } }
     }
     if (clip === 'Idle_Loop' && wU === 1) {
       if (f.guarding && f.perfectT > 0 && has(f.el === 'water' ? 'water_redirect' : 'block_hit')) {
@@ -222,30 +270,33 @@ export class Hero {
         const n = f.el === 'water' ? (f.techSide > 0 ? 'water_redirect' : 'water_redirect_M') : 'block_hit';
         clip = has(n) ? n : 'block_hit'; wU = wL = 0; fade = 0.06; ts = 1.6; if (this.curName !== clip) restart = true;
       }
-      else if (f.guarding && has(L.guard)) { clip = L.guard; wU = 0; wL = moving ? 1 : 0; fade = 0.12; }
-      else if (f.holding && has(L.hold)) { clip = L.hold; wU = 0; wL = moving ? 1 : 0; fade = 0.2; }
+      else if (f.guarding && has(L.guard)) { clip = L.guard; wU = wL = 0; fade = 0.12; layered = moving; }
+      else if (f.holding && has(L.hold)) { clip = L.hold; wU = wL = 0; fade = 0.2; layered = moving; }
       else if (free && !f.onGround) { clip = f.vel.y > 1.5 && f.airTime < 0.3 ? 'Jump_Start' : 'Jump_Loop'; wU = wL = 0; ts = f.vel.y > 1.5 ? 1.6 : 1; }
-      else if (free && sp > 0.5 && fwd > 0.7) {
-        // authored locomotion, matched to ground speed
-        if (sp < 2.4) { clip = 'Walk_Loop'; ts = THREE.MathUtils.clamp(sp / 1.5, 0.7, 1.6); }
-        else if (sp < 7.6) { clip = 'Jog_Fwd_Loop'; ts = THREE.MathUtils.clamp(sp / 4.2, 0.8, 1.7); }
-        else { clip = 'Sprint_Loop'; ts = THREE.MathUtils.clamp(sp / 7.4, 0.9, 1.5); }
-        wU = wL = 0; fade = 0.22;
-      } else if (A && A.upper && f.onGround && sp > 0.5 && fwd > 0.7) {
-        clip = sp < 7.6 ? 'Jog_Fwd_Loop' : 'Sprint_Loop'; ts = THREE.MathUtils.clamp(sp / 4.2, 0.8, 1.7); wU = 1; wL = 0;
+      else if (free && moving && fwd > 0.7) {
+        [clip, ts] = loco(); wU = wL = 0; fade = 0.22;   // authored locomotion, matched to ground speed
       } else if (free && f.onGround && has(L.idle)) {
-        // the element's authored combat stance; sideways and backward steps keep procedural legs under it
-        clip = L.idle; wU = 0; wL = moving ? 1 : 0; fade = 0.25;
+        // the element's authored combat stance; when stepping sideways or backwards, its upper body over authored footwork
+        clip = L.idle; wU = wL = 0; fade = 0.25; layered = moving;
       }
     }
-    this.play(clip, fade, ts, restart);
+    if (layered) {
+      const [ln, lts] = loco();
+      this.play(clip + '|U', fade, ts, restart);
+      this.playLower(ln + '|L', lts, 0.18);
+    } else {
+      this.play(clip, fade, ts, restart);
+      this.playLower(null, 1, 0.15);
+    }
     if (this.cur) this.cur.timeScale = ts;
+    if (ts === 0 && this.cur && this.chargeHold !== undefined) this.cur.time += (this.chargeHold - this.cur.time) * Math.min(1, dt * 6);
     const k = 1 - Math.exp(-(wU > this.wU || wL > this.wL ? 16 : 10) * dt);
     this.wU += (wU - this.wU) * k; this.wL += (wL - this.wL) * k;
     this.update(dt);
   }
 
   update(dt) {
+    this.clock += dt;
     this.mixer.update(dt);
     const P = this.parent;
     // the driver's current rig-space joint orientations

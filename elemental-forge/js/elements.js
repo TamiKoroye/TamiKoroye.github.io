@@ -844,8 +844,9 @@ export class Bending {
     }
     if (o.el === 'earth') { m.rotation.x += o.spin.x * dt * (o.state === 'flying' ? 1 : 0.15); m.rotation.y += o.spin.y * dt * (o.state === 'flying' ? 1 : 0.15); if (o.state === 'flying' && Math.random() < dt * 25) w.fx.puff(o.pos.clone(), _v.set(0, 0.2, 0), 0.3, 0.35, 0xb0a290, 0.3, 1.2); }
     else if (o.el === 'fire') {
-      const big = SPEC[o.kind].wide ? 6 : 3;
-      for (let i = 0; i < big; i++) w.fx.fire(o.pos.clone().add(_v.set(rand(-0.15, 0.15) * o.r * 3, rand(-0.1, 0.1), rand(-0.15, 0.15) * o.r * 3)), _v2.copy(o.vel).multiplyScalar(-0.35).add(_v3.set(rand(-0.6, 0.6), rand(0, 1.2), rand(-0.6, 0.6))), o.r * 1.9, 0.3);
+      // held orbs circle close to the body, so they burn smaller than a thrown one
+      const held = o.state !== 'flying', big = SPEC[o.kind].wide ? 6 : held ? 1 : 3;
+      for (let i = 0; i < big; i++) w.fx.fire(o.pos.clone().add(_v.set(rand(-0.15, 0.15) * o.r * 3, rand(-0.1, 0.1), rand(-0.15, 0.15) * o.r * 3)), _v2.copy(o.vel).multiplyScalar(-0.35).add(_v3.set(rand(-0.6, 0.6), rand(0, 1.2), rand(-0.6, 0.6))), o.r * (held ? 1.0 : 1.9), 0.3);
       m.scale.setScalar((SPEC[o.kind].wide ? o.r : o.r * 0.6) * (0.9 + Math.random() * 0.2)); if (SPEC[o.kind].wide) m.scale.z = o.r * 1.6;
     } else if (o.el === 'water') {
       if (!SPEC[o.kind].wide) { const t = o.t * 9; m.scale.set(o.r * (1 + 0.12 * Math.sin(t)), o.r * (1 + 0.12 * Math.sin(t + 2)), o.r * (1 + 0.12 * Math.sin(t + 4))); }

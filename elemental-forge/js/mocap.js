@@ -13,7 +13,7 @@ export async function loadMocap(url = 'assets/animations/martial.json') {
   const r = await fetch(url);
   if (!r.ok) throw new Error('mocap pack ' + r.status);
   const d = await r.json();
-  for (const j of d.clips) MOCAP[j.name] = { clip: j.q ? unpack(j, d.fps || 30) : THREE.AnimationClip.parse(j), impact: j.impact, limb: j.limb, loop: !!j.loop, travel: j.travel };
+  for (const j of d.clips) MOCAP[j.name] = { clip: j.q ? unpack(j, d.fps || 30) : THREE.AnimationClip.parse(j), impact: j.impact, limb: j.limb, loop: !!j.loop, travel: j.travel, src: j.src };
   return MOCAP;
 }
 
@@ -55,27 +55,37 @@ function techList(st) {
 // procedural whole-body spin is dropped for those techniques.
 export function adoptTiming(styles) {
   for (const st of Object.values(styles)) for (const T of techList(st)) {
-    const m = T.clip && MOCAP[names(T)[0]]; if (!m) continue;
-    const sp = T.clipSpeed || CLIP_SPEED[names(T)[0]] || SPEED[st.key] || 1.5;
-    const oldDur = T.dur, dur = m.clip.duration / sp;
-    const u0 = T.events && T.events.length ? T.events[0][0] : (T.active ? T.active.from : 0.4);
-    const evU = m.impact / m.clip.duration;
-    const map = (u) => THREE.MathUtils.clamp(evU + (u - u0) * oldDur / dur, 0, 0.98);
-    if (T.events) T.events = T.events.map(([u, n]) => [map(u), n]);
-    if (T.active) T.active = { ...T.active, from: map(T.active.from), to: Math.max(map(T.active.to), map(T.active.from) + 0.08) };
-    if (T.jumpAt) T.jumpAt = [map(T.jumpAt[0]), T.jumpAt[1]];
-    // combos open shortly after the impact frame; the next clip crossfades over the remaining recovery
-    if (T.cancel !== undefined) T.cancel = THREE.MathUtils.clamp(Math.min(map(T.cancel), evU + 0.15 / dur), evU + 0.05, 0.95);
+    if (!T.clip) continue;
+    const list = names(T).filter(n => MOCAP[n]); if (!list.length) continue;
+    const orig = { dur: T.dur, events: T.events, active: T.active, jumpAt: T.jumpAt, cancel: T.cancel };
+    // every alternative take gets its own timing, so each plays at its proper speed with its impact on the hit
+    const timings = list.map(n => timing(orig, n, T.clipSpeed || CLIP_SPEED[n] || SPEED[st.key] || 1.5));
+    Object.assign(T, timings[0]); T.clip = list[0];
     if (T.spin) delete T.spin;
-    T.dur = dur; T.impactT = evU * dur;
+    if (list.length > 1) T.variants = timings.map(tm => Object.assign(Object.create(T), tm, { variantOf: T }));
   }
+}
+function timing(orig, name, sp) {
+  const m = MOCAP[name];
+  const dur = m.clip.duration / sp;
+  const u0 = orig.events && orig.events.length ? orig.events[0][0] : (orig.active ? orig.active.from : 0.4);
+  const evU = m.impact / m.clip.duration;
+  const map = (u) => THREE.MathUtils.clamp(evU + (u - u0) * orig.dur / dur, 0, 0.98);
+  const out = { clip: name, dur, impactT: evU * dur };
+  if (orig.events) out.events = orig.events.map(([u, n]) => [map(u), n]);
+  if (orig.active) out.active = { ...orig.active, from: map(orig.active.from), to: Math.max(map(orig.active.to), map(orig.active.from) + 0.08) };
+  if (orig.jumpAt) out.jumpAt = [map(orig.jumpAt[0]), orig.jumpAt[1]];
+  // the next technique can start 0.22 s after the impact: the strike's follow-through shows, the next one
+  // crossfades over the rest of the recovery
+  if (orig.cancel !== undefined) out.cancel = THREE.MathUtils.clamp(Math.min(map(orig.cancel), evU + 0.22 / dur), evU + 0.05, 0.95);
+  return out;
 }
 
 // which stored clip to play: (for alternating techniques) which take, then the captured one or its mirror, so the
 // striking limb matches the side the game's effects launch from (side > 0: right hand / left foot).
 // Returns [clip name, time scale that lands the clip's impact on the technique's impact time]
-export function clipFor(T, side, n = 0) {
-  const list = names(T), base = list[n % list.length], m = MOCAP[base]; if (!m) return [null, 1];
+export function clipFor(T, side) {
+  const base = T.clip, m = MOCAP[base]; if (!m) return [null, 1];
   let name = base;
   if (m.limb) {
     const kind = m.limb[0], want = kind + (kind === 'p' ? (side > 0 ? 'R' : 'L') : (side > 0 ? 'L' : 'R'));

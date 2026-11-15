@@ -12,7 +12,8 @@ import { FX } from './fx.js';
 import { Audio } from './audio.js';
 import { clamp, damp } from './util.js';
 import { loadHeroAssets, TOON_RAMP, heroReady } from './hero.js';
-import { loadMocap, adoptTiming } from './mocap.js';
+import { loadMocap, adoptTiming, MOCAP } from './mocap.js';
+import { BUILD } from './build.js';
 
 const $ = (id) => document.getElementById(id);
 window.addEventListener('error', (e) => { const el = $('err'); el.textContent = 'Error: ' + e.message + '\n' + (e.filename || '') + ':' + (e.lineno || ''); el.classList.remove('hidden'); });
@@ -72,7 +73,7 @@ const camCtl = new FollowCam(camera, world.arena);
 try { await loadHeroAssets(); } catch (e) { console.warn('character asset failed to load, using procedural bodies', e); }
 // authored martial-arts techniques (motion capture); without them the procedural techniques are used
 if (heroReady() && !/[?&]mocap=0/.test(location.search)) {
-  try { await loadMocap(); adoptTiming(STYLES); } catch (e) { console.warn('martial-arts clips failed to load, using procedural techniques', e); }
+  try { await loadMocap(); adoptTiming(STYLES); } catch (e) { console.warn('martial-arts clips failed to load, using procedural techniques', e); window.__mocapError = String(e); }
 }
 const player = new Fighter(world, { name: 'YOU', team: 0, skin: 0x8c5a3c, pants: 0x26324f, sash: 0xd88a2a, wrap: 0xd8cbb0, build: 1.04, bulk: 1.05 });
 const opp = new Fighter(world, { name: 'RIVAL', team: 1, skin: 0x6e4630, pants: 0x4a5531, sash: 0x3a7fc4, wrap: 0xb9c3cf, build: 1.0, bulk: 0.97 });
@@ -282,7 +283,7 @@ function updateHUD(dt) {
   hud.omini.style.width = (opp.hp / opp.maxHp * 100) + '%';
   hud.lockBtn.classList.toggle('on', state.locked);
   hud.leg.style.setProperty('--charge', player.charging ? Math.min(1, player.chargeT / 0.55).toFixed(2) : 0);
-  hud.leg.classList.toggle('charged', player.charging && player.chargeT >= 0.55);
+  hud.leg.classList.toggle('charged', player.charging && player.chargeT >= 0.3 && player.legHoldT >= 0.85);
   hud.hand.classList.toggle('sustain', player.holding);
   if (hudEl !== player.el) refreshElementHUD();
   for (const b of document.querySelectorAll('.el')) {
@@ -415,6 +416,32 @@ $('loading').classList.add('hidden');
 requestAnimationFrame(frame);
 
 // test / debug handle (used by the automated browser tests)
-window.__EF = { world, player, opp, camCtl, controls, state, ai, aimPoint: () => aimPoint.clone(), stats, layoutStar, STYLES,
+window.__EF = { world, player, opp, camCtl, controls, state, ai, renderer, scene, camera, MOCAP, aimPoint: () => aimPoint.clone(), stats, layoutStar, STYLES,
   // deterministic stepping for frame-accurate gameplay capture in tests
   step: (dt) => step(dt), render: () => renderer.render(scene, camera), info: () => ({ calls: renderer.info.render.calls, triangles: renderer.info.render.triangles, programs: renderer.info.programs.length }) };
+
+// ---- build stamp on the menu (so the build running on a device can be identified) and the animation overlay
+{
+  const n = Object.keys(MOCAP).length;
+  const stamp = document.createElement('div'); stamp.id = 'build-stamp';
+  stamp.textContent = `${BUILD} · ${n ? n + ' martial-arts clips loaded' : 'NO martial-arts clips' + (window.__mocapError ? ' (' + window.__mocapError + ')' : '')}`;
+  stamp.style.cssText = 'position:fixed;left:8px;bottom:6px;font:11px/1.2 system-ui,sans-serif;color:#fff;opacity:.75;z-index:50;pointer-events:none;text-shadow:0 1px 2px #000';
+  document.body.appendChild(stamp);
+  // ?debug=anim : live readout of the player's animation state (clip, source take, speed, blend weights)
+  if (/[?&]debug=anim/.test(location.search)) {
+    const box = document.createElement('div');
+    box.style.cssText = 'position:fixed;left:8px;top:64px;max-width:46vw;font:12px/1.35 ui-monospace,monospace;color:#fff;background:rgba(0,0,0,.55);padding:6px 8px;border-radius:6px;z-index:60;pointer-events:none;white-space:pre';
+    document.body.appendChild(box);
+    const tick = () => {
+      requestAnimationFrame(tick);
+      const h = player.hero; if (!h) { box.textContent = 'procedural body (character asset not loaded)'; return; }
+      const c = h.cur, name = h.curName || '-', m = MOCAP[name.split('|')[0]], d = c ? c.getClip().duration : 0;
+      box.textContent = [`clip   ${name}${m ? '' : ' (core library)'}`, `source ${m ? m.src : '-'}`,
+        `speed  ${c ? c.timeScale.toFixed(2) : '-'}x   at ${c ? (c.time / d * 100).toFixed(0) : 0}%`,
+        `legs   ${h.low ? h.lowName.split('|')[0] + ' (layer)' : 'from the clip above'}`,
+        `blend  authored upper ${(100 - h.wU * 100).toFixed(0)}%  lower ${(100 - h.wL * 100).toFixed(0)}%`,
+        `state  ${player.action || '-'}${player.tech ? ' ' + player.tech.name : ''}${player.guarding ? ' GUARD' : ''}${player.holding ? ' HOLD' : ''}${player.charging ? ' CHARGE' : ''}`].join('\n');
+    };
+    tick();
+  }
+}
