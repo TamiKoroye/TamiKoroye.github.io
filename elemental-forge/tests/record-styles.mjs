@@ -42,7 +42,7 @@ for (const el of ['earth', 'fire', 'water', 'air']) {
     world.bending.clear();
     for (const f of [p, o]) { f.hp = 100; f.en = 100; f.vel.set(0, 0, 0); f.action = null; f.dead = false; f.stunT = 0; f.tumble.quaternion.identity(); }
     p.setElement(el, true); o.setElement(el === 'fire' ? 'water' : 'fire', true);
-    p.pos.set(el === 'water' ? 11.5 : 0, 0, el === 'water' ? -7 : -11); o.pos.set(p.pos.x, 0, p.pos.z + 7.5);
+    p.pos.set(el === 'water' ? 19 : 0, 0, el === 'water' ? -13 : -11); o.pos.set(p.pos.x, 0, p.pos.z + 7.5);
     p.faceYaw = p.yaw = 0; camCtl.snapBehind(p); state.locked = true; window.__f = 0;
   }, [el, PLAN]);
   const total = 345;
