@@ -1,6 +1,6 @@
 # Character and animation assets
 
-`ual-mannequin.gltf` / `AnimationLibrary_Godot_Standard.bin`: **Universal Animation Library (Standard)** by Quaternius
+`ual-mannequin.json` (the original `.gltf` with its `.bin` buffer embedded as base64, otherwise unchanged): **Universal Animation Library (Standard)** by Quaternius
 (https://quaternius.com), licensed **CC0 1.0** (public domain dedication; see `LICENSE-CC0.txt`).
 Obtained from the CC0 mirror https://github.com/J-Ponzo/gltf-universal-animation-library (itch.io release of 2025-06-10).
 

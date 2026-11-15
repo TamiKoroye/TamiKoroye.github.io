@@ -23,7 +23,7 @@ export const TOON_RAMP = (() => {
 const USED = ['Idle_Loop', 'Walk_Loop', 'Jog_Fwd_Loop', 'Sprint_Loop', 'Jump_Start', 'Jump_Loop', 'Jump_Land', 'Roll', 'Hit_Chest', 'Hit_Head', 'Death01', 'Punch_Jab', 'Punch_Cross', 'Spell_Simple_Shoot'];
 
 export async function loadHeroAssets(onProgress) {
-  const g = await new GLTFLoader().loadAsync('assets/characters/ual-mannequin.gltf', onProgress);
+  const g = await new GLTFLoader().loadAsync('assets/characters/ual-mannequin.json', onProgress);
   TEMPLATE = g;
   CLIPS = {};
   for (const name of USED) {
