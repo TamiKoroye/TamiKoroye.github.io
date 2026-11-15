@@ -11,6 +11,7 @@ import { AI } from './ai.js';
 import { FX } from './fx.js';
 import { Audio } from './audio.js';
 import { clamp, damp } from './util.js';
+import { loadHeroAssets, TOON_RAMP } from './hero.js';
 
 const $ = (id) => document.getElementById(id);
 window.addEventListener('error', (e) => { const el = $('err'); el.textContent = 'Error: ' + e.message + '\n' + (e.filename || '') + ':' + (e.lineno || ''); el.classList.remove('hidden'); });
@@ -19,29 +20,42 @@ window.addEventListener('error', (e) => { const el = $('err'); el.textContent = 
 const canvas = $('game');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
 renderer.outputColorSpace = THREE.SRGBColorSpace;
-renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.05;
+// cel-shaded look (as in the references): no filmic tone curve, which desaturates and darkens flat colours
+renderer.toneMapping = THREE.NoToneMapping;
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x8e98a8);
-scene.fog = new THREE.Fog(0x8e98a8, 45, 120);
+scene.background = new THREE.Color(0xb8c2cf);
+scene.fog = new THREE.Fog(0xb8c2cf, 55, 130);
 const camera = new THREE.PerspectiveCamera(62, 1, 0.1, 200);
 
-const hemi = new THREE.HemisphereLight(0xdfe6ff, 0x6a5440, 1.25); scene.add(hemi);
-const sun = new THREE.DirectionalLight(0xfff0dc, 2.6);
+const hemi = new THREE.HemisphereLight(0xf2f4ff, 0x9a8470, 1.15); scene.add(hemi);
+const sun = new THREE.DirectionalLight(0xfff3e2, 1.9);
 sun.castShadow = true;
 sun.shadow.mapSize.set(2048, 2048);
 const SC = sun.shadow.camera; SC.left = -22; SC.right = 22; SC.top = 22; SC.bottom = -22; SC.near = 1; SC.far = 70;
 sun.shadow.bias = -0.0006; sun.shadow.normalBias = 0.03;
 scene.add(sun); scene.add(sun.target);
-const fill = new THREE.DirectionalLight(0x9fb4ff, 0.5); fill.position.set(-10, 8, -14); scene.add(fill);
+const fill = new THREE.DirectionalLight(0xc8d4ff, 0.45); fill.position.set(-10, 8, -14); scene.add(fill);
 
+// Cel shading for every lit material in a subtree: same colours and textures, three-step light ramp.
+function toonify(root) {
+  const cache = new Map();
+  root.traverse(o => {
+    if (!o.isMesh && !o.isInstancedMesh) return;
+    const conv = (m) => {
+      if (!m || !(m.isMeshStandardMaterial || m.isMeshLambertMaterial)) return m;
+      if (!cache.has(m)) cache.set(m, new THREE.MeshToonMaterial({ color: m.color, map: m.map, gradientMap: TOON_RAMP, transparent: m.transparent, opacity: m.opacity, side: m.side, vertexColors: m.vertexColors, emissive: m.emissive, polygonOffset: m.polygonOffset, polygonOffsetFactor: m.polygonOffsetFactor }));
+      return cache.get(m);
+    };
+    o.material = Array.isArray(o.material) ? o.material.map(conv) : conv(o.material);
+  });
+}
 // ------------------------------------------------------------------ world
 const world = {
   scene, renderer, camera, fighters: [], fighting: false,
-  fx: new FX(scene), audio: new Audio(),
+  fx: new FX(scene, camera), audio: new Audio(),
   hitStopT: 0,
   hitStop(t) { this.hitStopT = Math.max(this.hitStopT, t); },
   shake(a, at) { const d = at ? at.distanceTo(camera.position) : 0; camCtl.shake(a * clamp(1.4 - d / 25, 0.3, 1)); },
@@ -49,11 +63,14 @@ const world = {
 };
 world.arena = new Arena(scene, renderer);
 world.combat = new Combat(world);
+toonify(world.arena.group);
 world.bending = new Bending(world);
 const camCtl = new FollowCam(camera, world.arena);
 
-const player = new Fighter(world, { name: 'YOU', team: 0, skin: 0x8c5a3c, pants: 0x5b3a22, sash: 0xd88a2a, wrap: 0xd8cbb0, build: 1.04, bulk: 1.05 });
-const opp = new Fighter(world, { name: 'RIVAL', team: 1, skin: 0x6e4630, pants: 0x2c3c58, sash: 0x3a7fc4, wrap: 0xb9c3cf, build: 1.0, bulk: 0.97 });
+// rigged character + animation clips (CC0); the game still runs with procedural bodies if this fails
+try { await loadHeroAssets(); } catch (e) { console.warn('character asset failed to load, using procedural bodies', e); }
+const player = new Fighter(world, { name: 'YOU', team: 0, skin: 0x8c5a3c, pants: 0x26324f, sash: 0xd88a2a, wrap: 0xd8cbb0, build: 1.04, bulk: 1.05 });
+const opp = new Fighter(world, { name: 'RIVAL', team: 1, skin: 0x6e4630, pants: 0x4a5531, sash: 0x3a7fc4, wrap: 0xb9c3cf, build: 1.0, bulk: 0.97 });
 player.target = opp; opp.target = player;
 world.fighters.push(player, opp);
 const controls = new Controls(canvas);

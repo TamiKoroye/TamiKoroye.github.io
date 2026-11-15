@@ -1,6 +1,7 @@
 // Pooled visual effects: rock debris, dust clouds, shockwave rings, craters, hit sparks.
 import * as THREE from 'three';
 import { rand } from './util.js';
+import { FlameBlobs, WaterChunks, Ribbons } from './fxstyle.js';
 
 function softTexture() {
   const c = document.createElement('canvas'); c.width = c.height = 64;
@@ -22,8 +23,10 @@ function craterTexture() {
 }
 
 export class FX {
-  constructor(scene) {
+  constructor(scene, camera) {
     this.scene = scene;
+    // stylised element primitives (toon fire blobs, faceted water chunks, wind ribbons)
+    this.flames = new FlameBlobs(scene); this.water = new WaterChunks(scene); this.ribbons = new Ribbons(scene, camera);
     // --- debris (instanced chunks)
     this.debrisMax = 320;
     const dg = new THREE.DodecahedronGeometry(1, 0);
@@ -87,14 +90,14 @@ export class FX {
     return sp;
   }
   // element particles
-  fire(pos, vel, size = 0.45, life = 0.35) {
-    const hot = Math.random() < 0.4;
-    return this.puff(pos, vel, size * (0.7 + Math.random() * 0.6), life * (0.7 + Math.random() * 0.6), hot ? 0xffd27a : (Math.random() < 0.5 ? 0xff7a2a : 0xff4a1a), 0.95, 1.1, true, 1.5);
-  }
+  // fire: solid cel-shaded flame blobs
+  fire(pos, vel, size = 0.45, life = 0.35) { this.flames.spawn(pos, vel, size * 0.5, life * 1.25); return { alpha: 1 }; }
   smoke(pos, size = 0.5) { return this.puff(pos, new THREE.Vector3(rand(-0.3, 0.3), 1.2, rand(-0.3, 0.3)), size, 0.9, 0x55504c, 0.35, 2.2); }
   steam(pos, n = 8) { for (let i = 0; i < n; i++) this.puff(pos.clone().add(new THREE.Vector3(rand(-0.3, 0.3), rand(0, 0.3), rand(-0.3, 0.3))), new THREE.Vector3(rand(-1, 1), rand(1.5, 3), rand(-1, 1)), 0.5, 0.9, 0xe8eef2, 0.55, 2.5); }
-  splash(pos, n = 10, color = 0x6fb6ee) { for (let i = 0; i < n; i++) { const v = new THREE.Vector3(rand(-1, 1), rand(0.6, 2), rand(-1, 1)).normalize().multiplyScalar(rand(2, 5)); this.puff(pos, v, 0.18, 0.5, color, 0.85, 0.6); } }
-  wind(pos, vel, size = 0.5, life = 0.4) { return this.puff(pos, vel, size, life, 0xf2f6ff, 0.28, 1.8); }
+  // water: faceted light-blue chunks with gravity
+  splash(pos, n = 10, color = 0x7cc4f4) { for (let i = 0; i < n; i++) { const v = new THREE.Vector3(rand(-1, 1), rand(0.6, 2), rand(-1, 1)).normalize().multiplyScalar(rand(2, 5)); this.water.spawn(pos, v, 0.09, 0.6, 9, color); } }
+  // air: curving white / lavender ribbon streaks
+  wind(pos, vel, size = 0.5, life = 0.4) { this.ribbons.streak(pos, vel.lengthSq() > 0.01 ? vel : new THREE.Vector3(0, 1, 0), { radius: size * 0.45, life, width: 0.035 + size * 0.04, color: Math.random() < 0.3 ? 0xd8ccff : 0xffffff, alpha: 0.75 }); return { alpha: 1 }; }
   dust(pos, n = 8, spread = 2, color = 0xb5a48e) {
     for (let i = 0; i < n; i++) {
       const a = Math.random() * 6.28;
@@ -124,6 +127,7 @@ export class FX {
   }
 
   update(dt, groundAt) {
+    this.flames.update(dt); this.water.update(dt, groundAt); this.ribbons.update(dt);
     // debris
     const items = this.dItems;
     for (let i = items.length - 1; i >= 0; i--) {

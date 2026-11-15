@@ -255,8 +255,8 @@ export class Arena {
     }
 
     // ---- walls, banners, panels, stands and crowd
-    const wallMat = new THREE.MeshStandardMaterial({ color: 0x4d4555, roughness: 0.92 });
-    const trimMat = new THREE.MeshStandardMaterial({ color: 0x2b2531, roughness: 0.9 });
+    const wallMat = new THREE.MeshStandardMaterial({ color: 0x8a7a83, roughness: 0.92 });
+    const trimMat = new THREE.MeshStandardMaterial({ color: 0x4c3f49, roughness: 0.9 });
     const W = HALF + 1.5, WH = 8;
     for (let i = 0; i < 4; i++) {
       const a = i * Math.PI / 2;
@@ -290,7 +290,7 @@ export class Arena {
       inner.position.z = 0.11; frame.add(inner);
       this.group.add(frame);
       // stands
-      const stand = new THREE.Mesh(new THREE.BoxGeometry(2 * W + 12, 1, 7), new THREE.MeshStandardMaterial({ color: 0x6e6672, roughness: 0.95 }));
+      const stand = new THREE.Mesh(new THREE.BoxGeometry(2 * W + 12, 1, 7), new THREE.MeshStandardMaterial({ color: 0xc9c0b8, roughness: 0.95 }));
       stand.position.set(Math.sin(a) * (W + 4.5), WH + 1.6, Math.cos(a) * (W + 4.5)); stand.rotation.set(0, a, 0);
       stand.rotateX(-0.42);
       this.group.add(stand);

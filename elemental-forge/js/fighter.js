@@ -5,6 +5,7 @@ import { clamp, dampAngle, angleDiff, smooth01, rand } from './util.js';
 import { buildSkinnedFighter } from './character.js';
 import { JOINTS, JI, PN, POSE_LEN, PX, PY, PZ, LEG_START, S, add, arm, legRaw, legIK, hipDown, seg, stanceLegs, HIP_H } from './pose.js';
 import { STYLES } from './styles.js';
+import { Hero, heroReady } from './hero.js';
 
 // Reactions and shared moves (element techniques live in styles.js)
 export const ACTIONS = {
@@ -25,6 +26,12 @@ export class Fighter {
     this.root = body.root; this.tumble = body.tumble; this.J = body.J; this.material = body.material; this.mesh = body.mesh;
     this.triangles = body.triangles; this.sashIdx = body.sashIdx;
     world.scene.add(this.root);
+    // visible body: the rigged mannequin (authored clips + retargeted martial-arts poses); the procedural
+    // rig stays as the invisible pose driver. Falls back to the procedural body if the asset failed to load.
+    if (heroReady()) {
+      this.hero = new Hero(this.J.hips.parent, this.J, { skin: opts.skin, pants: opts.pants, sash: opts.sash, wrap: opts.wrap ?? 0xd8cbb0 });
+      this.mesh.visible = false; this.material = this.hero.material;
+    }
 
     this.pos = new THREE.Vector3(); this.vel = new THREE.Vector3();
     this.yaw = 0; this.faceYaw = 0; this.spinYaw = 0;
@@ -68,6 +75,7 @@ export class Fighter {
     const col = this.mesh.geometry.attributes.color, c = new THREE.Color(this.style.sash);
     for (const i of this.sashIdx) col.setXYZ(i, c.r, c.g, c.b);
     col.needsUpdate = true;
+    if (this.hero) this.hero.setSash(this.style.sash);
     if (!quiet) { this.world.popup(this, this.style.name.toUpperCase(), true); this.world.audio.whoosh(0.3); }
   }
 
@@ -85,7 +93,8 @@ export class Fighter {
 
   chestPos(out = new THREE.Vector3()) { return out.set(this.pos.x, this.pos.y + 1.3, this.pos.z); }
   forward(out = new THREE.Vector3()) { return out.set(Math.sin(this.yaw), 0, Math.cos(this.yaw)); }
-  handPos(side, out = new THREE.Vector3()) { return this.J['w' + side].getWorldPosition(out); }
+  handPos(side, out = new THREE.Vector3()) { return (this.hero ? this.hero.bones['DEF-hand' + side] : this.J['w' + side]).getWorldPosition(out); }
+  footPos(side, out = new THREE.Vector3()) { return (this.hero ? this.hero.bones['DEF-foot' + side] : this.J['a' + side]).getWorldPosition(out); }
 
   get A() { return this.action === 'tech' ? this.tech : (this.action ? ACTIONS[this.action] : null); }
   get actionU() { const A = this.A; return A ? this.actionT / A.dur : 1; }
@@ -301,6 +310,7 @@ export class Fighter {
     this.animate(dt);
     this.root.position.copy(this.pos);
     this.root.rotation.y = this.yaw;
+    if (this.hero) { this.root.updateMatrixWorld(true); this.hero.drive(this, dt); }
     const f = this.flash, ch = this.charging ? Math.min(1, this.chargeT / 0.55) * (0.15 + 0.1 * Math.sin(this.time * 30)) : 0;
     const ec = new THREE.Color(this.style.color);
     this.material.emissive.setRGB(f * 0.9 + ch * ec.r, f * 0.25 + ch * ec.g, f * 0.15 + ch * ec.b);
@@ -354,7 +364,7 @@ export class Fighter {
     this.flash = 1;
     this.vel.x += dir.x * knock; this.vel.z += dir.z * knock;
     if (level >= 1) this.vel.y = Math.max(this.vel.y, level === 2 ? 4.5 : 2.5);
-    this.hitDir = dir.clone(); this.koDir = dir.clone();
+    this.hitDir = dir.clone(); this.koDir = dir.clone(); this.hitAlt = !this.hitAlt;
     if (this.hp <= 0) { this.die(dir); return; }
     this.endHold(); this.charging = false; this.legHoldT = -1; this.lungeT = 0; this.dodgeT = 0;
     if (level === 2) { this.startAction('down'); this.stunT = 0; this.invuln = 0.9; this.onGround = false; }
@@ -439,7 +449,7 @@ export class Fighter {
     // ---- whole-body rotation (roll, knockdown, get-up, KO)
     const tq = this.tumble.quaternion;
     const local = (d) => { const c0 = Math.cos(this.yaw), s0 = Math.sin(this.yaw); return _axis.set(d.x * s0 + d.z * c0, 0, -(d.x * c0 - d.z * s0)).normalize(); };
-    if (this.dodgeT > 0 && this.dodgeKind === 'roll') {
+    if (this.dodgeT > 0 && this.dodgeKind === 'roll' && !this.hero) {   // the hero uses the authored roll clip instead
       const prog = 1 - this.dodgeT / this.dodgeDur;
       tq.setFromAxisAngle(local(this.dodgeDir), smooth01(clamp(prog / 0.9, 0, 1)) * Math.PI * 2);
       this.tumble.position.y = 0.6;

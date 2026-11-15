@@ -7,7 +7,7 @@ export class FollowCam {
   constructor(camera, arena) {
     this.cam = camera; this.arena = arena;
     this.yaw = 0; this.pitch = 0.2;
-    this.dist = 5.2; this.curDist = 5.2;
+    this.dist = 3.9; this.curDist = 3.9;
     this.shoulder = 0.55;
     this.pivot = new THREE.Vector3();
     this.lockOffsetYaw = 0;
@@ -19,7 +19,7 @@ export class FollowCam {
     this.fovBase = 62; this.fovKick = 0;
   }
 
-  snapBehind(f) { this.yaw = f.faceYaw; this.pitch = 0.2; this.pivot.set(f.pos.x, f.pos.y + 1.45, f.pos.z); this.lockOffsetYaw = 0; }
+  snapBehind(f) { this.yaw = f.faceYaw; this.pitch = 0.2; this.pivot.set(f.pos.x, f.pos.y + 1.55, f.pos.z); this.lockOffsetYaw = 0; }
 
   update(dt, player, target, locked, look) {
     // look: {x, y} radians this frame from touch/mouse
@@ -29,7 +29,7 @@ export class FollowCam {
     const p = player.pos;
     this.pivot.x = damp(this.pivot.x, p.x, 22, dt);
     this.pivot.z = damp(this.pivot.z, p.z, 22, dt);
-    this.pivot.y = damp(this.pivot.y, p.y + 1.45, player.onGround ? 10 : 4, dt);
+    this.pivot.y = damp(this.pivot.y, p.y + 1.55, player.onGround ? 10 : 4, dt);
 
     if (locked && target && !target.dead) {
       // camera sits behind the player, looking through to the target
@@ -63,8 +63,9 @@ export class FollowCam {
     }
 
     // over-the-shoulder offset widens during lock-on so the rival is framed beside / above the player
-    this.shoulder = damp(this.shoulder, locked && target && !target.dead ? 0.95 : 0.55, 4, dt);
-    this.dist = locked && target && !target.dead ? 5.6 : 5.2;
+    // framing matches the references: the fighter fills ~40% of the screen height, over the right shoulder
+    this.shoulder = damp(this.shoulder, locked && target && !target.dead ? 0.8 : 0.5, 4, dt);
+    this.dist = locked && target && !target.dead ? 4.4 : 3.9;
     // build view
     // Low obstructions (platform edges, ledges, boulders, pillars) are cleared by raising the camera over them;
     // only tall ones (walls, spires) make it pull in. This keeps the lower part of the view open on raised terrain.

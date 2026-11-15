@@ -8,6 +8,7 @@
 import * as THREE from 'three';
 import { jaggedRockGeometry, HALF } from './arena.js';
 import { clamp, mulberry32, smooth01, rand } from './util.js';
+import { TOON_RAMP } from './hero.js';
 
 const SPEC = {
   rock:     { el: 'earth', r: 0.36, speed: 30, grav: 6,  dmg: 12, knock: 6.5, level: 1, life: 4 },
@@ -47,23 +48,25 @@ export class Bending {
     this.holds = new Map(); // fighter -> sustained technique state
     const rng = mulberry32(99);
     this.rockGeos = [0, 1, 2, 3, 4].map(() => jaggedRockGeometry(rng, 1, 0.3, 0.9));
+    // cel-shaded materials (the references draw every element as solid toon shapes, not additive glow)
+    const toon = (o) => new THREE.MeshToonMaterial({ gradientMap: TOON_RAMP, ...o });
     this.mat = {
-      rock: new THREE.MeshStandardMaterial({ color: 0x6b625c, roughness: 0.95, flatShading: true }),
-      fireCore: new THREE.MeshBasicMaterial({ color: 0xffc46b }),
-      fireArc: new THREE.MeshBasicMaterial({ color: 0xff7a2a, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }),
-      water: new THREE.MeshStandardMaterial({ color: 0x3f8fd8, roughness: 0.08, metalness: 0.1, transparent: true, opacity: 0.78, emissive: 0x0c2a48 }),
-      waterArc: new THREE.MeshStandardMaterial({ color: 0x5aa8ec, roughness: 0.1, transparent: true, opacity: 0.7, side: THREE.DoubleSide, emissive: 0x0c2a48 }),
-      air: new THREE.MeshBasicMaterial({ color: 0xf4f8ff, transparent: true, opacity: 0.55, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }),
-      stream: new THREE.MeshBasicMaterial({ color: 0xff7a2a, transparent: true, opacity: 0.55, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }),
-      streamCore: new THREE.MeshBasicMaterial({ color: 0xffd27a, transparent: true, opacity: 0.6, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }),
-      windCone: new THREE.MeshBasicMaterial({ color: 0xeaf2ff, transparent: true, opacity: 0.16, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, wireframe: true }),
-      shieldWater: new THREE.MeshStandardMaterial({ color: 0x4b9be0, roughness: 0.05, metalness: 0.1, transparent: true, opacity: 0.32, emissive: 0x0b2440, depthWrite: false, side: THREE.DoubleSide }),
-      stone: new THREE.MeshStandardMaterial({ color: 0x7a6a58, roughness: 0.95, flatShading: true }),
-      bubble: new THREE.MeshStandardMaterial({ color: 0x5aa8ec, roughness: 0.05, transparent: true, opacity: 0.4, depthWrite: false }),
+      rock: toon({ color: 0x8c8782 }),
+      fireCore: toon({ color: 0xffd23f, emissive: 0x8a4a00 }),
+      fireArc: toon({ color: 0xffa02a, emissive: 0x8a3a00, transparent: true, opacity: 0.92, side: THREE.DoubleSide }),
+      water: toon({ color: 0x6fbaf2, emissive: 0x0d3050, transparent: true, opacity: 0.88 }),
+      waterArc: toon({ color: 0x8fcaf5, emissive: 0x0d3050, transparent: true, opacity: 0.8, side: THREE.DoubleSide }),
+      air: new THREE.MeshBasicMaterial({ color: 0xf4f6ff, transparent: true, opacity: 0.32, depthWrite: false, side: THREE.DoubleSide }),
+      stream: new THREE.MeshBasicMaterial({ color: 0xff7a2a, transparent: true, opacity: 0.0, depthWrite: false }),
+      streamCore: new THREE.MeshBasicMaterial({ color: 0xffd27a, transparent: true, opacity: 0.0, depthWrite: false }),
+      windCone: new THREE.MeshBasicMaterial({ color: 0xeaf2ff, transparent: true, opacity: 0.0, depthWrite: false }),
+      shieldWater: toon({ color: 0x7cc0f2, emissive: 0x0b2440, transparent: true, opacity: 0.38, depthWrite: false, side: THREE.DoubleSide }),
+      stone: toon({ color: 0x8a7b6b }),
+      bubble: toon({ color: 0x7cc0f2, transparent: true, opacity: 0.45, depthWrite: false }),
     };
     this.geo = {
       sphere: new THREE.SphereGeometry(1, 14, 10),
-      sphereHi: new THREE.IcosahedronGeometry(1, 3),
+      sphereHi: new THREE.IcosahedronGeometry(1, 1),     // faceted, like the references' water
       ring: new THREE.TorusGeometry(1, 0.06, 6, 28),
       crescent: new THREE.TorusGeometry(1, 0.13, 6, 22, Math.PI * 0.95),
       flatRing: (() => { const g = new THREE.RingGeometry(0.85, 1, 48); g.rotateX(-Math.PI / 2); return g; })(),
@@ -94,8 +97,8 @@ export class Bending {
     out.subVectors(t, from); if (out.lengthSq() < 0.01) f.forward(out); return out.normalize();
   }
   forwardPoint(f, d, h = 1.3, out = new THREE.Vector3()) { const fw = f.forward(_v2); return out.set(f.pos.x + fw.x * d, f.pos.y + h, f.pos.z + fw.z * d); }
-  handPoint(f, side, out = new THREE.Vector3()) { return f.J['w' + (side > 0 ? 'L' : 'R')].getWorldPosition(out); }
-  footPoint(f, side, out = new THREE.Vector3()) { return f.J['a' + (side > 0 ? 'L' : 'R')].getWorldPosition(out); }
+  handPoint(f, side, out = new THREE.Vector3()) { return f.handPos(side > 0 ? 'L' : 'R', out); }
+  footPoint(f, side, out = new THREE.Vector3()) { return f.footPos(side > 0 ? 'L' : 'R', out); }
 
   makeMesh(kind, scale) {
     const S = SPEC[kind], el = S.el;
@@ -126,6 +129,9 @@ export class Bending {
       dmg: S.dmg, knock: S.knock, level: S.level, mesh: extra.mesh || this.makeMesh(kind, extra.scale), spin: new THREE.Vector3(rand(-6, 6), rand(-6, 6), rand(-6, 6)),
       slot: Math.random() * Math.PI * 2, from: null, src: extra.src || null, dmgMul: 1, hitSet: new Set(), ...extra };
     o.mesh.position.copy(o.pos);
+    const R = this.world.fx.ribbons;
+    if (o.el === 'water') o.trails = [R.start({ color: 0x9fd6ff, width: o.r * 0.85, life: 0.22, alpha: 0.8 })];
+    if (o.el === 'air') o.trails = [0, 1, 2].map(i => R.start({ color: i === 1 ? 0xd8ccff : 0xffffff, width: 0.05 + o.r * 0.05, life: 0.2, alpha: 0.85 }));
     this.objs.push(o);
     return o;
   }
@@ -154,6 +160,7 @@ export class Bending {
     if (o.state === 'dead') return;
     o.state = 'dead';
     this.world.scene.remove(o.mesh);
+    if (o.trails) for (const t of o.trails) t.release();
     const fx = this.world.fx, w = this.world;
     if (how === 'silent') return;
     if (o.el === 'earth') { fx.debrisBurst(o.pos, 12, 3.5, 0.1, 0x6e665e); fx.dust(o.pos, 5, 2, 0x9f9282); w.audio.impact(0.6); }
@@ -366,7 +373,6 @@ export class Bending {
       // defences and walls cut the stream short
       const blocker = this.rayDefence(f, from, dir, len);
       if (blocker) { len = blocker.d; if (h.tick <= 0) this.hitDefence(blocker.def, 4, from.clone().addScaledVector(dir, len), 'fire', null); }
-      this.streamMesh(h, 'flame', [this.mat.stream, this.mat.streamCore], from, dir, len, 0.55);
       for (let i = 0; i < 7; i++) { const k = Math.random(); this.world.fx.fire(from.clone().addScaledVector(dir, 0.3 + k * 0.6), dir.clone().multiplyScalar(len * 2.2 + rand(-1, 1)).add(_v.set(rand(-0.8, 0.8), rand(-0.4, 0.8), rand(-0.8, 0.8))), 0.35 + k * 0.4, 0.42); }
       if (h.tick <= 0) {
         h.tick = 0.15;
@@ -401,8 +407,7 @@ export class Bending {
       // Wind Push: a sustained cone that shoves fighters, loose rocks and projectiles away
       const from = this.forwardPoint(f, 0.6, 1.3, _a);
       const dir = this.aimDir(f, from, _b); dir.y *= 0.3; dir.normalize();
-      this.streamMesh(h, 'wind', [this.mat.windCone, this.mat.windCone], from, dir, 8, 1.7);
-      for (let i = 0; i < 4; i++) { const p = w.fx.wind(from.clone().add(_v.set(rand(-0.4, 0.4), rand(-0.4, 0.4), rand(-0.4, 0.4))), dir.clone().multiplyScalar(rand(12, 18)), 0.5, 0.5); p.alpha = 0.45; }
+      for (let i = 0; i < 2; i++) { const p = w.fx.wind(from.clone().add(_v.set(rand(-0.4, 0.4), rand(-0.4, 0.4), rand(-0.4, 0.4))), dir.clone().multiplyScalar(rand(12, 18)), 0.5, 0.5); p.alpha = 0.45; }
       for (const t of w.fighters) {
         if (t === f || t.dead) continue;
         const c = t.chestPos(_v3), to = _v.subVectors(c, from), d = to.length();
@@ -716,6 +721,16 @@ export class Bending {
   animateObj(o, dt) {
     const w = this.world, m = o.mesh;
     m.position.copy(o.pos);
+    if (o.trails) {
+      if (o.el === 'water') o.trails[0].push(o.pos);
+      else {
+        // three ribbons spiralling around the direction of travel (or around the vertical while orbiting)
+        const ax = o.state === 'flying' && o.vel.lengthSq() > 1 ? _v3.copy(o.vel).normalize() : _v3.set(0, 1, 0);
+        const u = _a.crossVectors(ax, Math.abs(ax.y) < 0.9 ? _up : _v.set(1, 0, 0)).normalize(), ww = _b.crossVectors(ax, u);
+        const rad = o.r * (SPEC[o.kind].wide ? 0.9 : 0.75);
+        o.trails.forEach((t, i) => { const a = o.t * 15 + i * 2.094; t.push(_v2.copy(o.pos).addScaledVector(u, Math.cos(a) * rad).addScaledVector(ww, Math.sin(a) * rad).addScaledVector(ax, (i - 1) * 0.15)); });
+      }
+    }
     if (o.el === 'earth') { m.rotation.x += o.spin.x * dt * (o.state === 'flying' ? 1 : 0.15); m.rotation.y += o.spin.y * dt * (o.state === 'flying' ? 1 : 0.15); if (o.state === 'flying' && Math.random() < dt * 25) w.fx.puff(o.pos.clone(), _v.set(0, 0.2, 0), 0.3, 0.35, 0xb0a290, 0.3, 1.2); }
     else if (o.el === 'fire') {
       const big = SPEC[o.kind].wide ? 6 : 3;

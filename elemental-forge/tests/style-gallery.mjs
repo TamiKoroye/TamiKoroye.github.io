@@ -28,6 +28,7 @@ for (const el of ['earth', 'fire', 'water', 'air']) for (const [label, kind, key
     if (kind === 'tech') { const T = p.style.tech; def = key === 'leg0' ? T.leg[0] : key === 'leg1' ? T.leg[1] : T[key]; p.action = 'tech'; p.tech = def; p.techSide = 1; }
     for (let i = 0; i < 70; i++) { if (def) { p.actionT = u * def.dur; if (def.spin) p.spinYaw = def.spin[2] * Math.PI * 2 * Math.min(1, Math.max(0, (u - def.spin[0]) / (def.spin[1] - def.spin[0]))); } p.time += 1 / 30; p.animate(1 / 30); }
     p.yaw = p.faceYaw + p.spinYaw; p.root.position.copy(p.pos); p.root.rotation.y = p.yaw;
+    if (p.hero) { p.hero.wU = p.hero.wL = 1; p.root.updateMatrixWorld(true); for (let i = 0; i < 4; i++) p.hero.update(1 / 30); }
     const cam = world.camera; cam.position.set(2.7, 1.5, -7.4); cam.lookAt(0, 0.95, -10); cam.aspect = 0.9; cam.fov = 42; cam.updateProjectionMatrix();
   }, [el, kind, key, u]);
   await page.waitForTimeout(150);
