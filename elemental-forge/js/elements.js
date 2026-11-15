@@ -1054,7 +1054,11 @@ export class Bending {
           for (const t of w.fighters) {
             if (t === f || t.dead || t.invuln > 0) continue;
             const dx = t.pos.x - f.pos.x, dz = t.pos.z - f.pos.z, d = Math.hypot(dx, dz) || 1;
-            if (d < R + 0.7 && Math.abs(t.pos.y - f.pos.y) < 1.5) { t.ext.x += dx / d * 5; t.ext.z += dz / d * 5; w.combat.damage(t, 3, _v.set(dx / d, 0, dz / d), f, 'spiral', t.chestPos(new THREE.Vector3()), 1, 0); }
+            if (d < R + 0.7 && Math.abs(t.pos.y - f.pos.y) < 1.5) {
+              // the circling water shoves attackers out; it stings once, it does not grind them down
+              t.ext.x += dx / d * 5; t.ext.z += dz / d * 5;
+              if (!(sp.stung ||= new Set()).has(t)) { sp.stung.add(t); w.combat.damage(t, 3, _v.set(dx / d, 0, dz / d), f, 'spiral', t.chestPos(new THREE.Vector3()), 1, 0); }
+            }
           }
           w.audio.splash(0.25);
         }
@@ -1062,7 +1066,7 @@ export class Bending {
         // release: each stream leaves from its head toward the opponent, 0.12 s apart
         const prev = sp.released; sp.released += dt;
         for (let i = 0; i < 3; i++) if (prev <= i * 0.12 && sp.released > i * 0.12) {
-          const o = this.fire('water', f, sp.pts[i][0].clone(), { scale: 1.25 }); o.dmg = 9 + sp.boost * 2; o.knock = 8; o.level = i === 2 ? 2 : 1;
+          const o = this.fire('water', f, sp.pts[i][0].clone(), { scale: 1.25 }); o.dmg = 6 + sp.boost * 2; o.knock = 7; o.level = 1;
           w.audio.splash(0.7);
         }
       }
