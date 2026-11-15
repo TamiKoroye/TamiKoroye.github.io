@@ -1,0 +1,322 @@
+// Element martial-arts styles: stance, locomotion character and keyframed techniques.
+// All four share the same skeleton and pose primitives; each technique is a list of keyframe
+// functions that write joint targets over the style's stance, interpolated with easing.
+//   Earth: Hung Gar (rooted, wide, forceful)      Fire: Northern Shaolin (long, extended, explosive)
+//   Water: Tai Chi (circular, continuous, soft)   Air: Baguazhang (circle-walking, open palms, spinning)
+import { S, add, arm, legRaw, legIK, stanceLegs, hipDown, PX, PY, PZ } from './pose.js';
+
+// ------------------------------------------------------------------ stances (idle / guard-ready)
+function earthStance(p, t) {
+  const b = Math.sin(t * 1.6);
+  stanceLegs(p, -0.24 + b * 0.008, 0.18, 0.36, -0.14, 0.34);
+  S(p, 'hips', 0.04, 0.22, 0); S(p, 'spine', 0.1, -0.08, 0); S(p, 'chest', 0.05 + b * 0.012, -0.12, 0);
+  S(p, 'neck', -0.12, -0.02, 0); S(p, 'head', 0.02, 0, 0);
+  arm(p, 1, -0.95, 0.22, -0.2, 1.15, -0.55);   // lead tiger claw
+  arm(p, -1, 0.42, 0.18, 0, 2.15, 0.1);         // rear fist chambered at the hip
+}
+function fireStance(p, t) {
+  const b = Math.sin(t * 7) * 0.025;            // light bounce on the balls of the feet
+  stanceLegs(p, -0.15 + b, 0.48, 0.13, -0.44, 0.11);     // long front bow stance
+  S(p, 'hips', 0.04, 0.3, 0); S(p, 'spine', 0.14, -0.08, 0); S(p, 'chest', 0.05, -0.18, 0);
+  S(p, 'neck', -0.1, -0.1, 0); S(p, 'head', 0, 0, 0);
+  arm(p, 1, -1.25, 0.15, -0.3, 0.5, -0.2);      // lead arm extended
+  arm(p, -1, -0.65, 0.6, -0.3, 2.0, 0);         // rear fist high by the temple
+  add(p, 'aL', 0.12, 0, 0); add(p, 'aR', 0.18, 0, 0);
+}
+function waterStance(p, t) {
+  const w = t * 1.5, a = Math.sin(w), c = Math.cos(w);
+  stanceLegs(p, -0.13 + a * 0.02, 0.27, 0.12, -0.08, 0.15);
+  p[PZ] = -0.04 + a * 0.04;                     // weight shifting forward / back
+  S(p, 'hips', 0, 0.15 + a * 0.12, 0); S(p, 'spine', 0.04, -0.06 - a * 0.06, 0); S(p, 'chest', 0.02, -0.04, 0);
+  S(p, 'neck', -0.04, -0.05 - a * 0.05, 0);
+  arm(p, 1, -0.85 + a * 0.25, 0.45 + c * 0.15, 0.4, 0.9 + c * 0.15, 0.3);    // rounded "ward off"
+  arm(p, -1, -0.5 - a * 0.25, 0.35 - c * 0.12, 0.3, 1.2 - c * 0.15, 0.2);
+}
+function airStance(p, t) {
+  const w = t * 2.1, a = Math.sin(w), c = Math.cos(w);
+  stanceLegs(p, -0.15 + Math.abs(a) * 0.02, 0.2, 0.04, -0.15, 0.06);       // toe-in walking stance
+  p[PX] = c * 0.025; p[PZ] = a * 0.025;          // small circular weight shifts
+  S(p, 'hips', 0, 0.5 + a * 0.06, 0); S(p, 'spine', 0.04, 0.2, 0); S(p, 'chest', 0, 0.3, 0);
+  S(p, 'neck', 0, -0.5, 0); S(p, 'head', 0, -0.25, 0);
+  arm(p, 1, -1.45, 0.08, -0.8, 0.35, -1.0);     // lead open palm at eye level
+  arm(p, -1, -1.0, -0.15, -0.4, 1.6, -0.7);     // rear palm guarding the lead elbow
+  add(p, 'aL', 0.18 + a * 0.06, 0, 0); add(p, 'aR', 0.2 - a * 0.06, 0, 0);
+}
+
+// ------------------------------------------------------------------ technique helpers
+const T = (o) => o;
+const lunge = (p, s, py, front, back, out = 0.14) => stanceLegs(p, py, front, out, back, out, -s);
+
+// ------------------------------------------------------------------ EARTH: Hung Gar
+const earth = {
+  key: 'earth', name: 'Earth', art: 'Hung Gar', color: 0x9a7b4f, sash: 0x6b8a3a,
+  stance: earthStance,
+  loco: { walk: 2.6, run: 5.9, sprint: 8.4, accel: 30, stride: 0.9, bob: 0.55, knee: 0.8, lean: 0.8, swing: 0.55, elbow: 1.7, carry: -0.2, out: 0.1, heavy: 1.4 },
+  jump: { v: 7.2, air: 0 },
+  dodge: { kind: 'roll', dur: 0.44, speed: 12, iframes: 0.7 },
+  labels: { hand: 'STONE PUNCH', leg: 'EARTH KICK', guard: 'WALL', special: 'PILLAR' },
+  tech: {
+    hand: T({ name: 'Stone Punch', clip: ['earth_punch', 'earth_punch2'], dur: 0.42, cost: 9, cancel: 0.6, upper: true, move: 3.2, lunge: 5,
+      active: { from: 0.33, to: 0.5, dmg: 7, range: 1.8, arc: 0.4, knock: 3, level: 0 },
+      events: [[0.34, 'earth.hand']],
+      keys: [
+        [0.0, (p, c) => { p[PY] = -0.26; S(p, 'hips', 0.04, 0.35 * c.s, 0); S(p, 'chest', 0.05, 0.2 * c.s, 0); arm(p, -c.s, 0.5, 0.15, 0, 2.2, 0); arm(p, c.s, -1.0, 0.25, -0.2, 1.3, -0.5); }],
+        [0.36, (p, c) => { lunge(p, c.s, -0.27, 0.34, -0.36, 0.32); S(p, 'hips', 0.06, -0.55 * c.s, 0); S(p, 'spine', 0.15, -0.15 * c.s, 0); S(p, 'chest', 0.05, -0.3 * c.s, 0);
+          arm(p, -c.s, -1.5, 0.08, -0.2, 0.05, 0); arm(p, c.s, 0.5, 0.15, 0, 2.15, 0); }],
+        [0.6, (p, c) => { lunge(p, c.s, -0.27, 0.34, -0.36, 0.32); S(p, 'hips', 0.06, -0.5 * c.s, 0); S(p, 'chest', 0.05, -0.25 * c.s, 0); arm(p, -c.s, -1.45, 0.1, -0.2, 0.15, 0); arm(p, c.s, 0.5, 0.15, 0, 2.15, 0); }],
+        [1.0, () => {}],
+      ] }),
+    leg: [
+      T({ name: 'Earth Kick', clip: 'earth_kick', dur: 0.6, cost: 10, cancel: 0.72, move: 0.6, lunge: 4,
+        active: { from: 0.4, to: 0.56, dmg: 9, range: 2.0, arc: 0.3, knock: 6, level: 1 },
+        events: [[0.42, 'earth.leg']],
+        keys: [
+          [0.0, () => {}],
+          [0.3, (p, c) => { p[PY] = -0.16; legRaw(p, c.s, -1.5, 0.12, 1.95, 0.3); legIK(p, -c.s, 0.02, hipDown(-0.16) - 0.04, 0.16);
+            S(p, 'spine', -0.05, 0, 0); arm(p, c.s, 0.3, 0.25, 0, 2.0); arm(p, -c.s, -0.95, 0.3, -0.2, 1.25, -0.5); }],
+          [0.44, (p, c) => { p[PY] = -0.14; legRaw(p, c.s, -1.4, 0.1, 0.12, -0.6); legIK(p, -c.s, -0.02, hipDown(-0.14) - 0.04, 0.16);
+            S(p, 'hips', -0.12, -0.25 * c.s, 0); S(p, 'spine', -0.2, 0, 0); arm(p, -c.s, -1.35, 0.2, 0, 0.3, -0.4); arm(p, c.s, 0.4, 0.3, 0, 2.0); }],
+          [0.7, (p, c) => { stanceLegs(p, -0.3, 0.36, 0.3, -0.16, 0.3, c.s); S(p, 'spine', 0.22, 0, 0); arm(p, 1, -0.6, 0.3, 0, 0.4, 1.0); arm(p, -1, -0.6, 0.3, 0, 0.4, 1.0); }],
+          [1.0, () => {}],
+        ] }),
+      T({ name: 'Earth Sweep', clip: 'earth_sweep', dur: 0.62, cost: 12, cancel: 0.75, move: 0.5, spin: [0.08, 0.7, 1],
+        active: { from: 0.35, to: 0.6, dmg: 7, range: 2.2, arc: -1.1, knock: 4, level: 1 },
+        events: [[0.45, 'earth.sweep']],
+        keys: [
+          [0.0, () => {}],
+          [0.25, (p, c) => { p[PY] = -0.45; legIK(p, -c.s, 0.15, hipDown(-0.45), 0.2); legRaw(p, c.s, -0.25, 1.25, 0.15, 0.2); S(p, 'spine', 0.35, 0, 0.15 * c.s);
+            arm(p, 1, -0.4, 0.5, 0, 0.6, 0.8); arm(p, -1, -0.4, 0.5, 0, 0.6, 0.8); }],
+          [0.6, (p, c) => { p[PY] = -0.45; legIK(p, -c.s, 0.15, hipDown(-0.45), 0.2); legRaw(p, c.s, -0.3, 1.3, 0.1, 0.2); S(p, 'spine', 0.35, 0, 0.15 * c.s);
+            arm(p, 1, -0.4, 0.6, 0, 0.5, 0.8); arm(p, -1, -0.4, 0.6, 0, 0.5, 0.8); }],
+          [1.0, () => {}],
+        ] }),
+    ],
+    charged: T({ name: 'Seismic Stomp', clip: 'earth_stomp', dur: 0.75, cost: 22, cancel: 0.82, move: 0, jumpAt: [0.14, 4.4],
+      events: [[0.55, 'earth.seismic']],
+      keys: [
+        [0.0, () => {}],
+        [0.3, (p) => { S(p, 'spine', -0.2, 0, 0); S(p, 'neck', 0.2, 0, 0); legRaw(p, -1, -2.2, 0.1, 0.15, 0.3); legRaw(p, 1, 0.3, 0.1, 1.1, -0.2); arm(p, 1, -2.6, 0.4, 0, 0.6); arm(p, -1, -2.6, 0.4, 0, 0.6); }],
+        [0.56, (p) => { stanceLegs(p, -0.36, 0.3, 0.36, -0.2, 0.34, -1); S(p, 'spine', 0.45, 0, 0); arm(p, 1, -0.9, 0.9, 0, 0.3, 1.1); arm(p, -1, -0.9, 0.9, 0, 0.3, 1.1); }],
+        [0.8, (p) => { stanceLegs(p, -0.32, 0.3, 0.36, -0.2, 0.34, -1); S(p, 'spine', 0.3, 0, 0); arm(p, 1, -0.8, 0.8, 0, 0.4, 1.0); arm(p, -1, -0.8, 0.8, 0, 0.4, 1.0); }],
+        [1.0, () => {}],
+      ] }),
+    handHold: { name: 'Boulder Lift', period: 0.7, move: 2.6, drain: 4,
+      pose: (p, c) => { const k = 0.5 - 0.5 * Math.cos(c.ph * Math.PI * 2);
+        stanceLegs(p, -0.32 + 0.08 * k, 0.2, 0.36, -0.16, 0.36); S(p, 'spine', 0.3 - 0.25 * k, 0, 0); S(p, 'neck', -0.15, 0, 0);
+        arm(p, 1, -0.3 - 1.4 * k, 0.3, 0.6, 0.4, 0.8 - 1.4 * k); arm(p, -1, -0.3 - 1.4 * k, 0.3, 0.6, 0.4, 0.8 - 1.4 * k); } },
+    guard: (p) => { stanceLegs(p, -0.32, 0.12, 0.42, -0.12, 0.42); S(p, 'spine', 0.14, 0, 0); S(p, 'neck', -0.12, 0, 0);
+      arm(p, 1, -1.3, 0.35, 0.3, 0.45, -1.25); arm(p, -1, -1.3, 0.35, 0.3, 0.45, -1.25); },
+    special: T({ name: 'Stone Pillar', clip: 'earth_pillar', dur: 0.55, cost: 20, cancel: 0.7, move: 0,
+      events: [[0.42, 'earth.pillar']],
+      keys: [
+        [0.0, () => {}],
+        [0.3, (p) => { stanceLegs(p, -0.38, 0.2, 0.4, -0.15, 0.4); S(p, 'spine', 0.4, 0, 0); arm(p, 1, -0.3, 0.3, 0.6, 0.3, 1.2); arm(p, -1, -0.3, 0.3, 0.6, 0.3, 1.2); }],
+        [0.5, (p) => { stanceLegs(p, -0.22, 0.2, 0.4, -0.15, 0.4); S(p, 'spine', -0.05, 0, 0); arm(p, 1, -2.4, 0.3, 0.6, 0.2, -0.4); arm(p, -1, -2.4, 0.3, 0.6, 0.2, -0.4); }],
+        [1.0, () => {}],
+      ] }),
+  },
+};
+
+// ------------------------------------------------------------------ FIRE: Northern Shaolin
+const fire = {
+  key: 'fire', name: 'Fire', art: 'Northern Shaolin', color: 0xe2552b, sash: 0xc8341f,
+  stance: fireStance,
+  loco: { walk: 3.2, run: 7.0, sprint: 9.8, accel: 40, stride: 1.05, bob: 1.1, knee: 1.25, lean: 1.4, swing: 1.1, elbow: 1.55, carry: -0.15, out: 0.03, heavy: 0.9 },
+  jump: { v: 7.9, air: 0 },
+  dodge: { kind: 'dash', dur: 0.32, speed: 17, iframes: 0.75, trail: 'fire' },
+  labels: { hand: 'FIRE FIST', leg: 'FLAME KICK', guard: 'FIRE WALL', special: 'FLAME ORB' },
+  tech: {
+    hand: T({ name: 'Fire Fist', clip: ['fire_punch', 'fire_punch2'], dur: 0.27, cost: 6, cancel: 0.5, upper: true, move: 4.2, lunge: 5,
+      active: { from: 0.28, to: 0.5, dmg: 5, range: 1.9, arc: 0.4, knock: 2, level: 0 },
+      events: [[0.3, 'fire.hand']],
+      keys: [
+        [0.0, (p, c) => { S(p, 'hips', 0, 0.4 * c.s, 0); arm(p, -c.s, -0.6, 0.3, 0, 2.1, 0); }],
+        [0.3, (p, c) => { lunge(p, c.s, -0.12, 0.5, -0.46, 0.1); S(p, 'hips', 0.05, -0.5 * c.s, 0); S(p, 'spine', 0.18, -0.1 * c.s, 0); S(p, 'chest', 0.04, -0.6 * c.s, 0);
+          arm(p, -c.s, -1.62, 0.05, -0.3, 0.0, 0); arm(p, c.s, -0.6, 0.55, -0.3, 2.1, 0); }],
+        [0.62, (p, c) => { lunge(p, c.s, -0.12, 0.5, -0.46, 0.1); S(p, 'hips', 0.05, -0.45 * c.s, 0); S(p, 'chest', 0.04, -0.5 * c.s, 0); arm(p, -c.s, -1.55, 0.08, -0.3, 0.1, 0); arm(p, c.s, -0.6, 0.55, -0.3, 2.1, 0); }],
+        [1.0, () => {}],
+      ] }),
+    leg: [
+      T({ name: 'Flame Kick', clip: 'fire_round', dur: 0.46, cost: 9, cancel: 0.65, move: 1.0, lunge: 6,
+        active: { from: 0.38, to: 0.55, dmg: 8, range: 2.2, arc: 0.35, knock: 5, level: 1 },
+        events: [[0.42, 'fire.leg']],
+        keys: [
+          [0.0, () => {}],
+          [0.26, (p, c) => { p[PY] = 0.0; legRaw(p, c.s, -1.85, 0.05, 2.05, 0.2); legIK(p, -c.s, 0.0, hipDown(0) - 0.02, 0.1); add(p, -c.s > 0 ? 'aL' : 'aR', 0.35, 0, 0);
+            arm(p, c.s, 0.45, 0.6, 0, 0.5); arm(p, -c.s, -1.2, 0.4, 0, 1.8); }],
+          [0.42, (p, c) => { p[PY] = 0.02; legRaw(p, c.s, -2.0, 0.05, 0.02, -0.3); legIK(p, -c.s, 0.02, hipDown(0.02) - 0.02, 0.1); S(p, 'spine', -0.28, 0, 0);
+            arm(p, c.s, 0.6, 0.7, 0, 0.3); arm(p, -c.s, -1.3, 0.5, 0, 1.6); }],
+          [0.62, (p, c) => { lunge(p, c.s, -0.1, 0.45, -0.4, 0.1); arm(p, c.s, -1.2, 0.2, 0, 0.6); arm(p, -c.s, -0.6, 0.55, 0, 2.0); }],
+          [1.0, () => {}],
+        ] }),
+      T({ name: 'Spinning Flame Kick', clip: 'fire_spin', dur: 0.56, cost: 12, cancel: 0.72, move: 1.5, spin: [0.05, 0.72, -1], lunge: 4,
+        active: { from: 0.3, to: 0.62, dmg: 10, range: 2.3, arc: -1.1, knock: 7, level: 1 },
+        events: [[0.42, 'fire.spin']],
+        keys: [
+          [0.0, () => {}],
+          [0.3, (p, c) => { p[PY] = 0.04; legRaw(p, c.s, -0.6, 1.45, 0.1, 0.3); legIK(p, -c.s, 0.02, hipDown(0.04) - 0.03, 0.06); S(p, 'hips', 0, 0, -0.35 * c.s); S(p, 'spine', 0, 0, 0.25 * c.s);
+            arm(p, 1, -0.4, 1.3, 0, 0.6); arm(p, -1, -0.3, 1.4, 0, 0.5); }],
+          [0.62, (p, c) => { p[PY] = 0.04; legRaw(p, c.s, -0.5, 1.4, 0.15, 0.3); legIK(p, -c.s, 0.02, hipDown(0.04) - 0.03, 0.06); S(p, 'hips', 0, 0, -0.3 * c.s); arm(p, 1, -0.4, 1.2, 0, 0.6); arm(p, -1, -0.3, 1.3, 0, 0.5); }],
+          [1.0, () => {}],
+        ] }),
+    ],
+    charged: T({ name: 'Flying Dragon Kick', clip: 'fire_fly', dur: 0.72, cost: 20, cancel: 0.82, move: 7, jumpAt: [0.08, 6.4], lunge: 9, spin: [0.08, 0.6, -1],
+      active: { from: 0.35, to: 0.62, dmg: 12, range: 2.4, arc: -1.1, knock: 9, level: 2 },
+      events: [[0.45, 'fire.charged']],
+      keys: [
+        [0.0, () => {}],
+        [0.25, (p) => { legRaw(p, 1, -1.9, 0.1, 2.1, 0.2); legRaw(p, -1, -1.2, 0.1, 2.0, 0.2); S(p, 'spine', 0.2, 0, 0); arm(p, 1, -1.3, 0.5, 0, 1.8); arm(p, -1, -1.3, 0.5, 0, 1.8); }],
+        [0.48, (p) => { legRaw(p, -1, -0.6, 1.3, 0.05, 0.3); legRaw(p, 1, -1.4, 0.2, 2.0, 0.2); S(p, 'spine', -0.1, 0, 0.3); arm(p, 1, -0.3, 1.4, 0, 0.4); arm(p, -1, -0.2, 1.4, 0, 0.4); }],
+        [0.8, (p) => { stanceLegs(p, -0.2, 0.4, 0.12, -0.35, 0.12); S(p, 'spine', 0.25, 0, 0); arm(p, 1, -1.2, 0.2, 0, 0.5); arm(p, -1, -0.6, 0.55, 0, 2.0); }],
+        [1.0, () => {}],
+      ] }),
+    handHold: { name: 'Fire Stream', period: 0.24, move: 2.4, drain: 14,
+      pose: (p, c) => { const tr = Math.sin(c.t * 38) * 0.03; lunge(p, 1, -0.16, 0.45, -0.42, 0.1); S(p, 'hips', 0.05, 0.1, 0); S(p, 'spine', 0.2 + tr, 0, 0);
+        arm(p, 1, -1.55 + tr, 0.15, -0.6, 0.15, -1.2); arm(p, -1, -1.5 - tr, 0.1, -0.6, 0.2, -1.2); } },
+    guard: (p) => { stanceLegs(p, -0.14, 0.3, 0.14, -0.3, 0.12); S(p, 'spine', 0.08, 0, 0);
+      arm(p, 1, -1.35, -0.1, 0.2, 1.75, 0.2); arm(p, -1, -1.25, -0.15, 0.2, 1.8, 0.2); },  // crossed forearms
+    special: T({ name: 'Flame Orb', clip: 'fire_orb', dur: 0.36, cost: 10, cancel: 0.55, upper: true, move: 4,
+      events: [[0.3, 'fire.special']],
+      keys: [
+        [0.0, () => {}],
+        [0.3, (p, c) => { S(p, 'chest', 0, -0.3 * c.s, 0); arm(p, -c.s, -2.1, 0.4, 0.4, 1.0, -0.9); arm(p, c.s, -0.6, 0.55, -0.3, 2.0, 0); }],
+        [1.0, () => {}],
+      ] }),
+  },
+};
+
+// ------------------------------------------------------------------ WATER: Tai Chi Chuan
+const water = {
+  key: 'water', name: 'Water', art: 'Tai Chi Chuan', color: 0x3d8fd6, sash: 0x2d6fb3,
+  stance: waterStance,
+  loco: { walk: 2.8, run: 6.2, sprint: 8.8, accel: 26, stride: 1.0, bob: 0.35, knee: 0.7, lean: 0.6, swing: 0.35, elbow: 0.8, carry: -0.55, out: 0.07, heavy: 0.6, flow: 1 },
+  jump: { v: 7.4, air: 0 },
+  dodge: { kind: 'slide', dur: 0.4, speed: 13, iframes: 0.7, trail: 'water' },
+  labels: { hand: 'WATER PALM', leg: 'WATER KICK', guard: 'WATER SHIELD', special: 'WATER SPHERE' },
+  tech: {
+    hand: T({ name: 'Water Palm', clip: 'water_palm', dur: 0.5, cost: 6, cancel: 0.62, upper: true, move: 3.8, lunge: 3,
+      active: { from: 0.5, to: 0.64, dmg: 5, range: 1.9, arc: 0.4, knock: 4, level: 0 },
+      events: [[0.52, 'water.hand']],
+      keys: [
+        [0.0, () => {}],
+        [0.25, (p, c) => { p[PY] = -0.14; p[PZ] = -0.06; S(p, 'hips', 0, 0.3 * c.s, 0); arm(p, -c.s, 0.25, 0.55, 0.5, 1.2, 0.4); arm(p, c.s, -0.8, 0.45, 0.4, 0.9, 0.3); }],
+        [0.42, (p, c) => { p[PY] = -0.12; S(p, 'hips', 0, 0.05 * c.s, 0); arm(p, -c.s, -1.25, 0.65, 0.6, 0.95, 0.4); arm(p, c.s, -0.6, 0.4, 0.4, 1.1, 0.3); }],
+        [0.56, (p, c) => { lunge(p, c.s, -0.14, 0.34, -0.1, 0.14); p[PZ] = 0.06; S(p, 'hips', 0, -0.3 * c.s, 0); S(p, 'chest', 0, -0.15 * c.s, 0); arm(p, -c.s, -1.42, 0.22, 0.2, 0.3, -1.2); arm(p, c.s, -0.4, 0.4, 0.3, 1.3, 0.3); }],
+        [1.0, () => {}],
+      ] }),
+    leg: [
+      T({ name: 'Crescent Water Kick', clip: 'water_kick', dur: 0.62, cost: 9, cancel: 0.75, move: 1.2, lunge: 3,
+        active: { from: 0.42, to: 0.6, dmg: 7, range: 2.1, arc: 0.1, knock: 6, level: 1 },
+        events: [[0.5, 'water.leg']],
+        keys: [
+          [0.0, () => {}],
+          [0.3, (p, c) => { p[PY] = -0.06; legRaw(p, c.s, -0.7, 0.95, 0.35, 0.2); legIK(p, -c.s, 0.02, hipDown(-0.06) - 0.03, 0.12); S(p, 'hips', 0, 0.25 * c.s, 0); arm(p, c.s, -0.9, 0.9, 0.4, 0.7, 0.2); arm(p, -c.s, -0.9, 0.6, 0.4, 0.9, 0.2); }],
+          [0.5, (p, c) => { p[PY] = -0.06; legRaw(p, c.s, -1.4, -0.25, 0.2, 0.2); legIK(p, -c.s, 0.02, hipDown(-0.06) - 0.03, 0.12); S(p, 'hips', 0, -0.45 * c.s, 0); S(p, 'chest', 0, -0.2 * c.s, 0);
+            arm(p, c.s, -0.5, 1.1, 0.4, 0.5, 0.2); arm(p, -c.s, -1.2, 0.5, 0.4, 0.6, -0.6); }],
+          [0.75, (p, c) => { p[PY] = -0.14; legIK(p, c.s, 0.28, hipDown(-0.14), 0.12); legIK(p, -c.s, -0.1, hipDown(-0.14), 0.14); arm(p, 1, -0.8, 0.5, 0.4, 0.9, 0.3); arm(p, -1, -0.6, 0.4, 0.4, 1.1, 0.3); }],
+          [1.0, () => {}],
+        ] }),
+      T({ name: 'Turning Wave Kick', clip: 'water_turn', dur: 0.7, cost: 11, cancel: 0.8, move: 1.0, spin: [0.05, 0.8, 1],
+        active: { from: 0.35, to: 0.7, dmg: 7, range: 2.2, arc: -1.1, knock: 6, level: 1 },
+        events: [[0.55, 'water.leg2']],
+        keys: [
+          [0.0, () => {}],
+          [0.35, (p, c) => { p[PY] = -0.3; legIK(p, -c.s, 0.1, hipDown(-0.3), 0.14); legRaw(p, c.s, -0.4, 1.0, 0.3, 0.2); S(p, 'spine', 0.15, 0, 0.1 * c.s); arm(p, 1, -0.6, 1.2, 0.4, 0.6, 0.3); arm(p, -1, -0.6, 1.2, 0.4, 0.6, 0.3); }],
+          [0.7, (p, c) => { p[PY] = -0.3; legIK(p, -c.s, 0.1, hipDown(-0.3), 0.14); legRaw(p, c.s, -0.3, 0.9, 0.3, 0.2); arm(p, 1, -0.6, 1.1, 0.4, 0.7, 0.3); arm(p, -1, -0.6, 1.1, 0.4, 0.7, 0.3); }],
+          [1.0, () => {}],
+        ] }),
+    ],
+    charged: T({ name: 'Tidal Sweep', clip: 'water_tidal', dur: 0.85, cost: 18, cancel: 0.88, move: 0.5, spin: [0.1, 0.75, 1],
+      events: [[0.6, 'water.charged']],
+      keys: [
+        [0.0, () => {}],
+        [0.35, (p) => { stanceLegs(p, -0.36, 0.25, 0.4, -0.2, 0.4); S(p, 'spine', 0.3, 0, 0); arm(p, 1, -0.4, 1.3, 0.5, 0.5, 0.3); arm(p, -1, -0.4, 1.3, 0.5, 0.5, 0.3); }],
+        [0.65, (p) => { stanceLegs(p, -0.3, 0.3, 0.4, -0.2, 0.4); S(p, 'spine', 0.1, 0, 0); arm(p, 1, -1.4, 0.9, 0.3, 0.3, -1.0); arm(p, -1, -1.4, 0.9, 0.3, 0.3, -1.0); }],
+        [1.0, () => {}],
+      ] }),
+    handHold: { name: 'Draw / Water Whip', period: 1.1, move: 3.2, drain: 6,
+      pose: (p, c) => { const a = c.ph * Math.PI * 2, s1 = Math.sin(a), c1 = Math.cos(a);
+        stanceLegs(p, -0.16 + 0.03 * s1, 0.28, 0.14, -0.1, 0.15); S(p, 'hips', 0, 0.2 * s1, 0); S(p, 'spine', 0.06, -0.1 * s1, 0);
+        arm(p, 1, -1.0 + 0.6 * s1, 0.6 + 0.35 * c1, 0.5, 0.7, 0.3); arm(p, -1, -1.0 - 0.6 * s1, 0.6 - 0.35 * c1, 0.5, 0.7, 0.3); } },
+    guard: (p, c) => { const a = Math.sin((c ? c.t : 0) * 2.2);
+      stanceLegs(p, -0.18, 0.22, 0.16, -0.12, 0.16); S(p, 'hips', 0, 0.15 * a, 0); S(p, 'spine', 0.05, 0, 0);
+      arm(p, 1, -1.15 + 0.15 * a, 0.75, 0.6, 1.0, 0.4); arm(p, -1, -1.15 - 0.15 * a, 0.75, 0.6, 1.0, 0.4); },
+    special: T({ name: 'Water Sphere', clip: 'water_sphere', dur: 0.6, cost: 12, cancel: 0.72, move: 2, upper: true,
+      events: [[0.52, 'water.special']],
+      keys: [
+        [0.0, () => {}],
+        [0.3, (p) => { p[PY] = -0.2; arm(p, 1, -0.4, 0.5, 0.8, 1.0, 0.6); arm(p, -1, -0.4, 0.5, 0.8, 1.0, 0.6); S(p, 'spine', 0.2, 0, 0); }],
+        [0.55, (p) => { p[PY] = -0.12; arm(p, 1, -1.5, 0.2, 0.2, 0.25, -1.2); arm(p, -1, -1.5, 0.2, 0.2, 0.25, -1.2); S(p, 'spine', 0.05, 0, 0); }],
+        [1.0, () => {}],
+      ] }),
+  },
+};
+
+// ------------------------------------------------------------------ AIR: Baguazhang
+const air = {
+  key: 'air', name: 'Air', art: 'Baguazhang', color: 0xd9e3e8, sash: 0xe0a33a,
+  stance: airStance,
+  loco: { walk: 3.4, run: 7.4, sprint: 10.6, accel: 42, stride: 1.2, bob: 0.4, knee: 0.75, lean: 1.2, swing: 0.25, elbow: 0.3, carry: 0.55, out: 0.0, heavy: 0.4 },
+  jump: { v: 7.8, air: 1 },
+  dodge: { kind: 'airdash', dur: 0.36, speed: 19, iframes: 0.85, trail: 'air' },
+  labels: { hand: 'AIR PALM', leg: 'AIR KICK', guard: 'DEFLECT', special: 'VORTEX' },
+  tech: {
+    hand: T({ name: 'Air Palm', clip: 'air_palm', dur: 0.32, cost: 6, cancel: 0.52, upper: true, move: 5, lunge: 4,
+      active: { from: 0.3, to: 0.5, dmg: 4, range: 1.9, arc: 0.4, knock: 6, level: 0 },
+      events: [[0.32, 'air.hand']],
+      keys: [
+        [0.0, (p, c) => { S(p, 'chest', 0, 0.4 * c.s, 0); arm(p, -c.s, -0.9, 0.5, -0.6, 1.9, -0.6); }],
+        [0.32, (p, c) => { lunge(p, c.s, -0.14, 0.32, -0.16, 0.04); S(p, 'hips', 0, -0.5 * c.s, 0); S(p, 'chest', 0.05, -0.7 * c.s, 0); S(p, 'spine', 0.1, 0, 0);
+          arm(p, -c.s, -1.52, 0.04, -0.9, 0.1, -1.3); arm(p, c.s, -1.0, -0.2, -0.4, 1.7, -0.7); }],
+        [0.6, (p, c) => { lunge(p, c.s, -0.14, 0.32, -0.16, 0.04); S(p, 'hips', 0, -0.4 * c.s, 0); S(p, 'chest', 0.05, -0.5 * c.s, 0); arm(p, -c.s, -1.45, 0.06, -0.9, 0.2, -1.2); }],
+        [1.0, () => {}],
+      ] }),
+    leg: [
+      T({ name: 'Crescent Air Kick', clip: 'air_crescent', dur: 0.48, cost: 8, cancel: 0.66, move: 2.5, spin: [0.04, 0.62, -1], lunge: 4,
+        active: { from: 0.3, to: 0.55, dmg: 6, range: 2.2, arc: -1.1, knock: 7, level: 1 },
+        events: [[0.4, 'air.leg']],
+        keys: [
+          [0.0, () => {}],
+          [0.3, (p, c) => { p[PY] = 0.02; legRaw(p, c.s, -1.6, 0.65, 0.1, 0.1); legIK(p, -c.s, 0.0, hipDown(0.02) - 0.02, 0.04); add(p, -c.s > 0 ? 'aL' : 'aR', 0.3, 0, 0);
+            arm(p, 1, -1.2, 1.0, -0.8, 0.3, -1.0); arm(p, -1, -1.0, 1.1, -0.8, 0.3, -1.0); }],
+          [0.6, (p, c) => { p[PY] = 0.0; legRaw(p, c.s, -1.2, 0.3, 0.3, 0.1); legIK(p, -c.s, 0.0, hipDown(0) - 0.02, 0.04); arm(p, 1, -1.2, 0.9, -0.8, 0.3, -1.0); arm(p, -1, -1.0, 1.0, -0.8, 0.3, -1.0); }],
+          [1.0, () => {}],
+        ] }),
+      T({ name: 'Whirlwind Kick', clip: 'air_whirl', dur: 0.6, cost: 11, cancel: 0.75, move: 4, spin: [0.05, 0.7, -1], jumpAt: [0.1, 5.2], lunge: 5,
+        active: { from: 0.3, to: 0.65, dmg: 8, range: 2.3, arc: -1.1, knock: 8, level: 1 },
+        events: [[0.45, 'air.leg2']],
+        keys: [
+          [0.0, () => {}],
+          [0.3, (p) => { legRaw(p, 1, -0.9, 0.9, 0.2, 0.3); legRaw(p, -1, -0.4, 0.6, 1.2, 0.3); S(p, 'spine', 0.1, 0, 0.2); arm(p, 1, -0.6, 1.4, -0.8, 0.2, -1.0); arm(p, -1, -0.6, 1.4, -0.8, 0.2, -1.0); }],
+          [0.65, (p) => { legRaw(p, -1, -0.9, 0.9, 0.2, 0.3); legRaw(p, 1, -0.4, 0.6, 1.2, 0.3); S(p, 'spine', 0.1, 0, -0.2); arm(p, 1, -0.6, 1.4, -0.8, 0.2, -1.0); arm(p, -1, -0.6, 1.4, -0.8, 0.2, -1.0); }],
+          [1.0, () => {}],
+        ] }),
+    ],
+    charged: T({ name: 'Cyclone', clip: 'air_cyclone', dur: 0.95, cost: 20, cancel: 0.9, move: 2.5, spin: [0.05, 0.9, -2],
+      events: [[0.3, 'air.charged'], [0.55, 'air.charged'], [0.8, 'air.charged']],
+      keys: [
+        [0.0, () => {}],
+        [0.2, (p) => { stanceLegs(p, -0.18, 0.1, 0.1, -0.1, 0.1); add(p, 'aL', 0.3, 0, 0); add(p, 'aR', 0.3, 0, 0); arm(p, 1, -0.5, 1.45, -0.8, 0.15, -1.0); arm(p, -1, -0.5, 1.45, -0.8, 0.15, -1.0); S(p, 'spine', -0.05, 0, 0); }],
+        [0.85, (p) => { stanceLegs(p, -0.18, 0.1, 0.1, -0.1, 0.1); add(p, 'aL', 0.3, 0, 0); add(p, 'aR', 0.3, 0, 0); arm(p, 1, -0.8, 1.45, -0.8, 0.15, -1.0); arm(p, -1, -0.8, 1.45, -0.8, 0.15, -1.0); }],
+        [1.0, () => {}],
+      ] }),
+    handHold: { name: 'Wind Push', period: 0.5, move: 3.5, drain: 10,
+      pose: (p, c) => { const s1 = Math.sin(c.ph * Math.PI * 2);
+        stanceLegs(p, -0.16, 0.3, 0.06, -0.2, 0.06); S(p, 'hips', 0, 0.1 * s1, 0); S(p, 'spine', 0.12, 0, 0);
+        arm(p, 1, -1.45 + 0.08 * s1, 0.2, -0.9, 0.25, -1.3); arm(p, -1, -1.4 - 0.08 * s1, 0.2, -0.9, 0.25, -1.3); } },
+    guard: (p, c) => { const a = Math.sin((c ? c.t : 0) * 5);
+      stanceLegs(p, -0.16, 0.18, 0.05, -0.16, 0.06); S(p, 'hips', 0, 0.5 * a, 0); S(p, 'chest', 0, 0.3 * a, 0);
+      arm(p, 1, -1.35, 0.6 + 0.3 * a, -0.8, 0.4, -1.1); arm(p, -1, -0.9, 0.1, -0.5, 1.5, -0.8); },
+    special: T({ name: 'Vortex', clip: 'air_vortex', dur: 0.45, cost: 10, cancel: 0.62, upper: true, move: 4.5,
+      events: [[0.38, 'air.special']],
+      keys: [
+        [0.0, () => {}],
+        [0.2, (p) => { arm(p, 1, -1.0, 0.4, 0.2, 1.6, 0); arm(p, -1, -0.7, 0.4, -0.6, 1.4, 0.9); }],   // holding the ball
+        [0.4, (p) => { arm(p, 1, -0.7, 0.4, -0.6, 1.4, 0.9); arm(p, -1, -1.0, 0.4, 0.2, 1.6, 0); }],
+        [1.0, () => {}],
+      ] }),
+  },
+};
+
+export const STYLES = { earth, fire, water, air };
+export const ELEMENTS = ['earth', 'fire', 'water', 'air'];

@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#1b1720">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="manifest" href="manifest.webmanifest">
+<title>Elemental Forge</title>
+<link rel="stylesheet" href="style.css">
+<script type="importmap">
+{ "imports": { "three": "./vendor/three.module.min.js",
+    "three/addons/": "./vendor/addons/" } }
+</script>
+</head>
+<body>
+<canvas id="game"></canvas>
+
+<div id="hud" class="hidden">
+  <div id="bars-left" class="bars">
+    <div class="name">YOU</div>
+    <div class="bar hp"><div class="fill" id="p-hp"></div></div>
+    <div class="bar en"><div class="fill" id="p-en"></div></div>
+  </div>
+  <div id="round-box">
+    <div id="round-pips"><span class="pip" id="pip-p"></span><span class="sep"></span><span class="pip" id="pip-o"></span></div>
+    <div id="round-label">ROUND 1</div>
+  </div>
+  <div id="bars-right" class="bars right">
+    <div class="name" id="opp-name">RIVAL</div>
+    <div class="bar hp"><div class="fill" id="o-hp"></div></div>
+    <div class="bar en"><div class="fill" id="o-en"></div></div>
+  </div>
+
+  <div id="elements">
+    <button class="el active" data-el="earth"><b>EARTH</b><i class="pips"></i></button>
+    <button class="el" data-el="fire"><b>FIRE</b><i class="pips"></i></button>
+    <button class="el" data-el="water"><b>WATER</b><i class="pips"></i></button>
+    <button class="el" data-el="air"><b>AIR</b><i class="pips"></i></button>
+  </div>
+  <div id="style-tag"></div>
+
+  <button id="btn-pause" class="small-btn">II</button>
+  <button id="btn-lock" class="small-btn">LOCK</button>
+
+  <div id="reticle"><div class="ring"></div><div class="dot"></div></div>
+  <div id="lock-marker"></div>
+  <div id="opp-tag"><div class="mini-hp"><div class="fill" id="o-hp-mini"></div></div></div>
+
+  <div id="stick-base"><div id="stick-knob"></div></div>
+
+  <div id="action-pad">
+    <button class="act" id="btn-jump" data-act="jump"><span>JUMP</span></button>
+    <button class="act" id="btn-guard" data-act="guard"><span>GUARD</span><small></small></button>
+    <button class="act" id="btn-dodge" data-act="dodge"><span>DODGE</span></button>
+    <button class="act" id="btn-hand" data-act="hand"><span>HAND</span><small></small></button>
+    <button class="act" id="btn-leg" data-act="leg"><span>LEG</span><small></small></button>
+    <button class="act" id="btn-special" data-act="special"><span>SPECIAL</span><small></small></button>
+  </div>
+  <div id="popups"></div>
+  <div id="banner"></div>
+</div>
+
+<div id="menu" class="overlay">
+  <div class="panel">
+    <h1>ELEMENTAL <span>FORGE</span></h1>
+    <p class="sub">Four elements, four martial arts: Earth (Hung Gar), Fire (Northern Shaolin), Water (Tai Chi), Air (Baguazhang)</p>
+    <div class="row">
+      <label>Opponent</label>
+      <div class="seg" id="difficulty">
+        <button data-d="training">Training</button>
+        <button data-d="normal" class="on">Normal</button>
+        <button data-d="master">Master</button>
+      </div>
+    </div>
+    <div class="row">
+      <label>Rival element</label>
+      <div class="seg" id="rival-el">
+        <button data-r="random" class="on">Random</button>
+        <button data-r="earth">Earth</button>
+        <button data-r="fire">Fire</button>
+        <button data-r="water">Water</button>
+        <button data-r="air">Air</button>
+      </div>
+    </div>
+    <div class="row">
+      <label>Graphics</label>
+      <div class="seg" id="quality">
+        <button data-q="low">Battery</button>
+        <button data-q="high" class="on">High</button>
+      </div>
+    </div>
+    <button id="btn-start" class="big">FIGHT</button>
+    <details class="help">
+      <summary>Controls</summary>
+      <p><b>Move:</b> left thumb on the left half (light push walks, full push runs, hold at the rim to sprint). <b>Aim / camera:</b> drag on the right half. <b>LOCK</b> frames the rival.</p>
+      <p><b>Elements</b> (top left): switch instantly between Earth (Hung Gar), Fire (Northern Shaolin), Water (Tai Chi) and Air (Baguazhang). Each changes your stance, movement and every technique.</p>
+      <p><b>HAND</b> tap: hand technique (stone punch, fire fist, water palm, air palm). <b>Hold HAND</b> for sustained bending: lift up to three rocks, a fire stream, draw water from a pool (then a water whip), or a wind push.</p>
+      <p><b>LEG</b> tap: kicks (tap again for the second kick). <b>Hold LEG</b> and release for the charged move: seismic stomp, flying dragon kick, tidal sweep, cyclone.</p>
+      <p>Held rocks, flame orbs, water globes and vortices circle you; HAND or LEG launches them. <b>SPECIAL</b>: stone pillar (stand on it), flame orb (three = volley), water sphere (traps), vortex (three = big vortex).</p>
+      <p><b>GUARD</b> (hold): earth wall, fire wall, water shield or air deflection. Raise it just before impact to send projectiles back and open a counter. <b>DODGE</b>: roll, flame dash, water slide or air dash. <b>JUMP</b> twice as Air; hold JUMP to glide.</p>
+      <p><b>Keyboard:</b> WASD, mouse aim, left/right click = HAND/LEG, Q guard, E special, Space jump, Shift dodge, 1-4 elements, C sprint, Tab lock.</p>
+    </details>
+  </div>
+</div>
+
+<div id="pause" class="overlay hidden">
+  <div class="panel">
+    <h2>PAUSED</h2>
+    <div class="row">
+      <label>Look sensitivity</label>
+      <input type="range" id="sens" min="0.4" max="2.2" step="0.1" value="1">
+    </div>
+    <div class="row">
+      <label>Auto camera</label>
+      <div class="seg" id="autocam">
+        <button data-a="on" class="on">On</button>
+        <button data-a="off">Off</button>
+      </div>
+    </div>
+    <div class="row">
+      <label>Button size</label>
+      <input type="range" id="btn-size" min="0.8" max="1.3" step="0.05" value="1">
+    </div>
+    <div class="row">
+      <label>Button spacing</label>
+      <input type="range" id="btn-spread" min="0.85" max="1.3" step="0.05" value="1">
+    </div>
+    <button id="btn-resume" class="big">RESUME</button>
+    <button id="btn-quit" class="big ghost">MAIN MENU</button>
+  </div>
+</div>
+
+<div id="end" class="overlay hidden">
+  <div class="panel">
+    <h2 id="end-title">VICTORY</h2>
+    <p id="end-sub"></p>
+    <button id="btn-again" class="big">REMATCH</button>
+    <button id="btn-menu2" class="big ghost">MAIN MENU</button>
+  </div>
+</div>
+
+<div id="rotate" class="overlay">
+  <div class="panel"><div class="phone-icon"></div><p>Turn your phone sideways to play.</p></div>
+</div>
+
+<div id="loading" class="overlay"><div class="panel"><p>Loading the arena...</p></div></div>
+<div id="err" class="hidden"></div>
+
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
