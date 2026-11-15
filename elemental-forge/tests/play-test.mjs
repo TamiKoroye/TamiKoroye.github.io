@@ -368,7 +368,7 @@ await setup({ el: 'earth', p: [0, 0, -12], o: [0, 0, -3] });
 await hold('btn-hand'); await stepN(14); await fUp(6);
 await stick(80, 0); await stepN(15);
 const combo = await S(() => ({ held: window.__EF.world.bending.held(window.__EF.player), sp: Math.hypot(window.__EF.player.vel.x, window.__EF.player.vel.z) }));
-await press('btn-leg', 2); await stepN(25); await stickUp();
+await press('btn-leg', 2); await stepN(35); await stickUp();
 const comboHit = await S(() => window.__EF.opp.hp);
 check('earth combo: lift a rock, strafe while holding it, kick it into the rival', combo.held >= 1 && combo.sp > 3 && comboHit < 100, `held ${combo.held} at ${combo.sp.toFixed(1)} m/s, rival hp ${comboHit}`);
 

@@ -217,7 +217,12 @@ export class Hero {
       }
     }
     if (clip === 'Idle_Loop' && wU === 1) {
-      if (f.guarding && has(L.guard)) { clip = L.guard; wU = 0; wL = moving ? 1 : 0; fade = 0.12; }
+      if (f.guarding && f.perfectT > 0 && has(f.el === 'water' ? 'water_redirect' : 'block_hit')) {
+        // perfectly timed guard: water sweeps the attack aside, the others snap a block
+        const n = f.el === 'water' ? (f.techSide > 0 ? 'water_redirect' : 'water_redirect_M') : 'block_hit';
+        clip = has(n) ? n : 'block_hit'; wU = wL = 0; fade = 0.06; ts = 1.6; if (this.curName !== clip) restart = true;
+      }
+      else if (f.guarding && has(L.guard)) { clip = L.guard; wU = 0; wL = moving ? 1 : 0; fade = 0.12; }
       else if (f.holding && has(L.hold)) { clip = L.hold; wU = 0; wL = moving ? 1 : 0; fade = 0.2; }
       else if (free && !f.onGround) { clip = f.vel.y > 1.5 && f.airTime < 0.3 ? 'Jump_Start' : 'Jump_Loop'; wU = wL = 0; ts = f.vel.y > 1.5 ? 1.6 : 1; }
       else if (free && sp > 0.5 && fwd > 0.7) {

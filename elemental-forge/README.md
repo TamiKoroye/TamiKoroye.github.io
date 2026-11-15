@@ -4,13 +4,15 @@ A browser-playable third-person elemental martial-arts game for Android phones, 
 
 Live build: https://tamikoroye.github.io/elemental-forge/
 
-**Current build:** visual-quality rebuild (development branch). This milestone is a combat demo that can be compared directly with the reference footage. See `docs/QUALITY-GAP.md` for the five-video analysis and the engine and asset assessment.
+**Current build (development branch, not on the live link):** the supplied Mixamo and Rokoko animations are integrated (Stage 1), the defences are rebuilt (Stage 3), and the fire, water and air effects are partly rebuilt (Stage 2). See `docs/ANIMATION-INVENTORY.md` for the asset audit and `docs/QUALITY-GAP.md` for the earlier analysis of the reference videos.
 
 - **Characters:** a properly rigged humanoid, the CC0 Quaternius *Universal Animation Library* mannequin (53 bones, fingers). It is recoloured into a shirtless fighter with trousers, sash and wraps; given a face (ears, nose, brow, eyes); cel-shaded; and ink-outlined.
-- **Animation:** authored clips (idle, walk, jog, sprint, jump, roll, hit reactions) run through an animation mixer with crossfades.
-- **Martial-arts techniques from motion capture:** 14 strikes and kicks (punches, front, side, roundhouse, spinning and flying kicks) come from the CMU motion-capture database, retargeted onto the 53-bone skeleton and stored with mirrored copies for either side. Each one replaces the procedural pose for its technique and is retimed so its impact frame matches the hit and the element effect. See `assets/animations/README.md` for the takes and `tools/retarget/` for the pipeline. Add `?mocap=0` to the URL to compare against the old procedural techniques.
-- **Still procedural:** stances, guards, sustained bending poses, the earth stomp, the specials, and the arms over the running legs.
-- **Effects:** solid cel-shaded flame blobs (yellow to orange to red to smoke), faceted light-blue water chunks, and ribbon trails for air and water (all ribbons in one draw call).
+- **Animation:** authored motion throughout. Each element has its own captured combat stance, guard and sustained-bending loop, plus captured hand, leg, charged and special techniques. These come from the supplied Mixamo and Rokoko files and a few CMU takes; see `docs/ANIMATION-INVENTORY.md` and `assets/animations/README.md`. Hit reactions, knockdown and get-up, side dodges and the air back-flip are captured too. The general locomotion (walk, jog, sprint, jump, roll) comes from the CC0 library. Clips crossfade into each other and into the element's stance, so the fighter never snaps back to a neutral pose. Procedural motion is used only for running legs under upper-body moves, sideways steps and the charge-up pose.
+- **Effects:**
+  - **Fire:** pointed, flickering flame tongues with pale-yellow cores, orange bodies and red edges, cooling to smoke. A shader erodes and splits the tips, and they render opaque so big attacks don't wash out.
+  - **Water:** continuous deforming tubes with a flowing surface shader for projectiles, held water and the whip, plus a flowing curtain for the water wall.
+  - **Air:** spiralling wind ribbons only.
+  - **Earth:** jagged rocks.
 - **Look:** cel shading across the arena, flat bright lighting without filmic tone mapping, the reference palette, and closer camera framing (the fighter fills about 40% of the screen height).
 
 | Element | Martial art | Character |
@@ -36,7 +38,7 @@ Live build: https://tamikoroye.github.io/elemental-forge/
 | HAND hold | boulder lift: up to 3 orbiting rocks, taking loose stones first | sustained fire stream (burns the ground) | draw water from a pool (or condense it slowly) into 3 globes; with 3 held it becomes a water whip | sustained wind push (shoves fighters and projectiles) |
 | LEG tap (×2) | earth kick, then a low sweep firing 3 stones | flame kick arc, then a spinning flame kick ring | crescent water arc (spends a globe), then a turning wave | crescent air blade, then a jumping whirlwind (3 blades) |
 | LEG hold, release | seismic stomp: shockwave plus a line of rising spikes | flying dragon kick | tidal sweep (bigger with held water) | cyclone |
-| GUARD | stone wall (blocks everything) | fire wall (burns fire and air; rocks get through at half force) | water shield (douses fire, slows rocks) | air deflection (turns projectiles aside) |
+| GUARD | stone wall (blocks everything in front) | fire curtain (burns fire and air; rocks get through at half force) | flowing water wall in front (douses fire, stops rocks and air; a boulder breaks through at half force). With water held it becomes two rotating streams that cover all round. **GUARD + SPECIAL** freezes the wall into an ice wall that stays, blocks and can be climbed. | air shell (turns projectiles aside; blows land at a quarter of their force and the attacker is shoved back) |
 | Perfect GUARD (just before impact) | sends rocks back | sends fire and rocks back | redirects any projectile | sends any projectile back |
 | SPECIAL | stone pillar (stand on it; erupts under a locked rival) | flame orb (the 4th press fires a volley of 3) | water sphere that traps | vortex (the 4th press merges 3 into a large pulling vortex) |
 | DODGE | roll (sidestep or backstep while locked on) | flame dash | water slide | air dash |
@@ -72,6 +74,9 @@ Live build: https://tamikoroye.github.io/elemental-forge/
     node tests/record-styles.mjs http://localhost:8765/ ./style-videos  # one clip per element, same input
     node tests/record-gameplay.mjs http://localhost:8765/ ./gameplay.mp4
     node tests/record-mocap-demo.mjs http://localhost:8765/ ./mocap-demo.mp4   # procedural vs motion capture, side by side
+    node tests/defence-test.mjs http://localhost:8765/ ./defence-shots      # 17 defence checks
+    node tests/record-stage1.mjs http://localhost:8765/ ./stage1            # per element: body only (effects hidden) and full gameplay
+    node tests/record-defence.mjs http://localhost:8765/ ./defence.mp4
 
 The play test drives the real on-screen controls with DevTools multi-touch events. It steps the game in exact 1/30 s frames, so timing-sensitive mechanics are checked deterministically. It covers 16 areas:
 1. star layout geometry and overlap, at default and maximum size
@@ -94,7 +99,8 @@ The play test drives the real on-screen controls with DevTools multi-touch event
 **Not verified on a physical Samsung device:** frame rate, touch feel and audio. The tests use a software renderer.
 
 ## Known limitations
-- The motion-capture techniques come from karate, general kicking and acrobatics takes. The CMU database has no Hung Gar, Northern Shaolin or Baguazhang recordings, and its tai chi take is too slow and small for game strikes. The styles are therefore told apart by take choice, speed and effects rather than authentic forms. Clips from Rokoko, Mixamo or ActorCore can be fed through the same pipeline once downloaded as FBX or BVH.
-- The character is a recoloured mannequin. It has added facial features but no textured clothing.
-- Not built yet: breakable wooden cover, ice slabs you can ride, climbing (all seen in the references); advanced disciplines; the campaign.
-- Frame rate on the S25 Ultra for this build is not yet measured. The previous build ran at about 60 fps on the device, measured from your screen recording.
+- The supplied animations are boxing, karate, capoeira, tai chi and general action moves. Nothing in them is authentic Hung Gar, Northern Shaolin or Baguazhang, and there's no Baguazhang circle walking. The styles differ by which clips they use, their speed, their stances and their effects.
+- Sound has not been reworked yet; it is still the earlier synthesised set (Stage 4).
+- Not built yet: breakable wooden cover, climbing, water-assisted traversal, ice ramps and bridges (Stage 5), and the camera, controls and enemy-reaction polish (Stage 6).
+- The fire crescents and the earth rocks still use the earlier meshes. Some hit sparks and steam still flash white.
+- Frame rate on the S25 Ultra has not been measured for this build. The tests use a software renderer.

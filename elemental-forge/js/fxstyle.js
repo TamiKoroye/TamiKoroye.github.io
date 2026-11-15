@@ -1,6 +1,6 @@
 // Stylised element effects matching the reference footage:
-//   FlameBlobs  - opaque, cel-shaded puffs that swell, then cool from yellow through orange and red to smoke
-//                 (the references' fire is solid toon "blobs", not additive glow)
+//   FlameBlobs  - pointed, flickering flame tongues (shader-eroded tips) cooling from yellow through orange
+//                 and red to smoke; opaque cut-out so large attacks stay readable
 //   WaterChunks - faceted light-blue cel-shaded chunks with gravity (spray, splashes, whips, streams)
 //   Ribbons     - camera-facing tapered ribbon trails; Streaks are self-moving helical ribbons used for wind
 // Everything is instanced or pooled so the cost stays flat on a phone.
@@ -10,37 +10,86 @@ import { TOON_RAMP } from './hero.js';
 const rand = (a, b) => a + Math.random() * (b - a);
 const _m = new THREE.Matrix4(), _q = new THREE.Quaternion(), _s = new THREE.Vector3(), _c = new THREE.Color(), _v = new THREE.Vector3(), _w = new THREE.Vector3();
 
-const FIRE_RAMP = [[0, 0xfff4b0], [0.18, 0xffd84a], [0.42, 0xffa62b], [0.65, 0xf0601c], [0.85, 0x8a2c12], [1, 0x3e3330]].map(([k, h]) => [k, new THREE.Color(h)]);
-function ramp(k) {
-  for (let i = 1; i < FIRE_RAMP.length; i++) if (k <= FIRE_RAMP[i][0]) { const [a, ca] = FIRE_RAMP[i - 1], [b, cb] = FIRE_RAMP[i]; return _c.copy(ca).lerp(cb, (k - a) / (b - a)); }
-  return _c.copy(FIRE_RAMP[FIRE_RAMP.length - 1][1]);
-}
 
+// Flame tongues: pointed, flickering flames instead of round blobs. Each instance is a teardrop that tapers to a
+// tip; the tip sways and splits (noise erosion), the colour runs from a pale yellow core through orange to red at
+// the edges and darkens into smoke as the flame dies. Flames trail away from their direction of travel and rise.
+// Opaque cut-out rendering keeps large attacks readable instead of washing out to white.
+const flameVS = /* glsl */`
+  attribute float aLife; attribute float aSeed;
+  uniform float uTime;
+  varying float vY; varying float vLife; varying float vSeed; varying vec2 vUv; varying float vR;
+  void main() {
+    vec3 p = position;
+    float y = clamp(p.y, 0.0, 1.0);
+    // sway grows towards the tip; two frequencies so neighbouring flames never move in step
+    float sway = sin(uTime * 17.0 + aSeed * 31.0 + y * 5.0) * 0.16 + sin(uTime * 29.0 + aSeed * 7.0 + y * 9.0) * 0.07;
+    p.x += sway * y * y; p.z += cos(uTime * 13.0 + aSeed * 11.0 + y * 4.0) * 0.1 * y * y;
+    p.y *= 1.0 + sin(uTime * 23.0 + aSeed * 5.0) * 0.12;
+    vY = y; vLife = aLife; vSeed = aSeed; vUv = uv; vR = length(position.xz);
+    gl_Position = projectionMatrix * modelViewMatrix * instanceMatrix * vec4(p, 1.0);
+  }`;
+const flameFS = /* glsl */`
+  uniform float uTime;
+  varying float vY; varying float vLife; varying float vSeed; varying vec2 vUv; varying float vR;
+  float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+  float noise(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
+    return mix(mix(hash(i), hash(i + vec2(1, 0)), f.x), mix(hash(i + vec2(0, 1)), hash(i + vec2(1, 1)), f.x), f.y); }
+  void main() {
+    // erosion: noise scrolling up the flame eats into the tip and the edges, more as the flame ages
+    float n = noise(vec2(vUv.x * 7.0 + vSeed * 13.0, vY * 4.0 - uTime * 5.0 + vSeed * 3.0));
+    float cut = vY * 0.75 + vLife * 0.55;
+    if (n < cut - 0.35) discard;
+    // heat: hottest at the base core, cooling towards the tip and over the flame's life
+    float heat = (1.0 - vY * 0.85) * (1.0 - vLife * 0.8) + (n - 0.5) * 0.25;
+    vec3 col = heat > 0.78 ? vec3(1.0, 0.95, 0.72) : heat > 0.55 ? vec3(1.0, 0.8, 0.22) : heat > 0.33 ? vec3(1.0, 0.5, 0.1) : heat > 0.15 ? vec3(0.86, 0.22, 0.07) : vec3(0.32, 0.26, 0.25);
+    gl_FragColor = vec4(col, 1.0);
+  }`;
+function flameGeometry() {
+  // teardrop profile: rounded base, widest a little above it, long taper to a point
+  const pts = [];
+  for (let i = 0; i <= 14; i++) {
+    const t = i / 14, y = t * 1.25 - 0.22;
+    const r = t < 0.22 ? Math.sin((t / 0.22) * Math.PI / 2) * 0.42 : 0.42 * Math.pow(1 - (t - 0.22) / 0.78, 1.35);
+    pts.push(new THREE.Vector2(Math.max(0.001, r), y));
+  }
+  const g = new THREE.LatheGeometry(pts, 10);
+  g.computeVertexNormals();
+  return g;
+}
 export class FlameBlobs {
-  constructor(scene, max = 480) {
+  constructor(scene, max = 560) {
     this.max = max; this.items = [];
-    const mat = new THREE.MeshToonMaterial({ color: 0xffffff, gradientMap: TOON_RAMP, emissive: 0x6a3000 });
-    this.mesh = new THREE.InstancedMesh(new THREE.SphereGeometry(1, 12, 9), mat, max);
+    this.mat = new THREE.ShaderMaterial({ vertexShader: flameVS, fragmentShader: flameFS, uniforms: { uTime: { value: 0 } }, side: THREE.DoubleSide });
+    const g = flameGeometry();
+    this.aLife = new THREE.InstancedBufferAttribute(new Float32Array(max), 1); this.aLife.setUsage(THREE.DynamicDrawUsage);
+    this.aSeed = new THREE.InstancedBufferAttribute(new Float32Array(max), 1); this.aSeed.setUsage(THREE.DynamicDrawUsage);
+    g.setAttribute('aLife', this.aLife); g.setAttribute('aSeed', this.aSeed);
+    this.mesh = new THREE.InstancedMesh(g, this.mat, max);
     this.mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage); this.mesh.frustumCulled = false; this.mesh.count = 0;
-    for (let i = 0; i < max; i++) this.mesh.setColorAt(i, _c.set(0xffffff));
     scene.add(this.mesh);
+    this.t = 0;
   }
   spawn(pos, vel, r, life) {
     if (this.items.length >= this.max) this.items.shift();
-    this.items.push({ p: pos.clone(), v: vel.clone(), r: r * rand(0.75, 1.25), life, max: life, sx: rand(0.85, 1.15), sy: rand(0.85, 1.25) });
+    this.items.push({ p: pos.clone(), v: vel.clone(), r: r * rand(0.8, 1.3), life, max: life, seed: Math.random(), stretch: rand(1.1, 1.7) });
   }
   update(dt) {
-    const it = this.items;
-    for (let i = it.length - 1; i >= 0; i--) { const b = it[i]; b.life -= dt; if (b.life <= 0) { it.splice(i, 1); continue; } b.v.y += 2.2 * dt; b.v.multiplyScalar(Math.exp(-1.8 * dt)); b.p.addScaledVector(b.v, dt); }
+    this.t += dt; this.mat.uniforms.uTime.value = this.t;
+    const it = this.items, up = _w.set(0, 1, 0);
+    for (let i = it.length - 1; i >= 0; i--) { const b = it[i]; b.life -= dt; if (b.life <= 0) { it.splice(i, 1); continue; } b.v.y += 2.6 * dt; b.v.multiplyScalar(Math.exp(-2.0 * dt)); b.p.addScaledVector(b.v, dt); }
     for (let i = 0; i < it.length; i++) {
       const b = it[i], k = 1 - b.life / b.max;
-      const grow = Math.min(1, k * 5) * (k > 0.7 ? 1 - (k - 0.7) / 0.3 * 0.85 : 1);
-      const r = b.r * (0.45 + 0.75 * grow) * (1 + k * 0.4);
-      _m.compose(b.p, _q.identity(), _s.set(r * b.sx, r * b.sy, r * b.sx));
-      this.mesh.setMatrixAt(i, _m); this.mesh.setColorAt(i, ramp(k));
+      // flames lean away from their motion and rise
+      _v.copy(b.v).multiplyScalar(-0.22).add(up).normalize();
+      _q.setFromUnitVectors(up, _v);
+      const grow = Math.min(1, k * 6) * (1 - k * 0.45);
+      const r = b.r * (0.6 + 0.7 * grow);
+      _m.compose(b.p, _q, _s.set(r, r * b.stretch * (1 + Math.min(1, b.v.length() * 0.04)), r));
+      this.mesh.setMatrixAt(i, _m); this.aLife.array[i] = k; this.aSeed.array[i] = b.seed;
     }
     this.mesh.count = it.length;
-    this.mesh.instanceMatrix.needsUpdate = true; if (this.mesh.instanceColor) this.mesh.instanceColor.needsUpdate = true;
+    this.mesh.instanceMatrix.needsUpdate = true; this.aLife.needsUpdate = true; this.aSeed.needsUpdate = true;
   }
 }
 

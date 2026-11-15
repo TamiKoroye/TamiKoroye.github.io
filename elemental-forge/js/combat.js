@@ -50,22 +50,20 @@ export class Combat {
   // level: -1 no reaction (damage over time), 0 flinch, 1 stagger, 2 knockdown
   damage(t, dmg, dir, from, kind, at, knock, level = 0) {
     const w = this.world;
-    // any raised elemental defence blocks attacks from the front (projectiles are resolved physically in elements.js)
-    if (t.guarding && t.defense && from && level >= 0 && !['slam', 'spike', 'pillar', 'burn', 'proj'].includes(kind)) {
-      const fwd = t.forward(_v2);
-      if (-dir.dot(fwd) > 0.2 || dir.lengthSq() < 0.01) {
-        if (t.guardT < 0.25 && !from.dead && from !== t) {
-          from.takeHit(0, _v.copy(dir).negate(), 4, 1);
-          t.counterT = 0.9; t.stats.perfect++;
-          w.popup(t, 'PERFECT', true); w.fx.spark(at, 0xe8d6b0, 10); w.hitStop(0.08); w.audio.impact(0.8);
-          return;
-        }
-        w.bending.hitDefence(t.defense, dmg, at, from.el);
-        t.stats.blocks++;
-        w.popup(t, 'BLOCK', true);
-        from.vel.x -= dir.x * 4; from.vel.z -= dir.z * 4;
-        w.audio.impact(0.5);
+    // a raised defence is resolved before any damage: coverage by direction, element rules, durability
+    if (t.guarding && t.defense && from && from !== t && kind !== 'proj') {
+      // perfectly timed guard against a blow: the attacker is thrown off balance and a counter opens
+      if (level >= 0 && t.guardT < 0.25 && !from.dead && w.bending.covers(t.defense, dir) && !['burn', 'spike', 'slam', 'pillar'].includes(kind)) {
+        from.takeHit(0, _v.copy(dir).negate(), 4, 1);
+        t.counterT = 0.9; t.stats.perfect++; t.perfectT = 0.5;
+        w.popup(t, 'PERFECT', true); w.fx.spark(at, 0xe8d6b0, 10); w.hitStop(0.08); w.audio.impact(0.8);
         return;
+      }
+      const r = w.bending.resolveDefence(t, { dir, at, el: from.el, dmg, kind, level, from });
+      if (r) {
+        if (level >= 0) { from.vel.x -= dir.x * 3; from.vel.z -= dir.z * 3; w.audio.impact(0.4); }
+        if (r.mul <= 0) return;
+        dmg *= r.mul; knock *= r.mul;
       }
     }
     t.takeHit(dmg, dir, knock, level);

@@ -126,7 +126,7 @@ export class Fighter {
     if (!(dt > 0)) return;
     const w = this.world, inp = this.input, st = this.style, B = w.bending;
     this.time += dt;
-    this.dodgeCd -= dt; this.guardCd -= dt; this.invuln -= dt; this.comboTimer -= dt; this.stunT -= dt; this.counterT -= dt;
+    this.dodgeCd -= dt; this.guardCd -= dt; this.perfectT = (this.perfectT || 0) - dt; this.blockPopT = (this.blockPopT || 0) - dt; this.invuln -= dt; this.comboTimer -= dt; this.stunT -= dt; this.counterT -= dt;
     this.flash = Math.max(0, this.flash - dt * 5);
     for (const k in this.buf) this.buf[k] = Math.max(0, this.buf[k] - dt);
     // input buffer: long enough to queue the next technique during an authored recovery
@@ -176,6 +176,10 @@ export class Fighter {
         this.comboTimer = 0.9;
         this.startTech(st.tech.leg[this.legIdx], this.legIdx === 0 ? -1 : 1);
         this.legHoldT = 0;
+      }
+      // icebending: SPECIAL while the water wall is up freezes it into an ice wall (progression flag iceUnlocked)
+      if (this.buf.special && this.guarding && this.el === 'water' && this.defense && this.defense.arc && !this.defense.ice && this.iceUnlocked !== false && this.en >= 15) {
+        this.buf.special = 0; this.en -= 15; B.freeze(this.defense);
       }
       if (this.buf.special && !this.charging && canStrike) { this.buf.special = 0; this.startTech(st.tech.special, this.handSide); }
 
