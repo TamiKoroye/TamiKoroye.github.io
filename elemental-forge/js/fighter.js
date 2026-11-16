@@ -570,7 +570,7 @@ export class Fighter {
   }
 
   // faces the roll along the stick (or straight ahead without it)
-  rollDir() { const inp = this.input; if (Math.hypot(inp.mx, inp.mz) > 0.3) this.faceYaw = this.yaw = Math.atan2(inp.mx, inp.mz); this.lungeDir.set(Math.sin(this.faceYaw), 0, Math.cos(this.faceYaw)).multiplyScalar(7); this.lungeT = 0.45; }
+  rollDir() { const inp = this.input; if (Math.hypot(inp.mx, inp.mz) > 0.3) this.faceYaw = this.yaw = Math.atan2(inp.mx, inp.mz); this.lungeDir.set(Math.sin(this.faceYaw), 0, Math.cos(this.faceYaw)).multiplyScalar(9); this.lungeT = 0.45; }   // about 4 m
   doDodge() {
     const inp = this.input, D = this.style.dodge;
     let dx = inp.mx, dz = inp.mz;
