@@ -11,6 +11,7 @@ import { clamp, mulberry32, smooth01, rand } from './util.js';
 import { TOON_RAMP } from './hero.js';
 import { makeWaterWall, makeWaterRing, makeIceWall, makeWaterTube, waterMaterial, iceMat } from './defence-fx.js';
 import { Weapons } from './weapons.js';
+import { Specials } from './specials.js';
 
 const SPEC = {
   rock:     { el: 'earth', r: 0.36, speed: 30, grav: 6,  dmg: 12, knock: 6.5, level: 1, life: 4 },
@@ -95,6 +96,7 @@ export class Bending {
     this.waterSurf = waterMaterial(-2.2); this.waterSurf.uniforms.uRise.value = 1; this.waterSurf.uniforms.uWobble.value = 0.6;
     this.waterLight = 0;
     this.weapons = new Weapons(this);
+    this.specials = new Specials(this);
     this.iceSpearGeo = (() => { const g = new THREE.OctahedronGeometry(1, 0); g.scale(0.22, 1.1, 0.22); return g; })();
   }
 
@@ -266,11 +268,8 @@ export class Bending {
         const o = this.fire('fireArc', f, this.forwardPoint(f, 0.8, 0.9), { scale: 1.5 }); o.dmg = 14; o.level = 2; this.orientArc(o);
         this.ring(f, 'fire', 2.6, 10, { dmg: 6, knock: 5, level: 1 }); w.audio.fireWhoosh(1.2); w.shake(0.2, f.pos); return;
       }
-      case 'fire.special': {
-        const orbs = this.heldList(f, 'fire');
-        if (orbs.length >= MAX_HELD) { orbs.forEach((o, i) => setTimeout(() => o.state === 'orbit' && this.launch(o, f, 1), i * 90)); w.popup(f, 'VOLLEY', true); return; }
-        const o = this.spawn('fireOrb', f, hand, 'orbit'); o.slot = orbs.length * 2.1; w.audio.fireWhoosh(0.4); return;
-      }
+      case 'fire.specialStart': this.specials.fireStart(f); return;
+      case 'fire.special': this.specials.fireExplode(f, foot.clone()); return;
       // ---------------- water
       case 'water.hand': {
         // the water whip: consecutive strikes go right-to-left, left-to-right, overhead, then diagonally
@@ -317,16 +316,9 @@ export class Bending {
         this.weapons.wave(f, 'water', { freeze: true, width: 5.5 + g.length, dmg: 9 + g.length * 2 }); w.shake(0.2, f.pos);
         return;
       }
-      case 'water.special': {
-        // Spiral streams: water is gathered from the ground (or from held globes, which make it stronger) into three
-        // streams circling the body below head height; they intercept projectiles and push attackers away while they
-        // circulate, then are released at the opponent one after another (HAND releases early)
-        if (this.spirals.some(sp => sp.owner === f)) return;
-        const g = this.heldList(f, 'water').filter(o => o.state === 'orbit'); g.forEach(o => this.kill(o, 'silent'));
-        const streams = [0, 1, 2].map(() => { const tb = makeWaterTube(22, 8); w.scene.add(tb.mesh); return tb; });
-        this.spirals.push({ owner: f, t: 0, streams, pts: streams.map(() => Array.from({ length: 12 }, () => new THREE.Vector3())), boost: g.length, tick: 0, released: -1, caught: 0 });
-        w.fx.splash(f.pos.clone().setY(f.pos.y + 0.2), 18); w.audio.splash(0.8); return;
-      }
+      case 'water.specialStart': this.specials.waterStart(f); return;
+      case 'water.special': this.specials.waterEstablish(f); return;
+      case 'water.specialRelease': this.specials.waterRelease(f); return;
       // ---------------- air
       case 'air.hand': {
         const v = this.heldList(f, 'air').filter(o => o.state === 'orbit');
@@ -351,14 +343,10 @@ export class Bending {
         // Air Compression: the gathered air released as one broad pressure wave
         this.weapons.wave(f, 'air', { width: 7, life: 0.75, speed: 22, dmg: 8, knock: 18, level: 2 }); w.shake(0.2, f.pos); return;
       }
-      case 'air.special': {
-        const v = this.heldList(f, 'air');
-        if (v.length >= MAX_HELD) {
-          v.forEach(o => this.kill(o, 'silent'));
-          this.fire('vortex', f, this.forwardPoint(f, 1.5, 1.2)); w.popup(f, 'VORTEX', true); w.audio.gust(1.3); return;
-        }
-        const o = this.spawn('orbVortex', f, hand, 'orbit'); o.slot = v.length * 2.1; w.audio.gust(0.4); return;
-      }
+      case 'air.specialStart': this.specials.airStart(f); return;
+      case 'air.special': this.specials.airSend(f); return;
+      case 'earth.specialStart': this.specials.earthStart(f); return;
+      case 'earth.special': this.specials.earthRupture(f); return;
     }
   }
   orientArc(o) { o.mesh.rotation.set(Math.PI / 2, 0, 0); o.mesh.rotation.order = 'YXZ'; o.mesh.rotation.y = Math.atan2(o.vel.x, o.vel.z) - Math.PI / 2; }
@@ -783,6 +771,7 @@ export class Bending {
     this.updateObjects(dt);
     this.updateRings(dt);
     this.updateSpirals(dt);
+    this.specials.update(dt);
     this.weapons.update(dt);
     this.updateEnvironment(dt);
     // one shared flickering light makes fire read as a light source without per-flame lights
@@ -1071,6 +1060,8 @@ export class Bending {
   iceSpear(f) { const o = this.fire('iceSpear', f, this.handPoint(f, 1).setY(f.pos.y + 1.35)); this.world.fx.debrisBurst(o.pos, 6, 2, 0.05, 0xbfe8ff); this.world.audio.splash(0.6); return o; }
   // HAND during the circulation releases the streams early; returns true if it did
   spiralRelease(f) {
+    // the Dragon Stream: HAND is the two-handed push that throws it
+    if (this.specials.waterCanRelease(f) && f.style.tech.release) { f.startTech(f.style.tech.release, f.handSide || 1); return true; }
     const sp = this.spirals.find(s => s.owner === f && s.t > 0.45 && s.released < 0);
     if (!sp) return false;
     // each HAND redirects one stream at the opponent; the last one ends the spiral
@@ -1136,8 +1127,9 @@ export class Bending {
   clear() {
     for (const sp of this.spirals) for (const tb of sp.streams) this.world.scene.remove(tb.mesh);
     this.spirals = [];
-    this.weapons.clear();
-    for (const o of this.objs) this.world.scene.remove(o.mesh);
+    this.weapons.clear(); this.specials.clear();
+    // projectiles leave nothing behind: their mesh and, for water, the stream drawn behind them
+    for (const o of this.objs) { this.world.scene.remove(o.mesh); if (o.tube) { this.world.scene.remove(o.tube.mesh); o.tube.mesh.geometry.dispose(); o.tube.mesh.material.dispose(); o.tube = null; } }
     for (const d of this.defs) this.world.scene.remove(d.mesh);
     this.world.arena.colliders = this.world.arena.colliders.filter(c => !c.ice);
     for (const r of this.rings) this.world.scene.remove(r.mesh);

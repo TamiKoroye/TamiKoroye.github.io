@@ -484,7 +484,8 @@
   "name": "turn_spin",
   "src": ".anim-src/drive2/efa/Air/spin.glb",
   "mirror": false,
-  "note": "KinemIQ Spin (CC0)"
+  "note": "KinemIQ Spin (CC0)",
+  "impact": 0.5
  },
  {
   "name": "water_flow",

@@ -360,7 +360,8 @@ export class Hero {
     if (f.holding) return el === 'earth' ? ['claw', 'claw'] : el === 'fire' ? ['palm', 'palm'] : el === 'water' ? ['flow', 'flow'] : ['palm', 'palm'];
     if (T && st) {
       const isHand = T === st.hand || T.variantOf === st.hand;
-      if (el === 'fire' && (T === st.special || T === st.charged)) return ['palm', 'palm'];
+      if (el === 'fire' && T === st.charged) return ['palm', 'palm'];
+      if (el === 'water' && T === st.release) return ['palm', 'palm'];
       if (el === 'earth' && (T === st.special || T === st.stomp)) return ['claw', 'claw'];
       if (el === 'water' && isHand) return ['palm', 'palm'];     // the striking palm opens as the water is driven
       return [base, base];

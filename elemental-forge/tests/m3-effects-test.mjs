@@ -81,7 +81,8 @@ const snap = async (name, mode = 'close', at = null) => {
     const r = world.renderer;
     const c = at ? new world.scene.position.constructor(...at) : p.chestPos(); const fw = p.forward();
     const W = r.domElement.width, H = r.domElement.height; cam.aspect = W / H; cam.updateProjectionMatrix();
-    cam.position.set(c.x - fw.z * 3.4 - fw.x * 0.6, c.y + 0.7, c.z + fw.x * 3.4 - fw.z * 0.6); cam.lookAt(c.x + fw.x * 1.8, c.y - 0.25, c.z + fw.z * 1.8);
+    if (at) { cam.position.set(c.x - fw.z * 7.5, c.y + 1.6, c.z + fw.x * 7.5); cam.lookAt(c.x, c.y, c.z); }   // a wide side view of both fighters
+    else { cam.position.set(c.x - fw.z * 3.4 - fw.x * 0.6, c.y + 0.7, c.z + fw.x * 3.4 - fw.z * 0.6); cam.lookAt(c.x + fw.x * 1.8, c.y - 0.25, c.z + fw.z * 1.8); }
     r.render(world.scene, cam); return r.domElement.toDataURL('image/jpeg', 0.85);
   }, at);
   fs.writeFileSync(`${OUT}/${name}.jpg`, Buffer.from(url.split(',')[1], 'base64'));
@@ -157,6 +158,56 @@ for (const el of ['water', 'fire', 'air']) {
   await stepN(20);
   const hits = (await hitsOn()).filter(t => /Arc/.test(t)).length; check(`${el} kick: the arc strikes the rival at 4 m`, hits >= 1, `${hits} arc hits`);
   await snap(`${el}-kick-normal`, 'normal');
+}
+
+// ------------------------------------------------------------------ SPECIALs
+const spec = () => S(() => {
+  const { world, player: p, opp: o } = window.__EF, L = world.bending.specials.list.filter(s => s.f === p);
+  const V = (v) => v ? [+v.x.toFixed(2), +v.y.toFixed(2), +v.z.toFixed(2)] : null;
+  const hl = p.handPos('L'), hr = p.handPos('R');
+  return { kinds: L.map(s => s.kind + (s.phase ? ':' + s.phase : '')), act: p.tech && p.tech.name, clip: p.hero && p.hero.curName, oy: +(o.pos.y - o.groundY).toFixed(2), ohp: o.hp, oact: o.action,
+    blast: (L.find(s => s.kind === 'fireBlast') || {}).c ? V(L.find(s => s.kind === 'fireBlast').c) : null, footL: V(p.footPos('L')), footR: V(p.footPos('R')),
+    rup: (L.find(s => s.kind === 'rupture') || {}).pts ? L.find(s => s.kind === 'rupture').pts.map(V) : null, ppos: V(p.pos), opos: V(o.pos),
+    dragonHands: (() => { const d = L.find(s => s.kind === 'dragon'); if (!d || !d.tube) return null; return [Math.min(...d.pts.map(q => q.distanceTo(hl))), Math.min(...d.pts.map(q => q.distanceTo(hr)))].map(x => +x.toFixed(2)); })(),
+    torn: (() => { const t = L.find(s => s.kind === 'tornado'); return t ? { c: V(t.c), free: t.free, g: +t.grow.toFixed(2), held: t.held.size } : null; })() };
+});
+for (const el of ['fire', 'earth', 'water', 'air']) {
+  head(`${el}: SPECIAL`);
+  await setup({ el, p: [0, 0, -9], o: [0, 0, el === 'fire' ? -5.5 : -4.5] }); await stepN(10); await clearHits();
+  await press('btn-special', 2);
+  const rows = []; let shot = 0;
+  for (let j = 0; j < 120; j++) {
+    await stepN(1); const r = await spec(); rows.push(r);
+    if (el === 'water' && j === 40) await press('btn-hand', 2);   // redirect and release the stream
+    if ([6, 12, 18, 26, 36, 50].includes(j)) { await snap(`${el}-special-${String(j).padStart(2, '0')}`, 'close', r.ppos.map((v, i) => i === 1 ? v + 1.1 : (v + r.opos[i]) / 2)); }
+    if (j === 22) await snap(`${el}-special-normal`, 'normal');
+  }
+  const hits = await hitsOn(); const maxOy = Math.max(...rows.map(r => r.oy)), minHp = Math.min(...rows.map(r => r.ohp));
+  console.log('   clips', [...new Set(rows.map(r => r.clip))].join(','), ' effects', [...new Set(rows.flatMap(r => r.kinds))].join(','), ' hits', hits.join(','));
+  if (el === 'fire') {
+    const i = rows.findIndex(r => r.blast); const r = rows[i] || {};
+    const d = r.blast ? Math.min(...[r.footL, r.footR].map(f => Math.hypot(f[0] - r.blast[0], f[2] - r.blast[2]))) : 99;
+    check('fire: the explosion goes off at the kicking foot', d < 1.0, `blast centre ${d.toFixed(2)} m (horizontal) from the nearest foot, frame ${i}`);
+    check('fire: flames pour from the feet during the leap (trail effect)', rows.some(r => r.kinds.includes('fireTrail')));
+    check('fire: the blast knocks the rival down', hits.includes('fireBlast') && rows.some(r => r.oact === 'down'), `hits ${hits.join(',')}`);
+  }
+  if (el === 'earth') {
+    const r = rows.find(r => r.rup) || {};
+    const dirOk = r.rup ? r.rup.every(p => p[2] > r.ppos[2]) : false;
+    check('earth: the rupture runs from the bender toward the rival', dirOk, r.rup ? `${r.rup.length} bursts from z ${r.rup[0][2]} to ${r.rup[r.rup.length - 1][2]} (bender z ${r.ppos[2]}, rival z ${r.opos[2]})` : 'no rupture');
+    check('earth: the rival is struck and thrown up', hits.includes('rupture') && maxOy > 0.8, `max rival height ${maxOy} m`);
+  }
+  if (el === 'water') {
+    const dh = rows.filter(r => r.dragonHands && r.kinds.some(k => k === 'dragon:flow')).map(r => Math.max(...r.dragonHands));
+    check('water: while circulating, the stream runs through both hands', dh.length > 5 && Math.max(...dh) < 0.12, `${dh.length} frames, worst hand-to-stream distance ${dh.length ? Math.max(...dh).toFixed(3) : 'n/a'} m`);
+    check('water: HAND throws the stream and it strikes the rival', rows.some(r => r.kinds.includes('dragon:thrown')) && hits.includes('dragon'), `hits ${hits.join(',')}`);
+  }
+  if (el === 'air') {
+    const t0 = rows.find(r => r.torn);
+    check('air: the tornado forms around the bender', t0 && Math.hypot(t0.torn.c[0] - t0.ppos[0], t0.torn.c[2] - t0.ppos[2]) < 0.2);
+    check('air: it travels to the rival, lifts them and throws them out', hits.includes('tornado') && maxOy > 1.2, `max rival height ${maxOy} m, hits ${hits.join(',')}`);
+  }
+  check(`${el}: SPECIAL leaves nothing behind`, (await spec()).kinds.length === 0 || (await (async () => { await stepN(90); return (await spec()).kinds.length === 0; })()), JSON.stringify((await spec()).kinds));
 }
 
 console.log(`\n${results.filter(r => r.ok).length}/${results.length} passed`);
