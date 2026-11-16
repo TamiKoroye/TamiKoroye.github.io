@@ -196,7 +196,8 @@ export function retargetSkeleton(srcRoot, clip, target, opts = {}) {
   let heading = null, startHips = null;
   const wqT = new Map();
   for (let i = 0; i < n; i++) {
-    const tt = t0 + (t1 - t0) * (i / (n - 1));
+    // the last sample stops just short of the clip's end: at exactly its duration a looping action wraps to frame 0
+    const tt = Math.min(t0 + (t1 - t0) * (i / (n - 1)), clip.duration - 1e-3);
     mixer.setTime(tt); holder.updateMatrixWorld(true);
     if (!heading) {
       heading = opts.keepHeading ? new THREE.Quaternion() : new THREE.Quaternion().setFromUnitVectors(facing(tt), new THREE.Vector3(0, 0, 1));

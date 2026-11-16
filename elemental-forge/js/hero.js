@@ -272,6 +272,10 @@ export class Hero {
     // elemental mobility: the legs hold the surfing stance / the flying pose, techniques play over them
     const mk = f.mob && f.mob.kind, lowOv = mk === 'surf' && f.onGround && has('surf_stance') ? ['surf_stance', LOOP_SPEED.surf_stance] : mk === 'fly' && has('air_loop') ? ['air_loop', 1] : null;
     if (f.dead && has('ko')) once('ko', 1.1, 0.12);
+    else if (f.action === 'down' && f.floorHit && has('knockback')) {
+      // struck while lying down: the lying pose held (the knockdown's last frame), no standing reaction
+      clip = 'knockback'; ts = this.curName === 'knockback' ? 1.5 : 0; wU = wL = 0; fade = 0.12; if (this.curName !== 'knockback') { restart = true; startAt = this.actions.knockback.getClip().duration - 0.03; }   // still falling: the fall finishes
+    }
     else if (f.action === 'down' && has('knockback')) once('knockback', 1.5, 0.08);   // knocked off the feet
     else if (f.action === 'down' && has('ko')) once('ko', 1.6, 0.1);
     // recovery from the floor: the Mixamo get-up (on the back, roll to a crouch, stand). UAL2's LayToIdle starts

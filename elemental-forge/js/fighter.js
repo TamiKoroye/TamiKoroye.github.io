@@ -187,7 +187,7 @@ export class Fighter {
       if (A.jumpAt && !this.jumped && u >= A.jumpAt[0]) { this.jumped = true; if (this.onGround) { this.vel.y = A.jumpAt[1]; this.onGround = false; } }
       if (u >= 1 && this.action !== 'ko') {
         const was = this.action; this.action = null; this.tech = null; this.spinYaw = 0;
-        if (was === 'down') this.startAction('getup');
+        if (was === 'down') { this.floorHit = false; this.startAction('getup'); }
       }
     }
 
@@ -603,6 +603,11 @@ export class Fighter {
     this.hitDir = dir.clone(); this.koDir = dir.clone(); this.hitAlt = !this.hitAlt;
     if (this.hp <= 0) { this.die(dir); return; }
     this.endHold(); this.charging = false; this.legHoldT = -1; this.lungeT = 0; this.dodgeT = 0;
+    // already on the floor (knocked down or getting up): the blow keeps them down in the lying pose; they do not
+    // spring up into a standing hit reaction or replay the fall from standing
+    if (this.action === 'down' || this.action === 'getup') {
+      this.vel.y = Math.min(this.vel.y, 0); this.startAction('down'); this.floorHit = true; this.actionT = this.A.dur * 0.5; this.invuln = 0.5; return;
+    }
     if (level >= 1) this.endMob();
     if (level === 2) { this.startAction('down'); this.stunT = 0; this.invuln = 0.9; this.onGround = false; }
     else if (level === 1) { this.startAction('stagger'); this.stunT = 0.5; }

@@ -47,6 +47,10 @@ export function unpack(j, fps) {
     for (let i = 0; i < n; i++) times[i] = i / fps;
     const k = t.k === 'q' ? 1 / 32767 : 1 / 1000;
     for (let i = 0; i < a.length; i++) vals[i] = a[i] * k;
+    // clips baked to their very end carry a bad last sample (the sampler wrapped to the first frame): a clip that
+    // plays once ends on its second-to-last frame instead, so a held final pose (lying after a knockdown, standing
+    // after the get-up) is the real one and not the first pose snapping back
+    if (!j.loop && n >= 3) for (let c = 0; c < st; c++) vals[(n - 1) * st + c] = vals[(n - 2) * st + c];
     if (st === 4) for (let i = 0; i < n; i++) { const o = i * 4, l = Math.hypot(vals[o], vals[o + 1], vals[o + 2], vals[o + 3]) || 1; for (let c = 0; c < 4; c++) vals[o + c] /= l; }
     return t.k === 'q' ? new THREE.QuaternionKeyframeTrack(t.n, times, vals) : new THREE.VectorKeyframeTrack(t.n, times, vals);
   });
