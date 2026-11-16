@@ -581,27 +581,42 @@ export class Weapons {
       w.fx.debrisBurst(_a.set(f.pos.x, f.pos.y + 0.3, f.pos.z), 16, 4, 0.08, 0xbfe8ff); w.fx.splash(f.pos, 12); w.audio.splash(1);
     } else this.launchSpire(f);
   }
-  // Earth's launch: a pointed spire of rock drives up out of the ground under the feet and throws the bender upward,
-  // then sinks back after a moment
+  // Earth's launch: a mountain of rock drives up out of the ground under the feet and throws the bender upward: a
+  // cluster of tall faceted grey peaks of different heights on one broad base (as in the reference videos), the
+  // tallest under the feet; it holds for a moment, then sinks back
+  peakGeo(rng) {
+    // one faceted peak: six sides, ridges jittered, the point a little off-centre
+    const g = new THREE.CylinderGeometry(0, 1, 1, 6, 5, false), p = g.attributes.position, tip = [rand(-0.12, 0.12), rand(-0.12, 0.12)];
+    for (let i = 0; i < p.count; i++) {
+      const y = p.getY(i) + 0.5, k = 1 - y;   // 0 at the base, 1 at the point
+      if (y > 0.999) p.setXYZ(i, tip[0], 1, tip[1]);
+      else { const j = 0.75 + rng() * 0.5; p.setXYZ(i, p.getX(i) * j + tip[0] * y, y + (y > 0.01 ? rand(-0.04, 0.04) : 0), p.getZ(i) * j + tip[1] * y); }
+    }
+    const n = g.toNonIndexed(); n.computeVertexNormals(); return n;
+  }
   launchSpire(f) {
     const w = this.w, x = f.pos.x, z = f.pos.z, gy = w.arena.groundAt(x, z, f.pos.y + 0.5);
-    if (!this.spireGeo) {
-      const g = new THREE.ConeGeometry(0.85, 3.4, 7, 5); const p = g.attributes.position;
-      for (let i = 0; i < p.count; i++) { const y = p.getY(i), k = (1.7 - y) / 3.4; if (y < 1.69) p.setXYZ(i, p.getX(i) * rand(0.8, 1.2), y + rand(-0.08, 0.08) * k, p.getZ(i) * rand(0.8, 1.2)); }
-      g.translate(0, 1.7, 0); g.computeVertexNormals(); this.spireGeo = g;
+    if (!this.peakGeos) this.peakGeos = [0, 1, 2, 3, 4].map(() => this.peakGeo(Math.random));
+    const mat = this.peakMat || (this.peakMat = new THREE.MeshStandardMaterial({ color: 0x8e8d92, roughness: 0.95, flatShading: true })), m = new THREE.Group();   // light grey, faceted, as in the references
+    // the tallest peak under the feet, the others crowded round it, leaning out a little
+    const peaks = [[0, 0, 1.05, 3.6]];
+    for (let i = 0; i < 7; i++) { const a = i / 7 * 6.28 + rand(-0.3, 0.3), d = rand(0.7, 1.35); peaks.push([Math.cos(a) * d, Math.sin(a) * d, rand(0.55, 0.9), rand(1.5, 3.0)]); }
+    for (const [px, pz, r, h] of peaks) {
+      const k = new THREE.Mesh(this.peakGeos[(Math.random() * 5) | 0], mat); k.castShadow = k.receiveShadow = true;
+      k.position.set(px, 0, pz); k.scale.set(r, h, r * rand(0.8, 1.15)); k.rotation.set(pz * 0.1, rand(0, 6), -px * 0.1);
+      m.add(k);
     }
-    const m = new THREE.Mesh(this.spireGeo, this.rockMat); m.castShadow = true; m.rotation.set(rand(-0.06, 0.06), rand(0, 6), rand(-0.06, 0.06));
-    m.position.set(x, gy - 3.4, z); w.scene.add(m);
+    m.position.set(x, gy - 3.8, z); m.rotation.y = rand(0, 6); w.scene.add(m);
     this.spires.push({ m, gy, t: 0 });
-    this.burst.spawn(x, gy, z, 0.42); w.fx.debrisBurst(_a.set(x, gy + 0.1, z), 18, 4, 0.11, 0x7a6a58); w.fx.dust(_a.set(x, gy, z), 10, 2.5); w.fx.crater(_a.set(x, gy, z), 1.8);
-    w.audio.rumble(1); w.shake(0.25, f.pos);
+    this.burst.spawn(x, gy, z, 0.5); w.fx.debrisBurst(_a.set(x, gy + 0.1, z), 22, 4.5, 0.12, 0x6a6870); w.fx.dust(_a.set(x, gy, z), 12, 3); w.fx.crater(_a.set(x, gy, z), 2.4);
+    w.audio.rumble(1.1); w.shake(0.3, f.pos);
   }
   updateSpires(dt) {
     for (const S of this.spires) {
       S.t += dt;
       // the point bursts up past where the feet were in 0.14 s, holds, then sinks back into the ground
       const up = S.t < 0.14 ? smooth01(S.t / 0.14) : S.t < 1.3 ? 1 : 1 - smooth01((S.t - 1.3) / 0.5);
-      S.m.position.y = S.gy - 3.4 + up * 3.0;
+      S.m.position.y = S.gy - 3.8 + up * 3.6;   // the main peak's point ends 3.4 m up, where the feet were thrown from
       if (S.t > 1.85) { S.dead = true; this.w.scene.remove(S.m); }
     }
     this.spires = this.spires.filter(S => !S.dead);
