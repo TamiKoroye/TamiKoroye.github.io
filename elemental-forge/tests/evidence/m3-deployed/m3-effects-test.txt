@@ -1,0 +1,82 @@
+
+== Load
+PASS  build loads its character and every clip  -- 100/100 clips
+
+== water: whip from the hand
+PASS  water strike 1 (whip_h, L hand, kind h): rope root stays on the hand bone  -- max root offset 0.000 m over 28 frames
+PASS  water strike 1: reach no longer than 4.6 m  -- max tip distance 4.39 m
+PASS  water strike 1: before the release the rope moves with the hand  -- mean angle between hand motion and rope motion 13 deg over 4 moving frames
+PASS  water strike 2 (whip_h, R hand, kind h): rope root stays on the hand bone  -- max root offset 0.000 m over 28 frames
+PASS  water strike 2: reach no longer than 4.6 m  -- max tip distance 4.39 m
+PASS  water strike 2: before the release the rope moves with the hand  -- mean angle between hand motion and rope motion 11 deg over 4 moving frames
+PASS  water strike 3 (whip_v, L hand, kind v): rope root stays on the hand bone  -- max root offset 0.000 m over 29 frames
+PASS  water strike 3: reach no longer than 4.6 m  -- max tip distance 4.37 m
+PASS  water strike 3: before the release the rope moves with the hand  -- mean angle between hand motion and rope motion 19 deg over 14 moving frames
+PASS  water strike 4 (whip_d, R hand, kind d): rope root stays on the hand bone  -- max root offset 0.000 m over 30 frames
+PASS  water strike 4: reach no longer than 4.6 m  -- max tip distance 4.39 m
+PASS  water strike 4: before the release the rope moves with the hand  -- mean angle between hand motion and rope motion 18 deg over 9 moving frames
+PASS  water: strikes use different arm paths (whip kinds)  -- {"h":2,"v":1,"d":1}
+PASS  water: whips strike the rival at 4 m (at least 3 of 4)  -- 3 whip hits
+
+== air: whip from the hand
+PASS  air strike 1 (whip_h, L hand, kind h): rope root stays on the hand bone  -- max root offset 0.000 m over 24 frames
+PASS  air strike 1: reach no longer than 4.6 m  -- max tip distance 4.39 m
+PASS  air strike 1: before the release the rope moves with the hand  -- mean angle between hand motion and rope motion 18 deg over 2 moving frames
+PASS  air strike 2 (whip_d, R hand, kind d): rope root stays on the hand bone  -- max root offset 0.000 m over 27 frames
+PASS  air strike 2: reach no longer than 4.6 m  -- max tip distance 4.39 m
+PASS  air strike 2: before the release the rope moves with the hand  -- mean angle between hand motion and rope motion 15 deg over 7 moving frames
+PASS  air strike 3 (whip_h, L hand, kind h): rope root stays on the hand bone  -- max root offset 0.000 m over 24 frames
+PASS  air strike 3: reach no longer than 4.6 m  -- max tip distance 4.39 m
+PASS  air strike 3: before the release the rope moves with the hand  -- mean angle between hand motion and rope motion 18 deg over 2 moving frames
+PASS  air strike 4 (whip_v, R hand, kind v): rope root stays on the hand bone  -- max root offset 0.000 m over 26 frames
+PASS  air strike 4: reach no longer than 4.6 m  -- max tip distance 4.37 m
+PASS  air strike 4: before the release the rope moves with the hand  -- mean angle between hand motion and rope motion 20 deg over 12 moving frames
+PASS  air: strikes use different arm paths (whip kinds)  -- {"h":2,"d":1,"v":1}
+PASS  air: whips strike the rival at 4 m (at least 3 of 4)  -- 3 whip hits
+
+== water: kick arcs follow the kicking foot
+PASS  water kick (water_kick, R foot): the arc is born at the kicking foot  -- arc centre 0.34 m from the foot on its first frame
+PASS  water kick: the arc runs the way the foot moved  -- cosine between the arc's chord and the foot's motion 1, chord 1.51 m
+PASS  water kick: the arc strikes the rival at 4 m  -- 1 arc hits
+
+== fire: kick arcs follow the kicking foot
+PASS  fire kick (fire_round_M, R foot): the arc is born at the kicking foot  -- arc centre 0.26 m from the foot on its first frame
+PASS  fire kick: the arc runs the way the foot moved  -- cosine between the arc's chord and the foot's motion 0.99, chord 1.43 m
+PASS  fire kick: the arc strikes the rival at 4 m  -- 1 arc hits
+
+== air: kick arcs follow the kicking foot
+PASS  air kick (air_crescent_M, R foot): the arc is born at the kicking foot  -- arc centre 0.54 m from the foot on its first frame
+PASS  air kick: the arc runs the way the foot moved  -- cosine between the arc's chord and the foot's motion 0.98, chord 1.45 m
+PASS  air kick: the arc strikes the rival at 4 m  -- 1 arc hits
+
+== fire: SPECIAL
+   clips fire_fly,fire_idle  effects fireTrail,fireBlast  hits fireBlast
+PASS  fire: the explosion goes off at the kicking foot  -- blast centre 0.05 m (horizontal) from the nearest foot, frame 7
+PASS  fire: flames pour from the feet during the leap (trail effect)
+PASS  fire: the blast knocks the rival down  -- hits fireBlast
+PASS  fire: SPECIAL leaves nothing behind  -- []
+
+== earth: SPECIAL
+   clips earth_gather,earth_idle  effects earthGather,rupture  hits rupture
+PASS  earth: the rupture runs from the bender toward the rival  -- 4 bursts from z -7.7 to -3 (bender z -9, rival z -4.5)
+PASS  earth: the rival is struck and thrown up  -- max rival height 1.71 m
+PASS  earth: SPECIAL leaves nothing behind  -- []
+
+== water: SPECIAL
+   clips water_redirect_M,water_flow2,water_palm_M  effects dragon:gather,dragon:flow,dragon:thrown  hits dragon
+PASS  water: while circulating, the stream runs through both hands  -- 40 frames, worst hand-to-stream distance 0.080 m
+PASS  water: HAND throws the stream and it strikes the rival  -- hits dragon
+PASS  water: SPECIAL leaves nothing behind  -- []
+
+== air: SPECIAL
+   clips turn_spin,air_idle  effects tornado  hits tornado,tornado
+PASS  air: the tornado forms around the bender
+PASS  air: it travels to the rival, lifts them and throws them out  -- max rival height 3.39 m, hits tornado,tornado
+PASS  air: SPECIAL leaves nothing behind  -- []
+
+== earth: gathering rock from the ground, and getting up
+PASS  earth: holding HAND sinks to the ground for the rocks (Fixing_Kneeling)  -- lowest hand 0.35 m above the ground; clips earth_punch_M,Fixing_Kneeling,earth_lift
+PASS  earth: rocks are drawn up while gathering  -- 3 rocks held
+PASS  recovery from a knockdown plays the Mixamo get-up (on the back, roll to a crouch, stand)  -- getup frames 26, clips getup; actions ,down,getup
+
+54/54 passed

@@ -1,0 +1,43 @@
+
+== Load
+PASS  build loads its character and every clip  -- 100/100 clips, character ok
+PASS  fight phase begins
+
+== Fire: flame-jet jump
+PASS  holding JUMP drives the firebender higher than a plain jump  -- plain jump 0.56 m, jet jump 3.55 m, 25 frames of thrust
+PASS  the flame jets cost energy  -- 22 energy used
+PASS  a jet landing bursts flame outward
+
+== Water: Dragon Stream SPECIAL
+PASS  SPECIAL draws water into both hands and sets it circulating through them  -- phase flow, stream 0.01 / 0.00 m from the hands
+PASS  the stream stays below the head  -- highest stream point 1.37 m, head 1.52 m
+PASS  the circulating stream catches an incoming fireball  -- caught 1, player hp 100
+PASS  HAND throws the stream at the opponent  -- rival hp 80, streams left 0
+
+== Water: icebending
+PASS  the tidal sweep freezes into a line of ice spikes  -- 5 ice spikes
+PASS  the ice spikes hit the opponent  -- rival hp 83 (wave and spikes together)
+PASS  fire melts ice  -- spike life jumped to 1.43 s (it would be <0.8 s without the fireball)
+
+== Air: Baguazhang circling evasion
+PASS  a sideways air dodge circles around the opponent  -- 109 degrees around, distance 4.0 -> 4.0 m
+PASS  the bender keeps facing the opponent while circling  -- 6 degrees off
+PASS  the circle ends in a counter window: HAND counters from the flank  -- counter window 0.32 s, action counter
+
+== Kicks while running
+PASS  earth: LEG while running gives a running kick that keeps momentum  -- Running Kick, 4.6 m/s during the kick
+PASS  fire: LEG while running gives a running kick that keeps momentum  -- Running Kick, 4.6 m/s during the kick
+PASS  water: LEG while running gives a running kick that keeps momentum  -- Running Kick, 4.6 m/s during the kick
+PASS  air: LEG while running gives a running kick that keeps momentum  -- Running Kick, 4.6 m/s during the kick
+
+== Opponent reads strikes
+PASS  master opponent guards or evades most close strikes  -- 7/10 reacted
+PASS  training opponent reacts less than master  -- training 0/10, master 7/10
+
+== Opponent combinations and counters
+PASS  master opponent strings strikes into combinations  -- 6/6 close engagements had a strike following the previous one with no idle gap (under 0.25 s): Fire Fist+Fire Fist+Fire Fist+Flame Kick | Fire Fist+Spinning Flame Kick+Knee Strike | Flame Kick+Spinning Flame Kick | Fire Fist+Flame Kick+Spinning Flame Kick | Fire Fist+Knee Strike+Flame Kick | Fire Fist+Fire Fist+Flame Kick
+
+== Regression
+PASS  no runtime errors during the test
+
+23/23 milestone checks passed against https://tamikoroye.github.io/elemental-forge-dev/

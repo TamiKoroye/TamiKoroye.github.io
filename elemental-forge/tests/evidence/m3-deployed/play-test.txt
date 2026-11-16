@@ -1,0 +1,114 @@
+
+== Load and render
+PASS  page loads without errors
+PASS  WebGL context available
+PASS  fight phase begins
+PASS  player and rival both on screen
+
+== Star-shaped mobile controls
+PASS  default size: five-point star around a centre SPECIAL  -- JUMP top, GUARD upper-left, DODGE upper-right, HAND lower-left, LEG lower-right
+PASS  default size: no overlapping button hitboxes  -- smallest gap 19.0 px (hand/special)
+PASS  default size: all buttons on screen, clear of the health bars
+PASS  largest size and spacing: five-point star around a centre SPECIAL  -- JUMP top, GUARD upper-left, DODGE upper-right, HAND lower-left, LEG lower-right
+PASS  largest size and spacing: no overlapping button hitboxes  -- smallest gap 50.4 px (hand/special)
+PASS  largest size and spacing: all buttons on screen, clear of the health bars
+PASS  HAND and LEG are the largest buttons
+
+== Movement, camera and multi-touch
+PASS  partial stick deflection walks  -- 2.09 m/s
+PASS  full deflection runs  -- 5.90 m/s
+PASS  holding the stick at its rim sprints  -- 8.40 m/s
+PASS  right-half drag turns the camera while running (two fingers)  -- yaw change -0.61 rad
+PASS  player decelerates to a stop on release
+PASS  locked strafe: faces the rival while moving sideways  -- face error 0.08, move vs facing 1.33 rad
+PASS  jump leaves the ground  -- 1.12 m
+PASS  air: air-assisted double jump goes higher  -- air 2.37 m vs earth 1.12 m
+PASS  slope: runs up the ramp onto the 1.6 m ledge  -- max height 1.60 m
+
+== Four distinct martial-arts styles
+PASS  each element has its own stance (pose distance between every pair)  -- closest pair earth/water: 1.83 rad
+PASS  earth stance is the lowest (rooted Hung Gar)  -- earth -0.24, fire -0.17, water -0.15, air -0.13
+PASS  air is the fastest and earth the slowest mover  -- earth 8.4, fire 9.8, water 8.8, air 10.6 m/s sprint
+PASS  each element dodges differently  -- earth: roll, fire: dash, water: slide, air: airdash
+PASS  styles named after their martial arts
+
+== Element switching
+PASS  element buttons switch instantly while running (touch)  -- fire -> water -> air -> earth
+PASS  switching does not interrupt movement  -- 9.8, 8.8, 10.6, 8.4 m/s
+PASS  the sash takes each element's colour
+
+== EARTH: HAND, LEG, sustained control, defence, charged technique
+PASS  earth: HAND sends an element projectile that hits at 8 m  -- rock; rival hp 91
+PASS  earth: LEG kick launches its technique and staggers the rival  -- rival hp 85; reactions stagger
+PASS  earth: full-body kick (leg raised, supporting foot planted, hips/torso engaged)  -- kicking hip 1.64 rad, support ankle 0.12 m above ground, torso 0.55 rad
+PASS  earth: holding HAND lifts three rocks that orbit the player  -- holding=true, held objects 3, rival hp 100
+PASS  earth: can move while sustaining bending  -- 2.6 m/s while bending
+PASS  earth: held rocks are launched one at a time by punches and kicks  -- 3 -> 2 (punch) -> 1 (kick)
+PASS  earth: GUARD defence works: stone wall stops a rock  -- player hp 100, blocks 1
+PASS  earth: perfect guard sends the rock back into the thrower  -- {"perfect":1,"ohp":88,"php":100}
+PASS  earth: hold-and-release LEG performs the charged technique  -- Earth Stomp; rival hp 84; reactions down
+
+== FIRE: HAND, LEG, sustained control, defence, charged technique
+PASS  fire: HAND sends an element projectile that hits at 8 m  -- fireball; rival hp 89
+PASS  fire: LEG kick launches its technique and staggers the rival  -- rival hp 92; reactions stagger
+PASS  fire: full-body kick (leg raised, supporting foot planted, hips/torso engaged)  -- kicking hip 1.85 rad, support ankle 0.18 m above ground, torso 0.66 rad
+PASS  fire: holding HAND sustains a fire stream that burns the rival  -- holding=true, held objects 0, rival hp 79
+PASS  fire: can move while sustaining bending  -- 2.4 m/s while bending
+PASS  fire: SPECIAL (Dragon Descent) leaps in and the explosion knocks the rival down  -- techniques Dragon Descent; hits proj,proj,proj,proj,proj,eruption,proj,burn,burn,fireArc,fireStream,proj,burn,fireStream,fireStream,burn,fireStream,fireStream,fireStream,burn,fireStream,fireStream,burn,fireBlast
+PASS  fire: GUARD defence works: fire wall burns away a fireball  -- player hp 100, blocks 1
+PASS  fire: perfect guard sends the fireball back into the thrower  -- {"perfect":1,"ohp":89,"php":100}
+PASS  fire: hold-and-release LEG performs the charged technique  -- Fire Stomp; rival hp 87; reactions down
+
+== WATER: HAND, LEG, sustained control, defence, charged technique
+PASS  water: HAND lashes a water whip (stepping in) that hits at 6 m  -- water whip; rival hp 93
+PASS  water: LEG kick launches its technique and staggers the rival  -- rival hp 92; reactions stagger
+PASS  water: full-body kick (leg raised, supporting foot planted, hips/torso engaged)  -- kicking hip 2.14 rad, support ankle 0.14 m above ground, torso 0.29 rad
+PASS  water: holding HAND keeps two water whips going that strike the rival  -- holding=true, held objects 0, rival hp 90, whips 2
+PASS  water: can move while sustaining bending  -- 2.7 m/s while bending
+PASS  water: SPECIAL while holding the whips freezes them into ice blades that still strike  -- frozen true, rival hp 88
+PASS  water: GUARD defence works: water shield douses a fireball  -- player hp 100, blocks 1
+PASS  water: perfect guard sends the rock back into the thrower  -- {"perfect":1,"ohp":88,"php":100}
+PASS  water: hold-and-release LEG performs the charged technique  -- Tidal Wave; rival hp 91; reactions down
+
+== AIR: HAND, LEG, sustained control, defence, charged technique
+PASS  air: HAND lashes a air whip (stepping in) that hits at 6 m  -- air whip; rival hp 94
+PASS  air: LEG kick launches its technique and staggers the rival  -- rival hp 94; reactions stagger
+PASS  air: full-body kick (leg raised, supporting foot planted, hips/torso engaged)  -- kicking hip 2.07 rad, support ankle 0.24 m above ground, torso 0.62 rad
+PASS  air: holding HAND pushes the rival back with a sustained wind  -- holding=true, held objects 0, rival hp 87, rival pushed to z 5.9 (from -5)
+PASS  air: can move while sustaining bending  -- 3.5 m/s while bending
+PASS  air: SPECIAL (Tornado) travels to the rival, lifts and throws them  -- max rival height 3.55 m; hits proj,burn,burn,fire,fireArc,fireRing,waterWhip,waterArc,waterWhip,waterWhip,waterWhip,waterWhip,waterWhip,proj,water,waterArc,waterWave,spike,airWhip,airArc,airWhip,wind,airWhip,wind,tornado,tornado
+PASS  air: GUARD defence works: air deflection turns a rock aside  -- player hp 100, blocks 1, rock heading changed 2.36 rad
+PASS  air: perfect guard sends the rock back into the thrower  -- {"perfect":1,"ohp":88,"php":100}
+PASS  air: hold-and-release LEG performs the charged technique  -- Air Compression; rival hp 92; reactions down
+
+== Elemental interactions and environment
+PASS  water projectile puts out a fireball in mid-air  -- {"fire":0,"water":1}
+PASS  water extinguishes burning ground
+PASS  air gust blows a fireball back at its caster  -- {"ohp":89,"php":100}
+PASS  a rock punches through a fire wall at reduced force  -- player hp 94 (unguarded rock does 12)
+PASS  earth SPECIAL (Ground Rupture) runs to the rival and throws them up  -- max rival height 1.71 m; hits proj,air,airArc,airWave,proj,burn,burn,rupture
+PASS  a raised stone pillar is solid  -- {"x":1.1154442784394665,"z":-12.103744726652907,"top":1.45}
+PASS  player can jump onto the pillar and stand on it  -- standing height 1.45 m
+PASS  player can jump onto a boulder and stand on it  -- boulder top 1.22 m, standing at 1.22 m
+PASS  earth lifts an existing loose stone from the arena  -- {"taken":true,"kinds":["rock","boulder"]}
+
+== Combinations and animation continuity
+PASS  earth: HAND / LEG / dodge / SPECIAL chain flows without pose snapping  -- 4 techniques (Stone Punch1 > Earth Kick-1 > Earth Sweep1 > Ground Rupture1), largest single-frame joint change 0.67 rad
+PASS  fire: HAND / LEG / dodge / SPECIAL chain flows without pose snapping  -- 5 techniques (Fire Fist-1 > Flame Kick-1 > Fire Fist1 > Running Kick1 > Dragon Descent1), largest single-frame joint change 0.67 rad
+PASS  water: HAND / LEG / dodge / SPECIAL chain flows without pose snapping  -- 4 techniques (Water Whip-1 > Crescent Water Kick-1 > Turning Wave Kick1 > Dragon Stream-1), largest single-frame joint change 0.67 rad
+PASS  air: HAND / LEG / dodge / SPECIAL chain flows without pose snapping  -- 5 techniques (Air Whip1 > Crescent Air Kick-1 > Air Whip-1 > Running Kick1 > Tornado-1), largest single-frame joint change 0.67 rad
+PASS  earth combo: lift a rock, strafe while holding it, kick it into the rival  -- held 1 at 5.9 m/s, rival hp 79
+
+== Camera
+PASS  camera rises over a raised platform edge instead of being blocked  -- pitch lift 0.12 rad, player at screen y -0.32
+PASS  camera stays steady through spinning kicks  -- spinning kicks 1, body turned 13.8 rad, camera yaw drift 0.000 rad
+
+== AI, performance and regression
+PASS  AI rival fights with its element techniques  -- water: {"Water Whip":2,"Dragon Stream":1,"Running Kick":1}, player hp 84
+PASS  fighter state stays finite (no NaN poses)
+PASS  simulation cost per frame is small  -- 0.86 ms per simulated frame (includes HUD; software renderer not included)
+PASS  render cost stays bounded  -- 93 draw calls, 167814 triangles
+PASS  portrait shows the rotate-phone prompt
+PASS  no runtime errors during the whole test
+
+86/86 checks passed

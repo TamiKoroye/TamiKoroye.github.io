@@ -1,0 +1,16 @@
+PASS  1 complete animation pack loads (decoded == expected, nothing missing, character OK)  -- stamp "dev 2026-11-16 r8 · commit 6b27d7d · character OK · 100/100 martial-arts clips decoded"
+PASS  1 no page errors while loading
+PASS  1b pack loads with fetch/XHR blocked (embedded-viewer conditions)  -- stamp "dev 2026-11-16 r8 · commit 6b27d7d · character OK · 100/100 martial-arts clips decoded"
+PASS  1c missing pack: start is blocked with a visible error, no procedural fallback  -- error shown: "The game assets did not load, so the fight cannot start.• Animations: animation pack module assets/animations/martial.js did not load: Faile"
+PASS  3 punch plays its authored clip in every element  -- earth: earth_punch_M; fire: fire_punch; water: whip_h; air: whip_v
+PASS  4 kick plays its authored clip in every element  -- earth: earth_backkick; fire: fire_round_M; water: water_kick; air: air_crescent_M
+PASS  5 sustained bending (held HAND) plays the authored hold loop  -- earth: Fixing_Kneeling; fire: fire_stream; water: water_flow; air: air_push
+FAIL  6 guard plays the authored guard and the follow-up strike lands as a technique  -- earth: earth_guard; fire: fire_guard; water: water_guard; air: air_guard
+PASS  7 attacks while moving: authored upper body over authored footwork  -- earth: 42 frames, legs Jog_Fwd_Loop/Walk_Loop/earth_backkick; fire: 6 frames, legs Jog_Fwd_Loop; water: 23 frames, legs whip_h_M/whip_h/whip_v_M; air: 21 frames, legs Jog_Fwd_Loop/Walk_Loop
+FAIL  8 six quick attacks per element without refilling energy all play authored clips  -- distinct strikes 2/1/1/4, energy at the end 84/100/100/100, strikes without bending 0 frames
+PASS  9 switching through all four elements via the element buttons  -- earth -> fire -> water -> air
+PASS  SPECIAL plays its authored clip in every element  -- earth: earth_gather; fire: fire_fly_M; water: water_redirect; air: turn_spin
+PASS  NO procedural fallback: every technique/guard/hold frame shows a clip from the pack  -- 698 frames checked, 0 procedural
+PASS  NO procedural body in ANY frame of the session (stance, movement, reactions included)  -- 1267 frames, 0 procedural
+PASS  10 all of the above through touch controls only, no page errors
+13/15 acceptance checks passed against https://tamikoroye.github.io/elemental-forge-dev/

@@ -1,0 +1,82 @@
+
+== Load
+PASS  build loads its character and every clip  -- 100/100 clips
+
+== Water: whips
+PASS  HAND chain lashes the whip in different directions  -- h > v > h > v > h > v > h > v > h > v > h > v > d > v > d > v > d > v > d > v > d > v > d > v > d
+PASS  the whip strikes connect  -- rival hp 77
+PASS  holding HAND keeps two whips, one from each hand  -- 2 whips
+PASS  the stick sweeps the held whips across  -- tips x -2.0,-5.4 -> 2.0,4.2
+PASS  the held whips strike the rival  -- rival hp 83
+
+== Water: kicks produce water attacks
+PASS  crescent kick: a low water arc hits at 5.5 m  -- {"hp":92,"lifted":0.09319999999999998,"tech":"Crescent Water Kick"}
+PASS  spinning kick: a water whip swung round the body hits  -- {"hp":93,"lifted":0.11230399999999999,"tech":"Turning Wave Kick"}
+PASS  rising kick: a water column surges under the rival and lifts them  -- {"hp":91,"lifted":1.899600000000001,"tech":"Rising Water Kick"}
+PASS  charged LEG: a tidal wave advances, hits and pushes the rival back  -- rival hp 83, pushed to z 4.2 (from -6)
+PASS  the wave freezes into ice spikes where it stops  -- 5 ice spikes
+
+== Water: ice weapons from the guard
+PASS  GUARD + HAND throws an ice spear that hits  -- spear true, rival hp 89
+PASS  GUARD + LEG sends a stream that captures the rival briefly  -- held for 0.80 s
+
+== Water: ice surfing and ice launch
+PASS  DODGE held: ice forms under the feet and the waterbender surfs  -- 36 frames surfing, 12 ice trail pieces
+PASS  surfing accelerates beyond running speed  -- 12.8 m/s
+PASS  the surfer holds the surfing stance  -- surf_stance
+PASS  the stick steers the surf  -- heading changed -2.00 rad
+PASS  JUMP while surfing: a rising ice pillar launches the bender high  -- peak 3.67 m above the ground, ice platforms 1
+PASS  the launch plays the high-jump animation  -- jump_high,air_loop,fall_loop,land_high
+PASS  JUMP held: a water column under the feet carries the waterbender up  -- peak 3.44 m, column visible true
+
+== Air: weapons
+PASS  air whip strikes  -- rival hp 94
+PASS  charged LEG: a pressure wave drives the rival back  -- rival hp 94, pushed to z 1.1 (from -6)
+PASS  rising kick: an air column launches the rival  -- rival lifted 3.01 m
+
+== Air: flight
+PASS  DODGE held lifts the airbender into flight; JUMP climbs  -- peak 9.7 m above the ground
+PASS  flight plays the airborne pose  -- air_loop
+PASS  the stick steers the flight sideways  -- moved 5.7 m
+PASS  HAND in flight strikes the rival below  -- rival hp 100 -> 94, still flying true
+PASS  flight is limited in time and the airbender lands on their feet  -- flight ended 2.0 s after (fuel left 1.9 s), on ground true, action null
+
+== Earth: stomp eruption at the opponent
+PASS  charged LEG plays the stomp
+PASS  the ground is marked under the opponent before it erupts  -- mark at 1.5, -1.8; rival at 1.4, -2.5
+PASS  rock spikes erupt there and launch the rival  -- rival hit by: eruption
+PASS  a rival who leaves the marked ground is not hit by the eruption  -- rival hit by: nothing
+
+== Earth: rock surfing and slab launch
+PASS  DODGE held: the earthbender rides a rock slab  -- 41 frames
+PASS  the slab builds speed (heavier than ice)  -- 11.8 m/s
+PASS  JUMP while surfing: a rising slab launches the earthbender  -- peak 4.12 m, pillars 1
+
+== Fire: stomp ring
+PASS  charged LEG stamps a ring of fire that expands along the ground  -- ring reached 9.1 m
+PASS  the ring hits a rival 6 m away  -- rival hit by: fireRing,burn
+PASS  a rival who jumps the ring is not hit by it  -- jumped true, rival hit by: nothing
+
+== Fire: flame propulsion
+PASS  DODGE held: flames from the feet drive a fast run  -- 16.6 m/s
+PASS  JUMP from the flame run: a flame-powered high jump  -- peak 3.55 m
+
+== Opponent responses (game AI, Master)
+PASS  the opponent gets off marked ground before most eruptions  -- 3/5 eruptions avoided
+PASS  the opponent jumps most fire rings  -- 4/5 fire rings avoided
+PASS  the opponent keeps attacking a flying player from the ground  -- projectiles in the air 1, hits on the flier: proj,proj,proj
+
+== Venue: barn ruin
+PASS  the barn ruin loads into the arena with its colliders  -- {"venue":"barn","cols":77,"hidden":13,"inScene":true}
+PASS  courtyard props inside the ruin are put away  -- 13 props hidden
+PASS  walls stop the fighters  -- wall {"x":-11.26,"z":0.57,"hx":0.2,"hz":4.4,"top":3.67}, fighter at -11.9, 0.0, -1.1
+PASS  a wall shields a rival from the fire ring  -- rival hit by: nothing
+PASS  the earth stomp erupts from the barn floor under the rival  -- rival hit by: eruption
+PASS  the airbender can fly above the ruin walls  -- peak 9.3 m, wall top 3.67 m
+PASS  render cost in the barn stays bounded  -- 56 draw calls, 201859 triangles
+PASS  switching back restores the courtyard
+
+== Regression
+PASS  no runtime errors during the test
+
+52/52 overhaul checks passed against https://tamikoroye.github.io/elemental-forge-dev/
