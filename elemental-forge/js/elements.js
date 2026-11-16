@@ -112,7 +112,11 @@ export class Bending {
   whipKind(f) { const c = f.tech && f.tech.clip || ''; return c.startsWith('whip_v') ? 'v' : c.startsWith('whip_d') ? 'd' : 'h'; }
   whipRelease(f, el) {
     const W = f.whipW;
-    if (W && !W.dead && W.tech === f.tech && W.f === f) { this.weapons.releaseWhip(W); return; }
+    if (W && !W.dead && W.tech === f.tech && W.f === f) {
+      this.weapons.releaseWhip(W);
+      const W2 = f.whipW2; if (W2 && !W2.dead && W2.tech === f.tech) setTimeout(() => { if (!W2.dead) this.weapons.releaseWhip(W2); }, 90);
+      return;
+    }
     // no rope out yet (the technique started without energy for it, or was entered mid-way): thrown from the hand now
     const s = f.techSide || 1; f.whipW = this.weapons.whipStrike(f, el, this.whipKind(f), { hand: s > 0 ? 'R' : 'L', tech: f.tech, released: true, dmg: 7, knock: el === 'air' ? 10 : 7, level: 1 });
   }
@@ -303,10 +307,14 @@ export class Bending {
         return;
       }
       case 'water.whipOut': case 'air.whipOut': {
+        if (f.tech && /^fire_punch/.test(f.tech.clip)) return;   // Air's cross punch carries no whip: it fires an air cannon
         const k = this.whipKind(f), el = name.split('.')[0];
-        const stats = el === 'water' ? { h: [7, 7, 0], v: [9, 5, 1], d: [9, 7, 1] } : { h: [6, 11, 1], v: [6, 9, 1], d: [6, 11, 1] };
+        const stats = el === 'water' ? { h: [10, 7, 1], v: [12, 6, 1], d: [12, 8, 1] } : { h: [9, 12, 1], v: [9, 10, 1], d: [9, 12, 1] };
         const [dmg, knock, level] = stats[k] || stats.h;
         f.whipW = this.weapons.whipStrike(f, el, k, { hand: s > 0 ? 'R' : 'L', tech: f.tech, dmg, knock, level });
+        // Water carries a whip on each arm, like two snakes: the second follows its own arm and strikes just after
+        if (el === 'water') f.whipW2 = this.weapons.whipStrike(f, el, k, { hand: s > 0 ? 'L' : 'R', tech: f.tech, dmg: Math.round(dmg * 0.6), knock, level: 0, len: 3.6 });
+        else f.whipW2 = null;
         if (el === 'water') w.fx.splash(this.handPoint(f, -s, _v), 4);
         return;
       }
@@ -314,14 +322,18 @@ export class Bending {
         // crescent kick: a broad, low arc of water sweeping out at leg height (takes the opponent's footing)
         const g = this.heldList(f, 'water').filter(o => o.state === 'orbit');
         // the water follows the kicking foot's path off the ground and is thrown on as one arc
-        this.weapons.limbArc(f, 'water', 'foot', s > 0 ? 'L' : 'R', { span: 0.24, speed: 13, grow: g.length ? 1.8 : 1.4, dmg: g.length ? 10 : 8, knock: 7, level: 1 });
+        // every third water kick freezes what it throws into a fan of ice daggers
+        if (((f.iceN = (f.iceN || 0) + 1) % 3) === 0) { for (const d of [-0.18, 0, 0.18]) { const o = this.fire('iceSpear', f, this.footPoint(f, s, new THREE.Vector3()).setY(f.pos.y + 1.0)); o.vel.applyAxisAngle(_up, d); o.dmg = 6; } w.fx.debrisBurst(this.footPoint(f, s, _v), 8, 2, 0.05, 0xbfe8ff); w.audio.splash(0.8); return; }
+        this.weapons.limbArc(f, 'water', 'foot', s > 0 ? 'L' : 'R', { span: 0.24, speed: 13, grow: g.length ? 1.8 : 1.4, dmg: g.length ? 12 : 10, knock: 7, level: 1 });
         if (g.length) this.kill(g[0], 'silent');
         w.fx.splash(this.forwardPoint(f, 1, 0.4, _v), 12); w.audio.splash(0.9); return;
       }
       case 'water.leg2': {
         // spinning kick: a water whip swung all the way round the body
         const g = this.heldList(f, 'water').filter(o => o.state === 'orbit'); if (g.length) this.kill(g[0], 'silent');
-        this.weapons.whipStrike(f, 'water', 'circle', { foot: s > 0 ? 'L' : 'R', released: true, hitWin: 0.4, len: g.length ? 3.8 : 3.2, dmg: 9, knock: 8, level: 1 }); return;
+        // the spinning kick throws water round the body and releases a wave on the kick itself
+        this.weapons.whipStrike(f, 'water', 'circle', { foot: s > 0 ? 'L' : 'R', released: true, hitWin: 0.4, len: g.length ? 3.8 : 3.2, dmg: 10, knock: 8, level: 1 });
+        this.weapons.wave(f, 'water', { width: 4.2, dmg: 8, life: 0.9 }); return;
       }
       case 'water.column': {
         // rising kick: the water surges up under the opponent
@@ -348,6 +360,13 @@ export class Bending {
         // in flight: a palm blast of compressed air driven down at the opponent
         if (f.mob && f.mob.kind === 'fly') { const o = this.fire('gust', f, hand); o.dmg = 6; o.knock = 12; w.audio.gust(0.8); return; }
         // the air whip: fast lashes alternating with sweeping strikes
+        if (f.tech && /^fire_punch/.test(f.tech.clip)) {
+          // the air cannon: the cross punch drives a compressed blast of air straight out of the fist; it hits hard and
+          // throws the opponent back, and the air ring it leaves shows where it went
+          const o = this.fire('gust', f, hand, { scale: 1.4 }); o.dmg = 12; o.knock = 17; o.level = 2;
+          w.fx.ring(hand, 1.4, 0xdfe6ff, 0.3); for (let i = 0; i < 8; i++) w.fx.wind(hand, _v2.copy(o.vel).multiplyScalar(0.25).add(_v.set(rand(-2, 2), rand(-1, 1), rand(-2, 2))), 0.6, 0.3);
+          w.audio.gust(1.2); w.shake(0.12, hand); return;
+        }
         this.whipRelease(f, 'air');
         return;
       }
@@ -909,7 +928,8 @@ export class Bending {
         // other projectiles
         for (const p of this.objs) {
           if (p === o || p.state !== 'flying' || p.owner === o.owner) continue;
-          if (p.pos.distanceTo(o.pos) < p.r + o.r) { this.clash(o, p); if (o.state === 'dead') { done = true; break; } }
+          // fire reaches wider when it meets another attack: a fireball or kicked flame is a defence as well
+          if (p.pos.distanceTo(o.pos) < p.r + o.r + (o.el === 'fire' || p.el === 'fire' ? 0.55 : 0)) { this.clash(o, p); if (o.state === 'dead') { done = true; break; } }
         }
         if (done) break;
         // fighters
@@ -1035,7 +1055,7 @@ export class Bending {
       d.t += dt;
       if (d.sink > 0) {
         d.sink += dt; d.rise = 1 - smooth01(d.sink / 0.3);
-        if (d.sink > 0.3) { d.dead = true; w.scene.remove(d.mesh); continue; }
+        if (d.sink > 0.3) { d.dead = true; w.scene.remove(d.mesh); if (d.tubes) { d.tubes.forEach(t => this.weapons.freeTube(t)); d.tubes = null; } continue; }
       } else {
         d.rise = smooth01(d.t / (d.el === 'earth' ? 0.16 : 0.12));
         if (!d.ice) this.placeDef(d, 1 - Math.exp(-10 * dt));
@@ -1064,6 +1084,10 @@ export class Bending {
         }
       } else {
         d.mesh.position.copy(d.pos); d.mesh.scale.setScalar(d.rise); d.mesh.rotation.y += dt * 9;
+        // a visible whirlwind: three bands of wind winding round the bender from the feet to above the head
+        if (!d.tubes) { d.tubes = [0, 1, 2].map(() => { const t = this.weapons.tube(); t.mesh.material = this.weapons.airTubeMat; return t; }); d.wpts = d.tubes.map(() => Array.from({ length: 20 }, () => new THREE.Vector3())); }
+        const of = d.owner, R = 1.25 * d.rise;
+        d.tubes.forEach((tb, i) => { const P = d.wpts[i]; for (let j = 0; j < P.length; j++) { const q = j / (P.length - 1), a = -d.t * 9 + q * 7 + i * 2.09; P[j].set(of.pos.x + Math.cos(a) * R * (0.85 + 0.25 * q), of.pos.y + 0.1 + q * 2.2, of.pos.z + Math.sin(a) * R * (0.85 + 0.25 * q)); } tb.set(P, (u) => 0.05 + 0.06 * Math.sin(Math.PI * u), d.t * 2); });
         for (let k = 0; k < 2; k++) { const a = Math.random() * 6.28; w.fx.wind(_v.set(d.pos.x + Math.cos(a) * d.sphere, d.pos.y + rand(-0.8, 0.8), d.pos.z + Math.sin(a) * d.sphere), _v2.set(-Math.sin(a) * 8, 0, Math.cos(a) * 8), 0.5, 0.3); }
       }
       if (!d.ice && !d.owner.guarding && d.sink === 0) d.sink = 0.001;
@@ -1196,7 +1220,7 @@ export class Bending {
     this.weapons.clear(); this.specials.clear();
     // projectiles leave nothing behind: their mesh and, for water, the stream drawn behind them
     for (const o of this.objs) { this.world.scene.remove(o.mesh); if (o.tube) { this.world.scene.remove(o.tube.mesh); o.tube.mesh.geometry.dispose(); o.tube.mesh.material.dispose(); o.tube = null; } }
-    for (const d of this.defs) this.world.scene.remove(d.mesh);
+    for (const d of this.defs) { this.world.scene.remove(d.mesh); if (d.tubes) d.tubes.forEach(t => this.weapons.freeTube(t)); }
     this.world.arena.colliders = this.world.arena.colliders.filter(c => !c.ice);
     for (const r of this.rings) this.world.scene.remove(r.mesh);
     for (const s of this.spikes) if (s.mesh) this.world.scene.remove(s.mesh);

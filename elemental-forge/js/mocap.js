@@ -62,7 +62,7 @@ export const LOOPS = {
   earth: { idle: 'earth_idle', guard: 'earth_guard', hold: 'earth_lift' },
   fire: { idle: 'fire_idle', guard: 'fire_guard', hold: 'fire_stream' },
   water: { idle: 'water_flow2', guard: 'water_guard', hold: 'water_flow' },   // sustained whips: Qi Gong cloud-hands arms
-  air: { idle: 'air_idle', guard: 'air_guard', hold: 'air_push' },
+  air: { idle: 'air_idle', guard: 'water_flow', hold: 'air_push' },   // guard: cloud hands, the arms keep circling inside the whirlwind
 };
 
 // playback speed relative to the capture, per style (earth heavy, fire and air quick, water measured);

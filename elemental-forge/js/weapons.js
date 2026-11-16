@@ -179,7 +179,10 @@ export class Weapons {
           // the push follows the whip's motion at the point of contact, mixed with the direction of the strike
           const v = _c.subVectors(W.pts[k], W.prev[k]); v.y = 0; if (v.lengthSq() < 1e-6) v.copy(W.aim);
           const dir = v.normalize().multiplyScalar(0.6).add(_d.set(t.pos.x - f.pos.x, 0, t.pos.z - f.pos.z).normalize().multiplyScalar(0.7)).normalize();
-          w.combat.damage(t, W.frozen ? Math.round(W.dmg * 1.4) : W.dmg, dir.clone(), f, W.tag, p.clone(), W.knock, W.frozen ? 2 : W.level);
+          // a whip that catches a rival in the air drives them back down onto the floor with full force
+          const airborne = !t.onGround && t.pos.y - t.groundY > 0.5;
+          w.combat.damage(t, Math.round((W.frozen ? 1.4 : 1) * (airborne ? 1.5 : 1) * W.dmg), dir.clone(), f, W.tag, p.clone(), W.knock, W.frozen || airborne ? 2 : W.level);
+          if (airborne && !t.dead) { t.vel.y = -18; t.vel.x *= 0.3; t.vel.z *= 0.3; w.shake(0.3, p); w.popup(f, 'SLAM', true); }
           if (W.frozen) { w.fx.debrisBurst(p, 10, 3, 0.07, 0xbfe8ff); }
           else if (W.el === 'water') w.fx.splash(p, 14);
           if (W.el === 'fire' && Math.random() < 0.5) B.burn(t.pos.x, t.pos.z, t.groundY, f);
@@ -245,7 +248,7 @@ export class Weapons {
     const off = pts.map(p => p.clone().sub(c).multiplyScalar(st));
     const aim = this.B.aimDir(f, c, new THREE.Vector3()); aim.y = clamp(aim.y, -0.15, 0.25); aim.normalize();
     const A = { f, el, c, off, v: aim.multiplyScalar(opts.speed || 15), t: 0, life: opts.life || 0.65, grow: opts.grow ?? 1.4,
-      pts: off.map(o => o.clone().add(c)), prev: off.map(o => o.clone().add(c)), hit: new Set(), dmg: opts.dmg ?? 8, knock: opts.knock ?? 8, level: opts.level ?? 1, tag: opts.tag || el + 'Arc' };
+      pts: off.map(o => o.clone().add(c)), prev: off.map(o => o.clone().add(c)), hit: new Set(), dmg: (opts.dmg ?? 8) + (el === 'air' ? 2 : 0), knock: opts.knock ?? 8, level: opts.level ?? 1, tag: opts.tag || el + 'Arc' };
     if (el === 'water' || el === 'air') { A.tube = this.tube(); if (el === 'air') A.tube.mesh.material = this.airTubeMat; }
     if (el === 'air') A.ribbons = [0, N - 1].map(() => this.w.fx.ribbons.start({ color: 0xb8c8f4, width: 0.18, life: 0.28, alpha: 0.95 }));
     this.arcs.push(A);

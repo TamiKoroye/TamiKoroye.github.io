@@ -195,7 +195,7 @@ const water = {
   loco: { walk: 2.8, run: 6.2, sprint: 8.8, accel: 26, stride: 1.0, bob: 0.35, knee: 0.7, lean: 0.6, swing: 0.35, elbow: 0.8, carry: -0.55, out: 0.07, heavy: 0.6, flow: 1 },
   jump: { v: 7.4, air: 0 },
   dodge: { kind: 'slide', dur: 0.4, speed: 13, iframes: 0.7, trail: 'water' },
-  labels: { hand: 'WATER PALM', leg: 'WATER KICK', guard: 'WATER SHIELD', special: 'DRAGON STREAM' },
+  labels: { hand: 'WATER PALM', leg: 'WATER KICK', guard: 'WATER SHIELD', special: 'DROWN' },
   tech: {
     // the water whip: one arm path per strike (across the body, overhead, diagonal), each hand in turn; the rope
     // comes out of the hand as the arm winds up (onStart) and is thrown on the impact frame
@@ -246,9 +246,9 @@ const water = {
     guard: (p, c) => { const a = Math.sin((c ? c.t : 0) * 2.2);
       stanceLegs(p, -0.18, 0.22, 0.16, -0.12, 0.16); S(p, 'hips', 0, 0.15 * a, 0); S(p, 'spine', 0.05, 0, 0);
       arm(p, 1, -1.15 + 0.15 * a, 0.75, 0.6, 1.0, 0.4); arm(p, -1, -1.15 - 0.15 * a, 0.75, 0.6, 1.0, 0.4); },
-    // Dragon Stream: draw water up from the ground into both hands (onStart), then set it circulating through the
-    // hands and round the body; HAND throws it (tech.release below)
-    special: T({ name: 'Dragon Stream', clip: 'water_redirect', onStart: 'water.specialStart', dur: 0.6, cost: 26, cancel: 0.8, move: 1, upper: true,
+    // Drowning Sphere: water drawn up from the ground into both hands (onStart) is thrown round the opponent, holds
+    // them inside a ball of water, freezes into jagged ice and shatters (js/specials.js)
+    special: T({ name: 'Drowning Sphere', clip: 'water_redirect', onStart: 'water.specialStart', dur: 0.6, cost: 26, cancel: 0.8, move: 1, upper: true,
       events: [[0.52, 'water.special']],
       keys: [
         [0.0, () => {}],
@@ -268,7 +268,7 @@ const air = {
   dodge: { kind: 'airdash', dur: 0.36, speed: 19, iframes: 0.85, trail: 'air' },
   labels: { hand: 'AIR PALM', leg: 'AIR KICK', guard: 'DEFLECT', special: 'TORNADO' },
   tech: {
-    hand: T({ name: 'Air Palm', clip: ['whip_h', 'whip_d', 'whip_h', 'whip_v'], clipSpeed: 2.1, onStart: 'air.whipOut', dur: 0.32, reach: 4.3, cost: 6, cancel: 0.52, upper: true, move: 5, lunge: 11,
+    hand: T({ name: 'Air Palm', clip: ['whip_h', 'whip_d', 'fire_punch', 'whip_v'], clipSpeed: 2.1, onStart: 'air.whipOut', dur: 0.32, reach: 4.3, cost: 6, cancel: 0.52, upper: true, move: 5, lunge: 11,
       active: { from: 0.3, to: 0.5, dmg: 4, range: 1.9, arc: 0.4, knock: 6, level: 0 },
       events: [[0.32, 'air.hand']],
       keys: [
@@ -360,7 +360,7 @@ for (const k of Object.keys(THIRD)) STYLES[k].tech.leg.push(THIRD[k]);
 STYLES.fire.tech.leg.push(T({ name: 'Flip Kick', clip: 'flip_kick', dur: 0.9, cost: 12, cancel: 0.82, move: 2, lunge: 3,
   active: { from: 0.45, to: 0.6, dmg: 9, range: 2.0, arc: 0.3, knock: 7, level: 1 }, events: [[0.42, 'fire.flip'], [0.55, 'fire.flip2']], keys: K0 }));
 // every element: LEG in the air is a jumping kick, right foot first, then the left (alternating while airborne)
-for (const k of ['earth', 'fire', 'water', 'air']) STYLES[k].tech.airKick = T({ name: 'Air Kick', clip: 'jump_kick', dur: 0.5, cost: 6, cancel: 0.62, move: 2.5, lunge: 4,
+for (const k of ['earth', 'fire', 'water', 'air']) STYLES[k].tech.airKick = T({ name: 'Air Kick', clip: 'jump_kick', clipSpeed: 3.0, dur: 0.38, cost: 6, cancel: 0.55, move: 2.5, lunge: 4,
   active: { from: 0.5, to: 0.68, dmg: 7, range: 2.1, arc: 0.4, knock: 6, level: 1 }, events: [[0.55, k + '.airKick']], keys: K0 });
 // every element: somersaults (DODGE in the air) and a roll (GUARD + DODGE); no damage, they are evasions
 for (const k of ['earth', 'fire', 'water', 'air']) {

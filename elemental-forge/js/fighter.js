@@ -262,9 +262,10 @@ export class Fighter {
       }
       if (this.buf.leg && !struck && !this.charging && canStrike) {
         this.buf.leg = 0; this.dodgeT = 0;
-        if (!this.onGround && st.tech.airKick && !(this.mob && this.mob.kind === 'surf')) {
+        if (!this.onGround && (this.pos.y - this.groundY > 0.4 || this.airTime > 0.12) && this.vel.y > -12 && st.tech.airKick && !(this.mob && this.mob.kind === 'surf')) {
           // in the air: a jumping kick, the right foot first, then the left, then the right again
           this.airKickN = (this.airKickN || 0) + 1; this.startTech(st.tech.airKick, this.airKickN % 2 ? -1 : 1, true);
+          this.vel.y = Math.max(this.vel.y, this.airKickN < 3 ? 3.2 : 0);   // the kick lifts a little, so a second fits before landing
         } else if (st.tech.legMove && this.onGround && this.speedNorm > 0.45 && !this.action && this.comboTimer <= 0) {
           // LEG while running: a kick delivered on the move, keeping the run's momentum
           this.comboTimer = 0.9; this.legIdx = -1; this.startTech(st.tech.legMove, 1, true);
