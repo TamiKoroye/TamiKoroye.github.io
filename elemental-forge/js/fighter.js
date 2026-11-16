@@ -106,6 +106,21 @@ export class Fighter {
 
   chestPos(out = new THREE.Vector3()) { return out.set(this.pos.x, this.pos.y + 1.3, this.pos.z); }
   forward(out = new THREE.Vector3()) { return out.set(Math.sin(this.yaw), 0, Math.cos(this.yaw)); }
+  // the last ~0.3 s of each hand and foot position (bone positions after the animation), so an effect can be
+  // shaped from the path the limb actually travelled
+  recLimbs() {
+    const H = this.limbHist || (this.limbHist = { i: 0, n: 0, t: new Float64Array(20), p: { hL: [], hR: [], fL: [], fR: [] } });
+    const i = H.i; H.t[i] = this.time;
+    for (const k of ['hL', 'hR', 'fL', 'fR']) { const a = H.p[k]; if (!a[i]) a[i] = new THREE.Vector3(); (k[0] === 'h' ? this.handPos(k[1], a[i]) : this.footPos(k[1], a[i])); }
+    H.i = (i + 1) % 20; H.n = Math.min(20, H.n + 1);
+  }
+  // positions of one limb over the last `span` seconds, oldest first
+  limbPath(limb, side, span = 0.2) {
+    const H = this.limbHist; if (!H) return [];
+    const a = H.p[(limb === 'foot' ? 'f' : 'h') + side], out = [];
+    for (let j = H.n; j >= 1; j--) { const k = (H.i - j + 20) % 20; if (this.time - H.t[k] <= span + 1e-6) out.push(a[k].clone()); }
+    return out;
+  }
   handPos(side, out = new THREE.Vector3()) { return (this.hero ? this.hero.bones['DEF-hand' + side] : this.J['w' + side]).getWorldPosition(out); }
   footPos(side, out = new THREE.Vector3()) { return (this.hero ? this.hero.bones['DEF-foot' + side] : this.J['a' + side]).getWorldPosition(out); }
 
@@ -415,6 +430,7 @@ export class Fighter {
     this.root.position.copy(this.pos);
     this.root.rotation.y = this.yaw;
     if (this.hero) { this.root.updateMatrixWorld(true); this.hero.drive(this, dt); }
+    this.recLimbs();
     const f = this.flash, ch = this.charging ? Math.min(1, this.chargeT / 0.55) * (0.15 + 0.1 * Math.sin(this.time * 30)) : 0;
     const ec = new THREE.Color(this.style.color);
     this.material.emissive.setRGB(f * 0.9 + ch * ec.r, f * 0.25 + ch * ec.g, f * 0.15 + ch * ec.b);

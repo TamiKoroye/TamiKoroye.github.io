@@ -22,22 +22,16 @@ function distPointSeg(p, a, b) {
   return _s2.copy(a).addScaledVector(ab, t).distanceTo(p);
 }
 
-// strike shapes: which axis the whip swings about, and over what angles (radians, relative to the aim)
-const SWINGS = {
-  h:  { axis: 'up', from: 1.35, to: -1.35 },          // horizontal, right to left (mirrored for the other hand)
-  v:  { axis: 'side', from: 1.25, to: -0.45 },        // overhead, straight down onto the target
-  d:  { axis: 'diag', from: 1.3, to: -1.1 },          // diagonal, high to low
-  lash: { axis: 'up', from: 0.25, to: -0.25 },        // short, fast straight lash
-  circle: { axis: 'up', from: 0, to: -Math.PI * 2 },  // all the way round the body (spinning kicks)
-};
-
 export class Weapons {
   constructor(B) {
     this.B = B; this.w = B.world;
     this.whips = []; this.waves = []; this.columns = []; this.erupts = []; this.fireRings = []; this.captures = [];
-    this.trails = []; this.platforms = [];
+    this.trails = []; this.platforms = []; this.arcs = [];
     this.tubeMat = waterMaterial(-4); this.tubeMat.uniforms.uRise.value = 1;
     this.tubePool = [];
+    // air: the same rope drawn as a pale, fast-turning translucent current (it has a body, not only streaks)
+    this.airTubeMat = waterMaterial(-9); Object.assign(this.airTubeMat.uniforms, { uOpacity: { value: 0.34 } }); this.airTubeMat.uniforms.uRise.value = 1;
+    this.airTubeMat.uniforms.uDeep.value.set(0xc9d4f2); this.airTubeMat.uniforms.uLight.value.set(0xf4f6ff); this.airTubeMat.uniforms.uFoam.value.set(0xffffff);
     this.burst = new GroundBurst(this.w);   // earth's ground reaction (baked fracture simulation)
     this.iceTubeMat = iceMat;
     this.slabGeo = (() => { const g = new THREE.BoxGeometry(1.5, 0.35, 2.1, 3, 1, 3); const p = g.attributes.position; for (let i = 0; i < p.count; i++) p.setXYZ(i, p.getX(i) + rand(-0.06, 0.06), p.getY(i) + rand(-0.05, 0.05), p.getZ(i) + rand(-0.06, 0.06)); g.computeVertexNormals(); return g; })();
@@ -56,77 +50,126 @@ export class Weapons {
   freeTube(t) { if (!t) return; this.w.scene.remove(t.mesh); t.mesh.visible = false; if (this.tubePool.length < 12) this.tubePool.push(t); else t.mesh.geometry.dispose(); }
 
   // ============================================================ whips
-  // kind: h / v / d / lash / circle; opts: { side (+1 left hand, -1 right hand, 0 body), len, dmg, knock, level, dur, frozen }
+  // A whip is a rope of 14 points hanging from the striking hand (or foot), simulated every frame:
+  //   - the root is the hand bone itself; the rope's lay comes from the forearm direction (elbow to hand) and the
+  //     hand's own velocity, so the arm motion of the clip is what swings it (each arm path gives its own whip path)
+  //   - points carry momentum (verlet), so the far end lags behind the hand, coils when the arm turns, and catches up
+  //   - on the technique's impact frame the rope is released: it extends to full length and the far end is thrown
+  //     toward the target (the lash); hits are tested only from then on, along the paths the points travelled
+  //   - when the technique ends the rope draws back into the hand
+  // opts: { hand: 'L'|'R', foot: 'L'|'R', len, dmg, knock, level, released, frozen, tech, hitWin, life, tag }
   whipStrike(f, el, kind, opts = {}) {
-    const B = this.B, side = opts.side ?? (f.techSide || 1);
+    const side = opts.side ?? (f.techSide || 1);
+    const limb = opts.foot ? 'foot' : 'hand', ls = opts.foot || opts.hand || (side > 0 ? 'L' : 'R');
     const t = f.target && !f.target.dead ? f.target : null;
-    const dist = t ? Math.hypot(t.pos.x - f.pos.x, t.pos.z - f.pos.z) : 5;
+    const dist = t ? Math.hypot(t.pos.x - f.pos.x, t.pos.z - f.pos.z) : 4;
+    const N = 14, root = this.limbPos(f, limb, ls, new THREE.Vector3());
     const W = {
-      f, el, kind, side, t: 0, dur: opts.dur || (kind === 'circle' ? 0.5 : kind === 'lash' ? 0.26 : 0.4),
-      len: opts.len || (kind === 'circle' ? 3.0 : clamp(dist + 0.6, 3.2, 9)), dmg: opts.dmg ?? 8, knock: opts.knock ?? 7, level: opts.level ?? 1,
-      mirror: kind === 'h' && side < 0 ? -1 : 1, pts: Array.from({ length: 14 }, () => new THREE.Vector3()), prev: Array.from({ length: 14 }, () => new THREE.Vector3()),
-      hit: new Set(), frozen: !!opts.frozen, aim: B.aimDir(f, f.chestPos(_a), new THREE.Vector3()), tag: opts.tag || el + 'Whip',
+      f, el, kind, limb, ls, t: 0, tRel: -1, ext: 0, out: true, tech: opts.tech || null, life: opts.life || 1.6,
+      len: Math.min(4.6, opts.len || clamp(dist + 0.4, 2.6, 4.6)), dmg: opts.dmg ?? 8, knock: opts.knock ?? 7, level: opts.level ?? 1,
+      hitWin: opts.hitWin || 0.3, pts: Array.from({ length: N }, () => root.clone()), old: Array.from({ length: N }, () => root.clone()),
+      prev: Array.from({ length: N }, () => root.clone()), rootPrev: root.clone(), vRoot: new THREE.Vector3(), dir: new THREE.Vector3(),
+      hit: new Set(), frozen: !!opts.frozen, aim: this.B.aimDir(f, root, new THREE.Vector3()), tag: opts.tag || el + 'Whip', spin: kind === 'circle',
     };
+    this.limbDir(f, limb, ls, W.dir);
     if (el === 'water') { W.tube = this.tube(); if (W.frozen) W.tube.mesh.material = iceMat; }
-    if (el === 'air') W.ribbons = [0, 1, 2].map(i => this.w.fx.ribbons.start({ color: i === 1 ? 0xdcd2ff : 0xffffff, width: 0.09 - i * 0.02, life: 0.22, alpha: 0.85 }));
+    if (el === 'air') { W.tube = this.tube(); W.tube.mesh.material = this.airTubeMat; }
+    if (el === 'air') W.ribbons = [0, 1, 2].map(i => this.w.fx.ribbons.start({ color: i === 1 ? 0xdcd2ff : 0xffffff, width: 0.16 - i * 0.04, life: 0.24, alpha: 0.9 }));
     this.whips.push(W);
-    if (el === 'water') this.w.audio.splash(0.5); else if (el === 'air') this.w.audio.gust(0.6); else this.w.audio.fireWhoosh(0.7);
+    if (opts.released) this.releaseWhip(W);
     return W;
   }
-  // the whip's shape at progress u: the tip lags behind the hand, so the stream curves through the swing
-  shapeWhip(W, u) {
-    const f = W.f, S = SWINGS[W.kind];
-    const origin = W.kind === 'circle' ? _a.set(f.pos.x, f.pos.y + 0.75, f.pos.z) : (W.side === 0 ? f.chestPos(_a) : this.B.handPoint(f, W.side, _a));
-    // keep tracking the target while the strike is young (the whip follows the hands, the hands follow the opponent)
-    if (u < 0.35) this.B.aimDir(f, origin, W.aim);
-    const D = W.kind === 'circle' ? f.forward(_b) : _b.copy(W.aim);
-    const right = _c.crossVectors(D, UP).normalize();
-    const axis = S.axis === 'up' ? UP : S.axis === 'side' ? right : _d.copy(UP).multiplyScalar(0.7).addScaledVector(right, 0.7).normalize();
-    const ext = smooth01(u / 0.22) * (1 - smooth01((u - 0.8) / 0.2));
-    const L = W.len * ext;
-    const axisC = axis.clone(), Dc = D.clone(), ox = origin.x, oy = origin.y, oz = origin.z;
-    for (let k = 0; k < W.pts.length; k++) {
-      const s = k / (W.pts.length - 1);
-      const uu = clamp(u - s * 0.16, 0, 1);
-      const sw = smooth01(clamp((uu - 0.08) / 0.62, 0, 1));
-      const ang = (S.from + (S.to - S.from) * sw) * W.mirror;
-      _q.setFromAxisAngle(axisC, ang);
-      const dir = _d.copy(Dc).applyQuaternion(_q);
-      W.prev[k].copy(W.pts[k]);
-      W.pts[k].set(ox + dir.x * s * L, oy + dir.y * s * L, oz + dir.z * s * L);
-      // water sags a little and ripples; fire and air stay tighter
-      if (W.el === 'water' && !W.frozen) W.pts[k].y += -0.18 * Math.sin(Math.PI * s) * s + Math.sin(s * 9 + W.t * 22) * 0.05 * s;
-      if (W.kind === 'circle') W.pts[k].y += -0.25 * s;
-    }
+  limbPos(f, limb, s, out) { return limb === 'foot' ? f.footPos(s, out) : f.handPos(s, out); }
+  // the limb's pointing direction: elbow to hand, or knee to foot
+  limbDir(f, limb, s, out) {
+    const tip = this.limbPos(f, limb, s, _c), b = f.hero && f.hero.bones[limb === 'foot' ? 'DEF-shin' + s : 'DEF-forearm' + s];
+    if (b) b.getWorldPosition(out); else f.chestPos(out);
+    return out.subVectors(tip, out).normalize();
+  }
+  // the impact frame: full length, the lash thrown at the target, hits live
+  releaseWhip(W) {
+    if (W.tRel >= 0) return;
+    const f = W.f; W.tRel = W.t;
+    this.B.aimDir(f, this.limbPos(f, W.limb, W.ls, _a), W.aim);
+    // the lash: the outer half of the rope is thrown along the aim and the hand's own motion
+    const v = _b.copy(W.aim).multiplyScalar(W.spin ? 6 : 15).addScaledVector(W.vRoot, 0.4), dt = W.dtLast || 1 / 60;
+    W.pts.forEach((p, k) => { const s = k / (W.pts.length - 1); W.old[k].addScaledVector(v, -s * s * dt); });
+    if (W.el === 'water') this.w.audio.splash(0.55); else if (W.el === 'air') this.w.audio.gust(0.65); else this.w.audio.fireWhoosh(0.75);
   }
   updateWhips(dt) {
-    const w = this.w, B = this.B;
     for (const W of this.whips) {
-      W.t += dt; const u = W.t / W.dur, f = W.f;
-      if (f.dead || f.reacting() || u >= 1) { W.dead = true; continue; }
-      this.shapeWhip(W, u);
-      this.drawWhip(W, u);
-      if (u > 0.14 && u < 0.86) this.whipHits(W, u);
+      const f = W.f; W.t += dt;
+      if (f.dead || f.reacting()) { W.dead = true; continue; }
+      // the technique that owns the rope has ended (or the rope has lived its span): it draws back into the hand
+      if (W.out && (W.t > W.life || (W.tech && (f.action !== 'tech' || f.tech !== W.tech)) || (!W.tech && W.tRel >= 0 && W.t - W.tRel > W.hitWin + 0.12))) W.out = false;
+      this.stepWhip(W, dt);
+      if (!W.out && W.ext <= 0.02) { W.dead = true; continue; }
+      this.drawWhip(W);
+      if (W.tRel >= 0 && W.t - W.tRel < W.hitWin) this.whipHits(W);
     }
     this.whips = this.whips.filter(W => { if (W.dead) this.dropWhip(W); return !W.dead; });
   }
-  drawWhip(W, u) {
-    const w = this.w;
-    if (W.tube) { const fr = W.frozen; W.tube.set(W.pts.slice().reverse(), (s) => (fr ? 0.1 : 0.13) * (0.45 + 0.55 * s) + 0.015, W.t); if (!fr && Math.random() < 0.5) w.fx.splash(W.pts[W.pts.length - 1], 1); }
-    if (W.ribbons) { W.ribbons[0].push(W.pts[13]); W.ribbons[1].push(W.pts[9]); W.ribbons[2].push(W.pts[5]); if (Math.random() < 0.5) w.fx.wind(W.pts[13], _a.subVectors(W.pts[13], W.prev[13]).multiplyScalar(30), 0.45, 0.25); }
-    if (W.el === 'fire') for (let k = 3; k < W.pts.length; k += 2) if (Math.random() < 0.7) w.fx.fire(W.pts[k], _a.subVectors(W.pts[k], W.prev[k]).multiplyScalar(8).add(_b.set(0, 1, 0)), 0.22 + 0.25 * k / 14, 0.18);
+  stepWhip(W, dt) {
+    const f = W.f, N = W.pts.length, rel = W.tRel >= 0, tr = rel ? W.t - W.tRel : 0, n60 = dt * 60; W.dtLast = dt;
+    const root = this.limbPos(f, W.limb, W.ls, _a);
+    // hand velocity (smoothed): the arm's swing is what lays the rope
+    W.vRoot.lerp(_b.subVectors(root, W.rootPrev).divideScalar(Math.max(dt, 1e-3)), 0.5); W.rootPrev.copy(root);
+    // reach: a short coil around the hand during the wind-up, full length from the release, none when drawn back
+    const want = !W.out ? 0 : rel ? 1 : 0.4;
+    W.ext += (want - W.ext) * Math.min(1, dt * (rel && W.out ? 22 : W.out ? 9 : 11));
+    const seg = W.len * W.ext / (N - 1);
+    // lay direction: the forearm, the hand's motion and, around the release, the aim
+    const fd = this.limbDir(f, W.limb, W.ls, _c), sp = W.vRoot.length();
+    const D = _d.copy(fd).multiplyScalar(W.spin ? 0.4 : 1);
+    if (sp > 0.3) D.addScaledVector(W.vRoot, Math.min(1, sp / 5) * 0.9 / sp);
+    if (W.spin) { const out = _e.set(root.x - f.pos.x, 0, root.z - f.pos.z); if (out.lengthSq() > 1e-4) D.addScaledVector(out.normalize(), 1.2); }
+    // around the release the aim dominates: whatever way the clip turned the body, the lash goes at the target
+    else if (rel) D.addScaledVector(W.aim, (tr < 0.2 ? 6 : 3.2) * Math.max(0.25, 1 - tr / 0.32));
+    D.normalize(); W.dir.lerp(D, Math.min(1, dt * (rel && tr < 0.2 ? 32 : 14))).normalize();
+    const grav = W.el === 'water' && !W.frozen ? 5 : 0, gy = f.groundY + 0.06;
+    const perp = _e.crossVectors(W.dir, UP); if (perp.lengthSq() < 1e-4) perp.set(1, 0, 0); perp.normalize();
+    for (let k = 0; k < N; k++) W.prev[k].copy(W.pts[k]);
+    W.pts[0].copy(root); W.old[0].copy(root);
+    for (let k = 1; k < N; k++) {
+      const s = k / (N - 1), p = W.pts[k], o = W.old[k];
+      const damp = Math.pow(0.9, n60), vx = (p.x - o.x) * damp, vy = (p.y - o.y) * damp, vz = (p.z - o.z) * damp;
+      o.copy(p); p.x += vx; p.y += vy - grav * dt * dt; p.z += vz;
+      // pulled toward the lay line; the root is stiff, the far end is loose and lags (ice is rigid)
+      const stiff = 1 - Math.pow(1 - (W.frozen ? 0.55 : 0.4 * (1 - s) * (1 - s) + 0.05 + (rel ? 0.3 * Math.max(0, 1 - tr / 0.28) : 0)), n60);
+      const coil = W.el === 'water' && !W.frozen ? Math.sin(W.t * 10 - s * 7) * 0.22 * s * (1 - W.ext * 0.6) : 0;
+      const tx = root.x + W.dir.x * k * seg + perp.x * coil, ty = root.y + W.dir.y * k * seg + Math.cos(W.t * 10 - s * 7) * coil * 0.6, tz = root.z + W.dir.z * k * seg + perp.z * coil;
+      p.x += (tx - p.x) * stiff; p.y += (ty - p.y) * stiff; p.z += (tz - p.z) * stiff;
+    }
+    // inextensible: each point stays within one segment of the one before it (slack is allowed, so it can coil)
+    for (let it = 0; it < 2; it++) for (let k = 1; k < N; k++) {
+      const a = W.pts[k - 1], p = W.pts[k], dx = p.x - a.x, dy = p.y - a.y, dz = p.z - a.z, d = Math.hypot(dx, dy, dz);
+      if (d > seg) { const m = seg / d; p.set(a.x + dx * m, a.y + dy * m, a.z + dz * m); }
+      if (p.y < gy) p.y = gy;
+    }
   }
-  dropWhip(W) { this.freeTube(W.tube); if (W.ribbons) for (const r of W.ribbons) r.release(); }
+  drawWhip(W) {
+    const w = this.w, N = W.pts.length, tip = W.pts[N - 1], tv = _a.subVectors(tip, W.prev[N - 1]).multiplyScalar(60), ts = tv.length();
+    if (W.tube) {
+      // thick at the hand, tapering; a body of water that thins only when it is drawn back
+      const fr = W.frozen, e = Math.max(0.35, W.ext);
+      if (W.el === 'air') W.tube.set(W.pts.slice().reverse(), (s) => (0.06 + 0.16 * s) * e, W.t * 1.6);
+      else W.tube.set(W.pts.slice().reverse(), (s) => ((fr ? 0.075 : 0.07) + (fr ? 0.06 : 0.1) * s) * e, W.t);
+      if (W.el === 'water' && !fr && ts > 5 && Math.random() < 0.6) w.fx.splash(tip, 2);
+    }
+    if (W.ribbons) { W.ribbons[0].push(W.pts[N - 1]); W.ribbons[1].push(W.pts[N - 4]); W.ribbons[2].push(W.pts[N - 8]); if (ts > 4 && Math.random() < 0.6) w.fx.wind(tip, tv.multiplyScalar(0.5), 0.6, 0.3); }
+    if (W.el === 'fire') for (let k = 2; k < N; k++) if (Math.random() < 0.75) w.fx.fire(W.pts[k], _b.subVectors(W.pts[k], W.prev[k]).multiplyScalar(20).add(_c.set(0, 1, 0)), (0.2 + 0.28 * k / N) * Math.max(0.4, W.ext), 0.2);
+  }
+  dropWhip(W) { this.freeTube(W.tube); W.tube = null; if (W.ribbons) for (const r of W.ribbons) r.release(); W.ribbons = null; }
   // tests the whip's segments against fighters, enemy projectiles (the whip swats them aside) and burning ground
-  whipHits(W, u) {
-    const w = this.w, B = this.B, f = W.f;
+  whipHits(W) {
+    const w = this.w, B = this.B, f = W.f, N = W.pts.length;
     for (const t of w.fighters) {
       if (t === f || t.dead || W.hit.has(t) || t.invuln > 0) continue;
       const a = _a.set(t.pos.x, t.pos.y + 0.3, t.pos.z), b = _b.set(t.pos.x, t.pos.y + 1.65, t.pos.z);
-      for (let k = 2; k < W.pts.length; k++) {
+      for (let k = 3; k < N; k++) {
         // a fast whip moves well over a body width per frame: test the path each point travelled, not only where it is
         let p = null;
-        for (let q = 0; q <= 4 && !p; q++) { const c = _e.lerpVectors(W.prev[k], W.pts[k], q / 4); if (distPointSeg(c, a, b) < t.radius + 0.2) p = c.clone(); }
+        for (let q = 0; q <= 4 && !p; q++) { const c = _e.lerpVectors(W.prev[k], W.pts[k], q / 4); if (distPointSeg(c, a, b) < t.radius + 0.18) p = c.clone(); }
         if (p) {
           W.hit.add(t);
           // the push follows the whip's motion at the point of contact, mixed with the direction of the strike
@@ -134,7 +177,7 @@ export class Weapons {
           const dir = v.normalize().multiplyScalar(0.6).add(_d.set(t.pos.x - f.pos.x, 0, t.pos.z - f.pos.z).normalize().multiplyScalar(0.7)).normalize();
           w.combat.damage(t, W.frozen ? Math.round(W.dmg * 1.4) : W.dmg, dir.clone(), f, W.tag, p.clone(), W.knock, W.frozen ? 2 : W.level);
           if (W.frozen) { w.fx.debrisBurst(p, 10, 3, 0.07, 0xbfe8ff); }
-          else if (W.el === 'water') w.fx.splash(p, 10);
+          else if (W.el === 'water') w.fx.splash(p, 14);
           if (W.el === 'fire' && Math.random() < 0.5) B.burn(t.pos.x, t.pos.z, t.groundY, f);
           break;
         }
@@ -142,68 +185,100 @@ export class Weapons {
     }
     for (const o of B.objs) {
       if (o.state !== 'flying' || o.owner === f) continue;
-      for (let k = 3; k < W.pts.length; k += 2) if (W.pts[k].distanceTo(o.pos) < o.r + 0.35) {
+      for (let k = 3; k < N; k += 2) if (W.pts[k].distanceTo(o.pos) < o.r + 0.35) {
         B.kill(o, W.el === 'water' && o.el === 'fire' ? 'steam' : undefined); w.popup(f, 'SWAT', false); break;
       }
     }
-    if (W.el === 'water') B.extinguishNear(W.pts[13], 1.2);
+    if (W.el === 'water') B.extinguishNear(W.pts[N - 1], 1.2);
   }
 
-  // Sustained whips (HAND held): one stream from each hand, lashing in turn and steered by the aim and the stick.
-  // Called every frame by the hold; returns false when the hold should end.
+  // Sustained whips (HAND held): a rope from each hand, laid by the arms of the held clip (cloud hands) and the
+  // stick; the hands lash in turn. Called every frame by the hold; returns false when the hold should end.
   sustain(f, h, dt) {
-    const w = this.w, B = this.B, el = f.el;
+    const w = this.w, el = f.el;
     if (!h.whips) {
-      h.whips = [1, -1].map(side => ({ side, pts: Array.from({ length: 14 }, () => new THREE.Vector3()), prev: Array.from({ length: 14 }, () => new THREE.Vector3()), tube: el === 'water' ? this.tube() : null,
-        ribbons: el === 'air' ? [0, 1].map(i => w.fx.ribbons.start({ color: i ? 0xdcd2ff : 0xffffff, width: 0.08, life: 0.25, alpha: 0.8 })) : null, cd: 0 }));
+      h.whips = ['L', 'R'].map((s, i) => { const W = this.whipStrike(f, el, 'hold', { hand: s, len: 3.6, dmg: 5, knock: el === 'air' ? 7 : 5, level: 0, life: 1e9, hitWin: 0.3 }); this.whips.splice(this.whips.indexOf(W), 1); W.side = i ? -1 : 1; W.cd = i * 0.3; return W; });
       h.sweep = 0;
     }
-    if (h.frozen && el === 'water') for (const s of h.whips) if (s.tube) s.tube.mesh.material = iceMat;
-    // the stick sweeps the streams across (relative to the fighter's facing), the lashes alternate between hands
+    if (h.frozen && el === 'water') for (const W of h.whips) if (W.tube && !W.frozen) { W.frozen = true; W.tube.mesh.material = iceMat; }
+    // the stick sweeps the streams across (relative to the fighter's facing); the hands lash in turn
     const c = Math.cos(f.faceYaw), s0 = Math.sin(f.faceYaw), lx = f.input.mx * c - f.input.mz * s0;
-    h.sweep += (clamp(lx, -1, 1) * 1.1 - h.sweep) * Math.min(1, dt * 5);
-    const t = f.target && !f.target.dead ? f.target : null;
-    const reach = clamp(t ? Math.hypot(t.pos.x - f.pos.x, t.pos.z - f.pos.z) + 0.5 : 5.5, 3, 8.5);
-    for (const S of h.whips) {
-      const phase = h.t * 5.2 + (S.side > 0 ? 0 : Math.PI);      // alternate: one lashes while the other draws back
-      const lash = Math.max(0, Math.sin(phase)), from = this.B.handPoint(f, S.side, _a);
-      const aim = B.aimDir(f, from, _b);
-      _q.setFromAxisAngle(UP, h.sweep + S.side * 0.35 * (1 - lash) + Math.cos(phase) * 0.55 * S.side);
-      aim.applyQuaternion(_q);
-      const L = reach * (0.45 + 0.55 * lash);
-      for (let k = 0; k < 14; k++) {
-        const sk = k / 13, bend = Math.sin(phase - sk * 1.6) * 0.9 * sk;
-        S.prev[k].copy(S.pts[k]);
-        S.pts[k].copy(from).addScaledVector(aim, sk * L).addScaledVector(_c.crossVectors(aim, UP).normalize(), bend * 0.6 * S.side);
-        S.pts[k].y += Math.sin(sk * 7 + h.t * 11) * 0.08 * sk - 0.12 * Math.sin(Math.PI * sk);
-      }
-      if (S.tube) S.tube.set(S.pts.slice().reverse(), (q) => 0.12 * (0.5 + 0.5 * q) + 0.015, h.t);
-      if (S.ribbons) { S.ribbons[0].push(S.pts[13]); S.ribbons[1].push(S.pts[8]); }
-      if (el === 'fire') for (let k = 4; k < 14; k += 3) w.fx.fire(S.pts[k], _c.set(0, 1, 0), 0.25, 0.16);
-      // each stream strikes at the height of its lash
-      // while a lash is out its whole length is live (each target can be struck once per lash)
-      if (lash < 0.3) { S.struck = null; S.sounded = false; }
-      if (lash > 0.55) {
-        S.struck = S.struck || new Set();
-        for (const tt of w.fighters) {
-          if (tt === f || tt.dead || tt.invuln > 0 || S.struck.has(tt)) continue;
-          const a = _a.set(tt.pos.x, tt.pos.y + 0.3, tt.pos.z), b = _d.set(tt.pos.x, tt.pos.y + 1.65, tt.pos.z);
-          let hit = false; for (let k = 3; k < 14 && !hit; k++) for (let q = 0; q <= 3 && !hit; q++) if (distPointSeg(_e.lerpVectors(S.prev[k], S.pts[k], q / 3), a, b) < tt.radius + 0.22) hit = true;
-          if (hit) {
-            S.struck.add(tt);
-            const dir = _c.set(tt.pos.x - f.pos.x, 0, tt.pos.z - f.pos.z).normalize();
-            w.combat.damage(tt, h.frozen ? 7 : 5, dir.clone(), f, el + 'Whip', tt.chestPos(new THREE.Vector3()), el === 'air' ? 7 : 5, h.frozen ? 1 : 0);
-            if (el === 'water') w.fx.splash(tt.chestPos(_a), 8);
-          }
-        }
-        for (const o of B.objs) if (o.state === 'flying' && o.owner !== f) for (let k = 4; k < 14; k += 3) if (S.pts[k].distanceTo(o.pos) < o.r + 0.4) { B.kill(o, el === 'water' && o.el === 'fire' ? 'steam' : undefined); break; }
-        if (!S.sounded) { S.sounded = true; if (el === 'water') w.audio.splash(0.35); else if (el === 'air') w.audio.gust(0.35); else w.audio.fireWhoosh(0.3); }
-      }
+    h.sweep += (clamp(lx, -1, 1) - h.sweep) * Math.min(1, dt * 5);
+    for (const W of h.whips) {
+      W.t += dt; W.cd -= dt;
+      if (W.cd <= 0) { W.cd = 0.6; W.tRel = -1; W.hit.clear(); this.releaseWhip(W); }
+      // the aim is swung by the stick, so the release throws the lash where the player steers
+      if (W.tRel >= 0 && W.t - W.tRel < 0.05) W.aim.applyAxisAngle(UP, h.sweep * 0.9);
+      this.stepWhip(W, dt); this.drawWhip(W);
+      if (W.tRel >= 0 && W.t - W.tRel < W.hitWin) this.whipHits(W);
     }
-    if (el === 'water') B.extinguishNear(h.whips[0].pts[13], 1.2);
     return true;
   }
-  endSustain(h) { if (h.whips) for (const S of h.whips) { this.freeTube(S.tube); if (S.ribbons) for (const r of S.ribbons) r.release(); } h.whips = null; }
+  endSustain(h) { if (h.whips) for (const W of h.whips) this.dropWhip(W); h.whips = null; }
+
+  // ============================================================ limb arcs
+  // A kick or strike throws the element along the path the limb has just travelled: the last ~0.2 s of the foot (or
+  // hand) positions become the arc's shape, so a crescent kick throws a crescent, a front kick a short upright arc, a
+  // spinning kick a wide flat one. The arc then flies at the target, widening, and strikes along its whole length.
+  // opts: { span, speed, life, dmg, knock, level, grow, tag }
+  limbArc(f, el, limb, s, opts = {}) {
+    let path = f.limbPath(limb, s, opts.span || 0.2);
+    const N = 12, pts = [];
+    if (path.length < 3) {   // no recorded motion (the fighter was just created): a short arc around the limb
+      const c = this.limbPos(f, limb, s, new THREE.Vector3()), r = _a.crossVectors(f.forward(_b), UP).normalize();
+      path = [-1, 0, 1].map(k => c.clone().addScaledVector(r, k * 0.5).add(_c.set(0, -Math.abs(k) * 0.15, 0)));
+    }
+    // resample evenly along the path's length
+    const L = [0]; for (let i = 1; i < path.length; i++) L.push(L[i - 1] + path[i].distanceTo(path[i - 1]));
+    const tot = Math.max(1e-3, L[L.length - 1]);
+    for (let k = 0; k < N; k++) { const d = tot * k / (N - 1); let i = 1; while (i < L.length - 1 && L[i] < d) i++; const u = clamp((d - L[i - 1]) / Math.max(1e-4, L[i] - L[i - 1]), 0, 1); pts.push(new THREE.Vector3().lerpVectors(path[i - 1], path[i], u)); }
+    // a path too short to read (a slow or blocked kick) is stretched around its middle to at least 1.2 m
+    const c = pts.reduce((a, p) => a.add(p), new THREE.Vector3()).divideScalar(N), span = pts[0].distanceTo(pts[N - 1]);
+    const st = span < 1.2 ? 1.2 / Math.max(0.2, span) : 1;
+    const off = pts.map(p => p.clone().sub(c).multiplyScalar(st));
+    const aim = this.B.aimDir(f, c, new THREE.Vector3()); aim.y = clamp(aim.y, -0.15, 0.25); aim.normalize();
+    const A = { f, el, c, off, v: aim.multiplyScalar(opts.speed || 15), t: 0, life: opts.life || 0.65, grow: opts.grow ?? 1.4,
+      pts: off.map(o => o.clone().add(c)), prev: off.map(o => o.clone().add(c)), hit: new Set(), dmg: opts.dmg ?? 8, knock: opts.knock ?? 8, level: opts.level ?? 1, tag: opts.tag || el + 'Arc' };
+    if (el === 'water' || el === 'air') { A.tube = this.tube(); if (el === 'air') A.tube.mesh.material = this.airTubeMat; }
+    if (el === 'air') A.ribbons = [0, N - 1].map(() => this.w.fx.ribbons.start({ color: 0xffffff, width: 0.12, life: 0.22, alpha: 0.85 }));
+    this.arcs.push(A);
+    if (el === 'water') this.w.audio.splash(0.8); else if (el === 'air') this.w.audio.gust(0.9); else this.w.audio.fireWhoosh(0.9);
+    return A;
+  }
+  updateArcs(dt) {
+    const w = this.w, B = this.B;
+    for (const A of this.arcs) {
+      A.t += dt; const u = A.t / A.life;
+      if (u >= 1) { A.dead = true; continue; }
+      A.c.addScaledVector(A.v, dt);
+      const g = 1 + A.grow * u;
+      for (let k = 0; k < A.pts.length; k++) { A.prev[k].copy(A.pts[k]); A.pts[k].copy(A.off[k]).multiplyScalar(g).add(A.c); }
+      // stopped by walls and rock
+      if (w.arena.solidAt(A.c, 0.2)) { A.dead = true; if (A.el === 'water') w.fx.splash(A.c, 12); continue; }
+      const fade = 1 - smooth01((u - 0.7) / 0.3), N = A.pts.length;
+      if (A.tube) A.tube.set(A.pts, (s) => (A.el === 'air' ? 0.16 : 0.19) * (0.35 + 0.65 * Math.sin(Math.PI * s)) * fade + 0.01, A.t * 2);
+      if (A.ribbons) { A.ribbons[0].push(A.pts[0]); A.ribbons[1].push(A.pts[N - 1]); }
+      if (A.el === 'fire') for (let k = 0; k < N; k++) if (Math.random() < 0.85 * fade) w.fx.fire(A.pts[k], _a.copy(A.v).multiplyScalar(0.25).add(_b.set(0, 1.2, 0)), (0.3 + 0.25 * Math.sin(Math.PI * k / (N - 1))) * (0.6 + 0.4 * fade), 0.2);
+      if (A.el === 'water' && Math.random() < 0.4) w.fx.splash(A.pts[(Math.random() * N) | 0], 1);
+      if (A.el === 'air' && Math.random() < 0.5) w.fx.wind(A.pts[(Math.random() * N) | 0], _a.copy(A.v).multiplyScalar(0.3), 0.6, 0.25);
+      for (const t of w.fighters) {
+        if (t === A.f || t.dead || A.hit.has(t) || t.invuln > 0) continue;
+        const a = _a.set(t.pos.x, t.pos.y + 0.2, t.pos.z), b = _b.set(t.pos.x, t.pos.y + 1.7, t.pos.z);
+        for (let k = 0; k < N; k++) {
+          let p = null; for (let q = 0; q <= 3 && !p; q++) { const cq = _e.lerpVectors(A.prev[k], A.pts[k], q / 3); if (distPointSeg(cq, a, b) < t.radius + 0.22) p = cq.clone(); }
+          if (p) {
+            A.hit.add(t);
+            w.combat.damage(t, A.dmg, _c.copy(A.v).setY(0).normalize(), A.f, A.tag, p, A.knock, A.level);
+            if (A.el === 'water') w.fx.splash(p, 14); else if (A.el === 'fire') { for (let i = 0; i < 8; i++) w.fx.fire(p, _d.set(rand(-2, 2), rand(0, 3), rand(-2, 2)), 0.5, 0.3); if (Math.random() < 0.5) B.burn(t.pos.x, t.pos.z, t.groundY, A.f); }
+            break;
+          }
+        }
+      }
+      for (const o of B.objs) if (o.state === 'flying' && o.owner !== A.f && A.pts.some(p => p.distanceTo(o.pos) < o.r + 0.4)) B.kill(o, A.el === 'water' && o.el === 'fire' ? 'steam' : undefined);
+      if (A.el === 'water') B.extinguishNear(A.c, 1.4);
+    }
+    this.arcs = this.arcs.filter(A => { if (A.dead) { this.freeTube(A.tube); A.tube = null; if (A.ribbons) A.ribbons.forEach(r => r.release()); A.ribbons = null; } return !A.dead; });
+  }
 
   // ============================================================ waves
   // water: a wall of water advancing over the ground; air: a pressure wave. Both push, put out fire (water) and
@@ -457,10 +532,11 @@ export class Weapons {
   update(dt) {
     this.tubeMat.uniforms.uTime.value += dt;
     this.burst.update(dt);
-    this.updateWhips(dt); this.updateWaves(dt); this.updateColumns(dt); this.updateErupts(dt); this.updateFireRings(dt); this.updateCaptures(dt); this.updateTrails(dt);
+    this.updateWhips(dt); this.updateArcs(dt); this.updateWaves(dt); this.updateColumns(dt); this.updateErupts(dt); this.updateFireRings(dt); this.updateCaptures(dt); this.updateTrails(dt);
   }
   clear() {
     for (const W of this.whips) this.dropWhip(W);
+    for (const A of this.arcs) { this.freeTube(A.tube); if (A.ribbons) A.ribbons.forEach(r => r.release()); }
     this.burst.clear();
     for (const V of this.waves) this.w.scene.remove(V.mesh);
     for (const C of this.columns) { this.w.scene.remove(C.mark); this.freeTube(C.tube); }
@@ -470,6 +546,6 @@ export class Weapons {
     for (const T of this.trails) this.w.scene.remove(T.m);
     for (const P of this.platforms) { this.w.scene.remove(P.m); P.col.dead = true; }
     this.w.arena.colliders = this.w.arena.colliders.filter(c => !this.platforms.some(P => P.col === c));
-    this.whips = []; this.waves = []; this.columns = []; this.erupts = []; this.fireRings = []; this.captures = []; this.trails = []; this.platforms = [];
+    this.whips = []; this.waves = []; this.columns = []; this.erupts = []; this.fireRings = []; this.captures = []; this.trails = []; this.platforms = []; this.arcs = [];
   }
 }

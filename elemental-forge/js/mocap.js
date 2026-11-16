@@ -56,6 +56,8 @@ export function unpack(j, fps) {
 // per element: combat stance, guard hold and sustained-bending hold
 // loop playback speed (the Qi Gong takes are performed slowly; combat needs them quicker but still flowing)
 export const LOOP_SPEED = { water_flow: 1.9, water_flow2: 1.5, surf_stance: 1.2, air_loop: 1, fall_loop: 1 };
+// stances whose authored legs are deeper than the style wants: the standing idle's legs are mixed in at this weight
+export const STANCE_MIX = { earth_idle: 0.75, earth_guard: 0.6 };
 export const LOOPS = {
   earth: { idle: 'earth_idle', guard: 'earth_guard', hold: 'earth_lift' },
   fire: { idle: 'fire_idle', guard: 'fire_guard', hold: 'fire_stream' },
@@ -66,7 +68,7 @@ export const LOOPS = {
 // playback speed relative to the capture, per style (earth heavy, fire and air quick, water measured);
 // individual clips can override it (the tai chi take is performed very slowly)
 const SPEED = { earth: 1.45, fire: 1.75, water: 1.45, air: 1.65 };
-const CLIP_SPEED = { water_palm: 2.3, water_tidal: 2.0, water_sphere: 1.5, earth_stomp: 1.6, earth_pillar: 1.7, fire_orb: 1.5, air_vortex: 1.6, earth_sweep: 1.5, fire_spin: 1.5 };
+const CLIP_SPEED = { whip_h: 1.5, whip_v: 1.9, whip_d: 1.7, water_palm: 2.3, water_tidal: 2.0, water_sphere: 1.5, earth_stomp: 1.6, earth_pillar: 1.7, fire_orb: 1.5, air_vortex: 1.6, earth_sweep: 1.5, fire_spin: 1.5 };
 
 const names = (T) => (Array.isArray(T.clip) ? T.clip : [T.clip]);
 function techList(st) {

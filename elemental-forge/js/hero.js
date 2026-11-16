@@ -9,7 +9,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import { HIP_H } from './character.js';
-import { MOCAP, clipFor, LOOPS, LOOP_SPEED } from './mocap.js';
+import { MOCAP, clipFor, LOOPS, LOOP_SPEED, STANCE_MIX } from './mocap.js';
 
 let TEMPLATE = null, CLIPS = null;
 export const heroReady = () => !!TEMPLATE;
@@ -68,6 +68,21 @@ const UAL_CHILD = { 'DEF-hips': 'DEF-spine001', 'DEF-spine001': 'DEF-spine002', 
 const UPPER_RE = /spine|neck|head|shoulder|upper_arm|forearm|hand|f_|thumb/;
 
 const _q = new THREE.Quaternion(), _q2 = new THREE.Quaternion(), _v = new THREE.Vector3(), _m = new THREE.Matrix4();
+const _X = new THREE.Vector3(1, 0, 0), _Z = new THREE.Vector3(0, 0, 1);
+
+// Hand shapes. Each finger joint curls about its local X axis on this skeleton (checked in a render); values are the
+// curl of the [base, middle, tip] joints in radians, plus thumb curl and finger spread (local Z).
+//   fist  : Hung Gar / Northern Shaolin striking fist        claw : tiger claw (gripping rock)
+//   palm  : flat open palm with joined fingers (Air)         flow : relaxed, curved Tai Chi hand (Water)
+//   relax : loose hand (reactions, falls)
+const HANDS = {
+  fist:  { f: [1.45, 1.6, 1.2], pinky: 0.1, thumb: [0.55, 0.6, 0.4], spread: 0 },
+  claw:  { f: [0.55, 1.05, 0.85], pinky: 0.15, thumb: [0.25, 0.35, 0.3], spread: 0.12 },
+  palm:  { f: [-0.3, -0.22, -0.12], pinky: 0, thumb: [-0.1, -0.05, 0], spread: 0.05 },
+  flow:  { f: [-0.12, 0.02, 0.04], pinky: 0.14, thumb: [0, 0, 0], spread: 0.08 },
+  relax: { f: [0.45, 0.55, 0.35], pinky: 0.12, thumb: [0.2, 0.25, 0.2], spread: 0.02 },
+};
+const FINGERS = ['index', 'middle', 'ring', 'pinky'];
 
 function rigQuat(o, stop, out) { out.identity(); for (let x = o; x && x !== stop; x = x.parent) out.premultiply(x.quaternion); return out; }
 function rigPos(o, stop, out) { o.updateWorldMatrix(true, false); stop.updateWorldMatrix(true, false); return out.setFromMatrixPosition(o.matrixWorld).applyMatrix4(_m.copy(stop.matrixWorld).invert()); }
@@ -120,6 +135,14 @@ export class Hero {
       if (!m.loop) { a.setLoop(THREE.LoopOnce, 1); a.clampWhenFinished = true; }
       this.actions[name] = a;
     }
+    // finger bones and their bind rotations (for the hand-shape layer)
+    this.fingers = { L: [], R: [] };
+    for (const side of ['L', 'R']) {
+      for (const fn of FINGERS) for (let j = 1; j <= 3; j++) { const b = this.bones[`DEF-f_${fn}0${j}${side}`]; if (b) this.fingers[side].push({ b, rest: b.quaternion.clone(), j, fn }); }
+      for (let j = 1; j <= 3; j++) { const b = this.bones[`DEF-thumb0${j}${side}`]; if (b) this.fingers[side].push({ b, rest: b.quaternion.clone(), j, fn: 'thumb' }); }
+    }
+    const copy = (h) => ({ f: [...h.f], thumb: [...h.thumb], pinky: h.pinky, spread: h.spread });
+    this.handW = { L: { cur: copy(HANDS.relax) }, R: { cur: copy(HANDS.relax) } };
     this.techN = -1; this.trace = []; this.clock = 0;
     this.cur = null; this.play('Idle_Loop', 0);
     this.wU = 1; this.wL = 1;
@@ -316,15 +339,56 @@ export class Hero {
       this.playLower(ln + '|L', lts, 0.18);
     } else {
       this.play(clip, fade, ts, restart);
-      this.playLower(null, 1, 0.15);
+      // a stance that is too deep for the style keeps its arms and footing but rises part-way to the standing idle
+      const mix = STANCE_MIX[clip];
+      this.playLower(mix ? 'Idle_Loop|L' : null, 1, 0.25);
+      if (mix && this.low) this.low.setEffectiveWeight(mix);
     }
     if (this.cur) this.cur.timeScale = ts;
     if (ts === 0 && this.cur && this.chargeHold !== undefined) this.cur.time += (this.chargeHold - this.cur.time) * Math.min(1, dt * 6);
     const k = 1 - Math.exp(-(wU > this.wU || wL > this.wL ? 16 : 10) * dt);
     this.wU += (wU - this.wU) * k; this.wL += (wL - this.wL) * k;
+    this.handShape = this.chooseHands(f);
     this.update(dt);
   }
 
+  // which hand shape each hand takes now (element style, then what the fighter is doing)
+  chooseHands(f) {
+    const el = f.el, T = f.action === 'tech' ? f.tech : null, st = f.style && f.style.tech;
+    if (f.dead || f.action === 'down' || f.action === 'getup' || f.action === 'hit' || f.action === 'stagger') return ['relax', 'relax'];
+    const base = { earth: 'fist', fire: 'fist', water: 'flow', air: 'palm' }[el] || 'relax';
+    if (f.holding) return el === 'earth' ? ['claw', 'claw'] : el === 'fire' ? ['palm', 'palm'] : el === 'water' ? ['flow', 'flow'] : ['palm', 'palm'];
+    if (T && st) {
+      const isHand = T === st.hand || T.variantOf === st.hand;
+      if (el === 'fire' && (T === st.special || T === st.charged)) return ['palm', 'palm'];
+      if (el === 'earth' && (T === st.special || T === st.stomp)) return ['claw', 'claw'];
+      if (el === 'water' && isHand) return ['palm', 'palm'];     // the striking palm opens as the water is driven
+      return [base, base];
+    }
+    if (f.guarding) return el === 'water' || el === 'air' ? ['palm', 'palm'] : ['fist', 'fist'];
+    return [base, base];
+  }
+  // hand-shape layer: blends every finger joint toward the chosen shape (over whatever the clip did)
+  applyHands(dt) {
+    if (!this.handShape) return;
+    const shapes = { L: this.handShape[0], R: this.handShape[1] };
+    for (const side of ['L', 'R']) {
+      const H = this.handW[side], want = HANDS[shapes[side]] || HANDS.relax, k = 1 - Math.exp(-14 * dt);
+      for (let j = 0; j < 3; j++) { H.cur.f[j] += (want.f[j] - H.cur.f[j]) * k; H.cur.thumb[j] += (want.thumb[j] - H.cur.thumb[j]) * k; }
+      H.cur.pinky += (want.pinky - H.cur.pinky) * k; H.cur.spread += (want.spread - H.cur.spread) * k;
+      const C = H.cur, sgn = side === 'L' ? 1 : -1;
+      for (const F of this.fingers[side]) {
+        if (F.fn === 'thumb') { _q.setFromAxisAngle(_X, C.thumb[F.j - 1]); }
+        else {
+          const extra = F.fn === 'pinky' ? C.pinky : F.fn === 'ring' ? C.pinky * 0.5 : 0;
+          _q.setFromAxisAngle(_X, C.f[F.j - 1] + (F.j === 1 ? extra : extra * 0.6));
+          if (F.j === 1) { const sp = { index: -1, middle: -0.2, ring: 0.4, pinky: 1 }[F.fn] * C.spread * sgn; _q.multiply(_q2.setFromAxisAngle(_Z, sp)); }
+        }
+        // 85 % toward the shape: clips that carry their own finger motion still show through a little
+        F.b.quaternion.slerp(_q2.copy(F.rest).multiply(_q), 0.85);
+      }
+    }
+  }
   update(dt) {
     this.clock += dt;
     this.mixer.update(dt);
@@ -356,6 +420,7 @@ export class Hero {
       const toLocal = _m.copy(hb.parent.matrixWorld).invert().multiply(P.matrixWorld);
       hb.position.lerp(off.applyMatrix4(toLocal), Math.min(1, this.wL));
     }
+    this.applyHands(dt);
   }
   setEmissive(r, g, b) { this.material.emissive.setRGB(r, g, b); }
 }

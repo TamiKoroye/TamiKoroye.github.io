@@ -1,63 +1,582 @@
 [
-  {"name": "earth_idle", "src": ".anim-src/rokoko/MartialArtsKata_MIXAMO_769.fbx", "start": 9.5, "end": 10.9, "loop": true, "mirror": false, "note": "kata horse stance"},
-  {"name": "earth_punch", "src": ".anim-src/mixamo/Hook Punch.fbx", "start": 0.35, "end": 1.65, "impact": 1.1, "limb": "pR", "note": "hook with full hip turn"},
-  {"name": "earth_punch2", "bvh": "135_09.bvh", "start": 2.2, "end": 3.0, "impact": 2.5, "limb": "pR", "note": "CMU karate lunge punch"},
-  {"name": "earth_kick", "src": ".anim-src/mixamo/Side Kick.fbx", "start": 0.35, "end": 1.5, "impact": 0.8, "limb": "kR", "note": "driving side kick"},
-  {"name": "earth_sweep", "src": ".anim-src/mixamo/Leg Sweep.fbx", "start": 0.4, "end": 1.9, "impact": 0.9, "aim": "head", "limb": "kR", "note": "low spinning sweep"},
-  {"name": "earth_stomp", "src": ".anim-src/mixamo/Sword And Shield Casting.fbx", "start": 1.05, "end": 2.75, "impact": 1.75, "aim": "head", "limb": "pR", "note": "raise and slam the ground"},
-  {"name": "earth_pillar", "src": ".anim-src/mixamo/Casting Spell.fbx", "start": 5.3, "end": 7.1, "impact": 5.7, "aim": "head", "limb": "pR", "note": "low stance, sweep up and thrust"},
-  {"name": "earth_lift", "src": ".anim-src/mixamo/Spell Casting.fbx", "start": 1.2, "end": 3.0, "loop": true, "mirror": false, "note": "low wide stance lifting"},
-  {"name": "earth_guard", "src": ".anim-src/mixamo/Sword And Shield Crouch Block Idle.fbx", "loop": true, "mirror": false, "note": "low rooted guard"},
-  {"name": "fire_idle", "src": ".anim-src/mixamo/Bouncing Fight Idle.fbx", "loop": true, "mirror": false, "note": "bouncing stance"},
-  {"name": "fire_punch", "src": ".anim-src/mixamo/Punching.fbx", "start": 0.25, "end": 1.05, "impact": 0.6, "limb": "pL", "note": "straight punch"},
-  {"name": "fire_punch2", "src": ".anim-src/mixamo/Uppercut Jab.fbx", "start": 1.1, "end": 1.65, "impact": 1.4, "limb": "pR", "note": "rising cross"},
-  {"name": "fire_round", "src": ".anim-src/mixamo/Roundhouse Kick.fbx", "start": 0.45, "end": 1.6, "impact": 1.05, "limb": "kL", "note": "roundhouse"},
-  {"name": "fire_spin", "bvh": "88_06.bvh", "start": 0.15, "end": 1.4, "impact": 0.7, "limb": "kL", "aim": "head", "note": "CMU jumping spin (butterfly) kick"},
-  {"name": "fire_fly", "src": ".anim-src/mixamo/Flying Kick.fbx", "start": 0.0, "end": 1.2, "impact": 0.5, "limb": "kL", "noRise": true, "note": "flying kick"},
-  {"name": "fire_orb", "src": ".anim-src/mixamo/Fireball.fbx", "start": 1.9, "end": 2.95, "impact": 2.2, "aim": "head", "limb": "pL", "note": "two-handed throw"},
-  {"name": "fire_stream", "src": ".anim-src/mixamo/Standing 2H Magic Attack 02.fbx", "start": 1.4, "end": 1.95, "loop": true, "mirror": false, "aim": "head", "note": "two palms held out"},
-  {"name": "fire_guard", "src": ".anim-src/mixamo/Body Block.fbx", "start": 0.5, "end": 2.5, "loop": true, "mirror": false, "note": "high guard"},
-  {"name": "water_idle", "src": ".anim-src/rokoko/thaichitake-12_DEFAULT_QUP.fbx", "start": 18.5, "end": 21.5, "loop": true, "mirror": false, "note": "tai chi"},
-  {"name": "water_palm", "src": ".anim-src/rokoko/thaichitake-12_DEFAULT_QUP.fbx", "start": 15.4, "end": 17.2, "impact": 16.1, "aim": "head", "limb": "pL", "note": "tai chi turning push"},
-  {"name": "water_kick", "src": ".anim-src/mixamo/Standing Melee Kick.fbx", "start": 0.15, "end": 1.2, "impact": 0.6, "limb": "kR", "note": "high crescent/front kick"},
-  {"name": "water_turn", "src": ".anim-src/mixamo/Armada.fbx", "start": 0.2, "end": 1.6, "impact": 1.25, "aim": "head", "limb": "kL", "note": "armada spinning crescent kick"},
-  {"name": "water_tidal", "src": ".anim-src/rokoko/thaichitake-12_DEFAULT_QUP.fbx", "start": 22.0, "end": 24.6, "impact": 23.0, "aim": "head", "limb": "pR", "note": "tai chi turning sweep"},
-  {"name": "water_sphere", "src": ".anim-src/mixamo/Two Hand Spell Casting.fbx", "start": 1.3, "end": 2.6, "impact": 1.65, "aim": "head", "limb": "pR", "note": "two-palm push"},
-  {"name": "water_draw", "src": ".anim-src/rokoko/thaichitake-12_DEFAULT_QUP.fbx", "start": 6.0, "end": 10.0, "loop": true, "mirror": false, "note": "tai chi raise and lower"},
-  {"name": "water_guard", "src": ".anim-src/mixamo/Standing Block Idle.fbx", "loop": true, "mirror": false, "note": "forearm guard"},
-  {"name": "water_redirect", "src": ".anim-src/mixamo/Outward Block.fbx", "start": 0.4, "end": 1.9, "impact": 0.9, "aim": "head", "limb": "pL", "note": "outward redirecting block"},
-  {"name": "air_idle", "src": ".anim-src/mixamo/Ninja Idle.fbx", "loop": true, "mirror": false, "note": "light shifting stance"},
-  {"name": "air_palm", "src": ".anim-src/mixamo/Two Hand Spell Casting.fbx", "start": 0.3, "end": 1.2, "impact": 0.7, "aim": "head", "limb": "pL", "note": "open-palm thrust"},
-  {"name": "air_crescent", "src": ".anim-src/mixamo/Martelo 2.fbx", "start": 0.0, "end": 1.1, "impact": 0.5, "limb": "kL", "note": "whipping martelo kick"},
-  {"name": "air_whirl", "src": ".anim-src/mixamo/Chapa-Giratoria.fbx", "start": 1.0, "end": 2.9, "impact": 2.2, "aim": "head", "limb": "kL", "noRise": true, "note": "spinning back kick"},
-  {"name": "air_cyclone", "bvh": "88_04.bvh", "start": 7.6, "end": 8.9, "impact": 8.3, "aim": "head", "limb": "kL", "note": "CMU aerial double spin kick"},
-  {"name": "air_vortex", "src": ".anim-src/mixamo/Standing 2H Magic Attack 02.fbx", "start": 0.95, "end": 2.2, "impact": 1.45, "aim": "head", "limb": "pR", "note": "wind-up turn then double palm"},
-  {"name": "air_push", "src": ".anim-src/mixamo/Two Hand Spell Casting.fbx", "start": 1.6, "end": 2.3, "loop": true, "mirror": false, "aim": "head", "note": "palms held out"},
-  {"name": "air_guard", "src": ".anim-src/mixamo/Pivot.fbx", "start": 1.0, "end": 2.6, "loop": true, "mirror": false, "note": "turned guard"},
-  {"name": "hit_a", "src": ".anim-src/mixamo/Reaction.fbx", "start": 0.0, "end": 1.1, "mirror": false, "note": "hit reaction"},
-  {"name": "hit_b", "src": ".anim-src/mixamo/Taking Punch.fbx", "start": 0.0, "end": 1.2, "mirror": false, "note": "hit reaction"},
-  {"name": "ko", "src": ".anim-src/mixamo/Death From The Front.fbx", "mirror": false, "note": "knockout fall"},
-  {"name": "getup", "src": ".anim-src/mixamo/Getting Up.fbx", "mirror": false, "aim": "hips", "note": "get up"},
-  {"name": "dodge_side", "src": ".anim-src/mixamo/Dodging Right.fbx", "start": 0.1, "end": 1.1, "note": "side dodge (mirror = left)"},
-  {"name": "dodge_back", "src": ".anim-src/mixamo/Backflip.fbx", "mirror": false, "note": "back flip"},
-  {"name": "block_hit", "src": ".anim-src/mixamo/Blocking.fbx", "mirror": false, "note": "blocking impact"},
-  {"name": "strafe", "src": ".anim-src/mixamo/Standing Aim Walk Left.fbx", "loop": true, "aim": "hips", "note": "sidestep walk to the left (legs only are used; mirror = right)"},
-  {"name": "fire_spinback", "src": ".anim-src/new/Kick_-_spinning_back_kick.glb", "start": 0.55, "end": 2.0, "impact": 1.2, "limb": "kL", "note": "spinning back kick (upload 15 Nov, UE skeleton)"},
-  {"name": "earth_backkick", "src": ".anim-src/new/Kick_-_back_kick.glb", "start": 0.4, "end": 1.75, "impact": 1.0, "limb": "kR", "note": "back kick (upload 15 Nov)"},
-  {"name": "move_kick", "src": ".anim-src/new/Does_a_kick_while_moving_forward.fbx", "start": 1.65, "end": 2.9, "impact": 2.2, "limb": "kR", "note": "kick while stepping forward (upload 15 Nov)"},
-  {"name": "stomp", "src": ".anim-src/drive2/Stomp.fbx", "start": 0.15, "end": 1.6, "impact": 0.75, "limb": "kR", "note": "Mixamo Stomp: weight shift, foot raised, stamp (earth eruption / fire ring)"},
-  {"name": "axe_kick", "src": ".anim-src/drive2/Kick_-_axe_kick.glb", "start": 1.2, "end": 2.5, "impact": 1.95, "limb": "kR", "note": "KinemIQ axe kick (upload 16 Nov)"},
-  {"name": "knee_strike", "src": ".anim-src/drive2/Kick_-_knee_strike.glb", "start": 0.0, "end": 0.8, "impact": 0.4, "limb": "kR", "note": "KinemIQ knee strike"},
-  {"name": "jump_high", "src": ".anim-src/drive2/Jumping Up.fbx", "mirror": false, "noRise": true, "note": "Mixamo Jumping Up: crouch and take-off (the game moves the body)"},
-  {"name": "air_loop", "src": ".anim-src/drive2/efa/Shared/Universal Animation Library 2[Standard]/Unreal-Godot/UAL2_Standard.glb", "clip": "NinjaJump_Idle_Loop", "mirror": false, "loop": true, "noRise": true, "note": "UAL2 airborne pose loop (flight, high jumps)"},
-  {"name": "fall_loop", "src": ".anim-src/drive2/Fall B Loop.fbx", "mirror": false, "loop": true, "noRise": true, "note": "Mixamo falling loop"},
-  {"name": "land_high", "src": ".anim-src/drive2/efa/Shared/Universal Animation Library 2[Standard]/Unreal-Godot/UAL2_Standard.glb", "clip": "NinjaJump_Land", "mirror": false, "note": "UAL2 landing from a high jump"},
-  {"name": "knockback", "src": ".anim-src/drive2/efa/Shared/Universal Animation Library 2[Standard]/Unreal-Godot/UAL2_Standard.glb", "clip": "Hit_Knockback", "mirror": false, "note": "UAL2 knocked off the feet"},
-  {"name": "getup_back", "src": ".anim-src/drive2/efa/Shared/Universal Animation Library 2[Standard]/Unreal-Godot/UAL2_Standard.glb", "clip": "LayToIdle", "mirror": false, "note": "UAL2 getting up from the back"},
-  {"name": "turn_spin", "src": ".anim-src/drive2/efa/Air/spin.glb", "mirror": false, "note": "KinemIQ Spin (CC0)"},
-  {"name": "water_flow", "src": ".anim-src/drive2/qg/AS_Move11-VUE5.FBX", "start": 10, "end": 16, "mirror": false, "loop": true, "note": "Qi Gong take 11: cloud-hands style turning with circling arms"},
-  {"name": "water_flow2", "src": ".anim-src/drive2/qg/AS_Move10-VUE5.FBX", "start": 14, "end": 20, "mirror": false, "loop": true, "note": "Qi Gong take 10: circling arms, torso rotation"},
-  {"name": "water_gather", "src": ".anim-src/drive2/qg/AS_Move5-VUE5.FBX", "start": 18.5, "end": 24, "mirror": false, "note": "Qi Gong take 5: sinking gather and rise"},
-  {"name": "water_wave", "src": ".anim-src/drive2/qg/AS_Move4-VUE5.FBX", "start": 5.4, "end": 11, "mirror": false, "note": "Qi Gong take 4: overhead arcs with lunges"},
-  {"name": "surf_stance", "src": ".anim-src/drive2/qg/AS_Move16-VUE5.FBX", "start": 9, "end": 13, "mirror": false, "loop": true, "note": "Qi Gong take 16: wide side stance, arms out (surfing balance)"}
+ {
+  "name": "earth_idle",
+  "src": ".anim-src/rokoko/MartialArtsKata_MIXAMO_769.fbx",
+  "start": 9.5,
+  "end": 10.9,
+  "loop": true,
+  "mirror": false,
+  "note": "kata horse stance"
+ },
+ {
+  "name": "earth_punch",
+  "src": ".anim-src/mixamo/Hook Punch.fbx",
+  "start": 0.35,
+  "end": 1.65,
+  "impact": 1.1,
+  "limb": "pR",
+  "note": "hook with full hip turn"
+ },
+ {
+  "name": "earth_punch2",
+  "bvh": "135_09.bvh",
+  "start": 2.2,
+  "end": 3.0,
+  "impact": 2.5,
+  "limb": "pR",
+  "note": "CMU karate lunge punch"
+ },
+ {
+  "name": "earth_kick",
+  "src": ".anim-src/mixamo/Side Kick.fbx",
+  "start": 0.35,
+  "end": 1.5,
+  "impact": 0.8,
+  "limb": "kR",
+  "note": "driving side kick"
+ },
+ {
+  "name": "earth_sweep",
+  "src": ".anim-src/mixamo/Leg Sweep.fbx",
+  "start": 0.4,
+  "end": 1.9,
+  "impact": 0.9,
+  "aim": "head",
+  "limb": "kR",
+  "note": "low spinning sweep"
+ },
+ {
+  "name": "earth_stomp",
+  "src": ".anim-src/mixamo/Sword And Shield Casting.fbx",
+  "start": 1.05,
+  "end": 2.75,
+  "impact": 1.75,
+  "aim": "head",
+  "limb": "pR",
+  "note": "raise and slam the ground"
+ },
+ {
+  "name": "earth_pillar",
+  "src": ".anim-src/mixamo/Casting Spell.fbx",
+  "start": 5.3,
+  "end": 7.1,
+  "impact": 5.7,
+  "aim": "head",
+  "limb": "pR",
+  "note": "low stance, sweep up and thrust"
+ },
+ {
+  "name": "earth_lift",
+  "src": ".anim-src/mixamo/Spell Casting.fbx",
+  "start": 1.2,
+  "end": 3.0,
+  "loop": true,
+  "mirror": false,
+  "note": "low wide stance lifting"
+ },
+ {
+  "name": "earth_guard",
+  "src": ".anim-src/mixamo/Sword And Shield Crouch Block Idle.fbx",
+  "loop": true,
+  "mirror": false,
+  "note": "low rooted guard"
+ },
+ {
+  "name": "fire_idle",
+  "src": ".anim-src/mixamo/Bouncing Fight Idle.fbx",
+  "loop": true,
+  "mirror": false,
+  "note": "bouncing stance"
+ },
+ {
+  "name": "fire_punch",
+  "src": ".anim-src/mixamo/Punching.fbx",
+  "start": 0.25,
+  "end": 1.05,
+  "impact": 0.6,
+  "limb": "pL",
+  "note": "straight punch"
+ },
+ {
+  "name": "fire_punch2",
+  "src": ".anim-src/mixamo/Uppercut Jab.fbx",
+  "start": 1.1,
+  "end": 1.65,
+  "impact": 1.4,
+  "limb": "pR",
+  "note": "rising cross"
+ },
+ {
+  "name": "fire_round",
+  "src": ".anim-src/mixamo/Roundhouse Kick.fbx",
+  "start": 0.45,
+  "end": 1.6,
+  "impact": 1.05,
+  "limb": "kL",
+  "note": "roundhouse"
+ },
+ {
+  "name": "fire_spin",
+  "bvh": "88_06.bvh",
+  "start": 0.15,
+  "end": 1.4,
+  "impact": 0.7,
+  "limb": "kL",
+  "aim": "head",
+  "note": "CMU jumping spin (butterfly) kick"
+ },
+ {
+  "name": "fire_fly",
+  "src": ".anim-src/mixamo/Flying Kick.fbx",
+  "start": 0.0,
+  "end": 1.2,
+  "impact": 0.5,
+  "limb": "kL",
+  "noRise": true,
+  "note": "flying kick"
+ },
+ {
+  "name": "fire_orb",
+  "src": ".anim-src/mixamo/Fireball.fbx",
+  "start": 1.9,
+  "end": 2.95,
+  "impact": 2.2,
+  "aim": "head",
+  "limb": "pL",
+  "note": "two-handed throw"
+ },
+ {
+  "name": "fire_stream",
+  "src": ".anim-src/mixamo/Standing 2H Magic Attack 02.fbx",
+  "start": 1.4,
+  "end": 1.95,
+  "loop": true,
+  "mirror": false,
+  "aim": "head",
+  "note": "two palms held out"
+ },
+ {
+  "name": "fire_guard",
+  "src": ".anim-src/mixamo/Body Block.fbx",
+  "start": 0.5,
+  "end": 2.5,
+  "loop": true,
+  "mirror": false,
+  "note": "high guard"
+ },
+ {
+  "name": "water_idle",
+  "src": ".anim-src/rokoko/thaichitake-12_DEFAULT_QUP.fbx",
+  "start": 18.5,
+  "end": 21.5,
+  "loop": true,
+  "mirror": false,
+  "note": "tai chi"
+ },
+ {
+  "name": "water_palm",
+  "src": ".anim-src/rokoko/thaichitake-12_DEFAULT_QUP.fbx",
+  "start": 15.4,
+  "end": 17.2,
+  "impact": 16.1,
+  "aim": "head",
+  "limb": "pL",
+  "note": "tai chi turning push"
+ },
+ {
+  "name": "water_kick",
+  "src": ".anim-src/mixamo/Standing Melee Kick.fbx",
+  "start": 0.15,
+  "end": 1.2,
+  "impact": 0.6,
+  "limb": "kR",
+  "note": "high crescent/front kick"
+ },
+ {
+  "name": "water_turn",
+  "src": ".anim-src/mixamo/Armada.fbx",
+  "start": 0.2,
+  "end": 1.6,
+  "impact": 1.25,
+  "aim": "head",
+  "limb": "kL",
+  "note": "armada spinning crescent kick"
+ },
+ {
+  "name": "water_tidal",
+  "src": ".anim-src/rokoko/thaichitake-12_DEFAULT_QUP.fbx",
+  "start": 22.0,
+  "end": 24.6,
+  "impact": 23.0,
+  "aim": "head",
+  "limb": "pR",
+  "note": "tai chi turning sweep"
+ },
+ {
+  "name": "water_sphere",
+  "src": ".anim-src/mixamo/Two Hand Spell Casting.fbx",
+  "start": 1.3,
+  "end": 2.6,
+  "impact": 1.65,
+  "aim": "head",
+  "limb": "pR",
+  "note": "two-palm push"
+ },
+ {
+  "name": "water_draw",
+  "src": ".anim-src/rokoko/thaichitake-12_DEFAULT_QUP.fbx",
+  "start": 6.0,
+  "end": 10.0,
+  "loop": true,
+  "mirror": false,
+  "note": "tai chi raise and lower"
+ },
+ {
+  "name": "water_guard",
+  "src": ".anim-src/mixamo/Standing Block Idle.fbx",
+  "loop": true,
+  "mirror": false,
+  "note": "forearm guard"
+ },
+ {
+  "name": "water_redirect",
+  "src": ".anim-src/mixamo/Outward Block.fbx",
+  "start": 0.4,
+  "end": 1.9,
+  "impact": 0.9,
+  "aim": "head",
+  "limb": "pL",
+  "note": "outward redirecting block"
+ },
+ {
+  "name": "air_idle",
+  "src": ".anim-src/rokoko/thaichitake-12_DEFAULT_QUP.fbx",
+  "start": 26.8,
+  "end": 29.2,
+  "loop": true,
+  "mirror": false,
+  "note": "Baguazhang-like held posture: both open palms extended toward the centre, torso turned"
+ },
+ {
+  "name": "air_palm",
+  "src": ".anim-src/mixamo/Two Hand Spell Casting.fbx",
+  "start": 0.3,
+  "end": 1.2,
+  "impact": 0.7,
+  "aim": "head",
+  "limb": "pL",
+  "note": "open-palm thrust"
+ },
+ {
+  "name": "air_crescent",
+  "src": ".anim-src/mixamo/Martelo 2.fbx",
+  "start": 0.0,
+  "end": 1.1,
+  "impact": 0.5,
+  "limb": "kL",
+  "note": "whipping martelo kick"
+ },
+ {
+  "name": "air_whirl",
+  "src": ".anim-src/mixamo/Chapa-Giratoria.fbx",
+  "start": 1.0,
+  "end": 2.9,
+  "impact": 2.2,
+  "aim": "head",
+  "limb": "kL",
+  "noRise": true,
+  "note": "spinning back kick"
+ },
+ {
+  "name": "air_cyclone",
+  "bvh": "88_04.bvh",
+  "start": 7.6,
+  "end": 8.9,
+  "impact": 8.3,
+  "aim": "head",
+  "limb": "kL",
+  "note": "CMU aerial double spin kick"
+ },
+ {
+  "name": "air_vortex",
+  "src": ".anim-src/mixamo/Standing 2H Magic Attack 02.fbx",
+  "start": 0.95,
+  "end": 2.2,
+  "impact": 1.45,
+  "aim": "head",
+  "limb": "pR",
+  "note": "wind-up turn then double palm"
+ },
+ {
+  "name": "air_push",
+  "src": ".anim-src/mixamo/Two Hand Spell Casting.fbx",
+  "start": 1.6,
+  "end": 2.3,
+  "loop": true,
+  "mirror": false,
+  "aim": "head",
+  "note": "palms held out"
+ },
+ {
+  "name": "air_guard",
+  "src": ".anim-src/mixamo/Pivot.fbx",
+  "start": 1.0,
+  "end": 2.6,
+  "loop": true,
+  "mirror": false,
+  "note": "turned guard"
+ },
+ {
+  "name": "hit_a",
+  "src": ".anim-src/mixamo/Reaction.fbx",
+  "start": 0.0,
+  "end": 1.1,
+  "mirror": false,
+  "note": "hit reaction"
+ },
+ {
+  "name": "hit_b",
+  "src": ".anim-src/mixamo/Taking Punch.fbx",
+  "start": 0.0,
+  "end": 1.2,
+  "mirror": false,
+  "note": "hit reaction"
+ },
+ {
+  "name": "ko",
+  "src": ".anim-src/mixamo/Death From The Front.fbx",
+  "mirror": false,
+  "note": "knockout fall"
+ },
+ {
+  "name": "getup",
+  "src": ".anim-src/mixamo/Getting Up.fbx",
+  "mirror": false,
+  "aim": "hips",
+  "note": "get up"
+ },
+ {
+  "name": "dodge_side",
+  "src": ".anim-src/mixamo/Dodging Right.fbx",
+  "start": 0.1,
+  "end": 1.1,
+  "note": "side dodge (mirror = left)"
+ },
+ {
+  "name": "dodge_back",
+  "src": ".anim-src/mixamo/Backflip.fbx",
+  "mirror": false,
+  "note": "back flip"
+ },
+ {
+  "name": "block_hit",
+  "src": ".anim-src/mixamo/Blocking.fbx",
+  "mirror": false,
+  "note": "blocking impact"
+ },
+ {
+  "name": "strafe",
+  "src": ".anim-src/mixamo/Standing Aim Walk Left.fbx",
+  "loop": true,
+  "aim": "hips",
+  "note": "sidestep walk to the left (legs only are used; mirror = right)"
+ },
+ {
+  "name": "fire_spinback",
+  "src": ".anim-src/new/Kick_-_spinning_back_kick.glb",
+  "start": 0.55,
+  "end": 2.0,
+  "impact": 1.2,
+  "limb": "kL",
+  "note": "spinning back kick (upload 15 Nov, UE skeleton)"
+ },
+ {
+  "name": "earth_backkick",
+  "src": ".anim-src/new/Kick_-_back_kick.glb",
+  "start": 0.4,
+  "end": 1.75,
+  "impact": 1.0,
+  "limb": "kR",
+  "note": "back kick (upload 15 Nov)"
+ },
+ {
+  "name": "move_kick",
+  "src": ".anim-src/new/Does_a_kick_while_moving_forward.fbx",
+  "start": 1.65,
+  "end": 2.9,
+  "impact": 2.2,
+  "limb": "kR",
+  "note": "kick while stepping forward (upload 15 Nov)"
+ },
+ {
+  "name": "stomp",
+  "src": ".anim-src/drive2/Stomp.fbx",
+  "start": 0.15,
+  "end": 1.6,
+  "impact": 0.75,
+  "limb": "kR",
+  "note": "Mixamo Stomp: weight shift, foot raised, stamp (earth eruption / fire ring)"
+ },
+ {
+  "name": "axe_kick",
+  "src": ".anim-src/drive2/Kick_-_axe_kick.glb",
+  "start": 1.2,
+  "end": 2.5,
+  "impact": 1.95,
+  "limb": "kR",
+  "note": "KinemIQ axe kick (upload 16 Nov)"
+ },
+ {
+  "name": "knee_strike",
+  "src": ".anim-src/drive2/Kick_-_knee_strike.glb",
+  "start": 0.0,
+  "end": 0.8,
+  "impact": 0.4,
+  "limb": "kR",
+  "note": "KinemIQ knee strike"
+ },
+ {
+  "name": "jump_high",
+  "src": ".anim-src/drive2/Jumping Up.fbx",
+  "mirror": false,
+  "noRise": true,
+  "note": "Mixamo Jumping Up: crouch and take-off (the game moves the body)"
+ },
+ {
+  "name": "air_loop",
+  "src": ".anim-src/drive2/efa/Shared/Universal Animation Library 2[Standard]/Unreal-Godot/UAL2_Standard.glb",
+  "clip": "NinjaJump_Idle_Loop",
+  "mirror": false,
+  "loop": true,
+  "noRise": true,
+  "note": "UAL2 airborne pose loop (flight, high jumps)"
+ },
+ {
+  "name": "fall_loop",
+  "src": ".anim-src/drive2/Fall B Loop.fbx",
+  "mirror": false,
+  "loop": true,
+  "noRise": true,
+  "note": "Mixamo falling loop"
+ },
+ {
+  "name": "land_high",
+  "src": ".anim-src/drive2/efa/Shared/Universal Animation Library 2[Standard]/Unreal-Godot/UAL2_Standard.glb",
+  "clip": "NinjaJump_Land",
+  "mirror": false,
+  "note": "UAL2 landing from a high jump"
+ },
+ {
+  "name": "knockback",
+  "src": ".anim-src/drive2/efa/Shared/Universal Animation Library 2[Standard]/Unreal-Godot/UAL2_Standard.glb",
+  "clip": "Hit_Knockback",
+  "mirror": false,
+  "note": "UAL2 knocked off the feet"
+ },
+ {
+  "name": "getup_back",
+  "src": ".anim-src/drive2/efa/Shared/Universal Animation Library 2[Standard]/Unreal-Godot/UAL2_Standard.glb",
+  "clip": "LayToIdle",
+  "mirror": false,
+  "note": "UAL2 getting up from the back"
+ },
+ {
+  "name": "turn_spin",
+  "src": ".anim-src/drive2/efa/Air/spin.glb",
+  "mirror": false,
+  "note": "KinemIQ Spin (CC0)"
+ },
+ {
+  "name": "water_flow",
+  "src": ".anim-src/drive2/qg/AS_Move11-VUE5.FBX",
+  "start": 10,
+  "end": 16,
+  "mirror": false,
+  "loop": true,
+  "note": "Qi Gong take 11: cloud-hands style turning with circling arms"
+ },
+ {
+  "name": "water_flow2",
+  "src": ".anim-src/drive2/qg/AS_Move10-VUE5.FBX",
+  "start": 14,
+  "end": 20,
+  "mirror": false,
+  "loop": true,
+  "note": "Qi Gong take 10: circling arms, torso rotation"
+ },
+ {
+  "name": "water_gather",
+  "src": ".anim-src/drive2/qg/AS_Move5-VUE5.FBX",
+  "start": 18.5,
+  "end": 24,
+  "mirror": false,
+  "note": "Qi Gong take 5: sinking gather and rise"
+ },
+ {
+  "name": "water_wave",
+  "src": ".anim-src/drive2/qg/AS_Move4-VUE5.FBX",
+  "start": 5.4,
+  "end": 11,
+  "mirror": false,
+  "note": "Qi Gong take 4: overhead arcs with lunges"
+ },
+ {
+  "name": "surf_stance",
+  "src": ".anim-src/drive2/qg/AS_Move16-VUE5.FBX",
+  "start": 9,
+  "end": 13,
+  "mirror": false,
+  "loop": true,
+  "note": "Qi Gong take 16: wide side stance, arms out (surfing balance)"
+ },
+ {
+  "name": "whip_h",
+  "src": ".anim-src/mixamo/Right Hook.fbx",
+  "start": 0.1,
+  "end": 1.1,
+  "impact": 0.38,
+  "aim": "head",
+  "limb": "pR",
+  "note": "horizontal arm sweep across the body (water / air whip, right to left; mirrored left to right)"
+ },
+ {
+  "name": "whip_v",
+  "src": ".anim-src/mixamo/Standing Melee Combo Attack Ver. 1.fbx",
+  "start": 0.9,
+  "end": 2.3,
+  "impact": 1.85,
+  "aim": "head",
+  "limb": "pR",
+  "note": "arm raised overhead, then driven down and forward (overhead whip)"
+ },
+ {
+  "name": "whip_d",
+  "src": ".anim-src/mixamo/Great Sword Slash.fbx",
+  "start": 0.25,
+  "end": 1.5,
+  "impact": 0.85,
+  "aim": "head",
+  "limb": "pR",
+  "note": "high-behind to low-front slash (diagonal whip)"
+ },
+ {
+  "name": "earth_gather",
+  "src": ".anim-src/rokoko/MartialArtsKata_MIXAMO_769.fbx",
+  "start": 12.6,
+  "end": 15.2,
+  "impact": 14.3,
+  "limb": "pR",
+  "mirror": false,
+  "note": "arms cross, then sink into a low wide stance with both hands near the ground (gathering earth)"
+ },
+ {
+  "name": "earth_raise",
+  "src": ".anim-src/rokoko/MartialArtsKata_MIXAMO_769.fbx",
+  "start": 16.4,
+  "end": 19.2,
+  "impact": 17.6,
+  "limb": "pR",
+  "mirror": false,
+  "note": "both arms rise overhead from low, then come to chamber (raising earth)"
+ }
 ]
