@@ -229,6 +229,36 @@ let fPk = 0; await run(40, (i, r) => { fPk = Math.max(fPk, r.alt); });
 check('JUMP from the flame run: a flame-powered high jump', fPk > 3, `peak ${fPk.toFixed(2)} m`);
 await fUp(8); await stickUp(); await fUp(7); await run(30);
 
+// ================================================================== OPPONENT
+head('Opponent responses (game AI, Master)');
+const realAI = (d) => ev((d) => { const E = window.__EF; E.ai.update = Object.getPrototypeOf(E.ai).update; E.ai.setDifficulty(d); Object.assign(E.ai, { combo: [], reaction: null, guardT: 0, heavyT: 99, mobT: 0, throwT: 99, specialT: 99, meleeT: 99 }); }, d);
+const quiet = () => S(() => { Object.assign(window.__EF.ai, { heavyT: 99, throwT: 99, specialT: 99, meleeT: 99, mobT: 0 }); });   /* the AI only defends during these trials */
+let avoidedE = 0, avoidedR = 0;
+for (let k = 0; k < 5; k++) {
+  await setup({ el: 'earth', p: [0, 0, -12], o: [0, 0, -5] }); await realAI('master'); await stepN(2);
+  await hold('btn-leg'); for (let j = 0; j < 30; j++) { await quiet(); await stepN(1); } await fUp(6); await clearHits();
+  for (let j = 0; j < 40; j++) { await quiet(); await stepN(1); }
+  if (!(await hitsOn()).includes('eruption')) avoidedE++;
+  await stubAI();
+}
+check('the opponent gets off marked ground before most eruptions', avoidedE >= 3, `${avoidedE}/5 eruptions avoided`);
+for (let k = 0; k < 5; k++) {
+  await setup({ el: 'fire', p: [0, 0, -12], o: [0, 0, -6] }); await realAI('master'); await stepN(2);
+  await hold('btn-leg'); for (let j = 0; j < 30; j++) { await quiet(); await stepN(1); } await fUp(6); await clearHits();
+  for (let j = 0; j < 45; j++) { await quiet(); await stepN(1); }
+  if (!(await hitsOn()).includes('fireRing')) avoidedR++;
+  await stubAI();
+}
+check('the opponent jumps most fire rings', avoidedR >= 3, `${avoidedR}/5 fire rings avoided`);
+// a flying player is still attacked (projectiles aimed at their height)
+await setup({ el: 'air', p: [0, 0, -10], o: [0, 0, -2], oel: 'earth' }); await realAI('master');
+await S(() => { const E = window.__EF, C = E.world.combat, d = C.damage.bind(C); window.__hitsP = []; if (!C.__wrappedP) { C.__wrappedP = true; const prev = C.damage; C.damage = (t, dmg, ...r) => { if (t === E.player) window.__hitsP.push(r[2]); return prev(t, dmg, ...r); }; } });
+await hold('btn-dodge', 7); await stepN(6); await hold('btn-jump', 6); await stepN(20); await fUp(6);
+let shots2 = 0; for (let j = 0; j < 150; j++) { await stepN(1); if (j % 10 === 0) shots2 = Math.max(shots2, await S(() => window.__EF.world.bending.objs.filter(o => o.owner === window.__EF.opp && o.state === 'flying').length)); }
+const flyHits = await S(() => window.__hitsP || []);
+await fUp(7); await stubAI(); await stepN(60);
+check('the opponent keeps attacking a flying player from the ground', shots2 > 0 || flyHits.length > 0, `projectiles in the air ${shots2}, hits on the flier: ${flyHits.join(',') || 'none'}`);
+
 // ================================================================== VENUE
 head('Venue: barn ruin');
 await S(() => window.__EF.world.arena.setVenue('barn'));

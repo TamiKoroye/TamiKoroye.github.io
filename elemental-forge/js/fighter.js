@@ -193,7 +193,8 @@ export class Fighter {
       }
       if (this.mob && this.mob.kind === 'fly') this.buf.jump = 0;   // in flight JUMP means climb
       // water GUARD combinations: HAND throws an ice spear, LEG sends a stream to capture the opponent
-      if (this.guarding && this.el === 'water') {
+      // (only while GUARD is still held: a HAND pressed as the guard is released is the counter-strike, not a spear)
+      if (this.guarding && inp.guard && this.el === 'water') {
         if (this.buf.hand && this.en >= 10) { this.buf.hand = 0; this.en -= 10; B.iceSpear(this); }
         if (this.buf.leg && this.en >= 15 && (this.captureCd || 0) <= 0) { this.buf.leg = 0; this.captureCd = 4; if (B.weapons.capture(this)) this.en -= 15; }
       }

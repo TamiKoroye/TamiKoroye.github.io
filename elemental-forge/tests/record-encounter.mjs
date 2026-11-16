@@ -4,7 +4,7 @@
 // scripted, so each step's outcome is whatever actually happened and is written to encounter-log.json.
 // Recording condition (shown on every frame): both fighters' health is floored at 30 so the round does not end
 // before the sequence finishes. Nothing else about the fight is altered.
-// Usage: node tests/record-encounter.mjs <baseUrl> <outDir> [earth,fire,water,air]
+// Usage: node tests/record-encounter.mjs <baseUrl> <outDir> [earth,fire,water,air] [barn|courtyard]
 import { createRequire } from 'node:module';
 import fs from 'node:fs'; import path from 'node:path'; import { execSync } from 'node:child_process';
 const require = createRequire(import.meta.url);
@@ -13,6 +13,7 @@ try { ({ chromium } = require('playwright')); } catch { ({ chromium } = require(
 const BASE = process.argv[2] || 'http://localhost:8765/';
 const OUT = process.argv[3] || './test-shots/encounters';
 const ELS = (process.argv[4] || 'earth,fire,water,air').split(',');
+const VENUE = process.argv[5] || 'barn';   // the barn ruin (or 'courtyard')
 const RIVAL = { earth: 'fire', fire: 'water', water: 'fire', air: 'earth' };
 fs.mkdirSync(OUT, { recursive: true });
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
@@ -32,10 +33,10 @@ for (const el of ELS) {
   const fUp = async (id) => { const f = fingers.get(id); fingers.delete(id); if (f) await touch('touchEnd', [f]); await settle(); };
   const center = async (sel) => { const b = await page.locator(sel).boundingBox(); return { x: b.x + b.width / 2, y: b.y + b.height / 2 }; };
 
-  await page.goto(BASE + (BASE.includes('?') ? '&' : '?') + 'rec=1', { waitUntil: 'load' });
+  await page.goto(BASE + (BASE.includes('?') ? '&' : '?') + 'rec=1&venue=' + VENUE, { waitUntil: 'load' });
   await page.waitForFunction(() => window.__EF && window.__EF.LOAD && (window.__EF.LOAD.ok || window.__EF.LOAD.errors.length), null, { timeout: 60000 });
   const LOAD = await page.evaluate(() => window.__EF.LOAD);
-  await page.locator('#btn-start').tap();
+  await page.evaluate(() => window.__EF.state.venueReady); await page.locator('#btn-start').tap(); await page.waitForFunction(() => window.__EF.state.phase !== 'menu', null, { timeout: 120000 });
   await page.evaluate(([el, rival]) => {
     const E = window.__EF; E.state.manual = true; E.ai.setDifficulty('normal');
     E.opp.setElement(rival, true); E.state.locked = true; E.player.target = E.opp;
@@ -61,7 +62,7 @@ for (const el of ELS) {
         const cv = window.__cv || (window.__cv = document.createElement('canvas')); cv.width = W; cv.height = H;
         const g = cv.getContext('2d'); g.drawImage(R.domElement, 0, 0);
         g.font = 'bold 15px sans-serif'; g.fillStyle = '#fff'; g.shadowColor = '#000'; g.shadowBlur = 4;
-        g.fillText(`${P.el.toUpperCase()} vs ${O.el.toUpperCase()} rival (game AI, Normal)  -  touch controls  -  ${location.host}${location.pathname}  -  clips ${LOADc}`, 10, 22);
+        g.fillText(`${P.el.toUpperCase()} vs ${O.el.toUpperCase()} rival (game AI, Normal)  -  touch controls  -  ${location.host}${location.pathname}  -  venue ${E.world.arena.venue}  -  clips ${LOADc}`, 10, 22);
         g.font = 'bold 19px sans-serif'; g.fillStyle = '#ffe28a'; g.fillText(stepName, 10, 48);
         g.font = '14px sans-serif'; g.fillStyle = '#fff';
         g.fillText(`you: ${P.tech ? P.tech.name : P.guarding ? 'GUARD' : P.holding ? 'sustained bending' : P.dodgeT > 0 ? 'dodge (' + P.dodgeKind + ')' : P.jetting ? 'flame jets' : P.action || '-'}   hp ${Math.round(P.hp)} energy ${Math.round(P.en)}`, 10, 70);
@@ -108,20 +109,25 @@ for (const el of ELS) {
   await begin('7. Opponent reacts / counters'); let oppMoves = [];
   for (let i = 0; i < 20; i++) { const s = await st(); if (s.oAct === 'tech' && !oppMoves.includes(s.oTech)) oppMoves.push(s.oTech); if (s.oAct === 'tech' && s.oU < 0.4 && !fingers.has(6)) { await holdDown('guard'); await run(8); await fUp(6); } else await run(2); }
   await end(oppMoves.length ? `rival: ${oppMoves.join(', ')}` : 'rival did not strike');
-  // 8 tactical positioning / structure
-  await begin('8. Positioning / structure');
-  if (el === 'earth') { await stick(85, 0); await run(8); await stickUp(); await press('special', 2); await run(20); }
-  else if (el === 'fire') { await press('jump', 1); await holdDown('jump'); await stick(0, -60); await run(22); await fUp(6); await stickUp(); await run(14); }
-  else if (el === 'water') { await holdDown('leg'); await run(30); await fUp(6); await run(30); }
-  else { await press('jump', 1); await holdDown('jump'); await stick(70, 0); await run(30); await fUp(6); await stickUp(); await run(10); }
+  // 8 positioning with the element's own mobility (DODGE held): ice surf + ice launch, rock surf + slab launch,
+  // flight, flame run + flame jump
+  await begin('8. Elemental mobility (DODGE held)');
+  if (el === 'air') {
+    await holdDown('dodge', 7); await run(8); await holdDown('jump', 6); await stick(70, -30); await run(26); await fUp(6);
+    await press('hand', 2); await run(12); await press('hand', 2); await run(12); await stickUp(); await fUp(7); await run(40);
+  } else {
+    await holdDown('dodge', 7); await stick(75, -40); await run(26);
+    if (el === 'fire') { await press('jump', 1); await holdDown('jump', 6); await run(24); await fUp(6); }
+    else { await press('jump', 2); await run(26); }
+    await stickUp(); await fUp(7); await run(16);
+  }
   await end();
   // 9 respond
   await begin('9. Respond'); await stick(0, -60); await run(4); await stickUp(); await press('hand', 2); await run(8); await press('leg', 2); await run(14); await end();
   // 10 culminating technique
-  await begin('10. Culminating SPECIAL');
-  if (el === 'water') { await press('special', 2); await run(36); await press('hand', 2); await run(30); }
-  else if (el === 'air') { for (let i = 0; i < 3; i++) { await press('special', 2); await run(14); } await run(30); }
-  else { await holdDown('leg'); await run(30); await fUp(6); await run(36); }
+  await begin(el === 'earth' ? '10. Earth Stomp (rocks erupt under the rival)' : el === 'fire' ? '10. Fire Stomp (expanding ring)' : el === 'water' ? '10. Spiral streams, redirected one by one' : '10. Air Compression');
+  if (el === 'water') { await press('special', 2); await run(30); for (let i = 0; i < 3; i++) { await press('hand', 2); await run(9); } await run(24); }
+  else { await holdDown('leg'); await run(30); await fUp(6); await run(40); }
   await end();
   await run(20);
 

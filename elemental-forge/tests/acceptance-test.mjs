@@ -105,7 +105,11 @@ for (const el of ['earth', 'fire', 'water', 'air']) {
   await whenFree(); m = mark(); await down('hand'); await run(36); await up('hand'); await run(8); R.hold = seg(m);
   await whenFree(); m = mark(); await down('guard'); await run(10);
   await page.evaluate(() => { const E = window.__EF, p = E.player, o = E.opp; o.pos.set(p.pos.x + Math.sin(p.faceYaw) * 1.5, 0, p.pos.z + Math.cos(p.faceYaw) * 1.5); o.buf.hand = 0.35; });   // the rival strikes into the guard
-  await run(12); await up('guard'); await whenFree(); await tap('hand', 3); await run(16); R.guard = seg(m);
+  await run(12); await up('guard'); await whenFree(); await tap('hand', 3); await run(16);
+  // (16 Nov) the rival's strikes now include whips that stagger: if the follow-up was knocked out by a hit, the player
+  // presses again once they can act, as a player would
+  if (!seg(m).some(r => r.act === 'tech' || r.counter) && seg(m).some(r => r.act === 'stagger' || r.act === 'hit')) { await whenFree(); await tap('hand', 3); await run(16); }
+  R.guard = seg(m);
   await waitFight(); m = mark(); await stick(0, -78); await run(10); await tap('hand', 3); await tap('hand', 3); await run(6); await stickUp(); await run(6); R.moving = seg(m);
   await waitFight(); m = mark(); for (let i = 0; i < 6; i++) { await tap(i % 2 ? 'leg' : 'hand', 3); await run(3); } await run(12); R.repeat = seg(m);
   await waitFight(); await whenFree(); m = mark(); await tap('special', 3); await run(26); R.special = seg(m);
