@@ -370,6 +370,7 @@ export class Fighter {
     const gy = w.arena.groundAt(this.pos.x, this.pos.z, this.pos.y);
     if (this.pos.y <= gy + 0.001) {
       if (!this.onGround && this.airTime > 0.28 && (!this.A || this.A.soft) && this.dodgeT <= 0 && !flying) { this.startAction(this.highJump && this.airTime > 0.5 ? 'landHigh' : 'land'); w.fx.dust(this.pos, this.highJump ? 12 : 6, 1.4); w.audio.step(1); }
+      if (!this.onGround && this.highJump && this.el === 'earth' && this.airTime > 0.5 && !this.dead) { B.weapons.burst.spawn(this.pos.x, gy, this.pos.z, 0.3); w.shake(0.2, this.pos); w.audio.rumble(0.7); }   // heavy earth landing cracks the ground
       if (!this.onGround) { this.highJump = false; this.jetFuel = 0.8; }
       if (!this.onGround && this.jetUsed && this.el === 'fire' && !this.dead) {
         // a jet landing: the flames hit the ground and burst outward

@@ -366,6 +366,7 @@ export class Bending {
     const p = { owner: f, mesh, col, t: 0, life: 14, gy };
     this.pillars.push(p);
     w.fx.debrisBurst(new THREE.Vector3(x, gy + 0.1, z), 18, 3, 0.12, 0x7a6a58); w.fx.dust(new THREE.Vector3(x, gy, z), 10, 2.5); w.fx.crater(new THREE.Vector3(x, gy, z), 2.2);
+    this.weapons.burst.spawn(x, gy, z, 0.38);   // the ground breaks open around the rising pillar
     w.audio.rumble(1); w.shake(0.2, mesh.position);
     // anyone standing on the spot is launched
     for (const t of w.fighters) {
@@ -859,7 +860,7 @@ export class Bending {
         const low = o.pos.y < gy + o.r * 0.6;
         if (S.wide && low) o.pos.y = gy + o.r * 0.6;  // arcs skim the floor
         if ((c && !(S.wide && o.el === 'air')) || (low && !S.wide) || Math.abs(o.pos.x) > HALF + 1 || Math.abs(o.pos.z) > HALF + 1 || o.life <= 0) {
-          if (low && o.el === 'earth') w.fx.crater(_v.set(o.pos.x, gy, o.pos.z), 1.1);
+          if (low && o.el === 'earth') { w.fx.crater(_v.set(o.pos.x, gy, o.pos.z), 1.1); if (o.kind === 'boulder' || o.kind === 'rockKick') this.weapons.burst.spawn(o.pos.x, gy, o.pos.z, o.kind === 'boulder' ? 0.3 : 0.22); }
           if (low && o.el === 'fire') this.burn(o.pos.x, o.pos.z, gy, o.owner);
           if (o.el === 'water') this.extinguishNear(o.pos, 2);
           if (o.el === 'earth' && w.shake) w.shake(0.1, o.pos);

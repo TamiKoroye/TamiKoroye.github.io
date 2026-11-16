@@ -11,6 +11,7 @@
 import * as THREE from 'three';
 import { makeWaterTube, waterMaterial, iceMat } from './defence-fx.js';
 import { smooth01, rand, clamp } from './util.js';
+import { GroundBurst } from './crack.js';
 
 const UP = new THREE.Vector3(0, 1, 0);
 const _a = new THREE.Vector3(), _b = new THREE.Vector3(), _c = new THREE.Vector3(), _d = new THREE.Vector3(), _e = new THREE.Vector3(), _q = new THREE.Quaternion();
@@ -37,6 +38,7 @@ export class Weapons {
     this.trails = []; this.platforms = [];
     this.tubeMat = waterMaterial(-4); this.tubeMat.uniforms.uRise.value = 1;
     this.tubePool = [];
+    this.burst = new GroundBurst(this.w);   // earth's ground reaction (baked fracture simulation)
     this.iceTubeMat = iceMat;
     this.slabGeo = (() => { const g = new THREE.BoxGeometry(1.5, 0.35, 2.1, 3, 1, 3); const p = g.attributes.position; for (let i = 0; i < p.count; i++) p.setXYZ(i, p.getX(i) + rand(-0.06, 0.06), p.getY(i) + rand(-0.05, 0.05), p.getZ(i) + rand(-0.06, 0.06)); g.computeVertexNormals(); return g; })();
     this.iceSheetGeo = (() => { const g = new THREE.CircleGeometry(0.9, 9); g.rotateX(-Math.PI / 2); return g; })();
@@ -302,6 +304,7 @@ export class Weapons {
       m.position.set(E.x + Math.sin(a) * r, E.gy - 1.6, E.z + Math.cos(a) * r); w.scene.add(m); E.spikes.push({ m, delay: i * 0.025, y0: E.gy - 1.6 });
     }
     w.fx.debrisBurst(_a.set(E.x, E.gy + 0.2, E.z), 22, 4.5, 0.12, 0x7a6a58); w.fx.dust(_a.set(E.x, E.gy, E.z), 14, 3); w.fx.crater(_a.set(E.x, E.gy, E.z), 2.4);
+    this.burst.spawn(E.x, E.gy, E.z, 0.6);
     w.audio.rumble(1.2); w.shake(0.35, _a.set(E.x, E.gy, E.z));
     for (const t of w.fighters) {
       if (t === f || t.dead || t.invuln > 0) continue;
@@ -453,10 +456,12 @@ export class Weapons {
 
   update(dt) {
     this.tubeMat.uniforms.uTime.value += dt;
+    this.burst.update(dt);
     this.updateWhips(dt); this.updateWaves(dt); this.updateColumns(dt); this.updateErupts(dt); this.updateFireRings(dt); this.updateCaptures(dt); this.updateTrails(dt);
   }
   clear() {
     for (const W of this.whips) this.dropWhip(W);
+    this.burst.clear();
     for (const V of this.waves) this.w.scene.remove(V.mesh);
     for (const C of this.columns) { this.w.scene.remove(C.mark); this.freeTube(C.tube); }
     for (const E of this.erupts) { this.w.scene.remove(E.mark); for (const s of E.spikes) this.w.scene.remove(s.m); }

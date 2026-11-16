@@ -17,7 +17,7 @@ The Google Drive folder was listed in full: about 100 files across three pages o
 | `motifect_martial_arts_v1_0_fbx.zip` | 40 AI-generated clips (taekwondo, Muay Thai, judo, weapons). The licence allows use in games but not redistribution of the raw files | Not yet: with the mapping added, the kicks still retarget with the hands pinned at the head and very little leg lift. Needs more work |
 | `brick-arcs-barn-ruin.zip` | Photogrammetry scan of a roofless brick barn with arches: 1.48 million triangles and four 8K atlases. No licence file | The new venue (see below) |
 | `ext_fbx.zip`, `ext_stl.zip`, `textures.zip` | 56 "Victor" scans of about 17 MB each, with texture maps | Inspected from their file listings only, not downloaded or opened (2.6 GB in total); I don't know what they depict |
-| `bomb-crack-ground-00-free.zip` | Crater model with textures | Not used |
+| `bomb-crack-ground-00-free.zip` | A 3.3 s ground-fracture simulation (tyFlow): 1416 animated fragments, 27,500 triangles, 5 m across | **Earth's ground reaction.** `tools/venue/build-crack.mjs` keeps the 600 largest moving fragments and bakes their motion at 12 fps into one mesh and a table (0.95 MB). `js/crack.js` plays it with one draw call. It fires on the stomp eruption, rising pillars and slab launches, boulders striking the ground, and heavy earth landings. The 41 pieces that never move (unbroken ground) are dropped; the game's crater decal marks the hole |
 | Breakdance pack, earlier kick and freestyle files | Reviewed last milestone | No change |
 
 **Retargeting tool:** it gained four capabilities for these files:
