@@ -109,6 +109,7 @@ export class Arena {
     this.scene = scene;
     this.colliders = [];
     this.cameraBlockers = [];
+    this.venue = 'courtyard';
     this.group = new THREE.Group(); scene.add(this.group);
     const rng = mulberry32(1234);
     this.rng = rng;
@@ -321,15 +322,63 @@ export class Arena {
     this.crowd = crowd;
   }
 
+  // ---- venues: 'courtyard' (the original arena) or 'barn' (the brick-arch barn ruin scan in the middle of the
+  // courtyard; the courtyard props inside its footprint are put away). The scan and its colliders are loaded on demand.
+  async setVenue(name) {
+    if (name === this.venue) return;
+    if (name === 'barn' && !this.barn) {
+      const mod = await import('../assets/venue/barn-ruin.glb.js');
+      const { GLTFLoader } = await import('three/addons/loaders/GLTFLoader.js');
+      const bin = atob(mod.default), buf = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
+      const g = await new GLTFLoader().parseAsync(buf.buffer, '');
+      const mesh = g.scene; mesh.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; if (o.material.map) o.material.map.anisotropy = 4; } });
+      const C = mod.COLLIDERS, [fx, fz] = C.footprint;
+      // walls and piers: boxes the fighters collide with and can stand on; an invisible merged copy blocks the camera
+      const cols = C.boxes.map(b => ({ kind: 'b', x: b.x, z: b.z, hx: b.hx, hz: b.hz, top: b.top, walk: true, venue: true }));
+      const boxGeo = new THREE.BoxGeometry(1, 1, 1), geos = [];
+      for (const b of C.boxes) { const q = boxGeo.clone(); q.scale(b.hx * 2, b.top, b.hz * 2); q.translate(b.x, b.top / 2, b.z); geos.push(q); }
+      const { mergeGeometries } = await import('three/addons/utils/BufferGeometryUtils.js');
+      const blocker = new THREE.Mesh(mergeGeometries(geos), new THREE.MeshBasicMaterial()); blocker.visible = false;
+      // the scanned ground inside the footprint (centimetres above the arena floor)
+      let ground = null;
+      if (C.ground) { const G = C.ground, b = atob(G.cm), a = new Int16Array(b.length / 2); for (let i = 0; i < a.length; i++) a[i] = (b.charCodeAt(i * 2) | (b.charCodeAt(i * 2 + 1) << 8)) << 16 >> 16; ground = { ...G, h: Float32Array.from(a, v => v / 100) }; }
+      this.barn = { mesh, cols, blocker, half: [fx / 2 + 1.2, fz / 2 + 1.2], ground };
+    }
+    const B = this.barn, on = name === 'barn';
+    // courtyard props inside the ruin's footprint are put away while it stands
+    const inside = (x, z, r = 0) => B && Math.abs(x) < B.half[0] + r && Math.abs(z) < B.half[1] + r;
+    for (const c of this.colliders) if (!c.venue && c.mesh && inside(c.x, c.z, c.r || Math.max(c.hx || 0, c.hz || 0))) {
+      if (on && !c.hidden) { c.wasBlocker = this.cameraBlockers.includes(c.mesh); this.cameraBlockers = this.cameraBlockers.filter(m => m !== c.mesh); }
+      if (!on && c.hidden && c.wasBlocker) this.cameraBlockers.push(c.mesh);
+      c.dead = on; c.mesh.visible = !on; c.hidden = on;
+    }
+    for (const s of this.waterSources) if (inside(s.x, s.z, 2.4)) { s.off = on; s.mesh.visible = !on; }
+    for (const s of this.looseStones) if (inside(s.home.x, s.home.z, 0.6)) s.off = on;
+    if (B) {
+      if (on) { this.group.add(B.mesh); this.colliders.push(...B.cols); this.cameraBlockers.push(B.blocker); }
+      else { this.group.remove(B.mesh); this.colliders = this.colliders.filter(c => !c.venue); this.cameraBlockers = this.cameraBlockers.filter(m => m !== B.blocker); }
+    }
+    this.vground = on && B ? B.ground : null;
+    this.venue = name;
+  }
+  // venue terrain height at (x, z), bilinear over the grid (0 outside it)
+  venueGround(x, z) {
+    const G = this.vground; if (!G) return 0;
+    const fx = (x - G.x0) / G.cell - 0.5, fz = (z - G.z0) / G.cell - 0.5;
+    if (fx < 0 || fz < 0 || fx >= G.nx - 1 || fz >= G.nz - 1) return 0;
+    const i = Math.floor(fx), k = Math.floor(fz), u = fx - i, v = fz - k, h = G.h, n = G.nx;
+    return (h[k * n + i] * (1 - u) + h[k * n + i + 1] * u) * (1 - v) + (h[(k + 1) * n + i] * (1 - u) + h[(k + 1) * n + i + 1] * u) * v;
+  }
+
   // Height of walkable ground under (x, z) reachable from height y.
   nearestLooseStone(p, maxD) {
     let best = null, bd = maxD;
-    for (const s of this.looseStones) { if (s.taken) continue; const d = Math.hypot(s.home.x - p.x, s.home.z - p.z); if (d < bd) { bd = d; best = s; } }
+    for (const s of this.looseStones) { if (s.taken || s.off) continue; const d = Math.hypot(s.home.x - p.x, s.home.z - p.z); if (d < bd) { bd = d; best = s; } }
     return best;
   }
   nearestWaterSource(p, maxD) {
     let best = null, bd = maxD;
-    for (const s of this.waterSources) { const d = Math.hypot(s.x - p.x, s.z - p.z) - 2.2; if (d < bd) { bd = d; best = s; } }
+    for (const s of this.waterSources) { if (s.off) continue; const d = Math.hypot(s.x - p.x, s.z - p.z) - 2.2; if (d < bd) { bd = d; best = s; } }
     return best;
   }
   updateLoose(dt, fx) {
@@ -344,7 +393,7 @@ export class Arena {
     const t = performance.now() * 0.001;
     for (const w of this.waterSources) w.mesh.position.y = w.y + Math.sin(t * 2 + w.x) * 0.012;
   }
-  resetLoose() { for (const s of this.looseStones) { s.taken = false; s.respawnT = 0; s.col.dead = false; s.mesh.visible = true; s.mesh.position.copy(s.home); } }
+  resetLoose() { for (const s of this.looseStones) { s.taken = false; s.respawnT = 0; s.col.dead = !!s.off; s.mesh.visible = !s.off; s.mesh.position.copy(s.home); } }
 
   // top surface height of a collider at (x, z); ramps interpolate
   topAt(c, x, z) {
@@ -354,6 +403,7 @@ export class Arena {
   }
   groundAt(x, z, y) {
     let h = 0;
+    if (this.vground) { const g = this.venueGround(x, z); if (g > 0 && g <= y + 0.6) h = g; }
     for (const c of this.colliders) {
       if (!c.walk || c.dead) continue;
       if (c.kind === 'c') { if (c.top <= y + 0.5 && (x - c.x) ** 2 + (z - c.z) ** 2 < c.r * c.r) h = Math.max(h, c.top); }

@@ -25,7 +25,7 @@ export const MOBILITY = {
   water: { top: 12.5, accel: 9, turn: 3.0, brake: 14, cruise: 5, coast: 3, drain: 5, launch: 12.5 },     // ice surfing
   earth: { top: 10.5, accel: 5, turn: 1.8, brake: 9, cruise: 4, coast: 2, drain: 7, launch: 13.5 },     // rock surfing (heavy)
   flame: { top: 13, accel: 30, turn: 6, drain: 14, launch: 11 },                                         // flame-propelled run
-  fly:   { duration: 6, takeoff: 8, ascent: 7, sink: 1.2, maxAlt: 14, speed: 9.5, accel: 14, drain: 8 }, // airbending flight
+  fly:   { duration: 6, takeoff: 8, ascent: 7, sink: 1.2, maxAlt: 14, speed: 9.5, accel: 14, drain: 8, recover: 1.5 }, // airbending flight
 };
 
 export class Fighter {
@@ -180,13 +180,15 @@ export class Fighter {
     // ---- commands (buffered so slightly early presses still land)
     if (live && !restrained) {
       // DODGE held: the element's own mobility (ice / rock surfing, flight, flame-propelled run)
-      if (inp.dodgeHeld) this.dodgeHoldT = this.dodgeHoldT < 0 ? 0 : this.dodgeHoldT + dt; else { this.dodgeHoldT = -1; if (this.mob && this.onGround) this.endMob(); if (this.mob && this.mob.kind === 'fly') this.endMob(); }
-      if (!this.mob && this.dodgeHoldT > 0.28 && !this.guarding && !this.charging && !this.reacting() && this.en > 12) this.startMob();
+      if (inp.dodgeHeld) this.dodgeHoldT = this.dodgeHoldT < 0 ? 0 : this.dodgeHoldT + dt; else { this.dodgeHoldT = -1; this.mobLock = false; if (this.mob && this.onGround) this.endMob(); if (this.mob && this.mob.kind === 'fly') this.endMob(); }
+      this.mobCd = (this.mobCd || 0) - dt;
+      // a spent mobility needs DODGE released (and, for flight, a recovery time) before it can start again
+      if (!this.mob && !this.mobLock && this.mobCd <= 0 && this.dodgeHoldT > 0.28 && !this.guarding && !this.charging && !this.reacting() && this.en > 12) this.startMob();
       if (this.buf.jump && this.mob && (this.mob.kind === 'surf' || this.mob.kind === 'flame') && this.onGround) {
         // the element launches the bender: a rising ice pillar / rock slab, or a burst of flame from the feet
         const M = MOBILITY[this.mob.kind === 'surf' ? this.mob.el : 'flame'];
+        if (this.mob.kind === 'surf') B.weapons.surfLaunch(this, this.mob.el); else this.jumpFx(false);   // (the rising pillar would set its own lift)
         this.buf.jump = 0; this.vel.y = M.launch; this.onGround = false; this.highJump = true; this.jetFuel = this.el === 'fire' ? 0.8 : 0;
-        if (this.mob.kind === 'surf') B.weapons.surfLaunch(this, this.mob.el); else this.jumpFx(false);
         if (this.mob.kind === 'flame') this.endMob();
       }
       if (this.mob && this.mob.kind === 'fly') this.buf.jump = 0;   // in flight JUMP means climb
@@ -450,7 +452,7 @@ export class Fighter {
       this.vel.y += (vy - this.vel.y) * Math.min(1, dt * 5);
       this.highJump = false;
       B.weapons.flyTick(this, dt);
-      if (m.fuel <= 0 || this.en <= 1) { this.endMob(); w.popup(this, 'WIND SPENT', false); }
+      if (m.fuel <= 0 || this.en <= 1) { this.endMob(); this.mobLock = true; this.mobCd = MOBILITY.fly.recover; w.popup(this, 'WIND SPENT', false); }
       else if (this.onGround && m.t > 0.6 && !this.input.jumpHeld) this.endMob();
       return true;
     }

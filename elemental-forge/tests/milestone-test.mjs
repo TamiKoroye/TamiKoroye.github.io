@@ -103,9 +103,11 @@ check('the streams stay below the head', sp && sp.top < sp.head - 0.05, sp ? `hi
 await oppFire('fireball', [0, 1.3, -4]); await stepN(12);
 const caught = await S(() => { const { world, player } = window.__EF, s = world.bending.spirals.find(x => x.owner === player); return { c: s ? s.caught : -1, hp: player.hp }; });
 check('circulating streams catch an incoming fireball', caught.c >= 1 && caught.hp === 100, `caught ${caught.c}, player hp ${caught.hp}`);
-await press('btn-hand', 2); await stepN(30);
+// (16 Nov brief: each HAND redirects one stream; the third ends the spiral)
+for (let i = 0; i < 3; i++) { await press('btn-hand', 2); await stepN(10); }
+await stepN(20);
 const rel = await S(() => ({ hp: window.__EF.opp.hp, left: window.__EF.world.bending.spirals.length }));
-check('HAND releases the streams at the opponent', rel.hp < 100 && rel.left === 0, `rival hp ${rel.hp}`);
+check('HAND redirects the streams one at a time at the opponent', rel.hp < 100 && rel.left === 0, `rival hp ${rel.hp}, spirals left ${rel.left}`);
 
 head('Water: icebending');
 await setup({ el: 'water', p: [0, 0, -10], o: [0, 0, -6] });
@@ -118,7 +120,7 @@ check('the ice spikes hit the opponent', ice.hp < 100, `rival hp ${ice.hp} (wave
 await setup({ el: 'water', p: [0, 0, -10], o: [0, 0, 6] });
 await stepN(3);
 await hold('btn-leg'); await stepN(30); await fUp(6);
-for (let i = 0; i < 40 && !(await S(() => window.__EF.world.bending.spikes.some(x => x.ice && x.mesh && x.t > 0.15 && x.t < 0.5))); i++) await stepN(1);
+for (let i = 0; i < 100 && !(await S(() => window.__EF.world.bending.spikes.some(x => x.ice && x.mesh && x.t > 0.15 && x.t < 0.5))); i++) await stepN(1);   // (the spikes now form where the tidal wave stops)
 const melt = await S(() => { const { world, opp } = window.__EF, B = world.bending, s = B.spikes.find(x => x.ice && x.mesh && x.t > 0.15 && x.t < 0.5); if (!s) return null; const P = s.pos.clone(); P.y += 0.8; P.x += 2.5; /* from the side: no other spike in the line is in the way */ B.fire('fireball', opp, P, { target: s.pos.clone().setY(s.pos.y + 0.6) }); for (let i = 0; i < 6; i++) window.__EF.step(1 / 30); return { t: s.t }; });
 check('fire melts ice', melt && melt.t >= 1.3, melt ? `spike life jumped to ${melt.t.toFixed(2)} s (it would be ${'<'}0.8 s without the fireball)` : 'no young spike to test');
 

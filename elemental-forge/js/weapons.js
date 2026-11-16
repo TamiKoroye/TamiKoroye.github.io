@@ -351,7 +351,7 @@ export class Weapons {
         if (d < prevR - 0.6 || d > R.r + 0.4) continue;
         if (t.pos.y - w.arena.groundAt(t.pos.x, t.pos.z, t.pos.y + 0.5) > 0.7) continue;   // jumped over the flames
         // a wall between the origin and the target shields them
-        let blocked = false; for (let s = 0.2; s < 0.95 && !blocked; s += 0.15) if (w.arena.solidAt(_a.set(R.x + (t.pos.x - R.x) * s, R.gy + 0.4, R.z + (t.pos.z - R.z) * s), 0)) blocked = true;
+        let blocked = false; const steps = Math.ceil(d / 0.25); for (let i = 1; i < steps && !blocked; i++) { const s = i / steps; if (w.arena.solidAt(_a.set(R.x + (t.pos.x - R.x) * s, R.gy + 0.4, R.z + (t.pos.z - R.z) * s), 0)) blocked = true; }
         if (blocked) continue;
         R.hit.add(t);
         w.combat.damage(t, Math.round(14 - 6 * (R.r / R.maxR)), _b.set(t.pos.x - R.x, 0, t.pos.z - R.z).normalize().clone(), R.f, 'fireRing', t.chestPos(new THREE.Vector3()), 9, R.r < R.maxR * 0.5 ? 2 : 1);
@@ -365,7 +365,7 @@ export class Weapons {
   // ============================================================ water capture and ice spear
   capture(f) {
     const t = f.target, w = this.w;
-    if (!t || t.dead || Math.hypot(t.pos.x - f.pos.x, t.pos.z - f.pos.z) > 8 || t.invuln > 0) { w.popup(f, 'MISSED', false); return false; }
+    if (!t || t.dead || Math.hypot(t.pos.x - f.pos.x, t.pos.z - f.pos.z) > 12 || t.invuln > 0) { w.popup(f, 'MISSED', false); return false; }
     if (t.dodgeT > 0) { w.popup(t, 'SLIPPED', false); return false; }
     const C = { f, t, time: 0, dur: 1.0, tube: this.tube(), pts: Array.from({ length: 18 }, () => new THREE.Vector3()) };
     this.captures.push(C); t.restrainT = Math.max(t.restrainT, C.dur); t.captured = C;
