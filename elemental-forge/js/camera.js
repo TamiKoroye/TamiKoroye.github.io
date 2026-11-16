@@ -30,7 +30,10 @@ export class FollowCam {
     const p = player.pos;
     this.pivot.x = damp(this.pivot.x, p.x, 22, dt);
     this.pivot.z = damp(this.pivot.z, p.z, 22, dt);
-    this.pivot.y = damp(this.pivot.y, p.y + 1.55, player.onGround ? 10 : 4, dt);
+    // airborne: ordinary jumps are smoothed; flight and propelled high jumps are tracked closely so the bender
+    // never leaves the frame
+    const alt = p.y - (player.groundY ?? 0), aerial = !player.onGround && (alt > 2.2 || (player.mob && player.mob.kind === 'fly') || player.highJump);
+    this.pivot.y = damp(this.pivot.y, p.y + 1.55, player.onGround ? 10 : aerial ? 9 : 4, dt);
 
     if (locked && target && !target.dead) {
       // camera sits behind the player, looking through to the target
@@ -67,7 +70,12 @@ export class FollowCam {
     // over-the-shoulder offset widens during lock-on so the rival is framed beside / above the player
     // framing matches the references: the fighter fills ~40% of the screen height, over the right shoulder
     this.shoulder = damp(this.shoulder, locked && target && !target.dead ? 0.8 : 0.5, 4, dt);
-    this.dist = locked && target && !target.dead ? 3.8 : 3.5;
+    // closer framing than before (3.1 / 3.4 m), widened while the view must take in more: a SPECIAL, flight and
+    // high jumps, fast surfing or flame running
+    const T = player.action === 'tech' ? player.tech : null, st = player.style && player.style.tech;
+    const wide = (T && st && (T === st.special || T === st.release) ? 1.7 : 0) + (aerial ? 1.0 : 0) + (player.mob && player.mob.kind !== 'fly' && Math.hypot(player.vel.x, player.vel.z) > 9 ? 0.6 : 0);
+    this.wide = damp(this.wide || 0, Math.min(2.2, wide), wide > (this.wide || 0) ? 3 : 1.5, dt);
+    this.dist = (locked && target && !target.dead ? 3.4 : 3.1) + this.wide;
     // build view
     // Low obstructions (platform edges, ledges, boulders, pillars) are cleared by raising the camera over them;
     // only tall ones (walls, spires) make it pull in. This keeps the lower part of the view open on raised terrain.

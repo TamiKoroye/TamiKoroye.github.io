@@ -92,22 +92,24 @@ check('the flame jets cost energy', enUsed > 15, `${enUsed.toFixed(0)} energy us
 check('a jet landing bursts flame outward', landRing);
 
 // ------------------------------------------------------------------ water
-head('Water: spiral streams SPECIAL');
+head('Water: Dragon Stream SPECIAL');
+// (M3 brief: the three hip-height rings are replaced by one stream drawn from the ground into both hands that then
+//  circulates through both hands and round the body; HAND redirects and releases it with a two-handed push)
 await setup({ el: 'water', p: [0, 0, -10], o: [0, 0, -3] });
 await stepN(3);
-await press('btn-special', 2); await stepN(18);
-const sp = await S(() => { const { world, player } = window.__EF, s = world.bending.spirals.find(x => x.owner === player); if (!s) return null; let top = 0; for (const pts of s.pts) for (const p of pts) top = Math.max(top, p.y - player.pos.y); return { n: s.streams.filter(t => t.mesh.visible).length, top, head: player.hero.bones['DEF-head'].getWorldPosition(new player.pos.constructor()).y - player.pos.y }; });
-await shot('water-spiral');
-check('SPECIAL gathers three streams circling the body', sp && sp.n === 3, sp ? `${sp.n} streams` : 'no spiral');
-check('the streams stay below the head', sp && sp.top < sp.head - 0.05, sp ? `highest stream point ${sp.top.toFixed(2)} m, head ${sp.head.toFixed(2)} m` : '');
+await press('btn-special', 2); await stepN(26);
+const sp = await S(() => { const { world, player: p } = window.__EF, s = world.bending.specials.list.find(x => x.f === p && x.kind === 'dragon'); if (!s) return null;
+  const hl = p.handPos('L'), hr = p.handPos('R'); let top = 0; for (const q of s.pts) top = Math.max(top, q.y - p.pos.y);
+  return { phase: s.phase, dL: Math.min(...s.pts.map(q => q.distanceTo(hl))), dR: Math.min(...s.pts.map(q => q.distanceTo(hr))), top, head: p.hero.bones['DEF-head'].getWorldPosition(hl).y - p.pos.y }; });
+await shot('water-dragon');
+check('SPECIAL draws water into both hands and sets it circulating through them', sp && sp.phase === 'flow' && Math.max(sp.dL, sp.dR) < 0.12, sp ? `phase ${sp.phase}, stream ${sp.dL.toFixed(2)} / ${sp.dR.toFixed(2)} m from the hands` : 'no stream');
+check('the stream stays below the head', sp && sp.top < sp.head, sp ? `highest stream point ${sp.top.toFixed(2)} m, head ${sp.head.toFixed(2)} m` : '');
 await oppFire('fireball', [0, 1.3, -4]); await stepN(12);
-const caught = await S(() => { const { world, player } = window.__EF, s = world.bending.spirals.find(x => x.owner === player); return { c: s ? s.caught : -1, hp: player.hp }; });
-check('circulating streams catch an incoming fireball', caught.c >= 1 && caught.hp === 100, `caught ${caught.c}, player hp ${caught.hp}`);
-// (16 Nov brief: each HAND redirects one stream; the third ends the spiral)
-for (let i = 0; i < 3; i++) { await press('btn-hand', 2); await stepN(10); }
-await stepN(20);
-const rel = await S(() => ({ hp: window.__EF.opp.hp, left: window.__EF.world.bending.spirals.length }));
-check('HAND redirects the streams one at a time at the opponent', rel.hp < 100 && rel.left === 0, `rival hp ${rel.hp}, spirals left ${rel.left}`);
+const caught = await S(() => { const { world, player } = window.__EF, s = world.bending.specials.list.find(x => x.f === player && x.kind === 'dragon'); return { c: s ? s.caught : -1, hp: player.hp }; });
+check('the circulating stream catches an incoming fireball', caught.c >= 1 && caught.hp === 100, `caught ${caught.c}, player hp ${caught.hp}`);
+await press('btn-hand', 2); await stepN(30);
+const rel = await S(() => ({ hp: window.__EF.opp.hp, left: window.__EF.world.bending.specials.list.filter(x => x.kind === 'dragon').length }));
+check('HAND throws the stream at the opponent', rel.hp < 100 && rel.left === 0, `rival hp ${rel.hp}, streams left ${rel.left}`);
 
 head('Water: icebending');
 await setup({ el: 'water', p: [0, 0, -10], o: [0, 0, -6] });

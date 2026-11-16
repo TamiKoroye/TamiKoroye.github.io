@@ -67,6 +67,11 @@ await shot('01-menu');
 check('page loads without errors', errors.length === 0, errors.join(' | '));
 check('WebGL context available', await ev(() => { const c = document.getElementById('game'); return !!(c.getContext('webgl2') || c.getContext('webgl')); }));
 await page.locator('#btn-start').tap();
+// every damage event the rival takes, by attack kind (M3 checks credit a hit to the move that made it)
+await ev(() => { const E = window.__EF, C = E.world.combat, d = C.damage.bind(C); window.__hits = []; C.damage = (t, dmg, ...r) => { if (t === E.opp) window.__hits.push(r[2]); return d(t, dmg, ...r); }; });
+const hitsOn = () => S(() => window.__hits || []);
+const clearHits = () => S(() => { window.__hits = []; });
+const P = () => S(() => { const { player: p, opp: o } = window.__EF; return { tech: p.tech && p.tech.name, oy: o.pos.y - o.groundY, oact: o.action }; });
 await ev(() => { const E = window.__EF; E.state.manual = true; E.ai.update = function () { const i = this.f.input; i.mx = i.mz = 0; i.hand = i.handHeld = i.leg = i.legHeld = i.special = i.guard = i.dodge = i.jump = false; i.faceYaw = Math.atan2(this.foe.pos.x - this.f.pos.x, this.foe.pos.z - this.f.pos.z); }; });
 await stepN(50);
 check('fight phase begins', (await S(() => window.__EF.state.phase)) === 'fight');
@@ -174,13 +179,16 @@ for (const el of els) {
   head(`${el.toUpperCase()}: HAND, LEG, sustained control, defence, charged technique`);
   const R = elRes[el] = {};
   // HAND tap at range: element projectile hits
-  await setup({ el, p: [0, 0, -12], o: [0, 0, -4] });
+  // (16 Nov brief: water and air HAND strikes are whips, not projectiles; earth and fire still throw.
+  //  M3 brief: whips are no longer 9 m lasers - they reach 4.6 m and the strike steps in to a rival up to ~1.5 m
+  //  beyond that, so the whip is tested at 6 m and the thrown elements still at 8 m)
+  const wantWhip0 = el === 'water' || el === 'air';
+  await setup({ el, p: [0, 0, -12], o: [0, 0, wantWhip0 ? -6 : -4] });
   await press('btn-hand', 2);
-  // (16 Nov brief: water and air HAND strikes are whips, not projectiles; earth and fire still throw)
   const kinds = new Set(); for (let i = 0; i < 30; i++) { await stepN(1); (await S(() => [...window.__EF.world.bending.objs.map(o => o.kind), ...window.__EF.world.bending.weapons.whips.map(W => W.el + ' whip')])).forEach(k => kinds.add(k)); }
   R.hand = await S(() => window.__EF.opp.hp);
   const wantWhip = el === 'water' || el === 'air';
-  check(`${el}: HAND ${wantWhip ? 'lashes a ' + el + ' whip' : 'sends an element projectile'} that hits at 8 m`, R.hand < 100 && (wantWhip ? kinds.has(el + ' whip') : kinds.size > 0), `${[...kinds].join(',')}; rival hp ${R.hand}`);
+  check(`${el}: HAND ${wantWhip ? 'lashes a ' + el + ' whip (stepping in) that hits at 6 m' : 'sends an element projectile that hits at 8 m'}`, R.hand < 100 && (wantWhip ? kinds.has(el + ' whip') : kinds.size > 0), `${[...kinds].join(',')}; rival hp ${R.hand}`);
   await shot(`10-${el}-hand`);
   // LEG tap at range
   await setup({ el, p: [0, 0, -12], o: [0, 0, -5.5] });
@@ -233,15 +241,15 @@ for (const el of els) {
     check('earth: held rocks are launched one at a time by punches and kicks', before === 3 && mid === 2 && after.held === 1, `${before} -> ${mid} (punch) -> ${after.held} (kick)`);
   }
   if (el === 'fire' || el === 'air') {
-    await setup({ el, p: [0, 0, -14], o: [0, 0, -2] });
-    for (let i = 0; i < 3; i++) { await press('btn-special', 2); await stepN(14); }
-    const orbs = await S(() => window.__EF.world.bending.held(window.__EF.player));
-    await shot(`13-${el}-three-orbs`);
-    // the release happens on the 4th press's impact frame (about 0.3 s into the authored throw)
-    await press('btn-special', 2); await stepN(14);
-    const fly = await S(() => window.__EF.world.bending.objs.filter(o => o.state === 'flying' && o.owner === window.__EF.player).map(o => o.kind));
-    await stepN(30);
-    check(`${el}: SPECIAL builds up three controlled ${el === 'fire' ? 'flame orbs' : 'vortices'}, then releases them together`, orbs === 3 && fly.length >= 1, `held ${orbs}, then flying: ${fly.join(',')}`);
+    // (M3 brief: the flame orbs and vortex orbs are replaced. Fire SPECIAL is Dragon Descent, a leaping flying kick
+    //  that explodes at the kicking foot; Air SPECIAL is a tornado wound up by a full turn that travels to the rival)
+    await setup({ el, p: [0, 0, -10], o: [0, 0, -5] });
+    await press('btn-special', 2);
+    let lifted = 0, down = false; const acts = new Set();
+    for (let i = 0; i < 90; i++) { await stepN(1); const r = await P(); lifted = Math.max(lifted, r.oy); if (r.oact === 'down') down = true; if (r.tech) acts.add(r.tech); if (i === 24) await shot(`13-${el}-special`); }
+    const sh = await hitsOn(); await clearHits();
+    if (el === 'fire') check('fire: SPECIAL (Dragon Descent) leaps in and the explosion knocks the rival down', sh.includes('fireBlast') && down, `techniques ${[...acts].join(',')}; hits ${sh.join(',')}`);
+    else check('air: SPECIAL (Tornado) travels to the rival, lifts and throws them', sh.includes('tornado') && lifted > 1.2, `max rival height ${lifted.toFixed(2)} m; hits ${sh.join(',')}`);
   }
   if (el === 'water') {
     // (16 Nov brief: water globes replaced by whips) SPECIAL during the twin whips freezes them into ice blades
@@ -308,13 +316,16 @@ await oppFire('rock', [0, 1.4, -5]); await stepN(30);
 const thruFire = await S(() => window.__EF.player.hp);
 await fUp(8); await stepN(6);
 check('a rock punches through a fire wall at reduced force', thruFire < 100 && thruFire > 100 - 12, `player hp ${thruFire} (unguarded rock does 12)`);
-// pillar platform + standing on it
+// (M3 brief: Earth SPECIAL is now the Ground Rupture. The stone pillar is still raised by the rock-surf launch, so
+//  standing on it is tested with a pillar raised by that function)
+await setup({ el: 'earth', p: [0, 0, -12], o: [0, 0, -6] });
+await press('btn-special', 2); let rupLift = 0; for (let i = 0; i < 70; i++) { await stepN(1); rupLift = Math.max(rupLift, (await P()).oy); if (i === 45) await shot('16-rupture'); }
+const rh = await hitsOn(); await clearHits();
+check('earth SPECIAL (Ground Rupture) runs to the rival and throws them up', rh.includes('rupture') && rupLift > 0.8, `max rival height ${rupLift.toFixed(2)} m; hits ${rh.join(',')}`);
 await setup({ el: 'earth', locked: false, p: [0, 0, -14], o: [20, 0, 20] });
-await press('btn-special', 2); await stepN(25);
-// let the authored pillar-raising move finish before walking onto the pillar
-await S(() => { const E = window.__EF; for (let i = 0; i < 40 && E.player.action; i++) E.step(1 / 30); });
+await S(() => { const { world, player: p } = window.__EF; world.bending.raisePillar(p, p.pos.x, p.pos.z + 1.6); for (let i = 0; i < 40; i++) window.__EF.step(1 / 30); });
 const pil = await S(() => { const p = window.__EF.world.bending.pillars[0]; return p ? { x: p.col.x, z: p.col.z, top: p.col.top } : null; });
-check('earth SPECIAL raises a solid stone pillar', pil && pil.top > 1.3, JSON.stringify(pil));
+check('a raised stone pillar is solid', pil && pil.top > 1.3, JSON.stringify(pil));
 await stick(0, -60); await stepN(3); await press('btn-jump', 1); let onPillar = 0; for (let i = 0; i < 30; i++) { await stepN(1); onPillar = Math.max(onPillar, await S(() => window.__EF.player.onGround ? window.__EF.player.pos.y : 0)); } await stickUp();
 await shot('16-on-pillar');
 check('player can jump onto the pillar and stand on it', onPillar > 1.3, `standing height ${onPillar.toFixed(2)} m`);

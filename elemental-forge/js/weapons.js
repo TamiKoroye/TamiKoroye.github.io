@@ -197,13 +197,16 @@ export class Weapons {
   sustain(f, h, dt) {
     const w = this.w, el = f.el;
     if (!h.whips) {
-      h.whips = ['L', 'R'].map((s, i) => { const W = this.whipStrike(f, el, 'hold', { hand: s, len: 3.6, dmg: 5, knock: el === 'air' ? 7 : 5, level: 0, life: 1e9, hitWin: 0.3 }); this.whips.splice(this.whips.indexOf(W), 1); W.side = i ? -1 : 1; W.cd = i * 0.3; return W; });
+      h.whips = ['L', 'R'].map((s, i) => { const W = this.whipStrike(f, el, 'hold', { hand: s, len: 4.6, dmg: 5, knock: el === 'air' ? 7 : 5, level: 0, life: 1e9, hitWin: 0.3 }); this.whips.splice(this.whips.indexOf(W), 1); W.side = i ? -1 : 1; W.cd = i * 0.3; return W; });
       h.sweep = 0;
     }
     if (h.frozen && el === 'water') for (const W of h.whips) if (W.tube && !W.frozen) { W.frozen = true; W.tube.mesh.material = iceMat; }
     // the stick sweeps the streams across (relative to the fighter's facing); the hands lash in turn
     const c = Math.cos(f.faceYaw), s0 = Math.sin(f.faceYaw), lx = f.input.mx * c - f.input.mz * s0;
     h.sweep += (clamp(lx, -1, 1) - h.sweep) * Math.min(1, dt * 5);
+    // a rival just beyond the streams' reach is closed on at a walk while the hold goes on
+    const tg = f.target && !f.target.dead ? f.target : null;
+    if (tg && f.onGround) { const dx = tg.pos.x - f.pos.x, dz = tg.pos.z - f.pos.z, d = Math.hypot(dx, dz); if (d > 4.4 && d < 8) { f.pos.x += dx / d * 2.2 * dt; f.pos.z += dz / d * 2.2 * dt; } }
     for (const W of h.whips) {
       W.t += dt; W.cd -= dt;
       if (W.cd <= 0) { W.cd = 0.6; W.tRel = -1; W.hit.clear(); this.releaseWhip(W); }

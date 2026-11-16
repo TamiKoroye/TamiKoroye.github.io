@@ -319,8 +319,8 @@ export class Hero {
       else if (f.guarding && has(L.guard)) { clip = L.guard; wU = wL = 0; fade = 0.12; layered = moving || !!lowOv; }
       else if (f.holding && f.el === 'earth' && f.gatherT > 0 && has('Fixing_Kneeling')) {
         // Earth's rock lift: sinking to one knee with the hands on the ground (UAL Fixing_Kneeling, from 0.3 s to its
-        // lowest point at 1.15 s, reached 0.45 s into each gathering), once per rock drawn up
-        clip = 'Fixing_Kneeling'; ts = 1.9; wU = wL = 0; fade = 0.15;
+        // lowest point at 1.15 s, reached 0.33 s into each gathering of 0.5 s), once per rock drawn up
+        clip = 'Fixing_Kneeling'; ts = 2.6; wU = wL = 0; fade = 0.15;
         if (this.gatherN !== f.gatherN) { this.gatherN = f.gatherN; restart = true; startAt = 0.3; }
       }
       else if (f.holding && has(L.hold)) { clip = L.hold; ts = LOOP_SPEED[L.hold] || 1; wU = wL = 0; fade = 0.2; layered = moving || !!lowOv; }

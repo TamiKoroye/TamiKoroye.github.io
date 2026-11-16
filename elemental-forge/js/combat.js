@@ -15,6 +15,14 @@ export class Combat {
     const d = _d.length();
     const fwd = f.forward(_v2);
     const facing = _d.dot(fwd) / (d || 1);
+    // a ranged strike (whip) steps in only as far as its reach needs: a rival just beyond it is closed on
+    if (spec.reach && d > spec.reach - 0.5 && d < spec.reach + 3.5 && (facing > 0.3 || f.input.strafe)) {
+      _d.normalize();
+      f.lungeDir.copy(_d).multiplyScalar(Math.min(spec.lunge, (d - spec.reach + 0.7) / 0.14));
+      f.lungeT = 0.14; f.faceYaw = Math.atan2(_d.x, _d.z);
+      return;
+    }
+    if (spec.reach) return;   // already inside its reach: the whip is thrown from where the bender stands
     if (d < 5 && d > 1.1 && (facing > 0.3 || f.input.strafe)) {
       _d.normalize();
       f.lungeDir.copy(_d).multiplyScalar(Math.min(spec.lunge, (d - 1.0) / 0.14));

@@ -198,7 +198,7 @@ const water = {
   tech: {
     // the water whip: one arm path per strike (across the body, overhead, diagonal), each hand in turn; the rope
     // comes out of the hand as the arm winds up (onStart) and is thrown on the impact frame
-    hand: T({ name: 'Water Palm', clip: ['whip_h', 'whip_h', 'whip_v', 'whip_d'], onStart: 'water.whipOut', dur: 0.5, cost: 6, cancel: 0.62, upper: true, move: 3.8, lunge: 3,
+    hand: T({ name: 'Water Palm', clip: ['whip_h', 'whip_h', 'whip_v', 'whip_d'], onStart: 'water.whipOut', dur: 0.5, reach: 4.3, cost: 6, cancel: 0.62, upper: true, move: 3.8, lunge: 11,
       active: { from: 0.5, to: 0.64, dmg: 5, range: 1.9, arc: 0.4, knock: 4, level: 0 },
       events: [[0.52, 'water.hand']],
       keys: [
@@ -267,7 +267,7 @@ const air = {
   dodge: { kind: 'airdash', dur: 0.36, speed: 19, iframes: 0.85, trail: 'air' },
   labels: { hand: 'AIR PALM', leg: 'AIR KICK', guard: 'DEFLECT', special: 'TORNADO' },
   tech: {
-    hand: T({ name: 'Air Palm', clip: ['whip_h', 'whip_d', 'whip_h', 'whip_v'], clipSpeed: 2.1, onStart: 'air.whipOut', dur: 0.32, cost: 6, cancel: 0.52, upper: true, move: 5, lunge: 4,
+    hand: T({ name: 'Air Palm', clip: ['whip_h', 'whip_d', 'whip_h', 'whip_v'], clipSpeed: 2.1, onStart: 'air.whipOut', dur: 0.32, reach: 4.3, cost: 6, cancel: 0.52, upper: true, move: 5, lunge: 11,
       active: { from: 0.3, to: 0.5, dmg: 4, range: 1.9, arc: 0.4, knock: 6, level: 0 },
       events: [[0.32, 'air.hand']],
       keys: [

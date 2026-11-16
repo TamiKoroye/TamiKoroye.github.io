@@ -416,7 +416,7 @@ export class Bending {
       // hands come back up
       f.gatherT = Math.max(0, (f.gatherT || 0) - dt);
       if (h.tick <= 0 && this.held(f, 'earth') < MAX_HELD && f.en >= 8) {
-        h.tick = 0.8; f.en -= 8; f.gatherT = 0.8; f.gatherN = (f.gatherN || 0) + 1;
+        h.tick = 0.5; f.en -= 8; f.gatherT = 0.5; f.gatherN = (f.gatherN || 0) + 1;
         const stone = w.arena.nearestLooseStone(f.pos, 8);
         let o;
         if (stone) {
