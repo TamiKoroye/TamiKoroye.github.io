@@ -21,7 +21,7 @@ export const TOON_RAMP = (() => {
   return t;
 })();
 
-const USED = ['Idle_Loop', 'Walk_Loop', 'Jog_Fwd_Loop', 'Sprint_Loop', 'Jump_Start', 'Jump_Loop', 'Jump_Land', 'Roll', 'Hit_Chest', 'Hit_Head', 'Death01', 'Punch_Jab', 'Punch_Cross', 'Spell_Simple_Shoot'];
+const USED = ['Fixing_Kneeling', 'Idle_Loop', 'Walk_Loop', 'Jog_Fwd_Loop', 'Sprint_Loop', 'Jump_Start', 'Jump_Loop', 'Jump_Land', 'Roll', 'Hit_Chest', 'Hit_Head', 'Death01', 'Punch_Jab', 'Punch_Cross', 'Spell_Simple_Shoot'];
 
 // The character is a binary glTF inside an ES module (assets/characters/ual-mannequin.glb.js): loaded like the
 // game's own code and parsed in memory, with no fetch/XHR (some embedded hosts block those but allow scripts).
@@ -42,7 +42,9 @@ export async function loadHeroAssets() {
     // in-place: drop root motion and pin the hips horizontally (the game moves the fighter itself)
     clip.tracks = clip.tracks.filter(t => t.name !== 'root.position');
     const hp = clip.tracks.find(t => t.name === 'DEF-hips.position');
-    if (hp) { const v = hp.values, x0 = v[0], z0 = v[2]; for (let i = 0; i < v.length; i += 3) { v[i] = x0; v[i + 2] = z0; } }
+    // the hips' parent (root) is Z-up: local X and Y are the ground plane, Z is height. Only the ground-plane
+    // components are pinned, so crouching, kneeling, rolling and falling keep their real hip height
+    if (hp) { const v = hp.values, x0 = v[0], y0 = v[1]; for (let i = 0; i < v.length; i += 3) { v[i] = x0; v[i + 1] = y0; } }
     CLIPS[name] = clip;
   }
   return g;
@@ -256,7 +258,7 @@ export class Hero {
   // When the fighter is moving under an upper-body action (a punch, guard, hold or the stance), the action's
   // upper-body tracks run over an authored walk / jog / sidestep for the legs. Procedural motion is a fallback only.
   drive(f, dt) {
-    let wU = 1, wL = 1, clip = 'Idle_Loop', ts = 1, fade = 0.18, restart = false, layered = false;
+    let wU = 1, wL = 1, clip = 'Idle_Loop', ts = 1, fade = 0.18, restart = false, layered = false, startAt = 0;
     const A = f.A, sp = Math.hypot(f.vel.x, f.vel.z), fwd = f.moveLocal.y, side = f.moveLocal.x, moving = sp > 0.6 && f.onGround;
     const L = LOOPS[f.el] || {}, has = (n) => n && this.actions[n];
     const free = (!A || A.soft) && !f.guarding && !f.holding && !f.charging && !(f.restrainT > 0) && f.dodgeT <= 0 && !f.dead;
@@ -272,7 +274,8 @@ export class Hero {
     if (f.dead && has('ko')) once('ko', 1.1, 0.12);
     else if (f.action === 'down' && has('knockback')) once('knockback', 1.5, 0.08);   // knocked off the feet
     else if (f.action === 'down' && has('ko')) once('ko', 1.6, 0.1);
-    else if (f.action === 'getup' && has('getup_back')) { once('getup_back', this.actions.getup_back.getClip().duration / Math.max(0.3, f.A.dur) * 0.8, 0.1); }
+    // recovery from the floor: the Mixamo get-up (on the back, roll to a crouch, stand). UAL2's LayToIdle starts
+    // from a crumpled pose that does not match the knockdown, so it is no longer used
     else if (f.action === 'getup' && has('getup')) { once('getup', this.actions.getup.getClip().duration / Math.max(0.3, f.A.dur) * 0.75, 0.1); }
     else if (f.action === 'landHigh' && has('land_high')) once('land_high', 1.25 / 0.42 * 0.75, 0.06);
     else if (f.action === 'hit' || f.action === 'stagger') {
@@ -314,6 +317,12 @@ export class Hero {
         clip = has(n) ? n : 'block_hit'; wU = wL = 0; fade = 0.06; ts = 1.6; if (this.curName !== clip) restart = true;
       }
       else if (f.guarding && has(L.guard)) { clip = L.guard; wU = wL = 0; fade = 0.12; layered = moving || !!lowOv; }
+      else if (f.holding && f.el === 'earth' && f.gatherT > 0 && has('Fixing_Kneeling')) {
+        // Earth's rock lift: sinking to one knee with the hands on the ground (UAL Fixing_Kneeling, from 0.3 s to its
+        // lowest point at 1.15 s, reached 0.45 s into each gathering), once per rock drawn up
+        clip = 'Fixing_Kneeling'; ts = 1.9; wU = wL = 0; fade = 0.15;
+        if (this.gatherN !== f.gatherN) { this.gatherN = f.gatherN; restart = true; startAt = 0.3; }
+      }
       else if (f.holding && has(L.hold)) { clip = L.hold; ts = LOOP_SPEED[L.hold] || 1; wU = wL = 0; fade = 0.2; layered = moving || !!lowOv; }
       else if (lowOv) { [clip, ts] = lowOv; wU = wL = 0; fade = 0.2; }
       else if (free && !f.onGround && f.highJump && has('jump_high')) {
@@ -345,6 +354,7 @@ export class Hero {
       if (mix && this.low) this.low.setEffectiveWeight(mix);
     }
     if (this.cur) this.cur.timeScale = ts;
+    if (startAt && this.cur) this.cur.time = startAt;
     if (ts === 0 && this.cur && this.chargeHold !== undefined) this.cur.time += (this.chargeHold - this.cur.time) * Math.min(1, dt * 6);
     const k = 1 - Math.exp(-(wU > this.wU || wL > this.wL ? 16 : 10) * dt);
     this.wU += (wU - this.wU) * k; this.wL += (wL - this.wL) * k;

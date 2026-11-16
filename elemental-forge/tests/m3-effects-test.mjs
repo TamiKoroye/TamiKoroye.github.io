@@ -100,7 +100,7 @@ const whipSample = () => S(() => {
 const ang = (a, b) => { const la = Math.hypot(...a), lb = Math.hypot(...b); if (la < 0.8 || lb < 0.8) return null; return Math.acos(Math.max(-1, Math.min(1, (a[0] * b[0] + a[1] * b[1] + a[2] * b[2]) / la / lb))) * 180 / Math.PI; };
 
 // ------------------------------------------------------------------ whips (water, air)
-for (const el of ['water', 'air']) {
+for (const el of (process.env.ONLY ? [] : ['water', 'air'])) {
   head(`${el}: whip from the hand`);
   await setup({ el, p: [0, 0, -9], o: [0, 0, -5] }); await stepN(10);
   const per = {};
@@ -131,7 +131,7 @@ for (const el of ['water', 'air']) {
 }
 
 // ------------------------------------------------------------------ kicks throw the element along the foot's path
-for (const el of ['water', 'fire', 'air']) {
+for (const el of (process.env.ONLY ? [] : ['water', 'fire', 'air'])) {
   head(`${el}: kick arcs follow the kicking foot`);
   await setup({ el, p: [0, 0, -9], o: [0, 0, -5] }); await stepN(10); await clearHits();
   await press('btn-leg', 2);
@@ -171,7 +171,7 @@ const spec = () => S(() => {
     dragonHands: (() => { const d = L.find(s => s.kind === 'dragon'); if (!d || !d.tube) return null; return [Math.min(...d.pts.map(q => q.distanceTo(hl))), Math.min(...d.pts.map(q => q.distanceTo(hr)))].map(x => +x.toFixed(2)); })(),
     torn: (() => { const t = L.find(s => s.kind === 'tornado'); return t ? { c: V(t.c), free: t.free, g: +t.grow.toFixed(2), held: t.held.size } : null; })() };
 });
-for (const el of ['fire', 'earth', 'water', 'air']) {
+for (const el of (process.env.ONLY ? [] : ['fire', 'earth', 'water', 'air'])) {
   head(`${el}: SPECIAL`);
   await setup({ el, p: [0, 0, -9], o: [0, 0, el === 'fire' ? -5.5 : -4.5] }); await stepN(10); await clearHits();
   await press('btn-special', 2);
@@ -208,6 +208,32 @@ for (const el of ['fire', 'earth', 'water', 'air']) {
     check('air: it travels to the rival, lifts them and throws them out', hits.includes('tornado') && maxOy > 1.2, `max rival height ${maxOy} m, hits ${hits.join(',')}`);
   }
   check(`${el}: SPECIAL leaves nothing behind`, (await spec()).kinds.length === 0 || (await (async () => { await stepN(90); return (await spec()).kinds.length === 0; })()), JSON.stringify((await spec()).kinds));
+}
+
+// ------------------------------------------------------------------ Earth gathering and recovery from the floor
+head('earth: gathering rock from the ground, and getting up');
+await setup({ el: 'earth', p: [0, 0, -9], o: [0, 0, -4] }); await stepN(10);
+{
+  await hold('btn-hand'); const clips = []; let low = 9;
+  for (let j = 0; j < 75; j++) {
+    await stepN(1);
+    const r = await S(() => { const { player: p, world } = window.__EF; return { t: p.hero.cur && +p.hero.cur.time.toFixed(2), w: p.hero.cur && +p.hero.cur.getEffectiveWeight().toFixed(2), g: +(p.gatherT || 0).toFixed(2), clip: p.hero.curName, hy: Math.min(p.handPos('L').y, p.handPos('R').y) - p.groundY, n: world.bending.held(p, 'earth') }; });
+    clips.push(r.clip); if (r.clip === "Fixing_Kneeling") low = Math.min(low, r.hy); if (process.env.DBG) console.log(j, r.clip, r.hy.toFixed(2), r.t, r.w, r.g);
+    if (j === 12 || j === 40) await snap(`earth-gather-${j}`);
+  }
+  await fUp(6);
+  const n = await S(() => window.__EF.world.bending.held(window.__EF.player, 'earth'));
+  check('earth: holding HAND sinks to the ground for the rocks (Fixing_Kneeling)', clips.includes('Fixing_Kneeling') && low < 0.6, `lowest hand ${low.toFixed(2)} m above the ground; clips ${[...new Set(clips)].join(',')}`);
+  check('earth: rocks are drawn up while gathering', n >= 1, `${n} rocks held`);
+}
+await setup({ el: 'earth', oel: 'fire', p: [0, 0, -9], o: [0, 0, -5.5] }); await stepN(5);
+{
+  // the rival's Dragon Descent knocks the player down; the recovery is recorded
+  await S(() => { const { opp } = window.__EF; opp.startTech(opp.style.tech.special, 1); });
+  const seq = []; let shots = 0;
+  for (let j = 0; j < 110; j++) { await stepN(1); const r = await S(() => ({ a: window.__EF.player.action, c: window.__EF.player.hero.curName })); seq.push(r); if (r.a === 'getup' && shots < 3 && j % 4 === 0) { await snap(`getup-${shots}`); shots++; } }
+  const ups = seq.filter(r => r.a === 'getup').map(r => r.c);
+  check('recovery from a knockdown plays the Mixamo get-up (on the back, roll to a crouch, stand)', ups.length > 5 && ups.every(c => c === 'getup'), `getup frames ${ups.length}, clips ${[...new Set(ups)].join(',') || 'none'}; actions ${[...new Set(seq.map(r => r.a))].join(',')}`);
 }
 
 console.log(`\n${results.filter(r => r.ok).length}/${results.length} passed`);

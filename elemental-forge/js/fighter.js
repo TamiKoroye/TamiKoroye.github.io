@@ -13,7 +13,7 @@ export const ACTIONS = {
   hit:     { dur: 0.3,  react: true },
   stagger: { dur: 0.62, react: true },
   down:    { dur: 0.85, react: true },
-  getup:   { dur: 0.45, react: true },
+  getup:   { dur: 0.85, react: true },   // long enough for the authored get-up to read (about 2.4x its captured speed)
   land:    { dur: 0.14, soft: true },
   landHigh:{ dur: 0.42, soft: true },
   ko:      { dur: 99,   react: true },

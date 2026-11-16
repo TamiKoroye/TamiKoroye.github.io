@@ -412,8 +412,11 @@ export class Bending {
     const aim = f.input.aimPoint;
     if (h.el === 'earth') {
       // Boulder Lift: one rock (or a nearby loose stone) every 0.35 s up to three
+      // the bender reaches down to the ground for each one (PickUp_Table), and the rock breaks out of the ground as the
+      // hands come back up
+      f.gatherT = Math.max(0, (f.gatherT || 0) - dt);
       if (h.tick <= 0 && this.held(f, 'earth') < MAX_HELD && f.en >= 8) {
-        h.tick = 0.35; f.en -= 8;
+        h.tick = 0.8; f.en -= 8; f.gatherT = 0.8; f.gatherN = (f.gatherN || 0) + 1;
         const stone = w.arena.nearestLooseStone(f.pos, 8);
         let o;
         if (stone) {
@@ -425,6 +428,7 @@ export class Bending {
           const p = this.forwardPoint(f, 1.2 + Math.random() * 0.6, 0);
           p.x += rand(-0.8, 0.8); p.z += rand(-0.8, 0.8); p.y = w.arena.groundAt(p.x, p.z, f.pos.y + 0.3) - 0.4;
           o = this.spawn('rock', f, p, 'rising'); o.start = p.clone();
+          this.weapons.burst.spawn(p.x, p.y + 0.4, p.z, 0.32);   // the ground breaks open where it comes out
           w.fx.debrisBurst(_v.set(p.x, p.y + 0.45, p.z), 10, 2.2, 0.09, 0x7a7068, 0.8); w.fx.crater(_v.set(p.x, p.y + 0.42, p.z), 1.3);
         }
         o.slot = this.held(f, 'earth') * 2.1;
