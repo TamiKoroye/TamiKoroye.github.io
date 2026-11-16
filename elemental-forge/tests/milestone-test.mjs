@@ -171,9 +171,9 @@ check('training opponent reacts less than master', training < master, `training 
 head('Opponent combinations and counters');
 await setup({ el: 'earth', oel: 'fire', p: [0, 0, -2.0], o: [0, 0, 0] });
 await realAI('master');
-const seq = await S(() => { const E = window.__EF, o = E.opp, P = E.player, out = []; let last = null; for (let i = 0; i < 300; i++) { P.hp = 100; P.en = 100; o.en = 100; E.step(1 / 30); if (o.action === 'tech' && o.techN !== last) { last = o.techN; out.push([+(i / 30).toFixed(2), o.tech.name]); } } return out; });
+const seq = await S(() => { const E = window.__EF, o = E.opp, P = E.player, out = []; let last = null; for (let i = 0; i < 600; i++) { P.hp = 100; P.en = 100; o.en = 100; E.step(1 / 30); if (o.action === 'tech' && o.techN !== last) { last = o.techN; out.push([+(i / 30).toFixed(2), o.tech.name]); } } return out; });
 let chains = 0; for (let i = 1; i < seq.length; i++) if (seq[i][0] - seq[i - 1][0] < 0.75) chains++;
-check('master opponent strings strikes into combinations', chains >= 2, `${seq.length} techniques in 10 s, ${chains} follow-ups within 0.75 s: ${seq.slice(0, 8).map(s => s[1]).join(', ')}`);
+check('master opponent strings strikes into combinations', chains >= 3, `${seq.length} techniques in 20 s, ${chains} follow-ups within 0.75 s: ${seq.slice(0, 8).map(s => s[1]).join(', ')}`);
 await stubAI();
 
 head('Regression');

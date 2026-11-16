@@ -79,7 +79,8 @@ export class AI {
     }
     // ---- reading the opponent's strikes: a wind-up that will reach us is answered with a guard, an evasion or
     // (master) a guard followed by a counter. Each strike is judged once, after a human-like delay.
-    if (foe.action === 'tech' && foe.techN !== this.seenTech && foe.tech && foe.tech.active) {
+    // (the Training partner does not read strikes: it is there to be hit)
+    if (this.d !== 'training' && foe.action === 'tech' && foe.techN !== this.seenTech && foe.tech && foe.tech.active) {
       const A = foe.tech.active, u = foe.actionT / foe.tech.dur;
       if (u < A.from && dist < (A.range || 2.2) + 1.6) {
         this.seenTech = foe.techN;
