@@ -26,7 +26,7 @@ export class Weapons {
   constructor(B) {
     this.B = B; this.w = B.world;
     this.whips = []; this.waves = []; this.columns = []; this.erupts = []; this.fireRings = []; this.captures = [];
-    this.trails = []; this.platforms = []; this.arcs = []; this.traps = []; this.whirls = [];
+    this.trails = []; this.platforms = []; this.arcs = []; this.traps = []; this.whirls = []; this.spires = [];
     this.tubeMat = waterMaterial(-4); this.tubeMat.uniforms.uRise.value = 1;
     this.tubePool = [];
     // air: the same rope drawn as a pale, fast-turning translucent current (it has a body, not only streaks)
@@ -437,7 +437,6 @@ export class Weapons {
   }
   updateTraps(dt) {
     const w = this.w;
-    for (const W of this.whirls) W.tubes.forEach(t => this.freeTube(t));
     for (const T of this.traps) {
       T.t += dt;
       if (T.phase === 'roll') {
@@ -580,9 +579,32 @@ export class Weapons {
       w.arena.colliders.push(col);
       this.platforms.push({ m, col, t: 0, life: 5, y0: f.pos.y - 2.4, rise: 2.35, el });
       w.fx.debrisBurst(_a.set(f.pos.x, f.pos.y + 0.3, f.pos.z), 16, 4, 0.08, 0xbfe8ff); w.fx.splash(f.pos, 12); w.audio.splash(1);
-    } else {
-      this.B.raisePillar(f, f.pos.x - Math.sin(f.faceYaw) * 0.2, f.pos.z - Math.cos(f.faceYaw) * 0.2);
+    } else this.launchSpire(f);
+  }
+  // Earth's launch: a pointed spire of rock drives up out of the ground under the feet and throws the bender upward,
+  // then sinks back after a moment
+  launchSpire(f) {
+    const w = this.w, x = f.pos.x, z = f.pos.z, gy = w.arena.groundAt(x, z, f.pos.y + 0.5);
+    if (!this.spireGeo) {
+      const g = new THREE.ConeGeometry(0.85, 3.4, 7, 5); const p = g.attributes.position;
+      for (let i = 0; i < p.count; i++) { const y = p.getY(i), k = (1.7 - y) / 3.4; if (y < 1.69) p.setXYZ(i, p.getX(i) * rand(0.8, 1.2), y + rand(-0.08, 0.08) * k, p.getZ(i) * rand(0.8, 1.2)); }
+      g.translate(0, 1.7, 0); g.computeVertexNormals(); this.spireGeo = g;
     }
+    const m = new THREE.Mesh(this.spireGeo, this.rockMat); m.castShadow = true; m.rotation.set(rand(-0.06, 0.06), rand(0, 6), rand(-0.06, 0.06));
+    m.position.set(x, gy - 3.4, z); w.scene.add(m);
+    this.spires.push({ m, gy, t: 0 });
+    this.burst.spawn(x, gy, z, 0.42); w.fx.debrisBurst(_a.set(x, gy + 0.1, z), 18, 4, 0.11, 0x7a6a58); w.fx.dust(_a.set(x, gy, z), 10, 2.5); w.fx.crater(_a.set(x, gy, z), 1.8);
+    w.audio.rumble(1); w.shake(0.25, f.pos);
+  }
+  updateSpires(dt) {
+    for (const S of this.spires) {
+      S.t += dt;
+      // the point bursts up past where the feet were in 0.14 s, holds, then sinks back into the ground
+      const up = S.t < 0.14 ? smooth01(S.t / 0.14) : S.t < 1.3 ? 1 : 1 - smooth01((S.t - 1.3) / 0.5);
+      S.m.position.y = S.gy - 3.4 + up * 3.0;
+      if (S.t > 1.85) { S.dead = true; this.w.scene.remove(S.m); }
+    }
+    this.spires = this.spires.filter(S => !S.dead);
   }
   flyTick(f, dt) {
     const w = this.w;
@@ -615,12 +637,13 @@ export class Weapons {
   update(dt) {
     this.tubeMat.uniforms.uTime.value += dt;
     this.burst.update(dt);
-    this.updateWhips(dt); this.updateArcs(dt); this.updateTraps(dt); this.updateWhirls(dt); this.updateWaves(dt); this.updateColumns(dt); this.updateErupts(dt); this.updateFireRings(dt); this.updateCaptures(dt); this.updateTrails(dt);
+    this.updateWhips(dt); this.updateArcs(dt); this.updateTraps(dt); this.updateWhirls(dt); this.updateSpires(dt); this.updateWaves(dt); this.updateColumns(dt); this.updateErupts(dt); this.updateFireRings(dt); this.updateCaptures(dt); this.updateTrails(dt);
   }
   clear() {
     for (const W of this.whips) this.dropWhip(W);
     for (const A of this.arcs) { this.freeTube(A.tube); if (A.ribbons) A.ribbons.forEach(r => r.release()); }
     for (const W of this.whirls) W.tubes.forEach(t => this.freeTube(t));
+    for (const S of this.spires) this.w.scene.remove(S.m);
     for (const T of this.traps) { this.w.scene.remove(T.ball); if (T.mesh) this.w.scene.remove(T.mesh); }
     this.burst.clear();
     for (const V of this.waves) this.w.scene.remove(V.mesh);
@@ -631,6 +654,6 @@ export class Weapons {
     for (const T of this.trails) this.w.scene.remove(T.m);
     for (const P of this.platforms) { this.w.scene.remove(P.m); P.col.dead = true; }
     this.w.arena.colliders = this.w.arena.colliders.filter(c => !this.platforms.some(P => P.col === c));
-    this.whips = []; this.waves = []; this.columns = []; this.erupts = []; this.fireRings = []; this.captures = []; this.trails = []; this.platforms = []; this.arcs = []; this.traps = []; this.whirls = [];
+    this.whips = []; this.waves = []; this.columns = []; this.erupts = []; this.fireRings = []; this.captures = []; this.trails = []; this.platforms = []; this.arcs = []; this.traps = []; this.whirls = []; this.spires = [];
   }
 }
