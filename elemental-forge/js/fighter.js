@@ -220,14 +220,19 @@ export class Fighter {
         else if (this.airJumps < st.jump.air && this.vel.y < 5) { this.buf.jump = 0; this.airJumps++; this.vel.y = 7.2; this.jumpFx(true); }
       }
       const canStrike = this.free('attack') && !this.guarding && !this.holding;
-      if (this.buf.hand && !this.charging && canStrike) {
+      // one buffered strike starts per frame, the earlier press first (more buffer time used up); the other stays
+      // queued for the next opening instead of replacing this one in the same frame
+      const handFirst = this.buf.hand && (!this.buf.leg || this.buf.hand <= this.buf.leg);
+      let struck = false;
+      if (this.buf.hand && handFirst && !this.charging && canStrike) {
+        struck = true;
         this.buf.hand = 0; this.dodgeT = 0;
         if (this.counterT > 0) { this.counterT = 0; this.startAction('counter'); w.combat.lunge(this, ACTIONS.counter); w.popup(this, 'COUNTER', true); w.audio.whoosh(0.9); }
         else if (B.spiralRelease && B.spiralRelease(this)) { w.popup(this, 'RELEASE', true); }
         else { this.handSide = -this.handSide; this.startTech(st.tech.hand, this.handSide, true); }
         this.handHoldT = 0;
       }
-      if (this.buf.leg && !this.charging && canStrike) {
+      if (this.buf.leg && !struck && !this.charging && canStrike) {
         this.buf.leg = 0; this.dodgeT = 0;
         if (st.tech.legMove && this.onGround && this.speedNorm > 0.45 && !this.action && this.comboTimer <= 0) {
           // LEG while running: a kick delivered on the move, keeping the run's momentum
