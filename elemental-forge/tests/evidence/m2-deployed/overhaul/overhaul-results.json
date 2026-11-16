@@ -1,0 +1,318 @@
+{
+ "base": "https://tamikoroye.github.io/elemental-forge-dev/",
+ "build": "dev 2026-11-16 r7 · commit 632612f · character OK · 92/92 martial-arts clips decoded",
+ "results": [
+  {
+   "section": "Load",
+   "name": "build loads its character and every clip",
+   "ok": true,
+   "detail": "92/92 clips"
+  },
+  {
+   "section": "Water: whips",
+   "name": "HAND chain lashes the whip in different directions",
+   "ok": true,
+   "detail": "h > v > d > h"
+  },
+  {
+   "section": "Water: whips",
+   "name": "the whip strikes connect",
+   "ok": true,
+   "detail": "rival hp 75"
+  },
+  {
+   "section": "Water: whips",
+   "name": "holding HAND keeps two whips, one from each hand",
+   "ok": true,
+   "detail": "2 whips"
+  },
+  {
+   "section": "Water: whips",
+   "name": "the stick sweeps the held whips across",
+   "ok": true,
+   "detail": "tips x -3.9,-4.0 -> 2.4,3.6"
+  },
+  {
+   "section": "Water: whips",
+   "name": "the held whips strike the rival",
+   "ok": true,
+   "detail": "rival hp 90"
+  },
+  {
+   "section": "Water: kicks produce water attacks",
+   "name": "crescent kick: a low water arc hits at 5.5 m",
+   "ok": true,
+   "detail": "{\"hp\":92,\"lifted\":0.09319999999999998,\"tech\":\"Crescent Water Kick\"}"
+  },
+  {
+   "section": "Water: kicks produce water attacks",
+   "name": "spinning kick: a water whip swung round the body hits",
+   "ok": true,
+   "detail": "{\"hp\":84,\"lifted\":0.11230399999999999,\"tech\":\"Turning Wave Kick\"}"
+  },
+  {
+   "section": "Water: kicks produce water attacks",
+   "name": "rising kick: a water column surges under the rival and lifts them",
+   "ok": true,
+   "detail": "{\"hp\":91,\"lifted\":1.899600000000001,\"tech\":\"Rising Water Kick\"}"
+  },
+  {
+   "section": "Water: kicks produce water attacks",
+   "name": "charged LEG: a tidal wave advances, hits and pushes the rival back",
+   "ok": true,
+   "detail": "rival hp 83, pushed to z 4.2 (from -6)"
+  },
+  {
+   "section": "Water: kicks produce water attacks",
+   "name": "the wave freezes into ice spikes where it stops",
+   "ok": true,
+   "detail": "5 ice spikes"
+  },
+  {
+   "section": "Water: ice weapons from the guard",
+   "name": "GUARD + HAND throws an ice spear that hits",
+   "ok": true,
+   "detail": "spear true, rival hp 89"
+  },
+  {
+   "section": "Water: ice weapons from the guard",
+   "name": "GUARD + LEG sends a stream that captures the rival briefly",
+   "ok": true,
+   "detail": "held for 0.80 s"
+  },
+  {
+   "section": "Water: ice surfing and ice launch",
+   "name": "DODGE held: ice forms under the feet and the waterbender surfs",
+   "ok": true,
+   "detail": "36 frames surfing, 12 ice trail pieces"
+  },
+  {
+   "section": "Water: ice surfing and ice launch",
+   "name": "surfing accelerates beyond running speed",
+   "ok": true,
+   "detail": "12.8 m/s"
+  },
+  {
+   "section": "Water: ice surfing and ice launch",
+   "name": "the surfer holds the surfing stance",
+   "ok": true,
+   "detail": "surf_stance"
+  },
+  {
+   "section": "Water: ice surfing and ice launch",
+   "name": "the stick steers the surf",
+   "ok": true,
+   "detail": "heading changed -2.00 rad"
+  },
+  {
+   "section": "Water: ice surfing and ice launch",
+   "name": "JUMP while surfing: a rising ice pillar launches the bender high",
+   "ok": true,
+   "detail": "peak 3.67 m above the ground, ice platforms 1"
+  },
+  {
+   "section": "Water: ice surfing and ice launch",
+   "name": "the launch plays the high-jump animation",
+   "ok": true,
+   "detail": "jump_high,air_loop,fall_loop,land_high"
+  },
+  {
+   "section": "Water: ice surfing and ice launch",
+   "name": "JUMP held: a water column under the feet carries the waterbender up",
+   "ok": true,
+   "detail": "peak 3.44 m, column visible true"
+  },
+  {
+   "section": "Air: weapons",
+   "name": "air whip strikes",
+   "ok": true,
+   "detail": "rival hp 89"
+  },
+  {
+   "section": "Air: weapons",
+   "name": "charged LEG: a pressure wave drives the rival back",
+   "ok": true,
+   "detail": "rival hp 85, pushed to z -0.9 (from -6)"
+  },
+  {
+   "section": "Air: weapons",
+   "name": "rising kick: an air column launches the rival",
+   "ok": true,
+   "detail": "rival lifted 3.01 m"
+  },
+  {
+   "section": "Air: flight",
+   "name": "DODGE held lifts the airbender into flight; JUMP climbs",
+   "ok": true,
+   "detail": "peak 9.7 m above the ground"
+  },
+  {
+   "section": "Air: flight",
+   "name": "flight plays the airborne pose",
+   "ok": true,
+   "detail": "air_loop"
+  },
+  {
+   "section": "Air: flight",
+   "name": "the stick steers the flight sideways",
+   "ok": true,
+   "detail": "moved 5.7 m"
+  },
+  {
+   "section": "Air: flight",
+   "name": "HAND in flight strikes the rival below",
+   "ok": true,
+   "detail": "rival hp 100 -> 94, still flying true"
+  },
+  {
+   "section": "Air: flight",
+   "name": "flight is limited in time and the airbender lands on their feet",
+   "ok": true,
+   "detail": "flight ended 1.9 s after (fuel left 1.9 s), on ground true, action null"
+  },
+  {
+   "section": "Earth: stomp eruption at the opponent",
+   "name": "charged LEG plays the stomp",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "Earth: stomp eruption at the opponent",
+   "name": "the ground is marked under the opponent before it erupts",
+   "ok": true,
+   "detail": "mark at 1.5, -1.8; rival at 1.4, -2.5"
+  },
+  {
+   "section": "Earth: stomp eruption at the opponent",
+   "name": "rock spikes erupt there and launch the rival",
+   "ok": true,
+   "detail": "rival hit by: eruption"
+  },
+  {
+   "section": "Earth: stomp eruption at the opponent",
+   "name": "a rival who leaves the marked ground is not hit by the eruption",
+   "ok": true,
+   "detail": "rival hit by: nothing"
+  },
+  {
+   "section": "Earth: rock surfing and slab launch",
+   "name": "DODGE held: the earthbender rides a rock slab",
+   "ok": true,
+   "detail": "41 frames"
+  },
+  {
+   "section": "Earth: rock surfing and slab launch",
+   "name": "the slab builds speed (heavier than ice)",
+   "ok": true,
+   "detail": "11.8 m/s"
+  },
+  {
+   "section": "Earth: rock surfing and slab launch",
+   "name": "JUMP while surfing: a rising slab launches the earthbender",
+   "ok": true,
+   "detail": "peak 4.12 m, pillars 1"
+  },
+  {
+   "section": "Fire: stomp ring",
+   "name": "charged LEG stamps a ring of fire that expands along the ground",
+   "ok": true,
+   "detail": "ring reached 9.1 m"
+  },
+  {
+   "section": "Fire: stomp ring",
+   "name": "the ring hits a rival 6 m away",
+   "ok": true,
+   "detail": "rival hit by: fireRing,burn"
+  },
+  {
+   "section": "Fire: stomp ring",
+   "name": "a rival who jumps the ring is not hit by it",
+   "ok": true,
+   "detail": "jumped true, rival hit by: nothing"
+  },
+  {
+   "section": "Fire: flame propulsion",
+   "name": "DODGE held: flames from the feet drive a fast run",
+   "ok": true,
+   "detail": "16.6 m/s"
+  },
+  {
+   "section": "Fire: flame propulsion",
+   "name": "JUMP from the flame run: a flame-powered high jump",
+   "ok": true,
+   "detail": "peak 3.55 m"
+  },
+  {
+   "section": "Opponent responses (game AI, Master)",
+   "name": "the opponent gets off marked ground before most eruptions",
+   "ok": true,
+   "detail": "4/5 eruptions avoided"
+  },
+  {
+   "section": "Opponent responses (game AI, Master)",
+   "name": "the opponent jumps most fire rings",
+   "ok": true,
+   "detail": "4/5 fire rings avoided"
+  },
+  {
+   "section": "Opponent responses (game AI, Master)",
+   "name": "the opponent keeps attacking a flying player from the ground",
+   "ok": true,
+   "detail": "projectiles in the air 1, hits on the flier: proj,proj,proj"
+  },
+  {
+   "section": "Venue: barn ruin",
+   "name": "the barn ruin loads into the arena with its colliders",
+   "ok": true,
+   "detail": "{\"venue\":\"barn\",\"cols\":77,\"hidden\":13,\"inScene\":true}"
+  },
+  {
+   "section": "Venue: barn ruin",
+   "name": "courtyard props inside the ruin are put away",
+   "ok": true,
+   "detail": "13 props hidden"
+  },
+  {
+   "section": "Venue: barn ruin",
+   "name": "walls stop the fighters",
+   "ok": true,
+   "detail": "wall {\"x\":-11.26,\"z\":0.57,\"hx\":0.2,\"hz\":4.4,\"top\":3.67}, fighter at -11.9, 0.0, -1.1"
+  },
+  {
+   "section": "Venue: barn ruin",
+   "name": "a wall shields a rival from the fire ring",
+   "ok": true,
+   "detail": "rival hit by: nothing"
+  },
+  {
+   "section": "Venue: barn ruin",
+   "name": "the earth stomp erupts from the barn floor under the rival",
+   "ok": true,
+   "detail": "rival hit by: eruption"
+  },
+  {
+   "section": "Venue: barn ruin",
+   "name": "the airbender can fly above the ruin walls",
+   "ok": true,
+   "detail": "peak 9.3 m, wall top 3.67 m"
+  },
+  {
+   "section": "Venue: barn ruin",
+   "name": "render cost in the barn stays bounded",
+   "ok": true,
+   "detail": "60 draw calls, 202179 triangles"
+  },
+  {
+   "section": "Venue: barn ruin",
+   "name": "switching back restores the courtyard",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "Regression",
+   "name": "no runtime errors during the test",
+   "ok": true,
+   "detail": ""
+  }
+ ]
+}

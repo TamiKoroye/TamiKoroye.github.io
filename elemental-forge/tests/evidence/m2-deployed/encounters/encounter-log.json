@@ -1,0 +1,947 @@
+{
+ "base": "https://tamikoroye.github.io/elemental-forge-dev/",
+ "summary": {
+  "earth": {
+   "load": {
+    "mode": "authored",
+    "character": "ok",
+    "clipsDecoded": 92,
+    "clipsExpected": 92,
+    "missing": [],
+    "errors": [],
+    "ok": true
+   },
+   "errors": [],
+   "frames": 496,
+   "steps": [
+    {
+     "step": "1. Approach",
+     "frames": [
+      45,
+      165
+     ],
+     "note": null,
+     "rivalHp": [
+      100,
+      100
+     ],
+     "playerHp": [
+      100,
+      100
+     ],
+     "playerTechniques": [],
+     "rivalActions": [
+      "Fire Fist"
+     ]
+    },
+    {
+     "step": "2. Opponent attacks",
+     "frames": [
+      165,
+      171
+     ],
+     "note": "rival used Flame Orb",
+     "rivalHp": [
+      100,
+      100
+     ],
+     "playerHp": [
+      100,
+      100
+     ],
+     "playerTechniques": [],
+     "rivalActions": [
+      "Flame Orb"
+     ]
+    },
+    {
+     "step": "3. Evade / defend",
+     "frames": [
+      171,
+      185
+     ],
+     "note": null,
+     "rivalHp": [
+      100,
+      100
+     ],
+     "playerHp": [
+      100,
+      100
+     ],
+     "playerTechniques": [
+      "GUARD"
+     ],
+     "rivalActions": [
+      "Flame Orb"
+     ]
+    },
+    {
+     "step": "4. Hand counter",
+     "frames": [
+      185,
+      200
+     ],
+     "note": null,
+     "rivalHp": [
+      100,
+      100
+     ],
+     "playerHp": [
+      100,
+      100
+     ],
+     "playerTechniques": [
+      "Stone Punch"
+     ],
+     "rivalActions": [
+      "Flame Orb"
+     ]
+    },
+    {
+     "step": "5. Leg follow-up",
+     "frames": [
+      200,
+      218
+     ],
+     "note": null,
+     "rivalHp": [
+      100,
+      91
+     ],
+     "playerHp": [
+      100,
+      100
+     ],
+     "playerTechniques": [
+      "Stone Punch",
+      "Earth Kick"
+     ],
+     "rivalActions": [
+      "stagger"
+     ]
+    },
+    {
+     "step": "6. Sustained bending, steered",
+     "frames": [
+      218,
+      266
+     ],
+     "note": null,
+     "rivalHp": [
+      91,
+      76
+     ],
+     "playerHp": [
+      100,
+      100
+     ],
+     "playerTechniques": [
+      "Earth Kick",
+      "Stone Punch",
+      "sustained"
+     ],
+     "rivalActions": [
+      "stagger",
+      "Fire Fist"
+     ]
+    },
+    {
+     "step": "7. Opponent reacts / counters",
+     "frames": [
+      266,
+      306
+     ],
+     "note": "rival did not strike",
+     "rivalHp": [
+      76,
+      76
+     ],
+     "playerHp": [
+      100,
+      100
+     ],
+     "playerTechniques": [],
+     "rivalActions": []
+    },
+    {
+     "step": "8. Elemental mobility (DODGE held)",
+     "frames": [
+      306,
+      376
+     ],
+     "note": null,
+     "rivalHp": [
+      76,
+      76
+     ],
+     "playerHp": [
+      100,
+      100
+     ],
+     "playerTechniques": [
+      "dodge:roll"
+     ],
+     "rivalActions": [
+      "Fire Fist"
+     ]
+    },
+    {
+     "step": "9. Respond",
+     "frames": [
+      376,
+      406
+     ],
+     "note": null,
+     "rivalHp": [
+      76,
+      59
+     ],
+     "playerHp": [
+      100,
+      100
+     ],
+     "playerTechniques": [
+      "Stone Punch",
+      "Earth Kick"
+     ],
+     "rivalActions": [
+      "Running Kick",
+      "down"
+     ]
+    },
+    {
+     "step": "10. Earth Stomp (rocks erupt under the rival)",
+     "frames": [
+      406,
+      476
+     ],
+     "note": null,
+     "rivalHp": [
+      59,
+      38
+     ],
+     "playerHp": [
+      100,
+      100
+     ],
+     "playerTechniques": [
+      "Earth Kick",
+      "Earth Sweep",
+      "Earth Stomp"
+     ],
+     "rivalActions": [
+      "down",
+      "getup",
+      "hit",
+      "Flame Orb"
+     ]
+    }
+   ]
+  },
+  "fire": {
+   "load": {
+    "mode": "authored",
+    "character": "ok",
+    "clipsDecoded": 92,
+    "clipsExpected": 92,
+    "missing": [],
+    "errors": [],
+    "ok": true
+   },
+   "errors": [],
+   "frames": 549,
+   "steps": [
+    {
+     "step": "1. Approach",
+     "frames": [
+      45,
+      165
+     ],
+     "note": null,
+     "rivalHp": [
+      100,
+      100
+     ],
+     "playerHp": [
+      100,
+      93
+     ],
+     "playerTechniques": [],
+     "rivalActions": [
+      "Water Whip"
+     ]
+    },
+    {
+     "step": "2. Opponent attacks",
+     "frames": [
+      165,
+      207
+     ],
+     "note": "rival used Spiral Streams",
+     "rivalHp": [
+      100,
+      100
+     ],
+     "playerHp": [
+      93,
+      93
+     ],
+     "playerTechniques": [],
+     "rivalActions": [
+      "Spiral Streams"
+     ]
+    },
+    {
+     "step": "3. Evade / defend",
+     "frames": [
+      207,
+      217
+     ],
+     "note": null,
+     "rivalHp": [
+      100,
+      100
+     ],
+     "playerHp": [
+      93,
+      93
+     ],
+     "playerTechniques": [
+      "dodge:dash"
+     ],
+     "rivalActions": [
+      "Spiral Streams"
+     ]
+    },
+    {
+     "step": "4. Hand counter",
+     "frames": [
+      217,
+      232
+     ],
+     "note": null,
+     "rivalHp": [
+      100,
+      100
+     ],
+     "playerHp": [
+      93,
+      93
+     ],
+     "playerTechniques": [
+      "Fire Fist"
+     ],
+     "rivalActions": [
+      "Spiral Streams"
+     ]
+    },
+    {
+     "step": "5. Leg follow-up",
+     "frames": [
+      232,
+      250
+     ],
+     "note": null,
+     "rivalHp": [
+      100,
+      100
+     ],
+     "playerHp": [
+      93,
+      93
+     ],
+     "playerTechniques": [
+      "Flame Kick"
+     ],
+     "rivalActions": []
+    },
+    {
+     "step": "6. Sustained bending, steered",
+     "frames": [
+      250,
+      298
+     ],
+     "note": null,
+     "rivalHp": [
+      100,
+      86
+     ],
+     "playerHp": [
+      93,
+      93
+     ],
+     "playerTechniques": [
+      "Fire Fist",
+      "sustained"
+     ],
+     "rivalActions": [
+      "hit"
+     ]
+    },
+    {
+     "step": "7. Opponent reacts / counters",
+     "frames": [
+      298,
+      362
+     ],
+     "note": "rival: Running Kick, Water Whip",
+     "rivalHp": [
+      86,
+      86
+     ],
+     "playerHp": [
+      93,
+      93
+     ],
+     "playerTechniques": [
+      "GUARD"
+     ],
+     "rivalActions": [
+      "Running Kick",
+      "Water Whip"
+     ]
+    },
+    {
+     "step": "8. Elemental mobility (DODGE held)",
+     "frames": [
+      362,
+      429
+     ],
+     "note": null,
+     "rivalHp": [
+      86,
+      86
+     ],
+     "playerHp": [
+      93,
+      93
+     ],
+     "playerTechniques": [
+      "flame jets"
+     ],
+     "rivalActions": [
+      "Water Whip"
+     ]
+    },
+    {
+     "step": "9. Respond",
+     "frames": [
+      429,
+      459
+     ],
+     "note": null,
+     "rivalHp": [
+      86,
+      86
+     ],
+     "playerHp": [
+      93,
+      84
+     ],
+     "playerTechniques": [
+      "Fire Fist"
+     ],
+     "rivalActions": [
+      "Water Whip"
+     ]
+    },
+    {
+     "step": "10. Fire Stomp (expanding ring)",
+     "frames": [
+      459,
+      529
+     ],
+     "note": null,
+     "rivalHp": [
+      86,
+      60
+     ],
+     "playerHp": [
+      84,
+      84
+     ],
+     "playerTechniques": [
+      "Flame Kick",
+      "Fire Stomp"
+     ],
+     "rivalActions": [
+      "stagger",
+      "Spiral Streams"
+     ]
+    }
+   ]
+  },
+  "water": {
+   "load": {
+    "mode": "authored",
+    "character": "ok",
+    "clipsDecoded": 92,
+    "clipsExpected": 92,
+    "missing": [],
+    "errors": [],
+    "ok": true
+   },
+   "errors": [],
+   "frames": 549,
+   "steps": [
+    {
+     "step": "1. Approach",
+     "frames": [
+      45,
+      165
+     ],
+     "note": null,
+     "rivalHp": [
+      100,
+      100
+     ],
+     "playerHp": [
+      100,
+      100
+     ],
+     "playerTechniques": [],
+     "rivalActions": [
+      "Fire Fist"
+     ]
+    },
+    {
+     "step": "2. Opponent attacks",
+     "frames": [
+      165,
+      193
+     ],
+     "note": "rival used Flame Orb",
+     "rivalHp": [
+      100,
+      100
+     ],
+     "playerHp": [
+      100,
+      100
+     ],
+     "playerTechniques": [],
+     "rivalActions": [
+      "Flame Orb"
+     ]
+    },
+    {
+     "step": "3. Evade / defend",
+     "frames": [
+      193,
+      207
+     ],
+     "note": null,
+     "rivalHp": [
+      100,
+      100
+     ],
+     "playerHp": [
+      100,
+      100
+     ],
+     "playerTechniques": [
+      "GUARD"
+     ],
+     "rivalActions": [
+      "Flame Orb"
+     ]
+    },
+    {
+     "step": "4. Hand counter",
+     "frames": [
+      207,
+      222
+     ],
+     "note": null,
+     "rivalHp": [
+      100,
+      100
+     ],
+     "playerHp": [
+      100,
+      100
+     ],
+     "playerTechniques": [
+      "Water Whip"
+     ],
+     "rivalActions": [
+      "Flame Orb"
+     ]
+    },
+    {
+     "step": "5. Leg follow-up",
+     "frames": [
+      222,
+      240
+     ],
+     "note": null,
+     "rivalHp": [
+      100,
+      93
+     ],
+     "playerHp": [
+      100,
+      100
+     ],
+     "playerTechniques": [
+      "Crescent Water Kick"
+     ],
+     "rivalActions": [
+      "hit"
+     ]
+    },
+    {
+     "step": "6. Sustained bending, steered",
+     "frames": [
+      240,
+      288
+     ],
+     "note": null,
+     "rivalHp": [
+      93,
+      88
+     ],
+     "playerHp": [
+      100,
+      100
+     ],
+     "playerTechniques": [
+      "Water Whip",
+      "sustained"
+     ],
+     "rivalActions": [
+      "dodge",
+      "hit",
+      "Running Kick"
+     ]
+    },
+    {
+     "step": "7. Opponent reacts / counters",
+     "frames": [
+      288,
+      340
+     ],
+     "note": "rival: Running Kick, Fire Fist",
+     "rivalHp": [
+      88,
+      88
+     ],
+     "playerHp": [
+      100,
+      100
+     ],
+     "playerTechniques": [
+      "GUARD"
+     ],
+     "rivalActions": [
+      "Running Kick",
+      "Fire Fist"
+     ]
+    },
+    {
+     "step": "8. Elemental mobility (DODGE held)",
+     "frames": [
+      340,
+      410
+     ],
+     "note": null,
+     "rivalHp": [
+      88,
+      88
+     ],
+     "playerHp": [
+      100,
+      100
+     ],
+     "playerTechniques": [
+      "dodge:slide"
+     ],
+     "rivalActions": [
+      "Flame Orb",
+      "Fire Fist"
+     ]
+    },
+    {
+     "step": "9. Respond",
+     "frames": [
+      410,
+      440
+     ],
+     "note": null,
+     "rivalHp": [
+      88,
+      88
+     ],
+     "playerHp": [
+      100,
+      89
+     ],
+     "playerTechniques": [
+      "Water Whip"
+     ],
+     "rivalActions": [
+      "Fire Fist"
+     ]
+    },
+    {
+     "step": "10. Spiral streams, redirected one by one",
+     "frames": [
+      440,
+      529
+     ],
+     "note": null,
+     "rivalHp": [
+      88,
+      70
+     ],
+     "playerHp": [
+      89,
+      89
+     ],
+     "playerTechniques": [
+      "Spiral Streams"
+     ],
+     "rivalActions": [
+      "stagger"
+     ]
+    }
+   ]
+  },
+  "air": {
+   "load": {
+    "mode": "authored",
+    "character": "ok",
+    "clipsDecoded": 92,
+    "clipsExpected": 92,
+    "missing": [],
+    "errors": [],
+    "ok": true
+   },
+   "errors": [],
+   "frames": 536,
+   "steps": [
+    {
+     "step": "1. Approach",
+     "frames": [
+      45,
+      165
+     ],
+     "note": null,
+     "rivalHp": [
+      100,
+      100
+     ],
+     "playerHp": [
+      100,
+      100
+     ],
+     "playerTechniques": [],
+     "rivalActions": [
+      "Stone Punch"
+     ]
+    },
+    {
+     "step": "2. Opponent attacks",
+     "frames": [
+      165,
+      181
+     ],
+     "note": "rival used Stone Pillar",
+     "rivalHp": [
+      100,
+      100
+     ],
+     "playerHp": [
+      100,
+      100
+     ],
+     "playerTechniques": [],
+     "rivalActions": [
+      "Stone Pillar"
+     ]
+    },
+    {
+     "step": "3. Evade / defend",
+     "frames": [
+      181,
+      193
+     ],
+     "note": null,
+     "rivalHp": [
+      100,
+      100
+     ],
+     "playerHp": [
+      100,
+      92
+     ],
+     "playerTechniques": [
+      "dodge:airdash"
+     ],
+     "rivalActions": [
+      "Stone Pillar"
+     ]
+    },
+    {
+     "step": "4. Hand counter",
+     "frames": [
+      193,
+      208
+     ],
+     "note": null,
+     "rivalHp": [
+      100,
+      100
+     ],
+     "playerHp": [
+      92,
+      92
+     ],
+     "playerTechniques": [],
+     "rivalActions": [
+      "Stone Pillar"
+     ]
+    },
+    {
+     "step": "5. Leg follow-up",
+     "frames": [
+      208,
+      226
+     ],
+     "note": null,
+     "rivalHp": [
+      100,
+      100
+     ],
+     "playerHp": [
+      92,
+      92
+     ],
+     "playerTechniques": [],
+     "rivalActions": [
+      "Stone Pillar"
+     ]
+    },
+    {
+     "step": "6. Sustained bending, steered",
+     "frames": [
+      226,
+      274
+     ],
+     "note": null,
+     "rivalHp": [
+      100,
+      92
+     ],
+     "playerHp": [
+      92,
+      92
+     ],
+     "playerTechniques": [
+      "Air Whip",
+      "sustained"
+     ],
+     "rivalActions": [
+      "Stone Punch",
+      "stagger"
+     ]
+    },
+    {
+     "step": "7. Opponent reacts / counters",
+     "frames": [
+      274,
+      314
+     ],
+     "note": "rival did not strike",
+     "rivalHp": [
+      92,
+      92
+     ],
+     "playerHp": [
+      92,
+      92
+     ],
+     "playerTechniques": [],
+     "rivalActions": []
+    },
+    {
+     "step": "8. Elemental mobility (DODGE held)",
+     "frames": [
+      314,
+      416
+     ],
+     "note": null,
+     "rivalHp": [
+      92,
+      80
+     ],
+     "playerHp": [
+      92,
+      92
+     ],
+     "playerTechniques": [
+      "dodge:airdash",
+      "Air Whip"
+     ],
+     "rivalActions": [
+      "Running Kick",
+      "dodge",
+      "stagger",
+      "GUARD",
+      "Stone Punch"
+     ]
+    },
+    {
+     "step": "9. Respond",
+     "frames": [
+      416,
+      446
+     ],
+     "note": null,
+     "rivalHp": [
+      80,
+      80
+     ],
+     "playerHp": [
+      92,
+      92
+     ],
+     "playerTechniques": [
+      "Air Whip",
+      "Crescent Air Kick"
+     ],
+     "rivalActions": [
+      "Stone Punch",
+      "Stone Pillar"
+     ]
+    },
+    {
+     "step": "10. Air Compression",
+     "frames": [
+      446,
+      516
+     ],
+     "note": null,
+     "rivalHp": [
+      80,
+      65
+     ],
+     "playerHp": [
+      92,
+      92
+     ],
+     "playerTechniques": [
+      "Whirlwind Kick",
+      "Air Compression"
+     ],
+     "rivalActions": [
+      "Stone Pillar",
+      "stagger",
+      "down"
+     ]
+    }
+   ]
+  }
+ }
+}
