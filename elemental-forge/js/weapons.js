@@ -26,7 +26,7 @@ export class Weapons {
   constructor(B) {
     this.B = B; this.w = B.world;
     this.whips = []; this.waves = []; this.columns = []; this.erupts = []; this.fireRings = []; this.captures = [];
-    this.trails = []; this.platforms = []; this.arcs = []; this.traps = [];
+    this.trails = []; this.platforms = []; this.arcs = []; this.traps = []; this.whirls = [];
     this.tubeMat = waterMaterial(-4); this.tubeMat.uniforms.uRise.value = 1;
     this.tubePool = [];
     // air: the same rope drawn as a pale, fast-turning translucent current (it has a body, not only streaks)
@@ -434,6 +434,7 @@ export class Weapons {
   }
   updateTraps(dt) {
     const w = this.w;
+    for (const W of this.whirls) W.tubes.forEach(t => this.freeTube(t));
     for (const T of this.traps) {
       T.t += dt;
       if (T.phase === 'roll') {
@@ -524,14 +525,38 @@ export class Weapons {
 
   // ============================================================ surfing and flight effects
   // the sheet of ice / slab of rock under the surfer, and the path of ice left behind
+  // Air dodge: two bands of wind wound round the bender for the length of the dash, carried with them
+  whirlwind(f, dur) {
+    const tubes = [0, 1].map(() => { const t = this.tube(); t.mesh.material = this.airTubeMat; return t; });
+    this.whirls.push({ f, tubes, t: 0, dur: dur + 0.15, pts: [0, 1].map(() => Array.from({ length: 18 }, () => new THREE.Vector3())) });
+    this.w.fx.dust(f.pos, 8, 3); this.w.audio.gust(0.9);
+  }
+  updateWhirls(dt) {
+    for (const W of this.whirls) {
+      W.t += dt; const f = W.f, k = Math.min(1, W.t / 0.08) * (1 - smooth01((W.t - W.dur + 0.12) / 0.12));
+      W.tubes.forEach((tb, i) => {
+        const P = W.pts[i];
+        for (let j = 0; j < P.length; j++) { const s = j / (P.length - 1), a = -W.t * 22 + s * 9 + i * Math.PI, r = (0.55 + 0.35 * s) * k; P[j].set(f.pos.x + Math.cos(a) * r, f.pos.y + 0.1 + s * 1.9, f.pos.z + Math.sin(a) * r); }
+        tb.set(P, (q) => (0.05 + 0.08 * Math.sin(Math.PI * q)) * k + 0.005, W.t * 3);
+      });
+      if (Math.random() < 0.6) this.w.fx.wind(_a.set(f.pos.x, f.pos.y + rand(0.2, 1.6), f.pos.z), _b.set(rand(-4, 4), 1, rand(-4, 4)), 0.5, 0.25);
+      if (W.t > W.dur) { W.dead = true; W.tubes.forEach(t => this.freeTube(t)); }
+    }
+    this.whirls = this.whirls.filter(W => !W.dead);
+  }
   surfTick(f, mob, dt) {
     const w = this.w;
     if (!mob.board) {
       mob.board = new THREE.Mesh(mob.el === 'water' ? this.iceSheetGeo : this.slabGeo, mob.el === 'water' ? iceMat : this.rockMat);
       mob.board.castShadow = true; w.scene.add(mob.board); mob.trailT = 0;
+      // the support that holds the slab / ice sheet up off the floor
+      mob.post = new THREE.Mesh(this.postGeo || (this.postGeo = (() => { const g = new THREE.CylinderGeometry(0.45, 0.75, 1, 7, 1); g.translate(0, -0.5, 0); return g; })()), mob.el === 'water' ? iceMat : this.rockMat);
+      mob.post.castShadow = true; w.scene.add(mob.post);
     }
-    mob.board.position.set(f.pos.x, f.pos.y + (mob.el === 'water' ? 0.03 : -0.12), f.pos.z);
+    const gy = f.groundY, top = f.pos.y + (mob.el === 'water' ? -0.02 : -0.17);
+    mob.board.position.set(f.pos.x, top, f.pos.z);
     mob.board.rotation.y = mob.heading;
+    mob.post.position.set(f.pos.x, top - (mob.el === 'water' ? 0.02 : 0.15), f.pos.z); mob.post.scale.set(mob.el === 'water' ? 0.55 : 1, Math.max(0.05, top - gy), mob.el === 'water' ? 0.55 : 1); mob.post.rotation.y = mob.heading;
     mob.trailT -= dt;
     if (mob.trailT <= 0 && mob.speed > 2) {
       mob.trailT = 0.07;
@@ -541,7 +566,7 @@ export class Weapons {
     if (mob.el === 'water' && Math.random() < 0.6) w.fx.splash(_a.set(f.pos.x, f.pos.y + 0.05, f.pos.z), 1);
     if (mob.el === 'earth' && Math.random() < 0.5) w.fx.dust(f.pos, 1, 1.2);
   }
-  surfEnd(mob) { if (mob && mob.board) { this.w.scene.remove(mob.board); mob.board = null; } }
+  surfEnd(mob) { if (mob && mob.board) { this.w.scene.remove(mob.board); mob.board = null; } if (mob && mob.post) { this.w.scene.remove(mob.post); mob.post = null; } }
   // JUMP while surfing: the element itself launches the bender. Water raises an ice ramp under the feet and leaves
   // an ice platform; earth thrusts a slab up on a pillar that stays as a platform.
   surfLaunch(f, el) {
@@ -587,11 +612,12 @@ export class Weapons {
   update(dt) {
     this.tubeMat.uniforms.uTime.value += dt;
     this.burst.update(dt);
-    this.updateWhips(dt); this.updateArcs(dt); this.updateTraps(dt); this.updateWaves(dt); this.updateColumns(dt); this.updateErupts(dt); this.updateFireRings(dt); this.updateCaptures(dt); this.updateTrails(dt);
+    this.updateWhips(dt); this.updateArcs(dt); this.updateTraps(dt); this.updateWhirls(dt); this.updateWaves(dt); this.updateColumns(dt); this.updateErupts(dt); this.updateFireRings(dt); this.updateCaptures(dt); this.updateTrails(dt);
   }
   clear() {
     for (const W of this.whips) this.dropWhip(W);
     for (const A of this.arcs) { this.freeTube(A.tube); if (A.ribbons) A.ribbons.forEach(r => r.release()); }
+    for (const W of this.whirls) W.tubes.forEach(t => this.freeTube(t));
     for (const T of this.traps) { this.w.scene.remove(T.ball); if (T.mesh) this.w.scene.remove(T.mesh); }
     this.burst.clear();
     for (const V of this.waves) this.w.scene.remove(V.mesh);
@@ -602,6 +628,6 @@ export class Weapons {
     for (const T of this.trails) this.w.scene.remove(T.m);
     for (const P of this.platforms) { this.w.scene.remove(P.m); P.col.dead = true; }
     this.w.arena.colliders = this.w.arena.colliders.filter(c => !this.platforms.some(P => P.col === c));
-    this.whips = []; this.waves = []; this.columns = []; this.erupts = []; this.fireRings = []; this.captures = []; this.trails = []; this.platforms = []; this.arcs = []; this.traps = [];
+    this.whips = []; this.waves = []; this.columns = []; this.erupts = []; this.fireRings = []; this.captures = []; this.trails = []; this.platforms = []; this.arcs = []; this.traps = []; this.whirls = [];
   }
 }

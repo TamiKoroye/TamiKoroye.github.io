@@ -215,6 +215,7 @@ export class Bending {
       case 'earth.hand': {
         const held = this.heldList(f, 'earth').filter(o => o.state === 'orbit');
         if (held.length) { const o = held[0]; this.launch(o, f, 1.05); w.fx.dust(o.pos, 3, 1); return; }
+        if (this.strikeStone(f, hand)) return;
         // burst a stone from the ground in front and punch it straight out
         const p = this.forwardPoint(f, 1.1, 0); p.y = w.arena.groundAt(p.x, p.z, f.pos.y + 0.3) + 0.9;
         w.fx.debrisBurst(_v.set(p.x, p.y - 0.8, p.z), 8, 2, 0.08, 0x7a7068); w.fx.crater(_v.set(p.x, p.y - 0.9, p.z), 1);
@@ -223,8 +224,10 @@ export class Bending {
       case 'earth.leg': {
         const held = this.heldList(f, 'earth').filter(o => o.state === 'orbit');
         if (held.length) { const o = held[0]; o.kind = o.kind === 'boulder' ? 'boulder' : 'rockKick'; this.launch(o, f, 1.2); w.shake(0.12, o.pos); return; }
-        const p = this.forwardPoint(f, 1.2, 0); p.y = w.arena.groundAt(p.x, p.z, f.pos.y + 0.3) + 0.55;
-        w.fx.debrisBurst(_v.set(p.x, p.y - 0.5, p.z), 10, 2.4, 0.09, 0x7a7068); w.fx.crater(_v.set(p.x, p.y - 0.55, p.z), 1.2);
+        if (this.strikeStone(f, foot)) return;
+        // the kick tears a rock out of the ground at the kicking foot and drives it on along the kick's line
+        const p = foot.clone(); const gy = w.arena.groundAt(p.x, p.z, f.pos.y + 0.3); p.y = Math.max(p.y, gy + 0.45);
+        w.fx.debrisBurst(_v.set(p.x, gy + 0.05, p.z), 10, 2.4, 0.09, 0x7a7068); w.fx.crater(_v.set(p.x, gy, p.z), 1.0);
         this.fire('rockKick', f, p); w.audio.rumble(0.5); return;
       }
       case 'earth.sweep': {
@@ -539,6 +542,19 @@ export class Bending {
     }
   }
 
+  // Earth: a punch or kick that lands on a loose rock in the arena shatters it and drives its pieces at the opponent
+  strikeStone(f, at) {
+    const w = this.world, st = w.arena.nearestLooseStone(at, 1.5); if (!st) return false;
+    const t = f.target && !f.target.dead ? f.target : null, p = st.mesh.position.clone(); p.y += 0.35;
+    st.taken = true; st.col.dead = true; st.mesh.visible = false; st.respawnT = 6;
+    for (let i = 0; i < 5; i++) {
+      const to = t ? t.chestPos(new THREE.Vector3()) : p.clone().add(f.forward(new THREE.Vector3()).multiplyScalar(8));
+      const dir = to.sub(p).normalize(); dir.x += rand(-0.12, 0.12); dir.y += rand(-0.02, 0.1); dir.normalize();
+      const o = this.fire('pebble', f, p.clone().addScaledVector(dir, 0.4), { dir }); o.dmg = 4; o.knock = 4;
+    }
+    w.fx.debrisBurst(p, 16, 5, 0.12, 0x7a7068); w.fx.dust(p, 6, 2); w.audio.impact(1); w.shake(0.15, p); w.popup(f, 'SHATTER', false);
+    return true;
+  }
   deflectInCone(f, from, dir, len, el) {
     for (const o of this.objs) {
       if (o.state !== 'flying' || o.owner === f) continue;
@@ -566,7 +582,13 @@ export class Bending {
     const w = this.world, el = f.el;
     const d = { el, owner: f, t: 0, hp: el === 'earth' ? 70 : el === 'fire' ? 55 : el === 'water' ? 60 : 50, rise: 0, sink: 0, dead: false, yaw: f.faceYaw, pos: new THREE.Vector3(), flash: 0 };
     if (el === 'earth') {
-      d.mesh = new THREE.Mesh(this.wallGeo, this.mat.stone); d.mesh.castShadow = d.mesh.receiveShadow = true; d.box = { hw: 0.95, hh: 2.0, hd: 0.3 };
+      // three jagged rocks thrust up in a shallow arc: they intercept what comes at the bender, and HAND punches
+      // them apart into flying shards (guardShatter)
+      d.mesh = new THREE.Group(); d.box = { hw: 1.3, hh: 1.9, hd: 0.45 };
+      const rng = mulberry32((Math.random() * 1e9) | 0);
+      d.rocks = [[-0.85, 0.25, 0.8], [0, 0, 1.0], [0.85, 0.25, 0.8]].map(([x, z, k]) => {
+        const m = new THREE.Mesh(jaggedRockGeometry(rng, 1, 0.34, 1.9), this.mat.stone); m.castShadow = m.receiveShadow = true;
+        m.position.set(x, 0.85 * k, -z); m.scale.set(0.55 * k, 1.0 * k, 0.45 * k); m.rotation.set(rand(-0.15, 0.15), rand(0, 6), rand(-0.12, 0.12)); d.mesh.add(m); return m; });
       this.placeDef(d, 1);
       w.fx.debrisBurst(d.pos.clone().setY(d.pos.y + 0.1), 14, 2.6, 0.1, 0x7a6a58, 0.9); w.fx.dust(d.pos, 8, 2.2); w.fx.crater(d.pos, 2); w.audio.rumble(0.8);
     } else if (el === 'fire') {
@@ -589,6 +611,23 @@ export class Bending {
     w.scene.add(d.mesh);
     this.defs.push(d);
     f.defense = d;
+  }
+  // Earth GUARD + HAND: the guard rocks are punched apart and their shards fly at the opponent
+  guardShatter(f) {
+    const d = f.defense, w = this.world; if (!d || d.el !== 'earth' || !d.rocks || d.rise < 0.5) return false;
+    const t = f.target && !f.target.dead ? f.target : null;
+    for (const r of d.rocks) {
+      const p = r.getWorldPosition(new THREE.Vector3()).setY(f.pos.y + 1.1);
+      for (let i = 0; i < 2; i++) {
+        const to = t ? t.chestPos(new THREE.Vector3()) : p.clone().add(f.forward(new THREE.Vector3()).multiplyScalar(8));
+        const dir = to.sub(p).normalize(); dir.x += rand(-0.08, 0.08); dir.y += rand(-0.03, 0.06); dir.normalize();
+        const o = this.fire('pebble', f, p.clone().addScaledVector(dir, 0.6), { dir }); o.dmg = 5; o.knock = 4;
+      }
+      w.fx.debrisBurst(p, 10, 4, 0.1, 0x7a6a58);
+    }
+    w.audio.impact(1.1); w.shake(0.2, f.pos); w.popup(f, 'SHATTER', true);
+    this.guardEnd(f); f.guarding = false; f.guardCd = 0.5;
+    return true;
   }
   guardEnd(f) {
     const d = f.defense; f.defense = null;

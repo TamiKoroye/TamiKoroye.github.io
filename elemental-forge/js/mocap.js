@@ -34,7 +34,7 @@ export function requiredClips(styles) {
   const need = new Set(['hit_a', 'hit_b', 'ko', 'getup', 'dodge_side', 'dodge_side_M', 'dodge_back', 'block_hit', 'strafe', 'strafe_M', 'water_redirect',
     'jump_high', 'air_loop', 'fall_loop', 'land_high', 'knockback', 'getup_back', 'surf_stance', 'water_flow', 'water_gather', 'turn_spin']);
   for (const L of Object.values(LOOPS)) for (const n of Object.values(L)) need.add(n);
-  for (const st of Object.values(styles)) { const t = st.tech; for (const T of [t.hand, ...(t.leg || []), t.legMove, t.charged, t.special, t.stomp, t.release, t.airKick]) if (T && T.clip) for (const n of (Array.isArray(T.clip) ? T.clip : [T.clip])) need.add(n); }
+  for (const st of Object.values(styles)) { const t = st.tech; for (const T of [t.hand, ...(t.leg || []), t.legMove, t.charged, t.special, t.stomp, t.release, t.airKick, t.flip, t.flipBack, t.roll]) if (T && T.clip) for (const n of (Array.isArray(T.clip) ? T.clip : [T.clip])) need.add(n); }
   return [...need].filter(n => !MOCAP[n]);
 }
 
@@ -72,7 +72,7 @@ const CLIP_SPEED = { jump_kick: 2.4, flip_kick: 2.2, fire_jab: 1.6, earth_gather
 
 const names = (T) => (Array.isArray(T.clip) ? T.clip : [T.clip]);
 function techList(st) {
-  const t = st.tech; return [t.hand, ...(t.leg || []), t.legMove, t.charged, t.special, t.stomp, t.release, t.airKick].filter(Boolean);
+  const t = st.tech; return [t.hand, ...(t.leg || []), t.legMove, t.charged, t.special, t.stomp, t.release, t.airKick, t.flip, t.flipBack, t.roll].filter(Boolean);
 }
 
 // Rewrites dur / events / active window / jump / cancel of every technique that names a clip, keeping each
@@ -94,7 +94,7 @@ function timing(orig, name, sp) {
   const m = MOCAP[name];
   const dur = m.clip.duration / sp;
   const u0 = orig.events && orig.events.length ? orig.events[0][0] : (orig.active ? orig.active.from : 0.4);
-  const evU = m.impact / m.clip.duration;
+  const evU = (m.impact ?? m.clip.duration * 0.5) / m.clip.duration;   // evasions without a strike: timed from the middle
   const map = (u) => THREE.MathUtils.clamp(evU + (u - u0) * orig.dur / dur, 0, 0.98);
   const out = { clip: name, dur, impactT: evU * dur };
   if (orig.events) out.events = orig.events.map(([u, n]) => [map(u), n]);
@@ -116,6 +116,6 @@ export function clipFor(T, side) {
     const kind = m.limb[0], want = kind + (kind === 'p' ? (side > 0 ? 'R' : 'L') : (side > 0 ? 'L' : 'R'));
     if (m.limb !== want && MOCAP[base + '_M']) name = base + '_M';
   }
-  const ts = m.impact !== undefined && T.impactT ? THREE.MathUtils.clamp(m.impact / T.impactT, 0.6, 3) : 1;
+  const ts = m.impact !== undefined && T.impactT ? THREE.MathUtils.clamp(m.impact / T.impactT, 0.6, 3) : T.dur ? THREE.MathUtils.clamp(m.clip.duration / T.dur, 0.6, 4) : 1;
   return [name, ts];
 }

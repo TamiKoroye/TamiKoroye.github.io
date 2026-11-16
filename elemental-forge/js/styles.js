@@ -67,7 +67,7 @@ const earth = {
         [1.0, () => {}],
       ] }),
     leg: [
-      T({ name: 'Earth Kick', clip: ['earth_kick', 'earth_backkick'], dur: 0.6, cost: 10, cancel: 0.72, move: 0.6, lunge: 4,
+      T({ name: 'Earth Kick', clip: ['earth_kick', 'fire_round', 'earth_backkick'], dur: 0.6, cost: 10, cancel: 0.72, move: 0.6, lunge: 4,
         active: { from: 0.4, to: 0.56, dmg: 9, range: 2.0, arc: 0.3, knock: 6, level: 1 },
         events: [[0.42, 'earth.leg']],
         keys: [
@@ -362,6 +362,12 @@ STYLES.fire.tech.leg.push(T({ name: 'Flip Kick', clip: 'flip_kick', dur: 0.9, co
 // every element: LEG in the air is a jumping kick, right foot first, then the left (alternating while airborne)
 for (const k of ['earth', 'fire', 'water', 'air']) STYLES[k].tech.airKick = T({ name: 'Air Kick', clip: 'jump_kick', dur: 0.5, cost: 6, cancel: 0.62, move: 2.5, lunge: 4,
   active: { from: 0.5, to: 0.68, dmg: 7, range: 2.1, arc: 0.4, knock: 6, level: 1 }, events: [[0.55, k + '.airKick']], keys: K0 });
+// every element: somersaults (DODGE in the air) and a roll (GUARD + DODGE); no damage, they are evasions
+for (const k of ['earth', 'fire', 'water', 'air']) {
+  STYLES[k].tech.flip = T({ name: 'Somersault', clip: 'flip_front', clipSpeed: 2.0, dur: 0.6, cost: 6, cancel: 0.8, move: 4, keys: K0 });
+  STYLES[k].tech.flipBack = T({ name: 'Back Somersault', clip: 'dodge_back', clipSpeed: 2.2, dur: 0.6, cost: 6, cancel: 0.8, move: 3, keys: K0 });
+  STYLES[k].tech.roll = T({ name: 'Roll', clip: 'roll_dive', clipSpeed: 2.0, dur: 0.6, cost: 6, cancel: 0.8, move: 6, keys: K0 });
+}
 for (const k of ['earth', 'fire']) STYLES[k].tech.stomp = T({ name: k === 'earth' ? 'Earth Stomp' : 'Fire Stomp', clip: 'stomp', dur: 0.95, cost: 22, cancel: 0.86, move: 0,
   onStart: k + '.stompMark', events: [[0.5, k + '.stomp']], keys: K0 });
 STYLES.water.tech.charged.name = 'Tidal Wave';
