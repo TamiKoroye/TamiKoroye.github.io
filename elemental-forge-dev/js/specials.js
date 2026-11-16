@@ -40,11 +40,11 @@ export class Specials {
     const w = this.w, gy = this.ground(foot.x, foot.z, foot.y + 0.5), c = new THREE.Vector3(foot.x, Math.max(gy + 0.6, Math.min(foot.y, gy + 1.4)), foot.z);
     const shell = (col, op) => { const m = new THREE.Mesh(this.ballGeo, new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: op, depthWrite: false, blending: THREE.AdditiveBlending })); m.position.copy(c); m.scale.setScalar(0.1); w.scene.add(m); return m; };
     const S = this.add({ kind: 'fireBlast', f, t: 0, c, gy, core: shell(0xffe08a, 0.6), mid: shell(0xff7a1a, 0.5), out: shell(0xb02a08, 0.4) });
-    for (let i = 0; i < 46; i++) { const a = rand(0, 6.28), e = rand(-0.2, 1.2); w.fx.fire(c, _a.set(Math.cos(a) * Math.cos(e), Math.sin(e) + 0.3, Math.sin(a) * Math.cos(e)).multiplyScalar(rand(5, 11)), rand(0.5, 0.9), rand(0.35, 0.6)); }
+    for (let i = 0; i < 26; i++) { const a = rand(0, 6.28), e = rand(-0.1, 1.1); w.fx.fire(c, _a.set(Math.cos(a) * Math.cos(e), Math.sin(e) + 0.3, Math.sin(a) * Math.cos(e)).multiplyScalar(rand(4, 8)), rand(0.4, 0.7), rand(0.3, 0.5)); }
     w.fx.ring(_a.set(c.x, gy + 0.05, c.z), 7, 0xffa040, 0.5); w.fx.crater(_a.set(c.x, gy, c.z), 1.6);
     w.fx.debrisBurst(c, 14, 6, 0.1, 0x3a2a22);
     w.shake(0.55, c); w.audio.fireWhoosh(1.6); w.audio.rumble && w.audio.rumble(0.8);
-    for (let i = 0; i < 6; i++) { const a = i / 6 * 6.28 + rand(-0.3, 0.3), r = rand(1.2, 2.6); this.B.burn(c.x + Math.cos(a) * r, c.z + Math.sin(a) * r, gy, f); }
+    for (let i = 0; i < 3; i++) { const a = i / 3 * 6.28 + rand(-0.3, 0.3), r = rand(1.2, 2.2); this.B.burn(c.x + Math.cos(a) * r, c.z + Math.sin(a) * r, gy, f); }
     for (const t of w.fighters) {
       if (t === f || t.dead || t.invuln > 0) continue;
       const d = Math.hypot(t.pos.x - c.x, t.pos.z - c.z);
@@ -112,8 +112,8 @@ export class Specials {
         case 'fireBlast': {
           const k = S.t;
           const sc = (m, r, T) => { const u = Math.min(1, k / T); m.scale.setScalar(0.2 + r * (1 - Math.pow(1 - u, 3))); m.material.opacity *= k > T * 0.6 ? Math.exp(-dt * 7) : 1; m.position.y = S.c.y + k * 0.8; };
-          sc(S.core, 1.6, 0.18); sc(S.mid, 2.6, 0.3); sc(S.out, 3.4, 0.42);
-          if (k < 0.5) for (let i = 0; i < 4; i++) w.fx.fire(_a.copy(S.c).add(_b.set(rand(-1.5, 1.5), rand(0, 1.8), rand(-1.5, 1.5))), _b.set(0, rand(2, 5), 0), rand(0.5, 0.8), 0.45);
+          sc(S.core, 1.2, 0.16); sc(S.mid, 2.0, 0.26); sc(S.out, 2.8, 0.38);
+          if (k < 0.35) for (let i = 0; i < 2; i++) w.fx.fire(_a.copy(S.c).add(_b.set(rand(-1.5, 1.5), rand(0, 1.8), rand(-1.5, 1.5))), _b.set(0, rand(2, 5), 0), rand(0.5, 0.8), 0.45);
           if (k > 0.3 && k < 1.2 && Math.random() < 0.4) w.fx.puff(_a.copy(S.c).add(_b.set(rand(-1, 1), k * 2, rand(-1, 1))), _b.set(0, 1.5, 0), 1.2, 1.2, 0x302824, 0.45);
           if (k > 1.3) { S.dead = true; for (const m of [S.core, S.mid, S.out]) { w.scene.remove(m); m.material.dispose(); } }
           break;
