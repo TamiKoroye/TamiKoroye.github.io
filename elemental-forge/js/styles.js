@@ -177,7 +177,7 @@ const fire = {
     guard: (p) => { stanceLegs(p, -0.14, 0.3, 0.14, -0.3, 0.12); S(p, 'spine', 0.08, 0, 0);
       arm(p, 1, -1.35, -0.1, 0.2, 1.75, 0.2); arm(p, -1, -1.25, -0.15, 0.2, 1.8, 0.2); },  // crossed forearms
     // Dragon Descent: a leaping flying kick with flames pouring from the feet; the kicking foot explodes on landing
-    special: T({ name: 'Dragon Descent', clip: 'fire_fly', onStart: 'fire.specialStart', dur: 0.72, cost: 30, cancel: 0.88, move: 7, jumpAt: [0.08, 6.4], lunge: 9,
+    special: T({ name: 'Dragon Descent', clip: 'fire_fly', onStart: 'fire.specialStart', dur: 0.72, cost: 30, cancel: 0.88, move: 1, jumpAt: [0.08, 6.4], lunge: 9,
       events: [[0.5, 'fire.special']],
       keys: [
         [0.0, () => {}],

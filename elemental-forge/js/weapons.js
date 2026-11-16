@@ -206,7 +206,7 @@ export class Weapons {
     h.sweep += (clamp(lx, -1, 1) - h.sweep) * Math.min(1, dt * 5);
     // a rival just beyond the streams' reach is closed on at a walk while the hold goes on
     const tg = f.target && !f.target.dead ? f.target : null;
-    if (tg && f.onGround) { const dx = tg.pos.x - f.pos.x, dz = tg.pos.z - f.pos.z, d = Math.hypot(dx, dz); if (d > 4.4 && d < 8) { f.pos.x += dx / d * 2.2 * dt; f.pos.z += dz / d * 2.2 * dt; } }
+    if (tg && f.onGround) { const dx = tg.pos.x - f.pos.x, dz = tg.pos.z - f.pos.z, d = Math.hypot(dx, dz); if (d > 4.4 && d < 10) { f.pos.x += dx / d * 2.2 * dt; f.pos.z += dz / d * 2.2 * dt; } }
     for (const W of h.whips) {
       W.t += dt; W.cd -= dt;
       if (W.cd <= 0) { W.cd = 0.6; W.tRel = -1; W.hit.clear(); this.releaseWhip(W); }

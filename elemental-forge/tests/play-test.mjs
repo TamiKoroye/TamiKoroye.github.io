@@ -323,7 +323,7 @@ await press('btn-special', 2); let rupLift = 0; for (let i = 0; i < 70; i++) { a
 const rh = await hitsOn(); await clearHits();
 check('earth SPECIAL (Ground Rupture) runs to the rival and throws them up', rh.includes('rupture') && rupLift > 0.8, `max rival height ${rupLift.toFixed(2)} m; hits ${rh.join(',')}`);
 await setup({ el: 'earth', locked: false, p: [0, 0, -14], o: [20, 0, 20] });
-await S(() => { const { world, player: p } = window.__EF; world.bending.raisePillar(p, p.pos.x, p.pos.z + 1.6); for (let i = 0; i < 40; i++) window.__EF.step(1 / 30); });
+await S(() => { const { world, player: p } = window.__EF; const fw = p.forward(); world.bending.raisePillar(p, p.pos.x + fw.x * 2.2, p.pos.z + fw.z * 2.2);   /* 2.2 m ahead, where the SPECIAL used to raise it */ for (let i = 0; i < 40; i++) window.__EF.step(1 / 30); });
 const pil = await S(() => { const p = window.__EF.world.bending.pillars[0]; return p ? { x: p.col.x, z: p.col.z, top: p.col.top } : null; });
 check('a raised stone pillar is solid', pil && pil.top > 1.3, JSON.stringify(pil));
 await stick(0, -60); await stepN(3); await press('btn-jump', 1); let onPillar = 0; for (let i = 0; i < 30; i++) { await stepN(1); onPillar = Math.max(onPillar, await S(() => window.__EF.player.onGround ? window.__EF.player.pos.y : 0)); } await stickUp();

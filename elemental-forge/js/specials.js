@@ -26,8 +26,17 @@ export class Specials {
   ground(x, z, y) { return this.w.arena.groundAt(x, z, y); }
 
   // ------------------------------------------------------------------ FIRE
-  fireStart(f) { this.add({ kind: 'fireTrail', f, t: 0, tech: f.tech }); this.w.audio.fireWhoosh(1.1); }
+  fireStart(f) {
+    this.add({ kind: 'fireTrail', f, t: 0, tech: f.tech }); this.w.audio.fireWhoosh(1.1);
+    // the leap carries the bender at the rival (up to 9 m away), so the kicking foot comes down beside them
+    const t = f.target && !f.target.dead ? f.target : null;
+    if (t) {
+      const dx = t.pos.x - f.pos.x, dz = t.pos.z - f.pos.z, d = Math.hypot(dx, dz), T = f.tech && f.tech.impactT ? f.tech.impactT : 0.3;
+      if (d > 1.4 && d < 9) { f.lungeDir.set(dx / d, 0, dz / d).multiplyScalar(Math.min(18, (d - 1.2) / T)); f.lungeT = T; f.faceYaw = Math.atan2(dx, dz); }
+    }
+  }
   fireExplode(f, foot) {
+    f.lungeT = 0; f.vel.x = f.vel.z = 0;   // the leap ends where the kicking foot comes down
     const w = this.w, gy = this.ground(foot.x, foot.z, foot.y + 0.5), c = new THREE.Vector3(foot.x, Math.max(gy + 0.6, Math.min(foot.y, gy + 1.4)), foot.z);
     const shell = (col, op) => { const m = new THREE.Mesh(this.ballGeo, new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: op, depthWrite: false, blending: THREE.AdditiveBlending })); m.position.copy(c); m.scale.setScalar(0.1); w.scene.add(m); return m; };
     const S = this.add({ kind: 'fireBlast', f, t: 0, c, gy, core: shell(0xffe08a, 0.6), mid: shell(0xff7a1a, 0.5), out: shell(0xb02a08, 0.4) });
@@ -219,12 +228,12 @@ export class Specials {
     for (const tt of w.fighters) {
       if (tt === f || tt.dead || tt.invuln > 0 || S.hitDone.has(tt)) continue;
       const c = tt.chestPos(_b); if (c.distanceTo(S.head) < 1.1 || Math.hypot(tt.pos.x - S.head.x, tt.pos.z - S.head.z) < tt.radius + 0.6 && S.head.y - tt.pos.y < 2 && S.head.y > tt.pos.y - 0.2) {
-        S.hitDone.add(tt); w.combat.damage(tt, 18 + Math.min(6, S.caught * 2), S.hv.clone().setY(0).normalize(), f, 'dragon', S.head.clone(), 15, 2); w.fx.splash(S.head, 30); w.shake(0.3, S.head);
+        S.hitDone.add(tt); S.endAt = S.tt + 0.15; w.combat.damage(tt, 18 + Math.min(6, S.caught * 2), S.hv.clone().setY(0).normalize(), f, 'dragon', S.head.clone(), 15, 2); w.fx.splash(S.head, 30); w.shake(0.3, S.head);
       }
     }
     for (const o of this.B.objs) if (o.state === 'flying' && o.owner !== f && o.pos.distanceTo(S.head) < 1.2) this.B.kill(o, o.el === 'fire' ? 'steam' : undefined);
     this.B.extinguishNear(S.head, 1.6);
-    if (S.tt > 0.8 || this.w.arena.solidAt(S.head, 0.2)) { w.fx.splash(S.head, 20); this.dropDragon(S, false); }
+    if (S.tt > 0.8 || S.tt > (S.endAt ?? 9) || this.w.arena.solidAt(S.head, 0.2)) { w.fx.splash(S.head, 20); this.dropDragon(S, false); }
   }
   dropDragon(S, spill) { if (spill) this.w.fx.splash(S.f.chestPos(_a), 16); this.w.scene.remove(S.tube.mesh); S.tube.mesh.geometry.dispose(); this.B.weapons.freeTube(S.inner); S.tube = S.inner = null; S.dead = true; }
 
