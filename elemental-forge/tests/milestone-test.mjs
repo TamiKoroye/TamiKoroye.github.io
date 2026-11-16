@@ -67,6 +67,9 @@ await sleep(800);
 const load = await S(() => window.__EF.LOAD);
 check('build loads its character and every clip', load && load.ok && load.clipsDecoded === load.clipsExpected, load ? `${load.clipsDecoded}/${load.clipsExpected} clips, character ${load.character}` : 'no LOAD record');
 await page.locator('#btn-start').tap();
+// every damage event the rival takes, by attack kind
+await page.evaluate(() => { const E = window.__EF, C = E.world.combat, d = C.damage.bind(C); window.__hits = []; C.damage = (t, dmg, ...r) => { if (t === E.opp) window.__hits.push(r[2]); return d(t, dmg, ...r); }; });
+const hitsOn = () => page.evaluate(() => window.__hits || []);
 await ev(() => { window.__EF.state.manual = true; });
 await stubAI();
 await stepN(50);
@@ -92,24 +95,24 @@ check('the flame jets cost energy', enUsed > 15, `${enUsed.toFixed(0)} energy us
 check('a jet landing bursts flame outward', landRing);
 
 // ------------------------------------------------------------------ water
-head('Water: Dragon Stream SPECIAL');
-// (M3 brief: the three hip-height rings are replaced by one stream drawn from the ground into both hands that then
-//  circulates through both hands and round the body; HAND redirects and releases it with a two-handed push)
-await setup({ el: 'water', p: [0, 0, -10], o: [0, 0, -3] });
+head('Water: Drowning Sphere SPECIAL');
+// (17 Nov brief: the SPECIAL surrounds the opponent in a ball of water, as if drowning inside it; the ball freezes into
+//  jagged ice, deals the damage and shatters away. It replaces the stream circulating round the bender.)
+await setup({ el: 'water', p: [0, 0, -10], o: [0, 0, -4] });
 await stepN(3);
-await press('btn-special', 2); await stepN(26);
-const sp = await S(() => { const { world, player: p } = window.__EF, s = world.bending.specials.list.find(x => x.f === p && x.kind === 'dragon'); if (!s) return null;
-  const hl = p.handPos('L'), hr = p.handPos('R'); let top = 0; for (const q of s.pts) top = Math.max(top, q.y - p.pos.y);
-  return { phase: s.phase, dL: Math.min(...s.pts.map(q => q.distanceTo(hl))), dR: Math.min(...s.pts.map(q => q.distanceTo(hr))), top, head: p.hero.bones['DEF-head'].getWorldPosition(hl).y - p.pos.y }; });
-await shot('water-dragon');
-check('SPECIAL draws water into both hands and sets it circulating through them', sp && sp.phase === 'flow' && Math.max(sp.dL, sp.dR) < 0.12, sp ? `phase ${sp.phase}, stream ${sp.dL.toFixed(2)} / ${sp.dR.toFixed(2)} m from the hands` : 'no stream');
-check('the stream stays below the head', sp && sp.top < sp.head, sp ? `highest stream point ${sp.top.toFixed(2)} m, head ${sp.head.toFixed(2)} m` : '');
-await oppFire('fireball', [0, 1.3, -4]); await stepN(12);
-const caught = await S(() => { const { world, player } = window.__EF, s = world.bending.specials.list.find(x => x.f === player && x.kind === 'dragon'); return { c: s ? s.caught : -1, hp: player.hp }; });
-check('the circulating stream catches an incoming fireball', caught.c >= 1 && caught.hp === 100, `caught ${caught.c}, player hp ${caught.hp}`);
-await press('btn-hand', 2); await stepN(30);
-const rel = await S(() => ({ hp: window.__EF.opp.hp, left: window.__EF.world.bending.specials.list.filter(x => x.kind === 'dragon').length }));
-check('HAND throws the stream at the opponent', rel.hp < 100 && rel.left === 0, `rival hp ${rel.hp}, streams left ${rel.left}`);
+await press('btn-special', 2);
+const seenP = new Set(); let held = 0, around = 99;
+for (let j = 0; j < 70; j++) {
+  await stepN(1);
+  const r = await S(() => { const { world, opp: o } = window.__EF, D = world.bending.specials.list.find(x => x.kind === 'drown'); return D ? { ph: D.phase, d: D.mesh.position.distanceTo(o.chestPos().setY(o.pos.y + 1.0)), r: o.restrainT > 0 } : null; });
+  if (r) { seenP.add(r.ph); if (r.r) held++; around = Math.min(around, r.d); }
+  if (j === 22) await shot('water-drown');
+  if (j === 34) await shot('water-drown-ice');
+}
+const dHits = await hitsOn();
+check('SPECIAL closes a ball of water round the opponent and holds them inside it', seenP.has('engulf') && held > 10 && around < 0.3, `held ${held} frames, ball centre ${around.toFixed(2)} m from the opponent`);
+check('the ball freezes into jagged ice', seenP.has('freeze'), [...seenP].join(' > '));
+check('then shatters for the damage and is gone', dHits.includes('drown') && !(await S(() => window.__EF.world.bending.specials.list.length)), `rival hit by: ${dHits.join(',') || 'nothing'}`);
 
 head('Water: icebending');
 await setup({ el: 'water', p: [0, 0, -10], o: [0, 0, -6] });
@@ -127,19 +130,21 @@ const melt = await S(() => { const { world, opp } = window.__EF, B = world.bendi
 check('fire melts ice', melt && melt.t >= 1.3, melt ? `spike life jumped to ${melt.t.toFixed(2)} s (it would be ${'<'}0.8 s without the fireball)` : 'no young spike to test');
 
 // ------------------------------------------------------------------ air
-head('Air: Baguazhang circling evasion');
+head('Air: whirlwind dash');
+// (17 Nov brief: Air's DODGE wraps a whirlwind round the bender and throws them quickly sideways in the chosen
+//  direction, in place of the arc walked round the opponent)
 await setup({ el: 'air', p: [0, 0, -4], o: [0, 0, 0] });
 await stepN(3);
-const a0 = await S(() => { const { player: p, opp: o } = window.__EF; return { a: Math.atan2(p.pos.x - o.pos.x, p.pos.z - o.pos.z), d: Math.hypot(p.pos.x - o.pos.x, p.pos.z - o.pos.z) }; });
-await stick(80, 0); await press('btn-dodge', 2); await stepN(12); await stickUp();
-const a1 = await S(() => { const { player: p, opp: o } = window.__EF; let face = Math.abs(((p.faceYaw - Math.atan2(o.pos.x - p.pos.x, o.pos.z - p.pos.z)) + Math.PI * 3) % (Math.PI * 2) - Math.PI); return { a: Math.atan2(p.pos.x - o.pos.x, p.pos.z - o.pos.z), d: Math.hypot(p.pos.x - o.pos.x, p.pos.z - o.pos.z), face, kind: p.dodgeKind, counter: p.counterT }; });
-const swept = Math.abs(((a1.a - a0.a) + Math.PI * 3) % (Math.PI * 2) - Math.PI) * 180 / Math.PI;
-await shot('air-circle');
-check('a sideways air dodge circles around the opponent', a1.kind === 'circle' && swept > 70 && Math.abs(a1.d - a0.d) < 1.2, `${swept.toFixed(0)} degrees around, distance ${a0.d.toFixed(1)} -> ${a1.d.toFixed(1)} m`);
-check('the bender keeps facing the opponent while circling', a1.face < 0.35, `${(a1.face * 180 / Math.PI).toFixed(0)} degrees off`);
-await press('btn-hand', 2); await stepN(8);
-const ctr = await S(() => ({ a: window.__EF.player.action, hp: window.__EF.opp.hp }));
-check('the circle ends in a counter window: HAND counters from the flank', a1.counter > 0 && ctr.a === 'counter', `counter window ${a1.counter.toFixed(2)} s, action ${ctr.a}`);
+const a0 = await S(() => ({ x: window.__EF.player.pos.x, z: window.__EF.player.pos.z }));
+await stick(80, 0); await press('btn-dodge', 2);
+let whirl = 0; for (let j = 0; j < 12; j++) { await stepN(1); whirl = Math.max(whirl, await S(() => window.__EF.world.bending.weapons.whirls.length)); if (j === 5) await shot('air-whirl'); }
+await stickUp();
+const a1 = await S(() => { const { player: p, opp: o } = window.__EF; let face = Math.abs(((p.faceYaw - Math.atan2(o.pos.x - p.pos.x, o.pos.z - p.pos.z)) + Math.PI * 3) % (Math.PI * 2) - Math.PI); return { x: p.pos.x, z: p.pos.z, face }; });
+check('DODGE: a whirlwind wraps the airbender and throws them sideways in the stick direction', whirl > 0 && a1.x - a0.x > 2.5 && Math.abs(a1.z - a0.z) < 1.2, `moved ${(a1.x - a0.x).toFixed(1)} m sideways, ${(a1.z - a0.z).toFixed(1)} m forward/back; whirlwind drawn ${whirl > 0}`);
+check('the bender keeps facing the opponent through the dash', a1.face < 0.6, `${(a1.face * 180 / Math.PI).toFixed(0)} degrees off`);
+await stick(-80, 0); await press('btn-dodge', 2); await stepN(12); await stickUp();
+const a2 = await S(() => window.__EF.player.pos.x);
+check('the dash goes whichever way the stick points (back to the left)', a1.x - a2 > 2.5, `moved ${(a1.x - a2).toFixed(1)} m to the left`);
 
 // ------------------------------------------------------------------ all elements
 head('Kicks while running');

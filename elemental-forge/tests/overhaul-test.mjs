@@ -158,11 +158,11 @@ check('rising kick: an air column launches the rival', aLift > 1.2, `rival lifte
 
 head('Air: flight');
 await setup({ el: 'air', locked: true, p: [0, 0, -12], o: [0, 0, 0] }); await stepN(3);
-await hold('btn-dodge', 7);
-await stepN(10); await hold('btn-jump', 6);
+// (17 Nov brief: flight starts with JUMP; DODGE is now the whirlwind dash)
+await hold('btn-jump', 6);
 const asc = await run(40); await fUp(6);
 const fPeak = Math.max(...asc.map(r => r.alt));
-check('DODGE held lifts the airbender into flight; JUMP climbs', asc.filter(r => r.mob === 'fly').length > 35 && fPeak > 6, `peak ${fPeak.toFixed(1)} m above the ground`);
+check('JUMP lifts the airbender into flight; JUMP held climbs', asc.filter(r => r.mob === 'fly').length > 35 && fPeak > 6, `peak ${fPeak.toFixed(1)} m above the ground`);
 check('flight plays the airborne pose', asc.slice(-5).every(r => (r.clip || '').startsWith('air_loop')), asc[asc.length - 1].clip);
 await shot('air-flight');
 const x0 = (await P()).x; await stick(80, 0); await run(30); const x1 = (await P()).x; await stickUp();
@@ -200,24 +200,24 @@ const rs = await run(50); await shot('earth-surf');
 check('DODGE held: the earthbender rides a rock slab', rs.filter(r => r.mob === 'surf').length > 35, `${rs.filter(r => r.mob === 'surf').length} frames`);
 check('the slab builds speed (heavier than ice)', Math.max(...rs.map(r => r.sp)) > 7.5, `${Math.max(...rs.map(r => r.sp)).toFixed(1)} m/s`);
 await press('btn-jump', 2);
-let ePeak = 0, pil = 0; await run(40, async (i, r) => { ePeak = Math.max(ePeak, r.alt); pil = Math.max(pil, await S(() => window.__EF.world.bending.pillars.length)); if (i === 6) await shot('earth-launch'); });
-check('JUMP while surfing: a rising slab launches the earthbender', ePeak > 2.8 && pil > 0, `peak ${ePeak.toFixed(2)} m, pillars ${pil}`);
+// (17 Nov brief: the launch rock is a mountain of pointed peaks that drives up under the feet and sinks back, in
+//  place of the flat-topped pillar)
+let ePeak = 0, pil = 0; await run(40, async (i, r) => { ePeak = Math.max(ePeak, r.alt); pil = Math.max(pil, await S(() => window.__EF.world.bending.weapons.spires.length)); if (i === 6) await shot('earth-launch'); });
+check('JUMP while surfing: a mountain of rock drives up and launches the earthbender', ePeak > 2.8 && pil > 0, `peak ${ePeak.toFixed(2)} m, launch rocks ${pil}`);
 await stickUp(); await fUp(7); await run(30);
 
 // ================================================================== FIRE
-head('Fire: stomp ring');
+head('Fire: stomp');
+// (17 Nov brief: the stomp ignites on the foot plant and sends a fireball along the ground that spreads into a ring of
+//  fire round the opponent for one to two seconds, in place of a ring expanding from the stamping foot)
 await setup({ el: 'fire', p: [0, 0, -12], o: [0, 0, -6] }); await stepN(3);
 await hold('btn-leg'); await stepN(30); await fUp(6); await clearHits();
-let ringMax = 0; for (let j = 0; j < 45; j++) { await stepN(1); ringMax = Math.max(ringMax, await S(() => Math.max(0, ...window.__EF.world.bending.weapons.fireRings.map(R => R.r)))); if (j === 22) await shot('fire-stomp-ring'); }
-const fr = await P();
-check('charged LEG stamps a ring of fire that expands along the ground', ringMax > 7, `ring reached ${ringMax.toFixed(1)} m`);
+let ringMax = 0, ringAt = null, ringT = 0; for (let j = 0; j < 75; j++) { await stepN(1); const r = await S(() => { const T = window.__EF.world.bending.weapons.traps[0]; return T && T.phase === 'ring' ? { R: 1.9 * Math.min(1, T.rt / 0.18), x: T.pos.x, z: T.pos.z } : null; }); if (r) { ringMax = Math.max(ringMax, r.R); ringAt = r; ringT++; } if (j === 22) await shot('fire-stomp-ring'); }
+const oNow = await S(() => ({ x: window.__EF.opp.pos.x, z: window.__EF.opp.pos.z }));
+check('charged LEG: a fireball runs along the ground and spreads into a ring of fire round the rival', ringMax > 1.5 && ringAt && Math.hypot(ringAt.x - 0, ringAt.z + 6) < 1.5, ringAt ? `ring ${ringMax.toFixed(1)} m across at (${ringAt.x.toFixed(1)}, ${ringAt.z.toFixed(1)}); rival started at (0, -6)` : 'no ring');
 const frHits = await hitsOn();
-check('the ring hits a rival 6 m away', frHits.includes('fireRing'), `rival hit by: ${frHits.join(',') || 'nothing'}`);
-await setup({ el: 'fire', p: [0, 0, -12], o: [0, 0, -6] }); await stepN(3);
-await hold('btn-leg'); await stepN(30); await fUp(6); await clearHits();
-let jumped = false; for (let j = 0; j < 45; j++) { await stepN(1); const r = await S(() => { const R = window.__EF.world.bending.weapons.fireRings[0], o = window.__EF.opp; if (R && !o.jumped2 && R.r > Math.hypot(o.pos.x - R.x, o.pos.z - R.z) - 1.6 && o.onGround) { o.vel.y = 7.5; o.onGround = false; o.jumped2 = true; } /* jumps as the flames close in (1.6 m away) */ return !!o.jumped2; }); jumped = jumped || r; }
-const jHits = await hitsOn();
-check('a rival who jumps the ring is not hit by it', jumped && !jHits.includes('fireRing'), `jumped ${jumped}, rival hit by: ${jHits.join(',') || 'nothing'}`);
+check('the ring burns a rival 6 m away, several times', frHits.filter(h => h === 'fireTrap').length >= 3, `rival hit by: ${frHits.join(',') || 'nothing'}`);
+check('the ring of fire burns out within two seconds', ringT > 0 && ringT / 30 <= 2.0 && !(await S(() => window.__EF.world.bending.weapons.traps.length)), `burned ${(ringT / 30).toFixed(2)} s`);
 
 head('Fire: flame propulsion');
 await setup({ el: 'fire', locked: false, p: [-8, 0, -14], o: [20, 0, 20] }); await stepN(3);
@@ -253,10 +253,11 @@ check('the opponent jumps most fire rings', avoidedR >= 3, `${avoidedR}/5 fire r
 // a flying player is still attacked (projectiles aimed at their height)
 await setup({ el: 'air', p: [0, 0, -10], o: [0, 0, -2], oel: 'earth' }); await realAI('master');
 await S(() => { const E = window.__EF, C = E.world.combat, d = C.damage.bind(C); window.__hitsP = []; if (!C.__wrappedP) { C.__wrappedP = true; const prev = C.damage; C.damage = (t, dmg, ...r) => { if (t === E.player) window.__hitsP.push(r[2]); return prev(t, dmg, ...r); }; } });
-await hold('btn-dodge', 7); await stepN(6); await hold('btn-jump', 6); await stepN(20); await fUp(6);
+// (17 Nov brief: Air flight starts with JUMP)
+await press('btn-jump', 2); await hold('btn-jump', 6); await stepN(20); await fUp(6);
 let shots2 = 0; for (let j = 0; j < 150; j++) { await stepN(1); if (j % 10 === 0) shots2 = Math.max(shots2, await S(() => window.__EF.world.bending.objs.filter(o => o.owner === window.__EF.opp && o.state === 'flying').length)); }
 const flyHits = await S(() => window.__hitsP || []);
-await fUp(7); await stubAI(); await stepN(60);
+await stubAI(); await stepN(60);
 check('the opponent keeps attacking a flying player from the ground', shots2 > 0 || flyHits.length > 0, `projectiles in the air ${shots2}, hits on the flier: ${flyHits.join(',') || 'none'}`);
 
 // ================================================================== VENUE

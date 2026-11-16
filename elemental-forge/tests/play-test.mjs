@@ -127,9 +127,10 @@ await setup({ locked: false, el: 'earth', p: [0, 0, -14], o: [20, 0, 20] });
 await press('btn-jump', 1); let h1 = 0; for (let i = 0; i < 20; i++) { await stepN(1); h1 = Math.max(h1, await S(() => window.__EF.player.pos.y)); }
 await stepN(20);
 await setup({ locked: false, el: 'air', p: [0, 0, -14], o: [20, 0, 20] });
-await press('btn-jump', 1); await stepN(12); await press('btn-jump', 1); let h2 = 0; for (let i = 0; i < 25; i++) { await stepN(1); h2 = Math.max(h2, await S(() => window.__EF.player.pos.y)); }
-check('jump leaves the ground', h1 > 0.9, `${h1.toFixed(2)} m`);
-check('air: air-assisted double jump goes higher', h2 > h1 + 0.6, `air ${h2.toFixed(2)} m vs earth ${h1.toFixed(2)} m`);
+// (17 Nov brief: Air's JUMP takes off into sustained, steerable flight; Earth's JUMP is a launch from a rising rock)
+await press('btn-jump', 2); let h2 = 0, flying = 0; for (let i = 0; i < 40; i++) { await stepN(1); const r = await S(() => ({ y: window.__EF.player.pos.y, f: window.__EF.player.mob && window.__EF.player.mob.kind === 'fly' })); h2 = Math.max(h2, r.y); if (r.f) flying++; }
+check('jump leaves the ground (Earth: launched from the rising rock)', h1 > 2.5, `${h1.toFixed(2)} m`);
+check('air: JUMP takes off into sustained flight', flying > 30 && h2 > 2, `${flying} of 40 frames flying, ${h2.toFixed(2)} m up`);
 await stepN(30);
 // ramp / ledge (slope)
 await setup({ locked: false, p: [-12.5, 0, 16], o: [20, 0, 20] });
@@ -298,7 +299,8 @@ head('Elemental interactions and environment');
 await setup({ el: 'water', oel: 'fire', p: [0, 0, -14], o: [0, 0, -2] });
 await S(() => { const { world, player, opp } = window.__EF, V = player.pos.constructor; world.bending.fire('fireball', opp, new V(0, 1.4, -3), { target: player.chestPos() }); world.bending.fire('water', player, new V(0, 1.4, -13), { target: opp.chestPos() }); });
 let clash = null; for (let i = 0; i < 20; i++) { await stepN(1); clash = await S(() => ({ fire: window.__EF.world.bending.objs.filter(o => o.el === 'fire').length, water: window.__EF.world.bending.objs.filter(o => o.el === 'water').length })); if (!clash.fire) break; }
-check('water projectile puts out a fireball in mid-air', clash.fire === 0 && clash.water === 1, JSON.stringify(clash));
+// (17 Nov brief: flames destroy incoming elemental attacks; a fireball and a water ball that meet destroy each other in steam)
+check('a fireball and a water projectile that meet destroy each other', clash.fire === 0 && clash.water === 0, JSON.stringify(clash));
 await setup({ el: 'water', p: [0, 0, -14], o: [20, 0, 20] });
 await S(() => { const B = window.__EF.world.bending; B.burn(0, -9, 0, window.__EF.opp); });
 const burnsBefore = await S(() => window.__EF.world.bending.burns.length);
@@ -309,7 +311,8 @@ await setup({ el: 'air', oel: 'fire', p: [0, 0, -14], o: [0, 0, -2] });
 await S(() => { const { world, player, opp } = window.__EF, V = player.pos.constructor; world.bending.fire('fireball', opp, new V(0, 1.4, -3), { target: player.chestPos() }); world.bending.fire('gust', player, new V(0, 1.4, -13), { target: opp.chestPos() }); });
 await stepN(25);
 const blown = await S(() => ({ ohp: window.__EF.opp.hp, php: window.__EF.player.hp }));
-check('air gust blows a fireball back at its caster', blown.ohp < 100 && blown.php === 100, JSON.stringify(blown));
+// (17 Nov brief: flames destroy incoming attacks; a fireball burns through a gust and both are spent)
+check('a fireball and a gust that meet destroy each other: nobody is hit', blown.ohp === 100 && blown.php === 100, JSON.stringify(blown));
 await setup({ el: 'fire', oel: 'earth', p: [0, 0, -14], o: [0, 0, -4] });
 await hold('btn-guard', 8); await stepN(12);
 await oppFire('rock', [0, 1.4, -5]); await stepN(30);
@@ -323,12 +326,15 @@ await press('btn-special', 2); let rupLift = 0; for (let i = 0; i < 70; i++) { a
 const rh = await hitsOn(); await clearHits();
 check('earth SPECIAL (Ground Rupture) runs to the rival and throws them up', rh.includes('rupture') && rupLift > 0.8, `max rival height ${rupLift.toFixed(2)} m; hits ${rh.join(',')}`);
 await setup({ el: 'earth', locked: false, p: [0, 0, -14], o: [20, 0, 20] });
-await S(() => { const { world, player: p } = window.__EF; const fw = p.forward(); world.bending.raisePillar(p, p.pos.x + fw.x * 2.2, p.pos.z + fw.z * 2.2);   /* 2.2 m ahead, where the SPECIAL used to raise it */ for (let i = 0; i < 40; i++) window.__EF.step(1 / 30); });
+await S(() => { const { world, player: p } = window.__EF; const fw = p.forward(); world.bending.raisePillar(p, p.pos.x + fw.x * 2.2, p.pos.z + fw.z * 2.2);   /* 2.2 m ahead */ for (let i = 0; i < 40; i++) window.__EF.step(1 / 30); });
 const pil = await S(() => { const p = window.__EF.world.bending.pillars[0]; return p ? { x: p.col.x, z: p.col.z, top: p.col.top } : null; });
 check('a raised stone pillar is solid', pil && pil.top > 1.3, JSON.stringify(pil));
-await stick(0, -60); await stepN(3); await press('btn-jump', 1); let onPillar = 0; for (let i = 0; i < 30; i++) { await stepN(1); onPillar = Math.max(onPillar, await S(() => window.__EF.player.onGround ? window.__EF.player.pos.y : 0)); } await stickUp();
+// (17 Nov brief: Earth's JUMP is now a 4 m launch from a rising rock, which carries far past a pillar 2.2 m away;
+//  the pillar is raised under the player instead, throwing them up, and they must come down standing on its top)
+await S(() => { const { world, player: p } = window.__EF; world.bending.raisePillar(p, p.pos.x, p.pos.z); });
+let onPillar = 0; for (let i = 0; i < 50; i++) { await stepN(1); onPillar = Math.max(onPillar, await S(() => window.__EF.player.onGround ? window.__EF.player.pos.y : 0)); }
 await shot('16-on-pillar');
-check('player can jump onto the pillar and stand on it', onPillar > 1.3, `standing height ${onPillar.toFixed(2)} m`);
+check('a pillar raised under the player throws them up and they stand on its top', onPillar > 1.3, `standing height ${onPillar.toFixed(2)} m`);
 // boulder
 const boulder = await S(() => { const c = window.__EF.world.arena.colliders.find(c => c.rock && c.walk && c.top < 1.25 && Math.hypot(c.x, c.z) < 26); return c ? { x: c.x, z: c.z, r: c.r, top: c.top } : null; });
 if (boulder) {

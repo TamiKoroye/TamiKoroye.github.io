@@ -218,9 +218,10 @@ export class Fighter {
         if (this.buf.leg && this.en >= 15 && (this.captureCd || 0) <= 0) { this.buf.leg = 0; this.captureCd = 4; if (B.weapons.capture(this)) this.en -= 15; }
       }
       this.captureCd = (this.captureCd || 0) - dt;
+      if (this.input.roll) this.buf.dodge = 0.2;   // the AI asks for a roll directly
       if (this.buf.dodge && this.dodgeCd <= 0 && this.free('dodge') && !this.charging) {
         const T = st.tech;
-        if (this.guarding && this.onGround && T.roll && this.en >= 6) {
+        if ((this.guarding || this.input.roll) && this.onGround && T.roll && this.en >= 6) {
           // GUARD + DODGE: a roll in the stick direction (every element)
           this.buf.dodge = 0; this.endHold(); this.guarding = false; B.guardEnd(this); this.rollDir();
           this.startTech(T.roll, 1, true); this.invuln = 0.45; this.dodgeCd = 0.4; this.guardCd = 0.7;   // the roll is not cut short by the still-held GUARD

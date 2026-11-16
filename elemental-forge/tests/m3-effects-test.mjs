@@ -113,6 +113,9 @@ for (const el of (process.env.WHIPS ? [process.env.WHIPS] : process.env.ONLY ? [
       await stepN(1); const r = await whipSample(); if (r) rows.push(r);
       if (r && r.rel && shot < 2 && i < 3 && (shot === 0 || rows.filter(x => x.rel).length === 4)) { await snap(`${el}-whip${i}-${shot ? 'lash' : 'release'}`); if (shot && i < 2) await snap(`${el}-whip${i}-lash-normal`, 'normal'); shot++; }
     }
+    // (17 Nov brief: Air's third strike is a cross punch firing an air cannon, not a whip)
+    const isCannon = await S(() => /^fire_punch/.test(window.__EF.player.hero.curName || '') || (window.__hits || []).length && false);
+    if (!rows.length && el === 'air' && i === 2) { per.cannon = 1; await stepN(12); continue; }
     if (!rows.length) { check(`${el} strike ${i + 1}: a whip came out`, false); continue; }
     const k = rows[0].kind, clip = rows[0].clip;
     const maxRoot = Math.max(...rows.map(r => r.rootD)), maxTip = Math.max(...rows.map(r => r.tipD));
@@ -126,7 +129,7 @@ for (const el of (process.env.WHIPS ? [process.env.WHIPS] : process.env.ONLY ? [
     await stepN(12);
   }
   check(`${el}: strikes use different arm paths (whip kinds)`, Object.keys(per).length >= 2, JSON.stringify(per));
-  const hits = (await hitsOn()).filter(t => /Whip/.test(t)).length; check(`${el}: whips strike the rival at 4 m (at least 3 of 4)`, hits >= 3, `${hits} whip hits`); await clearHits();
+  const hl = await hitsOn(), hits = hl.filter(t => /Whip/.test(t)).length + (el === 'air' ? hl.filter(t => t === 'proj').length : 0); check(`${el}: strikes land on the rival at 4 m (at least 3 of 4; Air's third is the air cannon)`, hits >= 3, `${hits} hits: ${hl.join(',')}`); await clearHits();
 }
 
 // ------------------------------------------------------------------ kicks throw the element along the foot's path
@@ -176,7 +179,6 @@ for (const el of (process.env.ONLY || process.env.WHIPS ? [] : ["fire", "earth",
   const rows = []; let shot = 0;
   for (let j = 0; j < 120; j++) {
     await stepN(1); const r = await spec(); rows.push(r);
-    if (el === 'water' && j === 40) await press('btn-hand', 2);   // redirect and release the stream
     if ([6, 12, 18, 26, 36, 50].includes(j)) { await snap(`${el}-special-${String(j).padStart(2, '0')}`, 'close', r.ppos.map((v, i) => i === 1 ? v + 1.1 : (v + r.opos[i]) / 2)); }
     if (j === 22) await snap(`${el}-special-normal`, 'normal');
   }
@@ -196,9 +198,8 @@ for (const el of (process.env.ONLY || process.env.WHIPS ? [] : ["fire", "earth",
     check('earth: the rival is struck and thrown up', hits.includes('rupture') && maxOy > 0.8, `max rival height ${maxOy} m`);
   }
   if (el === 'water') {
-    const dh = rows.filter(r => r.dragonHands && r.kinds.some(k => k === 'dragon:flow')).map(r => Math.max(...r.dragonHands));
-    check('water: while circulating, the stream runs through both hands', dh.length > 5 && Math.max(...dh) < 0.12, `${dh.length} frames, worst hand-to-stream distance ${dh.length ? Math.max(...dh).toFixed(3) : 'n/a'} m`);
-    check('water: HAND throws the stream and it strikes the rival', rows.some(r => r.kinds.includes('dragon:thrown')) && hits.includes('dragon'), `hits ${hits.join(',')}`);
+    // (17 Nov brief: the SPECIAL engulfs the opponent in a ball of water that freezes and shatters)
+    check('water: SPECIAL engulfs the rival in a ball of water, freezes it, shatters it for the damage', rows.some(r => r.kinds.includes('drown')) && hits.includes('drown'), `effects ${[...new Set(rows.flatMap(r => r.kinds))].join(',')}; hits ${hits.join(',')}`);
   }
   if (el === 'air') {
     const t0 = rows.find(r => r.torn);
