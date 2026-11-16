@@ -119,7 +119,8 @@ export class AI {
     if (this.combo.length) {
       this.comboT -= dt;
       if (this.comboT <= 0 && (!f.action || f.free('attack'))) { inp[this.combo.shift()] = true; this.comboT = this.d === 'master' ? 0.18 : 0.3; }
-      if (dist > 3.4) this.combo.length = 0;
+      inp.mx = tx; inp.mz = tz;                            // follow the opponent the strikes have knocked back
+      if (dist > 4.5) this.combo.length = 0;
       return;
     }
     if (f.action) return;

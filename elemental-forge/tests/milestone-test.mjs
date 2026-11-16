@@ -171,9 +171,18 @@ check('training opponent reacts less than master', training < master, `training 
 head('Opponent combinations and counters');
 await setup({ el: 'earth', oel: 'fire', p: [0, 0, -2.0], o: [0, 0, 0] });
 await realAI('master');
-const seq = await S(() => { const E = window.__EF, o = E.opp, P = E.player, out = []; let last = null; for (let i = 0; i < 600; i++) { P.hp = 100; P.en = 100; o.en = 100; E.step(1 / 30); if (o.action === 'tech' && o.techN !== last) { last = o.techN; out.push([+(i / 30).toFixed(2), o.tech.name]); } } return out; });
-let chains = 0; for (let i = 1; i < seq.length; i++) if (seq[i][0] - seq[i - 1][0] < 0.75) chains++;
-check('master opponent strings strikes into combinations', chains >= 3, `${seq.length} techniques in 20 s, ${chains} follow-ups within 0.75 s: ${seq.slice(0, 8).map(s => s[1]).join(', ')}`);
+// six separate close engagements (the Master AI otherwise backs off to its preferred range): each starts at 2 m
+// and is watched for 1.5 s; an engagement counts if a strike starts no more than 0.25 s after the previous one ends
+const eng = await S(() => { const E = window.__EF, o = E.opp, P = E.player, out = [];
+  for (let k = 0; k < 6; k++) {
+    P.pos.set(0, 0, -2); o.pos.set(0, 0, 0); o.vel.set(0, 0, 0); o.action = null; o.tech = null; E.ai.combo = []; E.ai.meleeT = 0;
+    const seq = []; let last = null;
+    for (let i = 0; i < 45; i++) { P.hp = 100; P.en = 100; o.en = 100; E.step(1 / 30); if (o.action === 'tech' && o.techN !== last) { last = o.techN; seq.push([i / 30, o.tech.name, o.tech.dur]); } }
+    out.push(seq);
+  }
+  return out; });
+const chained = eng.filter(sq => sq.some((x, i) => i > 0 && x[0] - sq[i - 1][0] < sq[i - 1][2] + 0.25)).length;
+check('master opponent strings strikes into combinations', chained >= 4, `${chained}/6 close engagements had a strike following the previous one with no idle gap (under 0.25 s): ${eng.map(sq => sq.map(x => x[1]).join('+') || '-').join(' | ')}`);
 await stubAI();
 
 head('Regression');
