@@ -121,7 +121,7 @@ await setup({ el: 'water', p: [0, 0, -10], o: [0, 0, 6] });
 await stepN(3);
 await hold('btn-leg'); await stepN(30); await fUp(6);
 for (let i = 0; i < 100 && !(await S(() => window.__EF.world.bending.spikes.some(x => x.ice && x.mesh && x.t > 0.15 && x.t < 0.5))); i++) await stepN(1);   // (the spikes now form where the tidal wave stops)
-const melt = await S(() => { const { world, opp } = window.__EF, B = world.bending, s = B.spikes.find(x => x.ice && x.mesh && x.t > 0.15 && x.t < 0.5); if (!s) return null; const P = s.pos.clone(); P.y += 0.8; P.x += 2.5; /* from the side: no other spike in the line is in the way */ B.fire('fireball', opp, P, { target: s.pos.clone().setY(s.pos.y + 0.6) }); for (let i = 0; i < 6; i++) window.__EF.step(1 / 30); return { t: s.t }; });
+const melt = await S(() => { const { world, opp } = window.__EF, B = world.bending, s = B.spikes.find(x => x.ice && x.mesh && x.t > 0.15 && x.t < 0.5); if (!s) return null; const o2 = B.spikes.find(x => x.ice && x !== s), lx = o2 ? o2.pos.x - s.pos.x : 1, lz = o2 ? o2.pos.z - s.pos.z : 0, ll = Math.hypot(lx, lz) || 1; const P = s.pos.clone(); P.y += 0.8; P.x += -lz / ll * 2.5; P.z += lx / ll * 2.5; /* across the line of spikes, so no other spike is in the way */ B.fire('fireball', opp, P, { target: s.pos.clone().setY(s.pos.y + 0.6) }); for (let i = 0; i < 6; i++) window.__EF.step(1 / 30); return { t: s.t }; });
 check('fire melts ice', melt && melt.t >= 1.3, melt ? `spike life jumped to ${melt.t.toFixed(2)} s (it would be ${'<'}0.8 s without the fireball)` : 'no young spike to test');
 
 // ------------------------------------------------------------------ air
