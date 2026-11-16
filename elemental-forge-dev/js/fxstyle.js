@@ -93,18 +93,19 @@ export class FlameBlobs {
   }
 }
 
+const _up = new THREE.Vector3(0, 1, 0), _dv = new THREE.Vector3();
 export class WaterChunks {
   constructor(scene, max = 360) {
     this.max = max; this.items = [];
     const mat = new THREE.MeshToonMaterial({ color: 0xffffff, gradientMap: TOON_RAMP, transparent: true, opacity: 0.9, emissive: 0x0b2a45 });
-    this.mesh = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1, 0), mat, max);
+    this.mesh = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1, 1), mat, max);   // rounded drops
     this.mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage); this.mesh.frustumCulled = false; this.mesh.count = 0;
     for (let i = 0; i < max; i++) this.mesh.setColorAt(i, _c.set(0xffffff));
     scene.add(this.mesh);
   }
   spawn(pos, vel, r, life, grav = 9, color = 0x7cc4f4) {
     if (this.items.length >= this.max) this.items.shift();
-    this.items.push({ p: pos.clone(), v: vel.clone(), r: r * rand(0.6, 1.3), life, max: life, grav, rot: new THREE.Euler(rand(0, 6), rand(0, 6), 0), w: rand(-8, 8), col: new THREE.Color(color).offsetHSL(0, 0, rand(-0.05, 0.12)) });
+    this.items.push({ p: pos.clone(), v: vel.clone(), r: r * rand(0.45, 0.95), life, max: life, grav, rot: new THREE.Euler(rand(0, 6), rand(0, 6), 0), w: rand(-8, 8), col: new THREE.Color(color).offsetHSL(0, 0, rand(-0.05, 0.12)) });
   }
   update(dt, groundAt) {
     const it = this.items;
@@ -115,7 +116,10 @@ export class WaterChunks {
     }
     for (let i = 0; i < it.length; i++) {
       const d = it[i], k = 1 - d.life / d.max, r = d.r * Math.min(1, (1 - k) * 2.5) * Math.min(1, k * 8 + 0.3);
-      _m.compose(d.p, _q.setFromEuler(d.rot), _s.set(r, r * 0.85, r));
+      // a drop is drawn out along its flight (a falling stream of water, not a tumbling block)
+      const sp = d.v.length();
+      if (sp > 0.5) _q.setFromUnitVectors(_up, _dv.copy(d.v).divideScalar(sp)); else _q.setFromEuler(d.rot);
+      _m.compose(d.p, _q, _s.set(r * 0.8, r * Math.min(3, 1 + sp * 0.18), r * 0.8));
       this.mesh.setMatrixAt(i, _m); this.mesh.setColorAt(i, d.col);
     }
     this.mesh.count = it.length;

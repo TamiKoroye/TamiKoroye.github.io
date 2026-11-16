@@ -13,7 +13,7 @@ export const ACTIONS = {
   hit:     { dur: 0.3,  react: true },
   stagger: { dur: 0.62, react: true },
   down:    { dur: 0.85, react: true },
-  getup:   { dur: 0.45, react: true },
+  getup:   { dur: 0.85, react: true },   // long enough for the authored get-up to read (about 2.4x its captured speed)
   land:    { dur: 0.14, soft: true },
   landHigh:{ dur: 0.42, soft: true },
   ko:      { dur: 99,   react: true },
@@ -106,6 +106,21 @@ export class Fighter {
 
   chestPos(out = new THREE.Vector3()) { return out.set(this.pos.x, this.pos.y + 1.3, this.pos.z); }
   forward(out = new THREE.Vector3()) { return out.set(Math.sin(this.yaw), 0, Math.cos(this.yaw)); }
+  // the last ~0.3 s of each hand and foot position (bone positions after the animation), so an effect can be
+  // shaped from the path the limb actually travelled
+  recLimbs() {
+    const H = this.limbHist || (this.limbHist = { i: 0, n: 0, t: new Float64Array(20), p: { hL: [], hR: [], fL: [], fR: [] } });
+    const i = H.i; H.t[i] = this.time;
+    for (const k of ['hL', 'hR', 'fL', 'fR']) { const a = H.p[k]; if (!a[i]) a[i] = new THREE.Vector3(); (k[0] === 'h' ? this.handPos(k[1], a[i]) : this.footPos(k[1], a[i])); }
+    H.i = (i + 1) % 20; H.n = Math.min(20, H.n + 1);
+  }
+  // positions of one limb over the last `span` seconds, oldest first
+  limbPath(limb, side, span = 0.2) {
+    const H = this.limbHist; if (!H) return [];
+    const a = H.p[(limb === 'foot' ? 'f' : 'h') + side], out = [];
+    for (let j = H.n; j >= 1; j--) { const k = (H.i - j + 20) % 20; if (this.time - H.t[k] <= span + 1e-6) out.push(a[k].clone()); }
+    return out;
+  }
   handPos(side, out = new THREE.Vector3()) { return (this.hero ? this.hero.bones['DEF-hand' + side] : this.J['w' + side]).getWorldPosition(out); }
   footPos(side, out = new THREE.Vector3()) { return (this.hero ? this.hero.bones['DEF-foot' + side] : this.J['a' + side]).getWorldPosition(out); }
 
@@ -151,9 +166,9 @@ export class Fighter {
     this.flash = Math.max(0, this.flash - dt * 5);
     for (const k in this.buf) this.buf[k] = Math.max(0, this.buf[k] - dt);
     // input buffer: long enough to queue the next technique during an authored recovery
-    if (inp.hand) this.buf.hand = 0.35;
-    if (inp.leg) this.buf.leg = 0.35;
-    if (inp.special) this.buf.special = 0.35;
+    if (inp.hand) this.buf.hand = 0.45;
+    if (inp.leg) this.buf.leg = 0.45;
+    if (inp.special) this.buf.special = 0.45;
     if (inp.dodge) this.buf.dodge = 0.18;
     if (inp.jump) this.buf.jump = 0.15;
     if (this.guarding) this.guardT += dt;
@@ -205,14 +220,19 @@ export class Fighter {
         else if (this.airJumps < st.jump.air && this.vel.y < 5) { this.buf.jump = 0; this.airJumps++; this.vel.y = 7.2; this.jumpFx(true); }
       }
       const canStrike = this.free('attack') && !this.guarding && !this.holding;
-      if (this.buf.hand && !this.charging && canStrike) {
+      // one buffered strike starts per frame, the earlier press first (more buffer time used up); the other stays
+      // queued for the next opening instead of replacing this one in the same frame
+      const handFirst = this.buf.hand && (!this.buf.leg || this.buf.hand <= this.buf.leg);
+      let struck = false;
+      if (this.buf.hand && handFirst && !this.charging && canStrike) {
+        struck = true;
         this.buf.hand = 0; this.dodgeT = 0;
         if (this.counterT > 0) { this.counterT = 0; this.startAction('counter'); w.combat.lunge(this, ACTIONS.counter); w.popup(this, 'COUNTER', true); w.audio.whoosh(0.9); }
         else if (B.spiralRelease && B.spiralRelease(this)) { w.popup(this, 'RELEASE', true); }
         else { this.handSide = -this.handSide; this.startTech(st.tech.hand, this.handSide, true); }
         this.handHoldT = 0;
       }
-      if (this.buf.leg && !this.charging && canStrike) {
+      if (this.buf.leg && !struck && !this.charging && canStrike) {
         this.buf.leg = 0; this.dodgeT = 0;
         if (st.tech.legMove && this.onGround && this.speedNorm > 0.45 && !this.action && this.comboTimer <= 0) {
           // LEG while running: a kick delivered on the move, keeping the run's momentum
@@ -415,6 +435,7 @@ export class Fighter {
     this.root.position.copy(this.pos);
     this.root.rotation.y = this.yaw;
     if (this.hero) { this.root.updateMatrixWorld(true); this.hero.drive(this, dt); }
+    this.recLimbs();
     const f = this.flash, ch = this.charging ? Math.min(1, this.chargeT / 0.55) * (0.15 + 0.1 * Math.sin(this.time * 30)) : 0;
     const ec = new THREE.Color(this.style.color);
     this.material.emissive.setRGB(f * 0.9 + ch * ec.r, f * 0.25 + ch * ec.g, f * 0.15 + ch * ec.b);

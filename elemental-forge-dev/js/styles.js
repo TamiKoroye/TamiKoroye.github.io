@@ -54,7 +54,7 @@ const earth = {
   loco: { walk: 2.6, run: 5.9, sprint: 8.4, accel: 30, stride: 0.9, bob: 0.55, knee: 0.8, lean: 0.8, swing: 0.55, elbow: 1.7, carry: -0.2, out: 0.1, heavy: 1.4 },
   jump: { v: 7.2, air: 0 },
   dodge: { kind: 'roll', dur: 0.44, speed: 12, iframes: 0.7 },
-  labels: { hand: 'STONE PUNCH', leg: 'EARTH KICK', guard: 'WALL', special: 'PILLAR' },
+  labels: { hand: 'STONE PUNCH', leg: 'EARTH KICK', guard: 'WALL', special: 'RUPTURE' },
   tech: {
     hand: T({ name: 'Stone Punch', clip: ['earth_punch', 'earth_punch2'], dur: 0.42, cost: 9, cancel: 0.6, upper: true, move: 3.2, lunge: 5,
       active: { from: 0.33, to: 0.5, dmg: 7, range: 1.8, arc: 0.4, knock: 3, level: 0 },
@@ -106,8 +106,9 @@ const earth = {
         arm(p, 1, -0.3 - 1.4 * k, 0.3, 0.6, 0.4, 0.8 - 1.4 * k); arm(p, -1, -0.3 - 1.4 * k, 0.3, 0.6, 0.4, 0.8 - 1.4 * k); } },
     guard: (p) => { stanceLegs(p, -0.32, 0.12, 0.42, -0.12, 0.42); S(p, 'spine', 0.14, 0, 0); S(p, 'neck', -0.12, 0, 0);
       arm(p, 1, -1.3, 0.35, 0.3, 0.45, -1.25); arm(p, -1, -1.3, 0.35, 0.3, 0.45, -1.25); },
-    special: T({ name: 'Stone Pillar', clip: 'earth_pillar', dur: 0.55, cost: 20, cancel: 0.7, move: 0,
-      events: [[0.42, 'earth.pillar']],
+    // Ground Rupture: sink and drive both hands into the ground, then the ground ruptures in a line to the opponent
+    special: T({ name: 'Ground Rupture', clip: 'earth_gather', onStart: 'earth.specialStart', dur: 0.55, cost: 30, cancel: 0.86, move: 0,
+      events: [[0.42, 'earth.special']],
       keys: [
         [0.0, () => {}],
         [0.3, (p) => { stanceLegs(p, -0.38, 0.2, 0.4, -0.15, 0.4); S(p, 'spine', 0.4, 0, 0); arm(p, 1, -0.3, 0.3, 0.6, 0.3, 1.2); arm(p, -1, -0.3, 0.3, 0.6, 0.3, 1.2); }],
@@ -124,7 +125,7 @@ const fire = {
   loco: { walk: 3.2, run: 7.0, sprint: 9.8, accel: 40, stride: 1.05, bob: 1.1, knee: 1.25, lean: 1.4, swing: 1.1, elbow: 1.55, carry: -0.15, out: 0.03, heavy: 0.9 },
   jump: { v: 7.9, air: 0 },
   dodge: { kind: 'dash', dur: 0.32, speed: 17, iframes: 0.75, trail: 'fire' },
-  labels: { hand: 'FIRE FIST', leg: 'FLAME KICK', guard: 'FIRE WALL', special: 'FLAME ORB' },
+  labels: { hand: 'FIRE FIST', leg: 'FLAME KICK', guard: 'FIRE WALL', special: 'DRAGON DESCENT' },
   tech: {
     hand: T({ name: 'Fire Fist', clip: ['fire_punch', 'fire_punch2'], dur: 0.27, cost: 6, cancel: 0.5, upper: true, move: 4.2, lunge: 5,
       active: { from: 0.28, to: 0.5, dmg: 5, range: 1.9, arc: 0.4, knock: 2, level: 0 },
@@ -160,7 +161,7 @@ const fire = {
           [1.0, () => {}],
         ] }),
     ],
-    charged: T({ name: 'Flying Dragon Kick', clip: 'fire_fly', dur: 0.72, cost: 20, cancel: 0.82, move: 7, jumpAt: [0.08, 6.4], lunge: 9, spin: [0.08, 0.6, -1],
+    charged: T({ name: 'Spinning Flame Kick', clip: 'fire_spinback', dur: 0.72, cost: 20, cancel: 0.82, move: 3, lunge: 6, spin: [0.08, 0.6, -1],
       active: { from: 0.35, to: 0.62, dmg: 12, range: 2.4, arc: -1.1, knock: 9, level: 2 },
       events: [[0.45, 'fire.charged']],
       keys: [
@@ -175,8 +176,9 @@ const fire = {
         arm(p, 1, -1.55 + tr, 0.15, -0.6, 0.15, -1.2); arm(p, -1, -1.5 - tr, 0.1, -0.6, 0.2, -1.2); } },
     guard: (p) => { stanceLegs(p, -0.14, 0.3, 0.14, -0.3, 0.12); S(p, 'spine', 0.08, 0, 0);
       arm(p, 1, -1.35, -0.1, 0.2, 1.75, 0.2); arm(p, -1, -1.25, -0.15, 0.2, 1.8, 0.2); },  // crossed forearms
-    special: T({ name: 'Flame Orb', clip: 'fire_orb', dur: 0.36, cost: 10, cancel: 0.55, upper: true, move: 4,
-      events: [[0.3, 'fire.special']],
+    // Dragon Descent: a leaping flying kick with flames pouring from the feet; the kicking foot explodes on landing
+    special: T({ name: 'Dragon Descent', clip: 'fire_fly', onStart: 'fire.specialStart', dur: 0.72, cost: 30, cancel: 0.88, move: 1, jumpAt: [0.08, 6.4], lunge: 9,
+      events: [[0.5, 'fire.special']],
       keys: [
         [0.0, () => {}],
         [0.3, (p, c) => { S(p, 'chest', 0, -0.3 * c.s, 0); arm(p, -c.s, -2.1, 0.4, 0.4, 1.0, -0.9); arm(p, c.s, -0.6, 0.55, -0.3, 2.0, 0); }],
@@ -192,9 +194,11 @@ const water = {
   loco: { walk: 2.8, run: 6.2, sprint: 8.8, accel: 26, stride: 1.0, bob: 0.35, knee: 0.7, lean: 0.6, swing: 0.35, elbow: 0.8, carry: -0.55, out: 0.07, heavy: 0.6, flow: 1 },
   jump: { v: 7.4, air: 0 },
   dodge: { kind: 'slide', dur: 0.4, speed: 13, iframes: 0.7, trail: 'water' },
-  labels: { hand: 'WATER PALM', leg: 'WATER KICK', guard: 'WATER SHIELD', special: 'SPIRAL STREAMS' },
+  labels: { hand: 'WATER PALM', leg: 'WATER KICK', guard: 'WATER SHIELD', special: 'DRAGON STREAM' },
   tech: {
-    hand: T({ name: 'Water Palm', clip: 'water_palm', dur: 0.5, cost: 6, cancel: 0.62, upper: true, move: 3.8, lunge: 3,
+    // the water whip: one arm path per strike (across the body, overhead, diagonal), each hand in turn; the rope
+    // comes out of the hand as the arm winds up (onStart) and is thrown on the impact frame
+    hand: T({ name: 'Water Palm', clip: ['whip_h', 'whip_h', 'whip_v', 'whip_d'], onStart: 'water.whipOut', dur: 0.5, reach: 4.3, cost: 6, cancel: 0.62, upper: true, move: 3.8, lunge: 11,
       active: { from: 0.5, to: 0.64, dmg: 5, range: 1.9, arc: 0.4, knock: 4, level: 0 },
       events: [[0.52, 'water.hand']],
       keys: [
@@ -241,7 +245,9 @@ const water = {
     guard: (p, c) => { const a = Math.sin((c ? c.t : 0) * 2.2);
       stanceLegs(p, -0.18, 0.22, 0.16, -0.12, 0.16); S(p, 'hips', 0, 0.15 * a, 0); S(p, 'spine', 0.05, 0, 0);
       arm(p, 1, -1.15 + 0.15 * a, 0.75, 0.6, 1.0, 0.4); arm(p, -1, -1.15 - 0.15 * a, 0.75, 0.6, 1.0, 0.4); },
-    special: T({ name: 'Spiral Streams', clip: 'water_sphere', dur: 0.6, cost: 20, cancel: 0.72, move: 2, upper: true,
+    // Dragon Stream: draw water up from the ground into both hands (onStart), then set it circulating through the
+    // hands and round the body; HAND throws it (tech.release below)
+    special: T({ name: 'Dragon Stream', clip: 'water_redirect', onStart: 'water.specialStart', dur: 0.6, cost: 26, cancel: 0.8, move: 1, upper: true,
       events: [[0.52, 'water.special']],
       keys: [
         [0.0, () => {}],
@@ -259,9 +265,9 @@ const air = {
   loco: { walk: 3.4, run: 7.4, sprint: 10.6, accel: 42, stride: 1.2, bob: 0.4, knee: 0.75, lean: 1.2, swing: 0.25, elbow: 0.3, carry: 0.55, out: 0.0, heavy: 0.4 },
   jump: { v: 7.8, air: 1 },
   dodge: { kind: 'airdash', dur: 0.36, speed: 19, iframes: 0.85, trail: 'air' },
-  labels: { hand: 'AIR PALM', leg: 'AIR KICK', guard: 'DEFLECT', special: 'VORTEX' },
+  labels: { hand: 'AIR PALM', leg: 'AIR KICK', guard: 'DEFLECT', special: 'TORNADO' },
   tech: {
-    hand: T({ name: 'Air Palm', clip: 'air_palm', dur: 0.32, cost: 6, cancel: 0.52, upper: true, move: 5, lunge: 4,
+    hand: T({ name: 'Air Palm', clip: ['whip_h', 'whip_d', 'whip_h', 'whip_v'], clipSpeed: 2.1, onStart: 'air.whipOut', dur: 0.32, reach: 4.3, cost: 6, cancel: 0.52, upper: true, move: 5, lunge: 11,
       active: { from: 0.3, to: 0.5, dmg: 4, range: 1.9, arc: 0.4, knock: 6, level: 0 },
       events: [[0.32, 'air.hand']],
       keys: [
@@ -307,8 +313,9 @@ const air = {
     guard: (p, c) => { const a = Math.sin((c ? c.t : 0) * 5);
       stanceLegs(p, -0.16, 0.18, 0.05, -0.16, 0.06); S(p, 'hips', 0, 0.5 * a, 0); S(p, 'chest', 0, 0.3 * a, 0);
       arm(p, 1, -1.35, 0.6 + 0.3 * a, -0.8, 0.4, -1.1); arm(p, -1, -0.9, 0.1, -0.5, 1.5, -0.8); },
-    special: T({ name: 'Vortex', clip: 'air_vortex', dur: 0.45, cost: 10, cancel: 0.62, upper: true, move: 4.5,
-      events: [[0.38, 'air.special']],
+    // Tornado: a full turn of the body winds a funnel up around the bender; the end of the turn sends it out
+    special: T({ name: 'Tornado', clip: 'turn_spin', onStart: 'air.specialStart', dur: 0.6, cost: 30, cancel: 0.85, move: 0,
+      events: [[0.7, 'air.special']],
       keys: [
         [0.0, () => {}],
         [0.2, (p) => { arm(p, 1, -1.0, 0.4, 0.2, 1.6, 0); arm(p, -1, -0.7, 0.4, -0.6, 1.4, 0.9); }],   // holding the ball
@@ -318,6 +325,8 @@ const air = {
   },
 };
 
+// Water: the push that throws the Dragon Stream (started by HAND while the stream circulates)
+water.tech.release = T({ name: 'Dragon Release', clip: 'water_palm', dur: 0.5, cost: 0, cancel: 0.75, move: 1.5, upper: true, events: [[0.52, 'water.specialRelease']], keys: [[0, () => {}], [1, () => {}]] });
 export const STYLES = { earth, fire, water, air };
 export const ELEMENTS = ['earth', 'fire', 'water', 'air'];
 
