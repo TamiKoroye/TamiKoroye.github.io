@@ -166,9 +166,9 @@ export class Fighter {
     this.flash = Math.max(0, this.flash - dt * 5);
     for (const k in this.buf) this.buf[k] = Math.max(0, this.buf[k] - dt);
     // input buffer: long enough to queue the next technique during an authored recovery
-    if (inp.hand) this.buf.hand = 0.35;
-    if (inp.leg) this.buf.leg = 0.35;
-    if (inp.special) this.buf.special = 0.35;
+    if (inp.hand) this.buf.hand = 0.45;
+    if (inp.leg) this.buf.leg = 0.45;
+    if (inp.special) this.buf.special = 0.45;
     if (inp.dodge) this.buf.dodge = 0.18;
     if (inp.jump) this.buf.jump = 0.15;
     if (this.guarding) this.guardT += dt;
