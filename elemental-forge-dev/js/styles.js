@@ -323,10 +323,36 @@ export const ELEMENTS = ['earth', 'fire', 'water', 'air'];
 
 // Kick while stepping forward: one shared authored take; each element supplies its own effect at the impact.
 // LEG while running uses it, so attacks keep the fighter's momentum instead of stopping the run.
-const MOVE_EVENT = { earth: 'earth.leg', fire: 'fire.leg', water: 'water.leg', air: 'air.leg' };
+const MOVE_EVENT = { earth: 'earth.leg', fire: 'fire.leg', water: 'water.lance', air: 'air.leg' };
 for (const st of Object.values(STYLES)) {
   st.tech.legMove = T({ name: 'Running Kick', clip: 'move_kick', dur: 0.55, cost: 9, cancel: 0.7, move: 4.6, lunge: 3,
     active: { from: 0.4, to: 0.58, dmg: 8, range: 2.3, arc: 0.45, knock: 6, level: 1 },
     events: [[0.45, MOVE_EVENT[st.key]]],
     keys: [[0.0, () => {}], [1.0, () => {}]] });
 }
+
+// ------------------------------------------------------------------ master specification (16 Nov) additions
+// A third kick closes every LEG chain; Earth and Fire share the stomp (the same authored stamp, different results:
+// rocks erupt under the opponent / a ring of fire expands from the foot). onStart fires when the technique begins.
+const K0 = [[0.0, () => {}], [1.0, () => {}]];
+const THIRD = {
+  earth: T({ name: 'Axe Kick', clip: 'axe_kick', dur: 0.7, cost: 12, cancel: 0.8, move: 0.4, lunge: 3,
+    active: { from: 0.45, to: 0.62, dmg: 11, range: 2.2, arc: 0.4, knock: 7, level: 1 }, events: [[0.5, 'earth.seismic']], keys: K0 }),
+  fire: T({ name: 'Knee Strike', clip: 'knee_strike', dur: 0.45, cost: 10, cancel: 0.7, move: 1.5, lunge: 6,
+    active: { from: 0.4, to: 0.6, dmg: 10, range: 1.9, arc: 0.3, knock: 8, level: 1 }, events: [[0.45, 'fire.knee']], keys: K0 }),
+  water: T({ name: 'Rising Water Kick', clip: 'axe_kick', dur: 0.7, cost: 12, cancel: 0.8, move: 0.4, lunge: 2,
+    active: { from: 0.45, to: 0.62, dmg: 7, range: 2.1, arc: 0.4, knock: 6, level: 1 }, events: [[0.5, 'water.column']], keys: K0 }),
+  air: T({ name: 'Rising Wind Kick', clip: 'axe_kick', dur: 0.62, cost: 11, cancel: 0.78, move: 1.5, lunge: 3,
+    active: { from: 0.45, to: 0.62, dmg: 6, range: 2.1, arc: 0.4, knock: 9, level: 1 }, events: [[0.5, 'air.column']], keys: K0 }),
+};
+for (const k of Object.keys(THIRD)) STYLES[k].tech.leg.push(THIRD[k]);
+for (const k of ['earth', 'fire']) STYLES[k].tech.stomp = T({ name: k === 'earth' ? 'Earth Stomp' : 'Fire Stomp', clip: 'stomp', dur: 0.95, cost: 22, cancel: 0.86, move: 0,
+  onStart: k + '.stompMark', events: [[0.5, k + '.stomp']], keys: K0 });
+STYLES.water.tech.charged.name = 'Tidal Wave';
+STYLES.air.tech.charged.name = 'Air Compression';
+STYLES.water.tech.hand.name = 'Water Whip';
+STYLES.air.tech.hand.name = 'Air Whip';
+STYLES.water.tech.handHold.name = 'Twin Water Whips';
+STYLES.air.tech.handHold.name = 'Twin Air Streams';
+STYLES.water.labels.hand = 'WATER WHIP'; STYLES.air.labels.hand = 'AIR WHIP';
+STYLES.air.tech.charged.events = [[0.55, 'air.charged']];   // one compressed release

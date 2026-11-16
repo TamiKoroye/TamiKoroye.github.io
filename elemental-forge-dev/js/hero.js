@@ -9,7 +9,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import { HIP_H } from './character.js';
-import { MOCAP, clipFor, LOOPS } from './mocap.js';
+import { MOCAP, clipFor, LOOPS, LOOP_SPEED } from './mocap.js';
 
 let TEMPLATE = null, CLIPS = null;
 export const heroReady = () => !!TEMPLATE;
@@ -244,9 +244,14 @@ export class Hero {
       if (fwd < -0.55) return ['Walk_Loop', -THREE.MathUtils.clamp(sp / 1.5, 0.7, 1.8)];
       return [side > 0 ? 'strafe' : 'strafe_M', THREE.MathUtils.clamp(sp / 1.5, 0.7, 2.2)];
     };
+    // elemental mobility: the legs hold the surfing stance / the flying pose, techniques play over them
+    const mk = f.mob && f.mob.kind, lowOv = mk === 'surf' && f.onGround && has('surf_stance') ? ['surf_stance', LOOP_SPEED.surf_stance] : mk === 'fly' && has('air_loop') ? ['air_loop', 1] : null;
     if (f.dead && has('ko')) once('ko', 1.1, 0.12);
+    else if (f.action === 'down' && has('knockback')) once('knockback', 1.5, 0.08);   // knocked off the feet
     else if (f.action === 'down' && has('ko')) once('ko', 1.6, 0.1);
+    else if (f.action === 'getup' && has('getup_back')) { once('getup_back', this.actions.getup_back.getClip().duration / Math.max(0.3, f.A.dur) * 0.8, 0.1); }
     else if (f.action === 'getup' && has('getup')) { once('getup', this.actions.getup.getClip().duration / Math.max(0.3, f.A.dur) * 0.75, 0.1); }
+    else if (f.action === 'landHigh' && has('land_high')) once('land_high', 1.25 / 0.42 * 0.75, 0.06);
     else if (f.action === 'hit' || f.action === 'stagger') {
       const n = f.hitAlt ? 'hit_b' : 'hit_a';
       if (has(n)) { clip = n; ts = f.action === 'stagger' ? 1.1 : 1.5; wU = wL = 0; fade = 0.05; if (f.actionT < dt * 1.5 || this.curName !== n) restart = true; }
@@ -265,7 +270,7 @@ export class Hero {
       if (has(n)) {
         clip = n; ts = scale; wU = wL = 0; fade = 0.14;
         if (f.techN !== this.techN) { this.techN = f.techN; restart = true; }
-        if (f.tech.upper && moving) layered = true;
+        if ((f.tech.upper && moving) || lowOv) layered = true;
       }
     }
     if (clip === 'Idle_Loop' && f.action === 'counter') {
@@ -285,20 +290,28 @@ export class Hero {
         const n = f.el === 'water' ? (f.techSide > 0 ? 'water_redirect' : 'water_redirect_M') : 'block_hit';
         clip = has(n) ? n : 'block_hit'; wU = wL = 0; fade = 0.06; ts = 1.6; if (this.curName !== clip) restart = true;
       }
-      else if (f.guarding && has(L.guard)) { clip = L.guard; wU = wL = 0; fade = 0.12; layered = moving; }
-      else if (f.holding && has(L.hold)) { clip = L.hold; wU = wL = 0; fade = 0.2; layered = moving; }
+      else if (f.guarding && has(L.guard)) { clip = L.guard; wU = wL = 0; fade = 0.12; layered = moving || !!lowOv; }
+      else if (f.holding && has(L.hold)) { clip = L.hold; ts = LOOP_SPEED[L.hold] || 1; wU = wL = 0; fade = 0.2; layered = moving || !!lowOv; }
+      else if (lowOv) { [clip, ts] = lowOv; wU = wL = 0; fade = 0.2; }
+      else if (free && !f.onGround && f.highJump && has('jump_high')) {
+        // propelled high jumps (ice ramp, rising slab, flame jets, water column): take-off, airborne, falling
+        if (f.vel.y > 2 && f.airTime < 0.4) { clip = 'jump_high'; ts = 1.4; if (this.curName !== clip) restart = true; }
+        else if (f.vel.y < -4 && has('fall_loop')) clip = 'fall_loop';
+        else clip = 'air_loop';
+        wU = wL = 0; fade = 0.15;
+      }
       else if (free && !f.onGround) { clip = f.vel.y > 1.5 && f.airTime < 0.3 ? 'Jump_Start' : 'Jump_Loop'; wU = wL = 0; ts = f.vel.y > 1.5 ? 1.6 : 1; }
       else if (free && moving && fwd > 0.7) {
         [clip, ts] = loco(); wU = wL = 0; fade = 0.22;   // authored locomotion, matched to ground speed
       } else if (free && f.onGround && has(L.idle)) {
         // the element's authored combat stance; when stepping sideways or backwards, its upper body over authored footwork
-        clip = L.idle; wU = wL = 0; fade = 0.25; layered = moving;
+        clip = L.idle; ts = LOOP_SPEED[L.idle] || 1; wU = wL = 0; fade = 0.25; layered = moving;
       }
     }
     // nothing else matched (any state not listed above): the element's authored stance, never the procedural body
     if (clip === 'Idle_Loop' && wU === 1 && has(L.idle)) { clip = L.idle; wU = wL = 0; fade = 0.2; layered = moving; }
     if (layered) {
-      const [ln, lts] = loco();
+      const [ln, lts] = lowOv || loco();
       this.play(clip + '|U', fade, ts, restart);
       this.playLower(ln + '|L', lts, 0.18);
     } else {

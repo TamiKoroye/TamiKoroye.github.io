@@ -15,7 +15,17 @@ export const ACTIONS = {
   down:    { dur: 0.85, react: true },
   getup:   { dur: 0.45, react: true },
   land:    { dur: 0.14, soft: true },
+  landHigh:{ dur: 0.42, soft: true },
   ko:      { dur: 99,   react: true },
+};
+
+// Elemental mobility (DODGE held). All values are tunable: speeds in m/s, accelerations in m/s^2, turn in rad/s,
+// drains in energy per second, flight duration in seconds, maximum altitude in metres above the ground below.
+export const MOBILITY = {
+  water: { top: 12.5, accel: 9, turn: 3.0, brake: 14, cruise: 5, coast: 3, drain: 5, launch: 12.5 },     // ice surfing
+  earth: { top: 10.5, accel: 5, turn: 1.8, brake: 9, cruise: 4, coast: 2, drain: 7, launch: 13.5 },     // rock surfing (heavy)
+  flame: { top: 13, accel: 30, turn: 6, drain: 14, launch: 11 },                                         // flame-propelled run
+  fly:   { duration: 6, takeoff: 8, ascent: 7, sink: 1.2, maxAlt: 14, speed: 9.5, accel: 14, drain: 8, recover: 1.5 }, // airbending flight
 };
 
 export class Fighter {
@@ -53,6 +63,7 @@ export class Fighter {
     this.moveLocal = new THREE.Vector2(0, 1);
     this.speedNorm = 0; this.bank = 0; this.accLean = 0; this.prevFace = 0; this.prevVel = new THREE.Vector3();
     this.dead = false;
+    this.mob = null; this.dodgeHoldT = -1; this.highJump = false; this.jetFuel = 0;
     this.input = Fighter.blankInput();
     this.target = null;
     this.stats = { hitsLanded: 0, blocks: 0, perfect: 0, techniques: {} };
@@ -62,7 +73,7 @@ export class Fighter {
   }
 
   static blankInput() {
-    return { mx: 0, mz: 0, strafe: false, faceYaw: null, hand: false, handHeld: false, leg: false, legHeld: false, special: false, guard: false, jump: false, dodge: false, sprint: false, aimPoint: new THREE.Vector3() };
+    return { mx: 0, mz: 0, strafe: false, faceYaw: null, hand: false, handHeld: false, leg: false, legHeld: false, special: false, guard: false, jump: false, jumpHeld: false, dodge: false, dodgeHeld: false, sprint: false, aimPoint: new THREE.Vector3() };
   }
 
   setElement(el, quiet) {
@@ -86,6 +97,7 @@ export class Fighter {
     this.hp = this.maxHp; this.en = this.maxEn; this.dead = false;
     this.action = null; this.tech = null; this.guarding = false; this.holding = false; this.charging = false; this.handHoldT = this.legHoldT = -1;
     this.dodgeT = 0; this.stunT = 0; this.invuln = 0; this.flash = 0; this.counterT = 0; this.lungeT = 0; this.restrainT = 0; this.airJumps = 0;
+    this.endMob(); this.highJump = false; this.jetFuel = 0; this.dodgeHoldT = -1;
     for (const k in this.buf) this.buf[k] = 0;
     this.tumble.quaternion.identity(); this.tumble.position.y = 0.6;
     this.pose.fill(0); this.cur.fill(0); this.runPhase = 0; this.bank = 0; this.accLean = 0;
@@ -124,7 +136,8 @@ export class Fighter {
     this.unpowered = !powered;
     this.action = 'tech'; this.tech = def; this.actionT = 0; this.evIdx = 0; this.hitDone = false; this.jumped = false; this.spinYaw = 0;
     this.techSide = side || 1; this.techN = (this.techN || 0) + 1;
-    this.world.combat.lunge(this, def);
+    if (!this.mob) this.world.combat.lunge(this, def);
+    if (def.onStart && powered) this.world.bending.event(this, def.onStart, def);
     const n = def.name || 'tech'; this.stats.techniques[n] = (this.stats.techniques[n] || 0) + 1;
     return true;
   }
@@ -166,9 +179,29 @@ export class Fighter {
     const live = !this.dead, restrained = this.restrainT > 0;
     // ---- commands (buffered so slightly early presses still land)
     if (live && !restrained) {
+      // DODGE held: the element's own mobility (ice / rock surfing, flight, flame-propelled run)
+      if (inp.dodgeHeld) this.dodgeHoldT = this.dodgeHoldT < 0 ? 0 : this.dodgeHoldT + dt; else { this.dodgeHoldT = -1; this.mobLock = false; if (this.mob && this.onGround) this.endMob(); if (this.mob && this.mob.kind === 'fly') this.endMob(); }
+      this.mobCd = (this.mobCd || 0) - dt;
+      // a spent mobility needs DODGE released (and, for flight, a recovery time) before it can start again
+      if (!this.mob && !this.mobLock && this.mobCd <= 0 && this.dodgeHoldT > 0.28 && !this.guarding && !this.charging && !this.reacting() && this.en > 12) this.startMob();
+      if (this.buf.jump && this.mob && (this.mob.kind === 'surf' || this.mob.kind === 'flame') && this.onGround) {
+        // the element launches the bender: a rising ice pillar / rock slab, or a burst of flame from the feet
+        const M = MOBILITY[this.mob.kind === 'surf' ? this.mob.el : 'flame'];
+        if (this.mob.kind === 'surf') B.weapons.surfLaunch(this, this.mob.el); else this.jumpFx(false);   // (the rising pillar would set its own lift)
+        this.buf.jump = 0; this.vel.y = M.launch; this.onGround = false; this.highJump = true; this.jetFuel = this.el === 'fire' ? 0.8 : 0;
+        if (this.mob.kind === 'flame') this.endMob();
+      }
+      if (this.mob && this.mob.kind === 'fly') this.buf.jump = 0;   // in flight JUMP means climb
+      // water GUARD combinations: HAND throws an ice spear, LEG sends a stream to capture the opponent
+      // (only while GUARD is still held: a HAND pressed as the guard is released is the counter-strike, not a spear)
+      if (this.guarding && inp.guard && this.el === 'water') {
+        if (this.buf.hand && this.en >= 10) { this.buf.hand = 0; this.en -= 10; B.iceSpear(this); }
+        if (this.buf.leg && this.en >= 15 && (this.captureCd || 0) <= 0) { this.buf.leg = 0; this.captureCd = 4; if (B.weapons.capture(this)) this.en -= 15; }
+      }
+      this.captureCd = (this.captureCd || 0) - dt;
       if (this.buf.dodge && this.dodgeCd <= 0 && this.en >= 10 && this.free('dodge') && !this.charging) { this.buf.dodge = 0; this.endHold(); this.doDodge(); }
       if (this.buf.jump && this.free('jump') && !this.charging && !this.guarding) {
-        if (this.onGround) { this.buf.jump = 0; this.action = null; this.vel.y = st.jump.v; this.onGround = false; this.airJumps = 0; this.jetFuel = 0.8; this.jetUsed = false; this.jumpFx(false); }
+        if (this.onGround) { this.buf.jump = 0; this.action = null; this.vel.y = st.jump.v; this.onGround = false; this.airJumps = 0; this.jetFuel = 0.8; this.jetUsed = false; this.highJump = false; this.jumpFx(false); }
         else if (this.airJumps < st.jump.air && this.vel.y < 5) { this.buf.jump = 0; this.airJumps++; this.vel.y = 7.2; this.jumpFx(true); }
       }
       const canStrike = this.free('attack') && !this.guarding && !this.holding;
@@ -195,6 +228,8 @@ export class Fighter {
       if (this.buf.special && this.guarding && this.el === 'water' && this.defense && this.defense.arc && !this.defense.ice && this.iceUnlocked !== false && this.en >= 15) {
         this.buf.special = 0; this.en -= 15; B.freeze(this.defense);
       }
+      // SPECIAL while sustaining twin water whips freezes them into ice blades (heavier, knock down, shatter)
+      if (this.buf.special && this.holding && this.el === 'water' && this.en >= 10) { const h = B.holds.get(this); if (h && !h.frozen) { this.buf.special = 0; this.en -= 10; h.frozen = true; w.popup(this, 'ICE BLADES', true); w.audio.splash(0.8); } }
       if (this.buf.special && !this.charging && canStrike) { this.buf.special = 0; this.startTech(st.tech.special, this.handSide); }
 
       // HAND held -> sustained technique (stream / lift / draw / push)
@@ -219,7 +254,7 @@ export class Fighter {
       // LEG held -> gather force, release for the element's charged technique
       if (this.legHoldT >= 0) {
         if (!inp.legHeld) {
-          if (this.charging) { this.charging = false; if (this.chargeT >= 0.3 && this.legHoldT >= 0.85) this.startTech(st.tech.charged, 1); }   // judged on the whole hold, so a kick's hit-stop cannot eat it
+          if (this.charging) { this.charging = false; if (this.chargeT >= 0.3 && this.legHoldT >= 0.85) this.startTech(st.tech.stomp && this.onGround ? st.tech.stomp : st.tech.charged, 1); }   // judged on the whole hold, so a kick's hit-stop cannot eat it
           this.legHoldT = -1;
         } else {
           this.legHoldT += dt;
@@ -266,7 +301,9 @@ export class Fighter {
     if (A && !A.soft) maxSpeed = A.react ? 0 : (A.move !== undefined ? A.move : (A.upper ? 3.5 : 0.5));
     if (this.stunT > 0 || restrained) maxSpeed = 0;
 
-    if (this.dodgeT > 0) {
+    if (this.mob && this.mobMove(dt, mx, mz)) {
+      // velocity set by the element's mobility
+    } else if (this.dodgeT > 0) {
       this.dodgeT -= dt;
       const k = smooth01(this.dodgeT / this.dodgeDur), D = st.dodge;
       const sp = this.dodgeKind === 'side' ? 2 + 13 * k : this.dodgeKind === 'back' ? 2 + 10 * k : 2.5 + (D.speed - 2.5) * k;
@@ -298,8 +335,17 @@ export class Fighter {
     // firebenders: holding JUMP after take-off drives flame jets from the feet. The thrust is real upward force
     // (it beats gravity for up to ~1 s), costs energy, steers in the air, and scorches whoever is underneath.
     this.jetting = false;
+    // waterbenders: the same hold raises a column of water under the feet, strong near the ground and weaker
+    // the higher it has to reach (it needs to stay connected to the ground)
+    const alt = this.pos.y - this.groundY;
+    if (this.el === 'water' && live && !restrained && !this.onGround && inp.jumpHeld && this.jetFuel > 0 && this.en > 1 && this.dodgeT <= 0 && !this.mob && !(this.A && this.A.react) && alt < 5) {
+      this.jetting = true; this.highJump = true; this.jetFuel -= dt; this.en -= 22 * dt;
+      this.vel.y = Math.min(this.vel.y + 30 * (1 - alt / 5.5) * dt, 5.2);
+      this.vel.x += mx * 10 * dt; this.vel.z += mz * 10 * dt;
+      B.weapons.selfColumn(this, alt);
+    } else if (this.el === 'water') B.weapons.selfColumn(this, -1);
     if (this.el === 'fire' && live && !restrained && !this.onGround && inp.jumpHeld && this.jetFuel > 0 && this.en > 1 && this.dodgeT <= 0 && !(this.A && this.A.react)) {
-      this.jetting = true; this.jetUsed = true;
+      this.jetting = true; this.jetUsed = true; this.highJump = true;
       this.jetFuel -= dt; this.en -= 32 * dt;
       this.vel.y = Math.min(this.vel.y + 30 * dt, 4.6);
       this.vel.x += mx * 14 * dt; this.vel.z += mz * 14 * dt;
@@ -314,7 +360,8 @@ export class Fighter {
     }
     // airbenders fall more slowly while holding JUMP after the peak (air-assisted glide)
     const glide = this.el === 'air' && !this.onGround && inp.jumpHeld && this.vel.y < 0;
-    this.vel.y -= (glide ? 7 : 21) * dt;
+    const flying = this.mob && this.mob.kind === 'fly';
+    if (!flying) this.vel.y -= (glide ? 7 : 21) * dt;
     if (glide && Math.random() < dt * 20) w.fx.wind(this.pos.clone().setY(this.pos.y + 0.2), _v.set(rand(-1, 1), -2, rand(-1, 1)), 0.5, 0.4);
     this.pos.addScaledVector(this.vel, dt);
     if (this.ext.lengthSq() > 1e-4) { this.pos.addScaledVector(this.ext, dt); this.ext.multiplyScalar(Math.exp(-(this.onGround ? 4 : 1.5) * dt)); } else this.ext.set(0, 0, 0);
@@ -322,7 +369,9 @@ export class Fighter {
     w.arena.collide(this);
     const gy = w.arena.groundAt(this.pos.x, this.pos.z, this.pos.y);
     if (this.pos.y <= gy + 0.001) {
-      if (!this.onGround && this.airTime > 0.28 && (!this.A || this.A.soft) && this.dodgeT <= 0) { this.startAction('land'); w.fx.dust(this.pos, 6, 1.4); w.audio.step(1); }
+      if (!this.onGround && this.airTime > 0.28 && (!this.A || this.A.soft) && this.dodgeT <= 0 && !flying) { this.startAction(this.highJump && this.airTime > 0.5 ? 'landHigh' : 'land'); w.fx.dust(this.pos, this.highJump ? 12 : 6, 1.4); w.audio.step(1); }
+      if (!this.onGround && this.highJump && this.el === 'earth' && this.airTime > 0.5 && !this.dead) { B.weapons.burst.spawn(this.pos.x, gy, this.pos.z, 0.3); w.shake(0.2, this.pos); w.audio.rumble(0.7); }   // heavy earth landing cracks the ground
+      if (!this.onGround) { this.highJump = false; this.jetFuel = 0.8; }
       if (!this.onGround && this.jetUsed && this.el === 'fire' && !this.dead) {
         // a jet landing: the flames hit the ground and burst outward
         this.jetUsed = false; B.ring(this, 'fire', 2.4, 9, { dmg: 6, knock: 6, level: 1 }); w.shake(0.12, this.pos); w.audio.fireWhoosh(0.9);
@@ -372,6 +421,73 @@ export class Fighter {
   }
 
   endHold() { if (this.holding) { this.holding = false; this.world.bending.holdEnd(this); } }
+
+  // ------------------------------------------------------------ elemental mobility
+  startMob() {
+    const el = this.el, w = this.world, sp = Math.hypot(this.vel.x, this.vel.z);
+    if (el === 'air') {
+      this.mob = { kind: 'fly', el, t: 0, fuel: MOBILITY.fly.duration };
+      this.vel.y = Math.max(this.vel.y, MOBILITY.fly.takeoff); this.onGround = false; this.dodgeT = 0;
+      w.fx.ring(this.pos, 2.2, 0xffffff, 0.4); for (let i = 0; i < 12; i++) w.fx.wind(this.pos.clone().setY(this.pos.y + 0.1), _v.set(rand(-4, 4), rand(1, 4), rand(-4, 4)), 0.6, 0.4);
+      w.audio.gust(1.1); w.popup(this, 'FLIGHT', false); return;
+    }
+    if (!this.onGround) return;
+    const heading = sp > 1 ? Math.atan2(this.vel.x, this.vel.z) : this.faceYaw;
+    if (el === 'fire') { this.mob = { kind: 'flame', el, t: 0, heading, speed: Math.max(sp, 6) }; this.dodgeT = 0; w.audio.fireWhoosh(1); return; }
+    this.mob = { kind: 'surf', el, t: 0, speed: Math.max(sp, 4), heading }; this.dodgeT = 0; this.en -= 6;
+    w.popup(this, el === 'water' ? 'ICE SURF' : 'ROCK SURF', false);
+    if (el === 'water') { w.fx.splash(this.pos, 14); w.audio.splash(0.8); } else { w.fx.debrisBurst(this.pos.clone().setY(this.pos.y + 0.1), 14, 3, 0.1, 0x7a6a58); w.audio.rumble(0.8); }
+  }
+  endMob() { if (!this.mob) return; if (this.world.bending && this.world.bending.weapons) this.world.bending.weapons.surfEnd(this.mob); this.mob = null; }
+  // sets the fighter's velocity while a mobility mode is active; returns false to fall back to normal movement
+  mobMove(dt, mx, mz) {
+    const m = this.mob, w = this.world, B = w.bending; m.t += dt;
+    const stick = Math.hypot(mx, mz);
+    if (m.kind === 'fly') {
+      const F = MOBILITY.fly; m.fuel -= dt; this.en -= F.drain * dt;
+      const tx = mx * F.speed, tz = mz * F.speed, k = Math.min(1, F.accel * dt / Math.max(1, F.speed));
+      this.vel.x += (tx - this.vel.x) * k * 1.6; this.vel.z += (tz - this.vel.z) * k * 1.6;
+      const alt = this.pos.y - this.groundY;
+      let vy = this.input.jumpHeld ? F.ascent : -F.sink;
+      if (alt > F.maxAlt && vy > 0) vy = 0;
+      if (m.t < 0.35) vy = Math.max(vy, F.takeoff * (1 - m.t / 0.35));
+      this.vel.y += (vy - this.vel.y) * Math.min(1, dt * 5);
+      this.highJump = false;
+      B.weapons.flyTick(this, dt);
+      if (m.fuel <= 0 || this.en <= 1) { this.endMob(); this.mobLock = true; this.mobCd = MOBILITY.fly.recover; w.popup(this, 'WIND SPENT', false); }
+      else if (this.onGround && m.t > 0.6 && !this.input.jumpHeld) this.endMob();
+      return true;
+    }
+    if (!this.onGround) return m.kind === 'surf';   // launched: momentum carries, the surf resumes on landing
+    if (m.kind === 'flame') {
+      const M = MOBILITY.flame; this.en -= M.drain * dt;
+      if (stick > 0.3) m.heading += THREE.MathUtils.clamp(angleDiff(m.heading, Math.atan2(mx, mz)), -M.turn * dt, M.turn * dt);
+      m.speed = Math.min(M.top, m.speed + M.accel * dt);
+      this.vel.x = Math.sin(m.heading) * m.speed; this.vel.z = Math.cos(m.heading) * m.speed;
+      for (const sd of ['L', 'R']) { const fp = this.footPos(sd, _v); w.fx.fire(fp, _v2.set(-this.vel.x * 0.3 + rand(-0.5, 0.5), rand(0.5, 2), -this.vel.z * 0.3 + rand(-0.5, 0.5)), 0.4, 0.22); }
+      if (Math.random() < dt * 8) B.burn(this.pos.x, this.pos.z, this.groundY, this);
+      if (this.en <= 1) this.endMob();
+      return true;
+    }
+    // surfing
+    const M = MOBILITY[m.el];
+    if (stick > 0.3) {
+      const diff = angleDiff(m.heading, Math.atan2(mx, mz));
+      if (Math.abs(diff) > 2.4) m.speed = Math.max(0, m.speed - M.brake * dt);   // stick pulled back: brake
+      else { m.heading += THREE.MathUtils.clamp(diff, -M.turn * dt, M.turn * dt); m.speed = Math.min(M.top, m.speed + M.accel * dt * stick); }
+    } else m.speed += (M.cruise - m.speed) * Math.min(1, M.coast * dt / Math.max(1, Math.abs(M.cruise - m.speed)));
+    // slopes: climbing costs speed, descending gives it (more for the heavy rock)
+    const ahead = w.arena.groundAt(this.pos.x + Math.sin(m.heading) * 0.8, this.pos.z + Math.cos(m.heading) * 0.8, this.pos.y + 0.6);
+    m.speed = THREE.MathUtils.clamp(m.speed - (ahead - this.groundY) * (m.el === 'earth' ? 9 : 6) * dt * 4, 0, M.top + 2);
+    // ran into something solid: the board stops dead
+    if (m.last && m.speed > 5) { const moved = Math.hypot(this.pos.x - m.last.x, this.pos.z - m.last.z); if (moved < m.speed * m.lastDt * 0.35) { m.speed *= 0.25; w.shake(0.15, this.pos); w.audio.impact(0.5); } }
+    m.last = (m.last || new THREE.Vector3()).copy(this.pos); m.lastDt = dt;
+    this.vel.x = Math.sin(m.heading) * m.speed; this.vel.z = Math.cos(m.heading) * m.speed;
+    this.en -= M.drain * dt;
+    B.weapons.surfTick(this, m, dt);
+    if (this.en <= 1) this.endMob();
+    return true;
+  }
 
   jumpFx(air) {
     const w = this.world;
@@ -430,6 +546,7 @@ export class Fighter {
     this.hitDir = dir.clone(); this.koDir = dir.clone(); this.hitAlt = !this.hitAlt;
     if (this.hp <= 0) { this.die(dir); return; }
     this.endHold(); this.charging = false; this.legHoldT = -1; this.lungeT = 0; this.dodgeT = 0;
+    if (level >= 1) this.endMob();
     if (level === 2) { this.startAction('down'); this.stunT = 0; this.invuln = 0.9; this.onGround = false; }
     else if (level === 1) { this.startAction('stagger'); this.stunT = 0.5; }
     else { this.startAction('hit'); this.stunT = 0.2; }

@@ -26,6 +26,8 @@ export class AI {
     inp.hand = inp.leg = inp.special = inp.jump = inp.dodge = false;
     if (f.dead || foe.dead || !w.fighting) { inp.mx = inp.mz = 0; inp.handHeld = inp.legHeld = inp.guard = inp.jumpHeld = false; return; }
     this.jetT -= dt; inp.jumpHeld = this.jetT > 0;
+    this.mobT = (this.mobT || 0) - dt; inp.dodgeHeld = this.mobT > 0;
+    if (this.mobT > 0 && f.el === 'air' && f.mob && f.mob.kind === 'fly') inp.jumpHeld = this.mobT > 0.8;   // climb, then drift down
 
     const dx = foe.pos.x - f.pos.x, dz = foe.pos.z - f.pos.z, dist = Math.hypot(dx, dz) || 1;
     const tx = dx / dist, tz = dz / dist;
@@ -59,6 +61,17 @@ export class AI {
         mx += px * push; mz += pz * push;
       }
     }
+    // hurt and under ranged attack: take cover behind the nearest tall obstacle (ruin walls, piers, raised pillars)
+    if (this.d !== 'training' && lowHp && dist > 6) {
+      let best = null, bd = 12;
+      for (const c of w.arena.colliders) { if (c.dead || c.top < 1.5) continue; const d = Math.hypot(c.x - f.pos.x, c.z - f.pos.z); if (d < bd) { bd = d; best = c; } }
+      if (best) {
+        const ox = best.x - foe.pos.x, oz = best.z - foe.pos.z, l = Math.hypot(ox, oz) || 1, sz = (best.r || Math.max(best.hx, best.hz)) + 1.0;
+        const cx = best.x + ox / l * sz, cz = best.z + oz / l * sz, dx2 = cx - f.pos.x, dz2 = cz - f.pos.z, d2 = Math.hypot(dx2, dz2);
+        if (d2 > 0.6) { mx = dx2 / d2; mz = dz2 / d2; } else { mx *= 0.2; mz *= 0.2; }
+        this.inCover = d2 < 1.2;
+      }
+    } else this.inCover = false;
     // keep away from walls
     const lim = 26;
     if (f.pos.x > lim) mx -= 1; if (f.pos.x < -lim) mx += 1;
@@ -92,12 +105,49 @@ export class AI {
         }
       }
     }
+    // ---- area attacks and mobility (16 Nov brief): each threat is read once, after the same human-like delay
+    const Wp = w.bending.weapons;
+    if (Wp && this.d !== 'training') {
+      const away = (x, z) => { const ax = f.pos.x - x, az = f.pos.z - z, l = Math.hypot(ax, az) || 1; inp.mx = ax / l; inp.mz = az / l; };
+      // marked ground (earth eruption, water / air column) under us: get off it
+      for (const E of [...Wp.erupts.filter(e => !e.fired && e.f === foe), ...Wp.columns.filter(c => !c.started && c.f === foe)]) {
+        if (Math.hypot(f.pos.x - E.x, f.pos.z - E.z) > 2.4) continue;
+        away(E.x, E.z);
+        if (!this.seen.has(E)) { this.seen.add(E); if (Math.random() < P.react) { this.reaction = 'dodge'; this.reactT = P.reactDelay * rand(0.6, 1); this.dodgeFrom = E; } }
+      }
+      // an expanding fire ring closing in: jump it
+      for (const R of Wp.fireRings) {
+        if (R.f !== foe || R.hit.has(f)) continue;
+        const gap = Math.hypot(f.pos.x - R.x, f.pos.z - R.z) - R.r;
+        if (gap > 0.3 && gap < 1.9 && f.onGround && !this.seen.has(R)) { this.seen.add(R); if (Math.random() < P.react) inp.jump = true; }
+      }
+      // a wave advancing on us: guard against it
+      for (const V of Wp.waves) {
+        if (V.f !== foe || this.seen.has(V)) continue;
+        const along = (f.pos.x - V.pos.x) * V.dir.x + (f.pos.z - V.pos.z) * V.dir.z;
+        if (along > 0 && along < 5) { this.seen.add(V); if (Math.random() < P.react) { this.reaction = 'guard'; this.reactT = P.reactDelay * rand(0.5, 0.9); } }
+      }
+      // whips reach far: read a whip strike at whip range, not only at punching range
+      const whip = foe.action === 'tech' && foe.tech && (foe.el === 'water' || foe.el === 'air') && (foe.tech === foe.style.tech.hand || foe.tech.variantOf === foe.style.tech.hand);
+      if (whip && foe.techN !== this.seenTech) {
+        if (dist < 9 && foe.actionT < foe.tech.dur * 0.45) { this.seenTech = foe.techN; if (Math.random() < P.react) { this.reaction = Math.random() < P.guardBias + 0.2 ? 'guard' : 'dodge'; this.reactT = Math.min(P.reactDelay, 0.15); } }
+      }
+      // a surfer charging at us: step off the line
+      if (foe.mob && foe.mob.kind === 'surf' && foe.mob.speed > 7 && dist < 6 && !this.reaction) {
+        const toMe = ((f.pos.x - foe.pos.x) * Math.sin(foe.mob.heading) + (f.pos.z - foe.pos.z) * Math.cos(foe.mob.heading)) / dist;
+        if (toMe > 0.8 && Math.random() < P.react * dt * 6) { this.reaction = 'dodge'; this.reactT = 0.05; }
+      }
+      // a heavy technique that missed leaves its user open: punish it
+      if (foe.action === 'tech' && foe.tech && (foe.tech === foe.style.tech.stomp || foe.tech === foe.style.tech.charged) && foe.actionT / foe.tech.dur > 0.7 && dist < 6 && this.punishT <= 0 && f.hp > 0) { this.punishT = 0.5; inp.mx = tx; inp.mz = tz; }
+    }
     if (this.reaction) {
       this.reactT -= dt;
       if (this.reactT <= 0) {
         if (this.reaction === 'dodge') {
           const s = Math.random() < 0.5 ? -1 : 1;
           inp.mx = -tz * s; inp.mz = tx * s; inp.dodge = true;
+          // out of marked ground: dodge directly away from its centre
+          if (this.dodgeFrom) { const ax = f.pos.x - this.dodgeFrom.x, az = f.pos.z - this.dodgeFrom.z, l = Math.hypot(ax, az) || 1; inp.mx = ax / l; inp.mz = az / l; this.dodgeFrom = null; }
           if (this.d !== 'training') this.punishT = 0.55;     // answer the evasion with a strike
         } else { this.guardT = dist < 4 ? rand(0.35, 0.6) : rand(0.6, 1.0); }
         this.reaction = null;
@@ -125,6 +175,19 @@ export class AI {
     }
     if (f.action) return;
     const held = w.bending.held(f);
+    if (this.d !== 'training') {
+      // an opponent high in the air is out of reach for strikes: keep ranged attacks coming at their height
+      if (foe.pos.y - f.pos.y > 2.2 && this.throwT > 0.7) this.throwT = 0.7;
+      // heavy area techniques at mid range against a grounded opponent (stomp, tidal wave, air compression)
+      this.heavyT = (this.heavyT ?? rand(5, 8)) - dt;
+      if (this.heavyT <= 0 && dist > 3.5 && dist < 11 && foe.onGround && f.en > 35 && f.onGround) {
+        inp.leg = true; this.holdKind = 'leg'; this.holdT = 1.0; this.heavyT = this.d === 'master' ? rand(4, 6) : rand(7, 11); return;
+      }
+      // now and then reposition with the element's own mobility (surf / flight / flame run), launching off the
+      // surf when the opponent is close
+      if (this.mobT <= 0 && dist > 6 && f.en > 50 && Math.random() < dt * (this.d === 'master' ? 0.12 : 0.06)) this.mobT = rand(1.2, 2.4);
+      if (this.mobT > 0 && f.mob && f.mob.kind === 'surf' && dist < 5 && Math.random() < dt * 2) inp.jump = true;
+    }
     if (dist < 2.6 && this.meleeT <= 0) {
       // close range: hand / leg combinations
       if (Math.random() < P.melee) {

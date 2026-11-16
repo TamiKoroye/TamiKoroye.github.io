@@ -224,7 +224,7 @@ function playerInput(inp) {
   pi.mz = rz * inp.mx + fz * inp.my;
   const b = inp.btn, pr = inp.pressed;
   pi.hand = pr.hand; pi.handHeld = b.hand; pi.leg = pr.leg; pi.legHeld = b.leg; pi.special = pr.special;
-  pi.jump = pr.jump; pi.jumpHeld = b.jump; pi.dodge = pr.dodge; pi.guard = b.guard;
+  pi.jump = pr.jump; pi.jumpHeld = b.jump; pi.dodge = pr.dodge; pi.dodgeHeld = b.dodge; pi.guard = b.guard;
   // sprint: push the stick to its rim and hold (or hold C on a keyboard)
   const mag = Math.hypot(inp.mx, inp.my);
   state.stickFullT = mag > 0.92 ? state.stickFullT + inp.dt : 0;
@@ -345,7 +345,7 @@ function step(dt) {
 
   const active = state.phase === 'fight' || state.phase === 'intro' || state.phase === 'ko';
   if (state.phase === 'fight') playerInput(inp);
-  else { const pi = player.input; pi.mx = pi.mz = 0; pi.hand = pi.handHeld = pi.leg = pi.legHeld = pi.special = pi.jump = pi.jumpHeld = pi.dodge = pi.guard = false; computeAim(); }
+  else { const pi = player.input; pi.mx = pi.mz = 0; pi.hand = pi.handHeld = pi.leg = pi.legHeld = pi.special = pi.jump = pi.jumpHeld = pi.dodge = pi.dodgeHeld = pi.guard = false; computeAim(); }
   ai.update(dt);
   for (const f of world.fighters) f.update(dt);
   // fighter-fighter separation
@@ -379,6 +379,11 @@ segment('quality', 'q', v => { state.quality = v; applyQuality(); });
 segment('autocam', 'a', v => { camCtl.autoCam = v === 'on'; });
 $('sens').addEventListener('input', e => { controls.sens = parseFloat(e.target.value); });
 segment('rival-el', 'r', v => { state.rivalEl = v; });
+// venue: chosen in the menu (or ?venue=barn); FIGHT waits until the venue has loaded
+state.venueReady = Promise.resolve();
+const chooseVenue = (v) => { state.venueReady = world.arena.setVenue(v).catch(e => { LOAD.errors.push('Venue: ' + (e && e.message || e)); console.error(e); }); $('venue').querySelectorAll('button').forEach(x => x.classList.toggle('on', x.dataset.v === v)); return state.venueReady; };
+segment('venue', 'v', v => chooseVenue(v));
+{ const m = /[?&]venue=(\w+)/.exec(location.search); if (m) chooseVenue(m[1]); }
 const loadPrefs = () => { try { const p = JSON.parse(localStorage.getItem('ef-controls') || '{}'); if (p.size) state.btnSize = p.size; if (p.spread) state.btnSpread = p.spread; } catch (_) {} $('btn-size').value = state.btnSize; $('btn-spread').value = state.btnSpread; };
 const savePrefs = () => { try { localStorage.setItem('ef-controls', JSON.stringify({ size: state.btnSize, spread: state.btnSpread })); } catch (_) {} };
 $('btn-size').addEventListener('input', e => { state.btnSize = parseFloat(e.target.value); layoutStar(); savePrefs(); });
@@ -396,7 +401,7 @@ function showGame() {
   $('hud').classList.remove('hidden'); $('rotate').classList.add('armed'); layoutStar();
   controls.enabled = true; state.paused = false;
 }
-$('btn-start').addEventListener('click', () => { if (!LOAD.ok) return; world.audio.unlock(); goFullscreen(); showGame(); startMatch(); });
+$('btn-start').addEventListener('click', async () => { if (!LOAD.ok) return; world.audio.unlock(); goFullscreen(); await state.venueReady; showGame(); startMatch(); });
 $('btn-again').addEventListener('click', () => { showGame(); startMatch(); });
 const toMenu = () => {
   state.phase = 'menu'; state.paused = false; world.fighting = false; controls.enabled = false;
