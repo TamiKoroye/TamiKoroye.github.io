@@ -30,8 +30,9 @@ export class Weapons {
     this.tubeMat = waterMaterial(-4); this.tubeMat.uniforms.uRise.value = 1;
     this.tubePool = [];
     // air: the same rope drawn as a pale, fast-turning translucent current (it has a body, not only streaks)
-    this.airTubeMat = waterMaterial(-9); Object.assign(this.airTubeMat.uniforms, { uOpacity: { value: 0.34 } }); this.airTubeMat.uniforms.uRise.value = 1;
-    this.airTubeMat.uniforms.uDeep.value.set(0xc9d4f2); this.airTubeMat.uniforms.uLight.value.set(0xf4f6ff); this.airTubeMat.uniforms.uFoam.value.set(0xffffff);
+    // a cool blue-grey core with white streaks: readable against the pale floor and the sky alike
+    this.airTubeMat = waterMaterial(-9); Object.assign(this.airTubeMat.uniforms, { uOpacity: { value: 0.58 } }); this.airTubeMat.uniforms.uRise.value = 1;
+    this.airTubeMat.uniforms.uDeep.value.set(0x6f86c4); this.airTubeMat.uniforms.uLight.value.set(0xc6d3f5); this.airTubeMat.uniforms.uFoam.value.set(0xffffff);
     this.burst = new GroundBurst(this.w);   // earth's ground reaction (baked fracture simulation)
     this.iceTubeMat = iceMat;
     this.slabGeo = (() => { const g = new THREE.BoxGeometry(1.5, 0.35, 2.1, 3, 1, 3); const p = g.attributes.position; for (let i = 0; i < p.count; i++) p.setXYZ(i, p.getX(i) + rand(-0.06, 0.06), p.getY(i) + rand(-0.05, 0.05), p.getZ(i) + rand(-0.06, 0.06)); g.computeVertexNormals(); return g; })();
@@ -74,7 +75,7 @@ export class Weapons {
     this.limbDir(f, limb, ls, W.dir);
     if (el === 'water') { W.tube = this.tube(); if (W.frozen) W.tube.mesh.material = iceMat; }
     if (el === 'air') { W.tube = this.tube(); W.tube.mesh.material = this.airTubeMat; }
-    if (el === 'air') W.ribbons = [0, 1, 2].map(i => this.w.fx.ribbons.start({ color: i === 1 ? 0xdcd2ff : 0xffffff, width: 0.16 - i * 0.04, life: 0.24, alpha: 0.9 }));
+    if (el === 'air') W.ribbons = [0, 1, 2].map(i => this.w.fx.ribbons.start({ color: i === 1 ? 0x8fa6e8 : 0xe8eeff, width: 0.2 - i * 0.04, life: 0.3, alpha: 0.95 }));
     this.whips.push(W);
     if (opts.released) this.releaseWhip(W);
     return W;
@@ -246,7 +247,7 @@ export class Weapons {
     const A = { f, el, c, off, v: aim.multiplyScalar(opts.speed || 15), t: 0, life: opts.life || 0.65, grow: opts.grow ?? 1.4,
       pts: off.map(o => o.clone().add(c)), prev: off.map(o => o.clone().add(c)), hit: new Set(), dmg: opts.dmg ?? 8, knock: opts.knock ?? 8, level: opts.level ?? 1, tag: opts.tag || el + 'Arc' };
     if (el === 'water' || el === 'air') { A.tube = this.tube(); if (el === 'air') A.tube.mesh.material = this.airTubeMat; }
-    if (el === 'air') A.ribbons = [0, N - 1].map(() => this.w.fx.ribbons.start({ color: 0xffffff, width: 0.12, life: 0.22, alpha: 0.85 }));
+    if (el === 'air') A.ribbons = [0, N - 1].map(() => this.w.fx.ribbons.start({ color: 0xb8c8f4, width: 0.18, life: 0.28, alpha: 0.95 }));
     this.arcs.push(A);
     if (el === 'water') this.w.audio.splash(0.8); else if (el === 'air') this.w.audio.gust(0.9); else this.w.audio.fireWhoosh(0.9);
     return A;
@@ -262,7 +263,7 @@ export class Weapons {
       // stopped by walls and rock
       if (w.arena.solidAt(A.c, 0.2)) { A.dead = true; if (A.el === 'water') w.fx.splash(A.c, 12); continue; }
       const fade = 1 - smooth01((u - 0.7) / 0.3), N = A.pts.length;
-      if (A.tube) A.tube.set(A.pts, (s) => (A.el === 'air' ? 0.16 : 0.19) * (0.35 + 0.65 * Math.sin(Math.PI * s)) * fade + 0.01, A.t * 2);
+      if (A.tube) A.tube.set(A.pts, (s) => (A.el === 'air' ? 0.22 : 0.19) * (0.35 + 0.65 * Math.sin(Math.PI * s)) * fade + 0.01, A.t * 2);
       if (A.ribbons) { A.ribbons[0].push(A.pts[0]); A.ribbons[1].push(A.pts[N - 1]); }
       if (A.el === 'fire') for (let k = 0; k < N; k++) if (Math.random() < 0.85 * fade) w.fx.fire(A.pts[k], _a.copy(A.v).multiplyScalar(0.25).add(_b.set(0, 1.2, 0)), (0.3 + 0.25 * Math.sin(Math.PI * k / (N - 1))) * (0.6 + 0.4 * fade), 0.2);
       if (A.el === 'water' && Math.random() < 0.4) w.fx.splash(A.pts[(Math.random() * N) | 0], 1);

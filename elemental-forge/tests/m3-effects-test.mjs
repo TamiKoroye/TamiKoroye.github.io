@@ -111,9 +111,8 @@ for (const el of (process.env.WHIPS ? [process.env.WHIPS] : process.env.ONLY ? [
     const rows = []; let shot = 0;
     for (let j = 0; j < 30; j++) {
       await stepN(1); const r = await whipSample(); if (r) rows.push(r);
-      if (r && r.rel && shot < 2 && i < 3 && (shot === 0 || rows.filter(x => x.rel).length === 4)) { await snap(`${el}-whip${i}-${shot ? 'lash' : 'release'}`); shot++; }
+      if (r && r.rel && shot < 2 && i < 3 && (shot === 0 || rows.filter(x => x.rel).length === 4)) { await snap(`${el}-whip${i}-${shot ? 'lash' : 'release'}`); if (shot && i < 2) await snap(`${el}-whip${i}-lash-normal`, 'normal'); shot++; }
     }
-    if (i === 1) await snap(`${el}-whip-normal`, 'normal');
     if (!rows.length) { check(`${el} strike ${i + 1}: a whip came out`, false); continue; }
     const k = rows[0].kind, clip = rows[0].clip;
     const maxRoot = Math.max(...rows.map(r => r.rootD)), maxTip = Math.max(...rows.map(r => r.tipD));
@@ -150,14 +149,13 @@ for (const el of (process.env.ONLY || process.env.WHIPS ? [] : ["water", "fire",
       return { t: A.t, el: A.el, foot: best[0], dFoot: +nowFoot.distanceTo(A.c).toFixed(2), cos: +cos.toFixed(2), chord: +chord.length().toFixed(2), clip: p.hero && p.hero.curName };
     });
     if (r && !born) born = r;
-    if (r && (shots === 0 || r.t > 0.12)) { await snap(`${el}-kick-${shots ? 'flight' : 'birth'}`); shots++; }
+    if (r && (shots === 0 || r.t > 0.12)) { await snap(`${el}-kick-${shots ? 'flight' : 'birth'}`); if (shots) await snap(`${el}-kick-flight-normal`, 'normal'); shots++; }
   }
   if (!born) { check(`${el}: the kick threw an arc`, false); continue; }
   check(`${el} kick (${born.clip}, ${born.foot} foot): the arc is born at the kicking foot`, born.dFoot < 0.9, `arc centre ${born.dFoot} m from the foot on its first frame`);
   check(`${el} kick: the arc runs the way the foot moved`, Math.abs(born.cos) > 0.7, `cosine between the arc's chord and the foot's motion ${born.cos}, chord ${born.chord} m`);
   await stepN(20);
   const hits = (await hitsOn()).filter(t => /Arc/.test(t)).length; check(`${el} kick: the arc strikes the rival at 4 m`, hits >= 1, `${hits} arc hits`);
-  await snap(`${el}-kick-normal`, 'normal');
 }
 
 // ------------------------------------------------------------------ SPECIALs

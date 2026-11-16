@@ -554,11 +554,11 @@
   "name": "whip_d",
   "src": ".anim-src/mixamo/Great Sword Slash.fbx",
   "start": 0.25,
-  "end": 1.5,
+  "end": 1.22,
   "impact": 0.85,
   "aim": "head",
   "limb": "pR",
-  "note": "high-behind to low-front slash (diagonal whip)"
+  "note": "high-behind to low-front slash (diagonal whip); ends before the sword follow-through bends the body low"
  },
  {
   "name": "earth_gather",

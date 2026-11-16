@@ -68,7 +68,7 @@ export const LOOPS = {
 // playback speed relative to the capture, per style (earth heavy, fire and air quick, water measured);
 // individual clips can override it (the tai chi take is performed very slowly)
 const SPEED = { earth: 1.45, fire: 1.75, water: 1.45, air: 1.65 };
-const CLIP_SPEED = { earth_gather: 1.8, turn_spin: 0.8, water_redirect: 1.4, whip_h: 1.5, whip_v: 1.9, whip_d: 1.7, water_palm: 2.3, water_tidal: 2.0, water_sphere: 1.5, earth_stomp: 1.6, earth_pillar: 1.7, fire_orb: 1.5, air_vortex: 1.6, earth_sweep: 1.5, fire_spin: 1.5 };
+const CLIP_SPEED = { earth_gather: 1.8, turn_spin: 0.8, water_redirect: 2.0, whip_h: 1.5, whip_v: 1.9, whip_d: 1.7, water_palm: 3.0, water_tidal: 2.0, water_sphere: 1.5, earth_stomp: 1.6, earth_pillar: 1.7, fire_orb: 1.5, air_vortex: 1.6, earth_sweep: 1.5, fire_spin: 1.5 };
 
 const names = (T) => (Array.isArray(T.clip) ? T.clip : [T.clip]);
 function techList(st) {
