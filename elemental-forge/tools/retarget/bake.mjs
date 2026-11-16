@@ -35,8 +35,16 @@ const pack = await page.evaluate(async ([spec, texts, keep]) => {
     const key = s.src || s.bvh;
     if (s.bvh) { const b = new BVHLoader().parse(texts[s.bvh]); return { root: b.skeleton.bones[0], clip: b.clip, restTime: 0 }; }   // BVH re-parsed each time
     if (!cache[key]) cache[key] = /\.glb$/i.test(s.src) ? await (async () => { const { GLTFLoader: GL } = await import('three/addons/loaders/GLTFLoader.js'); const g = await new GL().loadAsync(s.src); g.scene.animations = g.animations; g.scene.updateMatrixWorld(true); let sk = null; g.scene.traverse(o => { if (o.isSkinnedMesh && !sk) sk = o.skeleton; }); if (sk) sk.pose(); return g.scene; })() : await new FBXLoader().loadAsync(s.src);
-    const f = cache[key]; const clip = f.animations.slice().sort((a, b) => b.duration - a.duration)[0];
-    const root = f.children.find(c => c.isBone) || (f.getObjectByProperty('isBone', true) || f).parent;
+    const f = cache[key];
+    // every bake from a cached source starts from its rest pose, not from wherever the previous bake left the bones
+    if (!f.userData.rest) { f.userData.rest = []; f.traverse(o => f.userData.rest.push([o, o.position.clone(), o.quaternion.clone(), o.scale.clone()])); }
+    else for (const [o, p, q, sc] of f.userData.rest) { o.position.copy(p); o.quaternion.copy(q); o.scale.copy(sc); }
+    f.updateMatrixWorld(true);
+    const clip = s.clip ? f.animations.find(a => a.name === s.clip) : f.animations.slice().sort((a, b) => b.duration - a.duration)[0];
+    if (!clip) throw new Error('no clip ' + s.clip + ' in ' + s.src);
+    const bone = f.getObjectByProperty('isBone', true);
+    // unskinned exports (KinemIQ spin.glb) have plain nodes: start from the node called root
+    const root = f.children.find(c => c.isBone) || (bone ? bone.parent : (f.getObjectByName('root') || f.children[0]));
     return { root, clip };
   };
   const r4 = (v) => Math.round(v * 1e4) / 1e4;

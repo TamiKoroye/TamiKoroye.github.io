@@ -44,5 +44,20 @@
   {"name": "strafe", "src": ".anim-src/mixamo/Standing Aim Walk Left.fbx", "loop": true, "aim": "hips", "note": "sidestep walk to the left (legs only are used; mirror = right)"},
   {"name": "fire_spinback", "src": ".anim-src/new/Kick_-_spinning_back_kick.glb", "start": 0.55, "end": 2.0, "impact": 1.2, "limb": "kL", "note": "spinning back kick (upload 15 Nov, UE skeleton)"},
   {"name": "earth_backkick", "src": ".anim-src/new/Kick_-_back_kick.glb", "start": 0.4, "end": 1.75, "impact": 1.0, "limb": "kR", "note": "back kick (upload 15 Nov)"},
-  {"name": "move_kick", "src": ".anim-src/new/Does_a_kick_while_moving_forward.fbx", "start": 1.65, "end": 2.9, "impact": 2.2, "limb": "kR", "note": "kick while stepping forward (upload 15 Nov)"}
+  {"name": "move_kick", "src": ".anim-src/new/Does_a_kick_while_moving_forward.fbx", "start": 1.65, "end": 2.9, "impact": 2.2, "limb": "kR", "note": "kick while stepping forward (upload 15 Nov)"},
+  {"name": "stomp", "src": ".anim-src/drive2/Stomp.fbx", "start": 0.15, "end": 1.6, "impact": 0.75, "limb": "kR", "note": "Mixamo Stomp: weight shift, foot raised, stamp (earth eruption / fire ring)"},
+  {"name": "axe_kick", "src": ".anim-src/drive2/Kick_-_axe_kick.glb", "start": 1.2, "end": 2.5, "impact": 1.95, "limb": "kR", "note": "KinemIQ axe kick (upload 16 Nov)"},
+  {"name": "knee_strike", "src": ".anim-src/drive2/Kick_-_knee_strike.glb", "start": 0.0, "end": 0.8, "impact": 0.4, "limb": "kR", "note": "KinemIQ knee strike"},
+  {"name": "jump_high", "src": ".anim-src/drive2/Jumping Up.fbx", "mirror": false, "noRise": true, "note": "Mixamo Jumping Up: crouch and take-off (the game moves the body)"},
+  {"name": "air_loop", "src": ".anim-src/drive2/efa/Shared/Universal Animation Library 2[Standard]/Unreal-Godot/UAL2_Standard.glb", "clip": "NinjaJump_Idle_Loop", "mirror": false, "loop": true, "noRise": true, "note": "UAL2 airborne pose loop (flight, high jumps)"},
+  {"name": "fall_loop", "src": ".anim-src/drive2/Fall B Loop.fbx", "mirror": false, "loop": true, "noRise": true, "note": "Mixamo falling loop"},
+  {"name": "land_high", "src": ".anim-src/drive2/efa/Shared/Universal Animation Library 2[Standard]/Unreal-Godot/UAL2_Standard.glb", "clip": "NinjaJump_Land", "mirror": false, "note": "UAL2 landing from a high jump"},
+  {"name": "knockback", "src": ".anim-src/drive2/efa/Shared/Universal Animation Library 2[Standard]/Unreal-Godot/UAL2_Standard.glb", "clip": "Hit_Knockback", "mirror": false, "note": "UAL2 knocked off the feet"},
+  {"name": "getup_back", "src": ".anim-src/drive2/efa/Shared/Universal Animation Library 2[Standard]/Unreal-Godot/UAL2_Standard.glb", "clip": "LayToIdle", "mirror": false, "note": "UAL2 getting up from the back"},
+  {"name": "turn_spin", "src": ".anim-src/drive2/efa/Air/spin.glb", "mirror": false, "note": "KinemIQ Spin (CC0)"},
+  {"name": "water_flow", "src": ".anim-src/drive2/qg/AS_Move11-VUE5.FBX", "start": 10, "end": 16, "mirror": false, "loop": true, "note": "Qi Gong take 11: cloud-hands style turning with circling arms"},
+  {"name": "water_flow2", "src": ".anim-src/drive2/qg/AS_Move10-VUE5.FBX", "start": 14, "end": 20, "mirror": false, "loop": true, "note": "Qi Gong take 10: circling arms, torso rotation"},
+  {"name": "water_gather", "src": ".anim-src/drive2/qg/AS_Move5-VUE5.FBX", "start": 18.5, "end": 24, "mirror": false, "note": "Qi Gong take 5: sinking gather and rise"},
+  {"name": "water_wave", "src": ".anim-src/drive2/qg/AS_Move4-VUE5.FBX", "start": 5.4, "end": 11, "mirror": false, "note": "Qi Gong take 4: overhead arcs with lunges"},
+  {"name": "surf_stance", "src": ".anim-src/drive2/qg/AS_Move16-VUE5.FBX", "start": 9, "end": 13, "mirror": false, "loop": true, "note": "Qi Gong take 16: wide side stance, arms out (surfing balance)"}
 ]

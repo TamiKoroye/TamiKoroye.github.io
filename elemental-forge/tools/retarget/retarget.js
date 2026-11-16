@@ -38,6 +38,18 @@ const RIGS = {
       thigh: 'thigh_' + s, shin: 'calf_' + s, foot: 'foot_' + s, toe: 'ball_' + s,
       thumb: [1, 2, 3].map(i => `thumb_0${i}_${s}`), index: [1, 2, 3].map(i => `index_0${i}_${s}`), middle: [1, 2, 3].map(i => `middle_0${i}_${s}`),
       ring: [1, 2, 3].map(i => `ring_0${i}_${s}`), pinky: [1, 2, 3].map(i => `pinky_0${i}_${s}`) }; } },
+  // full Unreal Engine 5 mannequin skeleton (spine_01..05, neck_01..02, lowercase head), e.g. the Qi Gong takes
+  ue5: { hips: 'pelvis', spine: ['spine_01', 'spine_03', 'spine_05'], neck: 'neck_01', head: 'head',
+    side: (S) => { const s = S === 'Left' ? 'l' : 'r'; return { shoulder: 'clavicle_' + s, arm: 'upperarm_' + s, fore: 'lowerarm_' + s, hand: 'hand_' + s, handChild: 'middle_01_' + s,
+      thigh: 'thigh_' + s, shin: 'calf_' + s, foot: 'foot_' + s, toe: 'ball_' + s,
+      thumb: [1, 2, 3].map(i => `thumb_0${i}_${s}`), index: [1, 2, 3].map(i => `index_0${i}_${s}`), middle: [1, 2, 3].map(i => `middle_0${i}_${s}`),
+      ring: [1, 2, 3].map(i => `ring_0${i}_${s}`), pinky: [1, 2, 3].map(i => `pinky_0${i}_${s}`) }; } },
+  // Motifect AI exports (LeftLeg is the thigh, LeftShin the lower leg, Spine1 / Spine2 / Chest, Neck1)
+  motifect: { hips: 'Hips', spine: ['Spine1', 'Spine2', 'Chest'], neck: 'Neck1', head: 'Head',
+    side: (S) => ({ shoulder: S + 'Shoulder', arm: S + 'Arm', fore: S + 'ForeArm', hand: S + 'Hand', handChild: S + 'HandMiddle1',
+      thigh: S + 'Leg', shin: S + 'Shin', foot: S + 'Foot', toe: S + 'ToeBase',
+      thumb: [1, 2, 3].map(i => S + 'HandThumb' + i), index: [1, 2, 3].map(i => S + 'HandIndex' + i), middle: [1, 2, 3].map(i => S + 'HandMiddle' + i),
+      ring: [1, 2, 3].map(i => S + 'HandRing' + i), pinky: [1, 2, 3].map(i => S + 'HandPinky' + i) }) },
   rokoko: { hips: 'Hips', spine: ['Spine1', 'Spine2', 'Spine4'], neck: 'Neck', head: 'Head',
     side: (S) => ({ shoulder: S + 'Shoulder', arm: S + 'Arm', fore: S + 'ForeArm', hand: S + 'Hand', handChild: S + 'Finger3Proximal',
       thigh: S + 'Thigh', shin: S + 'Shin', foot: S + 'Foot', toe: S + 'Toe',
@@ -52,9 +64,11 @@ const wp = (o) => o.getWorldPosition(new THREE.Vector3());
 export function detectRig(names) {
   const has = (n) => names.includes(n);
   if (has('LowerBack')) return 'cmu';
+  if (has('pelvis') && has('calf_l') && has('spine_05')) return 'ue5';
   if (has('pelvis') && has('calf_l')) return 'ue';
   if (has('LeftThigh') && has('Spine4')) return 'rokoko';
   if (has('Hips') && has('Spine2') && has('LeftUpLeg')) return 'mixamo';
+  if (has('Hips') && has('LeftShin') && has('Chest')) return 'motifect';
   return null;
 }
 
@@ -103,6 +117,11 @@ export function retargetSkeleton(srcRoot, clip, target, opts = {}) {
   mixer.clipAction(clip).play();
   if (opts.restTime !== undefined) mixer.setTime(opts.restTime);
   holder.updateMatrixWorld(true);
+  // Z-up exports (Unreal Engine 5 FBX): turn the source upright, judged from the hips-to-head direction at rest
+  {
+    const hp = S[RIGS[rig].hips], hd = S[RIGS[rig].head];
+    if (hp && hd) { const v = wp(hd).sub(wp(hp)); if (Math.abs(v.z) > Math.abs(v.y) * 1.5) { holder.rotation.x = v.z > 0 ? -Math.PI / 2 : Math.PI / 2; holder.updateMatrixWorld(true); } }
+  }
   if (opts.restTime === undefined) {
     // the action has not been applied yet (setTime was not called), so the bones still hold the bind pose
   }
