@@ -26,7 +26,7 @@ export class Weapons {
   constructor(B) {
     this.B = B; this.w = B.world;
     this.whips = []; this.waves = []; this.columns = []; this.erupts = []; this.fireRings = []; this.captures = [];
-    this.trails = []; this.platforms = []; this.arcs = [];
+    this.trails = []; this.platforms = []; this.arcs = []; this.traps = [];
     this.tubeMat = waterMaterial(-4); this.tubeMat.uniforms.uRise.value = 1;
     this.tubePool = [];
     // air: the same rope drawn as a pale, fast-turning translucent current (it has a body, not only streaks)
@@ -422,6 +422,54 @@ export class Weapons {
     for (let i = 0; i < 26; i++) { const a = rand(0, Math.PI * 2); w.fx.fire(_a.set(foot.x, gy + 0.2, foot.z), _b.set(Math.sin(a) * 5, rand(1.5, 4), Math.cos(a) * 5), 0.7, 0.4); }
     w.audio.fireWhoosh(1.4); w.shake(0.3, foot); w.fx.crater(_a.set(foot.x, gy, foot.z), 1.6);
   }
+  // Fire stomp: a fireball runs along the ground from the stamping foot to the opponent (or 9 m ahead), then spreads
+  // into a ring of fire around that spot for 1.6 s: whoever is inside burns, and anything thrown into it is destroyed
+  fireTrap(f, foot) {
+    const w = this.w, t = f.target && !f.target.dead && f.target.pos.distanceTo(f.pos) < 11 ? f.target : null;
+    const to = t ? new THREE.Vector3(t.pos.x, 0, t.pos.z) : new THREE.Vector3(f.pos.x + Math.sin(f.faceYaw) * 9, 0, f.pos.z + Math.cos(f.faceYaw) * 9);
+    const ball = new THREE.Mesh(this.trapBallGeo || (this.trapBallGeo = new THREE.IcosahedronGeometry(0.28, 1)), this.trapBallMat || (this.trapBallMat = new THREE.MeshBasicMaterial({ color: 0xffb040 })));
+    ball.position.copy(foot); w.scene.add(ball);
+    this.traps.push({ f, ball, pos: foot.clone(), to, t: 0, phase: 'roll', hit: new Set(), tick: 0, R: 0 });
+    w.audio.fireWhoosh(1.1);
+  }
+  updateTraps(dt) {
+    const w = this.w;
+    for (const T of this.traps) {
+      T.t += dt;
+      if (T.phase === 'roll') {
+        const d = _a.set(T.to.x - T.pos.x, 0, T.to.z - T.pos.z), L = d.length();
+        if (T.t > 0.05 && T.f.target && !T.f.target.dead && T.t < 0.5) { T.to.x = T.f.target.pos.x; T.to.z = T.f.target.pos.z; }   // follows a moving target briefly
+        const step = 15 * dt;
+        if (L <= step || T.t > 1.0) { T.pos.x = T.to.x; T.pos.z = T.to.z; T.phase = 'ring'; T.rt = 0; w.audio.fireWhoosh(1.3); w.fx.crater(_a.set(T.pos.x, T.gy || 0, T.pos.z), 1.4);
+          T.mesh = new THREE.Mesh(this.ringGeo, this.fireRingMat.clone()); w.scene.add(T.mesh); }
+        else T.pos.addScaledVector(d.normalize(), step);
+        T.gy = w.arena.groundAt(T.pos.x, T.pos.z, T.pos.y + 1); T.pos.y = T.gy + 0.3;
+        T.ball.position.copy(T.pos); if (Math.random() < 0.8) w.fx.fire(T.pos, _b.set(0, 1.2, 0), 0.35, 0.18);
+        if (T.phase === 'ring') { w.scene.remove(T.ball); }
+        continue;
+      }
+      // the ring: spreads to 1.9 m, burns for 1.6 s, then dies down
+      T.rt += dt; const R = 1.9 * smooth01(Math.min(1, T.rt / 0.18)), fade = 1 - smooth01((T.rt - 1.4) / 0.3);
+      T.mesh.position.set(T.pos.x, T.gy + 0.12, T.pos.z); T.mesh.scale.set(Math.max(0.05, R), 1.6, Math.max(0.05, R)); T.mesh.material.opacity = 0.85 * fade;
+      // flames stand round the edge (kept sparse so the fighters stay visible)
+      if (Math.random() < 0.7 * fade) { const a = rand(0, 6.28); w.fx.fire(_a.set(T.pos.x + Math.sin(a) * R, T.gy + 0.1, T.pos.z + Math.cos(a) * R), _b.set(0, rand(1.5, 2.8), 0), 0.42, 0.3); }
+      T.tick -= dt;
+      if (T.tick <= 0 && fade > 0.2) {
+        T.tick = 0.3;
+        for (const t of w.fighters) {
+          if (t === T.f || t.dead || t.invuln > 0) continue;
+          const d = Math.hypot(t.pos.x - T.pos.x, t.pos.z - T.pos.z);
+          if (d < R + 0.3 && t.pos.y - T.gy < 1.2) {
+            const first = !T.hit.has(t); T.hit.add(t);
+            w.combat.damage(t, first ? 8 : 3, _b.set(t.pos.x - T.pos.x, 0, t.pos.z - T.pos.z).normalize().clone(), T.f, 'fireTrap', t.chestPos(new THREE.Vector3()), first ? 3 : 0, first ? 1 : -1);
+          }
+        }
+      }
+      for (const o of this.B.objs) if (o.state === 'flying' && o.owner !== T.f && Math.hypot(o.pos.x - T.pos.x, o.pos.z - T.pos.z) < R && o.pos.y - T.gy < 2) this.B.kill(o, o.el === 'water' ? 'steam' : undefined);
+      if (T.rt > 1.75) { T.dead = true; w.scene.remove(T.mesh); T.mesh.material.dispose(); }
+    }
+    this.traps = this.traps.filter(T => !T.dead);
+  }
   updateFireRings(dt) {
     const w = this.w;
     for (const R of this.fireRings) {
@@ -539,11 +587,12 @@ export class Weapons {
   update(dt) {
     this.tubeMat.uniforms.uTime.value += dt;
     this.burst.update(dt);
-    this.updateWhips(dt); this.updateArcs(dt); this.updateWaves(dt); this.updateColumns(dt); this.updateErupts(dt); this.updateFireRings(dt); this.updateCaptures(dt); this.updateTrails(dt);
+    this.updateWhips(dt); this.updateArcs(dt); this.updateTraps(dt); this.updateWaves(dt); this.updateColumns(dt); this.updateErupts(dt); this.updateFireRings(dt); this.updateCaptures(dt); this.updateTrails(dt);
   }
   clear() {
     for (const W of this.whips) this.dropWhip(W);
     for (const A of this.arcs) { this.freeTube(A.tube); if (A.ribbons) A.ribbons.forEach(r => r.release()); }
+    for (const T of this.traps) { this.w.scene.remove(T.ball); if (T.mesh) this.w.scene.remove(T.mesh); }
     this.burst.clear();
     for (const V of this.waves) this.w.scene.remove(V.mesh);
     for (const C of this.columns) { this.w.scene.remove(C.mark); this.freeTube(C.tube); }
@@ -553,6 +602,6 @@ export class Weapons {
     for (const T of this.trails) this.w.scene.remove(T.m);
     for (const P of this.platforms) { this.w.scene.remove(P.m); P.col.dead = true; }
     this.w.arena.colliders = this.w.arena.colliders.filter(c => !this.platforms.some(P => P.col === c));
-    this.whips = []; this.waves = []; this.columns = []; this.erupts = []; this.fireRings = []; this.captures = []; this.trails = []; this.platforms = []; this.arcs = [];
+    this.whips = []; this.waves = []; this.columns = []; this.erupts = []; this.fireRings = []; this.captures = []; this.trails = []; this.platforms = []; this.arcs = []; this.traps = [];
   }
 }

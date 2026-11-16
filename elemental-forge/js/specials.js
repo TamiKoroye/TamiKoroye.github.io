@@ -105,8 +105,8 @@ export class Specials {
         case 'fireTrail': {
           // flames pour from both feet through the leap (they ride the bones, so they trace the kick)
           if (f.dead || f.reacting() || f.tech !== S.tech || S.t > 1.6) { S.dead = true; break; }
-          for (const s of ['L', 'R']) { const p = f.footPos(s, _a); w.fx.fire(p, _b.set(rand(-1, 1), rand(0.5, 2), rand(-1, 1)), s === 'L' ? 0.42 : 0.3, 0.3); }
-          if (Math.random() < 0.6) w.fx.fire(f.handPos(Math.random() < 0.5 ? 'L' : 'R', _a), _b.set(0, 1.5, 0), 0.22, 0.2);
+          // a thin trail from each foot only, so the kick itself stays readable through the flames
+          for (const s of ['L', 'R']) if (Math.random() < 0.6) { const p = f.footPos(s, _a); w.fx.fire(p, _b.set(rand(-0.5, 0.5), rand(0.3, 1), rand(-0.5, 0.5)), 0.22, 0.2); }
           break;
         }
         case 'fireBlast': {

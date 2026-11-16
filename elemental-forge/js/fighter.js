@@ -234,7 +234,10 @@ export class Fighter {
       }
       if (this.buf.leg && !struck && !this.charging && canStrike) {
         this.buf.leg = 0; this.dodgeT = 0;
-        if (st.tech.legMove && this.onGround && this.speedNorm > 0.45 && !this.action && this.comboTimer <= 0) {
+        if (!this.onGround && st.tech.airKick && !(this.mob && this.mob.kind === 'surf')) {
+          // in the air: a jumping kick, the right foot first, then the left, then the right again
+          this.airKickN = (this.airKickN || 0) + 1; this.startTech(st.tech.airKick, this.airKickN % 2 ? -1 : 1, true);
+        } else if (st.tech.legMove && this.onGround && this.speedNorm > 0.45 && !this.action && this.comboTimer <= 0) {
           // LEG while running: a kick delivered on the move, keeping the run's momentum
           this.comboTimer = 0.9; this.legIdx = -1; this.startTech(st.tech.legMove, 1, true);
         } else {
@@ -287,6 +290,8 @@ export class Fighter {
       if (this.charging) {
         this.chargeT += dt;
         if (this.stunT > 0 || this.reacting() || this.dodgeT > 0) { this.charging = false; this.legHoldT = -1; }
+        // on the ground a full charge stamps at once (Earth and Fire stomps), without waiting for LEG to be let go
+        else if (st.tech.stomp && this.onGround && this.chargeT >= 0.4 && this.legHoldT >= 0.7) { this.charging = false; this.legHoldT = -1; this.startTech(st.tech.stomp, 1); }
         else if (Math.random() < dt * 16) this.chargeFx();
       }
       // GUARD: the element's defence
@@ -396,7 +401,7 @@ export class Fighter {
         // a jet landing: the flames hit the ground and burst outward
         this.jetUsed = false; B.ring(this, 'fire', 2.4, 9, { dmg: 6, knock: 6, level: 1 }); w.shake(0.12, this.pos); w.audio.fireWhoosh(0.9);
       }
-      this.pos.y = gy; if (this.vel.y < 0) this.vel.y = 0; this.onGround = true; this.airTime = 0; this.airJumps = 0;
+      this.pos.y = gy; if (this.vel.y < 0) this.vel.y = 0; this.onGround = true; this.airTime = 0; this.airJumps = 0; this.airKickN = 0;
     } else if (this.pos.y > gy + 0.03) {
       if (this.onGround && this.vel.y <= 0 && this.pos.y - gy < 0.5) { this.pos.y = gy; this.vel.y = 0; }
       else { this.onGround = false; this.airTime += dt; }

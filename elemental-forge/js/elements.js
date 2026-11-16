@@ -252,13 +252,32 @@ export class Bending {
       case 'fire.hand': {
         const orbs = this.heldList(f, 'fire').filter(o => o.state === 'orbit');
         if (orbs.length) { this.launch(orbs[0], f, 1); return; }
-        // every third strike in a chain cracks a flame whip instead of a fireball
-        if (((f.fireN = (f.fireN || 0) + 1) % 3) === 0) { this.weapons.whipStrike(f, 'fire', 'd', { hand: s > 0 ? 'R' : 'L', released: true, len: 3.6, dmg: 9, knock: 7, level: 1 }); return; }
-        this.fire('fireball', f, hand); w.audio.fireWhoosh(0.6); return;
+        // a compact fireball punched out of the striking fist (jab, cross or hook)
+        const o = this.fire('fireball', f, hand, { scale: 0.72 }); o.dmg = 7; w.fx.fire(hand, _v2.set(0, 1, 0), 0.3, 0.12); w.audio.fireWhoosh(0.6); return;
       }
       case 'fire.knee': { this.ring(f, 'fire', 2.4, 10, { dmg: 6, knock: 7, level: 1 }); for (let i = 0; i < 10; i++) w.fx.fire(foot, _v.set(rand(-3, 3), rand(0, 3), rand(-3, 3)), 0.5, 0.3); w.audio.fireWhoosh(1); return; }
-      case 'fire.stompMark': { for (let i = 0; i < 6; i++) w.fx.fire(this.footPoint(f, -1, _v), _v2.set(rand(-0.5, 0.5), rand(1, 2.5), rand(-0.5, 0.5)), 0.3, 0.5); return; }
-      case 'fire.stomp': { this.weapons.fireRing(f, this.footPoint(f, -1, new THREE.Vector3())); return; }
+      case 'fire.stompMark': return;   // no flame before the foot comes down: the stomp ignites on the plant
+      case 'fire.stomp': {
+        // ignition on the foot plant: a short flare at the stamping foot, then a fireball runs along the ground to the
+        // opponent and spreads into a ring of fire around them
+        const ft = this.footPoint(f, -1, new THREE.Vector3());
+        for (let i = 0; i < 8; i++) { const a = rand(0, 6.28); w.fx.fire(ft, _v2.set(Math.sin(a) * 2.5, rand(1, 2.5), Math.cos(a) * 2.5), 0.4, 0.25); }
+        w.fx.crater(ft, 1); w.shake(0.2, ft); this.weapons.fireTrap(f, ft); return;
+      }
+      case 'fire.flip': case 'fire.flip2': {
+        // the cartwheel's feet pass overhead: each throws flame along the path it travelled
+        this.weapons.limbArc(f, 'fire', 'foot', name === 'fire.flip' ? 'R' : 'L', { span: 0.22, speed: 14, grow: 1.2, dmg: 7, knock: 6, level: 1 }); return;
+      }
+      case 'fire.airKick': case 'water.airKick': case 'air.airKick': {
+        // a kick in the air throws the element along the kicking foot's path (it also intercepts what it meets)
+        const el = name.split('.')[0], ft = f.airKickN % 2 ? 'R' : 'L';
+        this.weapons.limbArc(f, el, 'foot', ft, { span: 0.2, speed: el === 'air' ? 20 : 15, grow: 1.1, dmg: 7, knock: el === 'air' ? 11 : 6, level: 1 }); return;
+      }
+      case 'earth.airKick': {
+        // a rock knocked from the kicking foot
+        const ft = f.footPos(f.airKickN % 2 ? 'R' : 'L', new THREE.Vector3());
+        w.fx.debrisBurst(ft, 6, 2, 0.07, 0x7a7068); this.fire('rockKick', f, ft); w.audio.rumble(0.4); return;
+      }
       case 'earth.stompMark': { this.weapons.eruptionMark(f); return; }
       case 'earth.stomp': { this.weapons.eruptionFire(f); w.fx.dust(f.pos, 8, 2); w.fx.crater(f.pos, 1.2); return; }
       // kicks throw fire along the path the foot travelled: the roundhouse a rising flame arc, the spinning kick a wide flat one
@@ -741,9 +760,10 @@ export class Bending {
 
   // ================================================================== environment
   burn(x, z, gy, owner) {
-    for (const b of this.burns) if (Math.hypot(b.x - x, b.z - z) < 0.9) { b.t = Math.max(b.t, 4); return; }
-    if (this.burns.length > 14) this.burns.shift();
-    this.burns.push({ x, z, y: gy, t: 4, r: 1.1, owner, tick: 0 });
+    // burning ground lasts under two seconds and at most six patches burn at once, so the fighters stay visible
+    for (const b of this.burns) if (Math.hypot(b.x - x, b.z - z) < 0.9) { b.t = Math.max(b.t, 1.8); return; }
+    if (this.burns.length > 5) this.burns.shift();
+    this.burns.push({ x, z, y: gy, t: 1.8, r: 1.1, owner, tick: 0 });
   }
   extinguishNear(p, r) {
     const before = this.burns.length;
@@ -755,6 +775,9 @@ export class Bending {
   clash(a, b) {
     const w = this.world;
     if (a.el === b.el) { this.kill(a); this.kill(b); return; }
+    // fire is a defence as well as an attack: a fireball or a kicked flame destroys whatever it meets and burns out
+    // doing it (water turns to steam, rock is shattered, wind is burnt through)
+    if (a.el === 'fire' || b.el === 'fire') { const o = a.el === 'fire' ? b : a; this.kill(o, o.el === 'water' ? 'steam' : undefined); this.kill(a.el === 'fire' ? a : b); if (o.el === 'earth') w.fx.debrisBurst(o.pos, 8, 3, 0.07, 0x7a7068); return; }
     const pair = (x, y) => (a.el === x && b.el === y) ? [a, b] : (a.el === y && b.el === x) ? [b, a] : null;
     let p;
     if ((p = pair('water', 'fire'))) { this.kill(p[1], 'steam'); p[0].dmgMul *= 0.7; return; }        // water douses fire
@@ -1014,7 +1037,7 @@ export class Bending {
     // burning ground: hurts anyone standing in it, spreads flame particles
     for (const b of this.burns) {
       b.t -= dt;
-      if (Math.random() < dt * 22) w.fx.fire(_v.set(b.x + rand(-b.r, b.r) * 0.7, b.y + 0.05, b.z + rand(-b.r, b.r) * 0.7), _v2.set(0, rand(1.5, 3), 0), 0.5, 0.5);
+      if (Math.random() < dt * 9) w.fx.fire(_v.set(b.x + rand(-b.r, b.r) * 0.7, b.y + 0.05, b.z + rand(-b.r, b.r) * 0.7), _v2.set(0, rand(1.5, 3), 0), 0.42, 0.4);
       b.tick -= dt;
       if (b.tick <= 0) {
         b.tick = 0.4;

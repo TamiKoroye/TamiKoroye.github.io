@@ -579,5 +579,51 @@
   "limb": "pR",
   "mirror": false,
   "note": "both arms rise overhead from low, then come to chamber (raising earth)"
+ },
+ {
+  "name": "fire_jab",
+  "src": ".anim-src/mixamo/Jab To Elbow Punch.fbx",
+  "start": 0.45,
+  "end": 1.35,
+  "impact": 0.83,
+  "aim": "head",
+  "limb": "pL",
+  "note": "lead-hand jab (Fire HAND: jab / cross / hook)"
+ },
+ {
+  "name": "flip_kick",
+  "src": ".anim-src/mixamo/Ginga Sideways To Au.fbx",
+  "start": 0.6,
+  "end": 2.9,
+  "impact": 1.6,
+  "limb": "kR",
+  "note": "capoeira cartwheel: the legs pass overhead (Fire flip kick, flames from the feet)"
+ },
+ {
+  "name": "jump_kick",
+  "src": ".anim-src/mixamo/Kicking.fbx",
+  "start": 0.5,
+  "end": 2.2,
+  "impact": 1.33,
+  "limb": "kR",
+  "noRise": true,
+  "note": "jumping kick, right foot at 1.2 m (aerial kicks; mirror = left foot)"
+ },
+ {
+  "name": "flip_front",
+  "src": ".anim-src/mixamo/Run To Flip.fbx",
+  "start": 0.25,
+  "end": 1.95,
+  "mirror": false,
+  "noRise": true,
+  "note": "front somersault"
+ },
+ {
+  "name": "roll_dive",
+  "src": ".anim-src/mixamo/Running Dive Roll.fbx",
+  "start": 0.3,
+  "end": 1.95,
+  "mirror": false,
+  "note": "forward dive roll"
  }
 ]
