@@ -224,7 +224,7 @@ function playerInput(inp) {
   pi.mz = rz * inp.mx + fz * inp.my;
   const b = inp.btn, pr = inp.pressed;
   pi.hand = pr.hand; pi.handHeld = b.hand; pi.leg = pr.leg; pi.legHeld = b.leg; pi.special = pr.special;
-  pi.jump = pr.jump; pi.jumpHeld = b.jump; pi.dodge = pr.dodge; pi.guard = b.guard;
+  pi.jump = pr.jump; pi.jumpHeld = b.jump; pi.dodge = pr.dodge; pi.dodgeHeld = b.dodge; pi.guard = b.guard;
   // sprint: push the stick to its rim and hold (or hold C on a keyboard)
   const mag = Math.hypot(inp.mx, inp.my);
   state.stickFullT = mag > 0.92 ? state.stickFullT + inp.dt : 0;
@@ -345,7 +345,7 @@ function step(dt) {
 
   const active = state.phase === 'fight' || state.phase === 'intro' || state.phase === 'ko';
   if (state.phase === 'fight') playerInput(inp);
-  else { const pi = player.input; pi.mx = pi.mz = 0; pi.hand = pi.handHeld = pi.leg = pi.legHeld = pi.special = pi.jump = pi.jumpHeld = pi.dodge = pi.guard = false; computeAim(); }
+  else { const pi = player.input; pi.mx = pi.mz = 0; pi.hand = pi.handHeld = pi.leg = pi.legHeld = pi.special = pi.jump = pi.jumpHeld = pi.dodge = pi.dodgeHeld = pi.guard = false; computeAim(); }
   ai.update(dt);
   for (const f of world.fighters) f.update(dt);
   // fighter-fighter separation

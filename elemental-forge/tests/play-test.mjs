@@ -176,9 +176,11 @@ for (const el of els) {
   // HAND tap at range: element projectile hits
   await setup({ el, p: [0, 0, -12], o: [0, 0, -4] });
   await press('btn-hand', 2);
-  const kinds = new Set(); for (let i = 0; i < 30; i++) { await stepN(1); (await S(() => window.__EF.world.bending.objs.map(o => o.kind))).forEach(k => kinds.add(k)); }
+  // (16 Nov brief: water and air HAND strikes are whips, not projectiles; earth and fire still throw)
+  const kinds = new Set(); for (let i = 0; i < 30; i++) { await stepN(1); (await S(() => [...window.__EF.world.bending.objs.map(o => o.kind), ...window.__EF.world.bending.weapons.whips.map(W => W.el + ' whip')])).forEach(k => kinds.add(k)); }
   R.hand = await S(() => window.__EF.opp.hp);
-  check(`${el}: HAND sends an element projectile that hits`, R.hand < 100 && kinds.size > 0, `projectile ${[...kinds].join(',')}; rival hp ${R.hand}`);
+  const wantWhip = el === 'water' || el === 'air';
+  check(`${el}: HAND ${wantWhip ? 'lashes a ' + el + ' whip' : 'sends an element projectile'} that hits at 8 m`, R.hand < 100 && (wantWhip ? kinds.has(el + ' whip') : kinds.size > 0), `${[...kinds].join(',')}; rival hp ${R.hand}`);
   await shot(`10-${el}-hand`);
   // LEG tap at range
   await setup({ el, p: [0, 0, -12], o: [0, 0, -5.5] });
@@ -210,7 +212,7 @@ for (const el of els) {
   const holdPos = el === 'water' ? [12, 0, -9] : [0, 0, -12];
   await setup({ el, p: holdPos, o: el === 'water' ? [12, 0, -1] : [0, 0, -5] });
   await hold('btn-hand'); await stepN(el === 'water' ? 60 : 40);
-  const sus = await S(() => { const { player: p, opp: o, world } = window.__EF; return { holding: p.holding, held: world.bending.held(p), oHp: o.hp, oz: o.pos.z }; });
+  const sus = await S(() => { const { player: p, opp: o, world } = window.__EF, h = world.bending.holds.get(p); return { holding: p.holding, held: world.bending.held(p), oHp: o.hp, oz: o.pos.z, whips: h && h.whips ? h.whips.length : 0 }; });
   await stick(80, 0); await stepN(15);
   const moveBend = await S(() => ({ sp: Math.hypot(window.__EF.player.vel.x, window.__EF.player.vel.z), holding: window.__EF.player.holding, held: window.__EF.world.bending.held(window.__EF.player) }));
   await stickUp(); await shot(`12-${el}-hold`);
@@ -218,7 +220,7 @@ for (const el of els) {
   const susDetail = `holding=${sus.holding}, held objects ${sus.held}, rival hp ${sus.oHp}`;
   if (el === 'earth') check('earth: holding HAND lifts three rocks that orbit the player', sus.holding && sus.held === 3, susDetail);
   if (el === 'fire') check('fire: holding HAND sustains a fire stream that burns the rival', sus.holding && sus.oHp < 100, susDetail);
-  if (el === 'water') check('water: holding HAND near a pool draws three water globes', sus.holding && sus.held === 3, susDetail);
+  if (el === 'water') check('water: holding HAND keeps two water whips going that strike the rival', sus.holding && sus.whips === 2 && sus.oHp < 100, `${susDetail}, whips ${sus.whips}`);
   if (el === 'air') check('air: holding HAND pushes the rival back with a sustained wind', sus.holding && sus.oz > -5 + 1.5, `${susDetail}, rival pushed to z ${sus.oz.toFixed(1)} (from -5)`);
   check(`${el}: can move while sustaining bending`, moveBend.sp > 1.5 && (moveBend.holding || moveBend.held > 0), `${moveBend.sp.toFixed(1)} m/s while bending`);
   // multiple controlled objects
@@ -242,19 +244,13 @@ for (const el of els) {
     check(`${el}: SPECIAL builds up three controlled ${el === 'fire' ? 'flame orbs' : 'vortices'}, then releases them together`, orbs === 3 && fly.length >= 1, `held ${orbs}, then flying: ${fly.join(',')}`);
   }
   if (el === 'water') {
-    const g0 = moveBend.held;
-    await setup({ el, p: [12, 0, -9], o: [12, 0, -3] });
-    await hold('btn-hand'); await stepN(60); await fUp(6); await stepN(2);
-    const g1 = await S(() => window.__EF.world.bending.held(window.__EF.player));
-    await press('btn-leg', 2); await stepN(20);
-    const g2 = await S(() => ({ held: window.__EF.world.bending.held(window.__EF.player), oHp: window.__EF.opp.hp }));
-    check('water: a kick spends one held globe as a water arc', g1 === 3 && g2.held === 2 && g2.oHp < 100, `globes ${g1} -> ${g2.held}; rival hp ${g2.oHp}`);
-    // whip once full
-    await hold('btn-hand'); await stepN(30);
-    const whip = await S(() => { const h = window.__EF.world.bending.holds.get(window.__EF.player); return { mode: h && h.mode, oHp: window.__EF.opp.hp }; });
-    await shot('13-water-whip');
+    // (16 Nov brief: water globes replaced by whips) SPECIAL during the twin whips freezes them into ice blades
+    await setup({ el, p: [12, 0, -9], o: [12, 0, -5] });
+    await hold('btn-hand'); await stepN(20); await press('btn-special', 2); await stepN(24);
+    const ice = await S(() => { const h = window.__EF.world.bending.holds.get(window.__EF.player); return { frozen: !!(h && h.frozen), oHp: window.__EF.opp.hp }; });
+    await shot('13-water-ice-blades');
     await fUp(6); await stepN(4);
-    check('water: holding HAND with full globes becomes a water whip', whip.mode === 'whip', `mode ${whip.mode}, rival hp ${whip.oHp}`);
+    check('water: SPECIAL while holding the whips freezes them into ice blades that still strike', ice.frozen && ice.oHp < 100, `frozen ${ice.frozen}, rival hp ${ice.oHp}`);
   }
   // defence: raise guard, rival fires a projectile at the player
   const threat = { earth: 'rock', fire: 'fireball', water: 'fireball', air: 'rock' }[el];
