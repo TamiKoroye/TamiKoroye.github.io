@@ -349,7 +349,7 @@ if (boulder) {
     await stepN(1);
     const st = await S((b) => { const p = window.__EF.player; return { d: Math.hypot(p.pos.x - b.x, p.pos.z - b.z), y: p.onGround ? p.pos.y : 0, h: p.pos.y }; }, boulder);
     if (process.env.DBG) trace.push(`${st.d.toFixed(2)}/${st.h.toFixed(2)}`);
-    if (!released && st.d < 0.35) { released = true; await stickUp(); }   // let go of the stick once over the boulder
+    if (!released && st.d < 1.3) { released = true; await stickUp(); }   // let go of the stick as it reaches the boulder: flight momentum carries it over the top
     onB = Math.max(onB, st.y);
   }
   if (!released) await stickUp();
