@@ -100,7 +100,7 @@ const whipSample = () => S(() => {
 const ang = (a, b) => { const la = Math.hypot(...a), lb = Math.hypot(...b); if (la < 0.8 || lb < 0.8) return null; return Math.acos(Math.max(-1, Math.min(1, (a[0] * b[0] + a[1] * b[1] + a[2] * b[2]) / la / lb))) * 180 / Math.PI; };
 
 // ------------------------------------------------------------------ whips (water, air)
-for (const el of (process.env.ONLY ? [] : ['water', 'air'])) {
+for (const el of (process.env.WHIPS ? [process.env.WHIPS] : process.env.ONLY ? [] : ['water', 'air'])) {
   head(`${el}: whip from the hand`);
   await setup({ el, p: [0, 0, -9], o: [0, 0, -5] }); await stepN(10);
   const per = {};
@@ -131,7 +131,7 @@ for (const el of (process.env.ONLY ? [] : ['water', 'air'])) {
 }
 
 // ------------------------------------------------------------------ kicks throw the element along the foot's path
-for (const el of (process.env.ONLY ? [] : ['water', 'fire', 'air'])) {
+for (const el of (process.env.ONLY || process.env.WHIPS ? [] : ["water", "fire", "air"])) {
   head(`${el}: kick arcs follow the kicking foot`);
   await setup({ el, p: [0, 0, -9], o: [0, 0, -5] }); await stepN(10); await clearHits();
   await press('btn-leg', 2);
@@ -171,7 +171,7 @@ const spec = () => S(() => {
     dragonHands: (() => { const d = L.find(s => s.kind === 'dragon'); if (!d || !d.tube) return null; return [Math.min(...d.pts.map(q => q.distanceTo(hl))), Math.min(...d.pts.map(q => q.distanceTo(hr)))].map(x => +x.toFixed(2)); })(),
     torn: (() => { const t = L.find(s => s.kind === 'tornado'); return t ? { c: V(t.c), free: t.free, g: +t.grow.toFixed(2), held: t.held.size } : null; })() };
 });
-for (const el of (process.env.ONLY ? [] : ['fire', 'earth', 'water', 'air'])) {
+for (const el of (process.env.ONLY || process.env.WHIPS ? [] : ["fire", "earth", "water", "air"])) {
   head(`${el}: SPECIAL`);
   await setup({ el, p: [0, 0, -9], o: [0, 0, el === 'fire' ? -5.5 : -4.5] }); await stepN(10); await clearHits();
   await press('btn-special', 2);

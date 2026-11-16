@@ -125,6 +125,9 @@ export class Weapons {
     if (W.spin) { const out = _e.set(root.x - f.pos.x, 0, root.z - f.pos.z); if (out.lengthSq() > 1e-4) D.addScaledVector(out.normalize(), 1.2); }
     // around the release the aim dominates: whatever way the clip turned the body, the lash goes at the target
     else if (rel) D.addScaledVector(W.aim, (tr < 0.2 ? 6 : 3.2) * Math.max(0.25, 1 - tr / 0.32));
+    // through the lash itself (0.2 s from the release) the rope lies along the aim alone, so the throw goes where
+    // the bender aims whichever way the arm clip carried the hand; before and after it, the arm lays it
+    if (rel && tr < 0.2 && !W.spin) D.copy(W.aim);
     D.normalize(); W.dir.lerp(D, Math.min(1, dt * (rel && tr < 0.2 ? 32 : 14))).normalize();
     const grav = W.el === 'water' && !W.frozen ? 5 : 0, gy = f.groundY + 0.06;
     const perp = _e.crossVectors(W.dir, UP); if (perp.lengthSq() < 1e-4) perp.set(1, 0, 0); perp.normalize();

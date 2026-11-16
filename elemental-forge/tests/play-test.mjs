@@ -366,9 +366,9 @@ for (const el of els) {
       prev = Float32Array.from(P.cur);
       if (P.action === 'tech' && techs[techs.length - 1] !== P.tech.name + P.techSide) techs.push(P.tech.name + P.techSide);
     }
-    return { maxJump, techs: techs.length };
+    return { maxJump, techs: techs.length, names: techs.join(' > ') };
   });
-  check(`${el}: HAND / LEG / dodge / SPECIAL chain flows without pose snapping`, seq.techs >= 4 && seq.maxJump < 0.75, `${seq.techs} techniques, largest single-frame joint change ${seq.maxJump.toFixed(2)} rad`);
+  check(`${el}: HAND / LEG / dodge / SPECIAL chain flows without pose snapping`, seq.techs >= 4 && seq.maxJump < 0.75, `${seq.techs} techniques (${seq.names}), largest single-frame joint change ${seq.maxJump.toFixed(2)} rad`);
 }
 // the brief's earth combination: raise a rock, move sideways while controlling it, kick it
 await setup({ el: 'earth', p: [0, 0, -12], o: [0, 0, -3] });
