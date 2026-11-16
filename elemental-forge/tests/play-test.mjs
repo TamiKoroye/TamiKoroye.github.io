@@ -338,9 +338,10 @@ check('a pillar raised under the player throws them up and they stand on its top
 // boulder
 const boulder = await S(() => { const c = window.__EF.world.arena.colliders.find(c => c.rock && c.walk && c.top < 1.25 && Math.hypot(c.x, c.z) < 26); return c ? { x: c.x, z: c.z, r: c.r, top: c.top } : null; });
 if (boulder) {
-  await setup({ el: 'air', locked: false, p: [boulder.x, 0, boulder.z - boulder.r - 1.6], o: [20, 0, 20] });
+  // (17 Nov brief: Air's JUMP is now flight and Earth's a 4 m launch; Fire's plain jump is used to hop onto the boulder)
+  await setup({ el: 'fire', locked: false, p: [boulder.x, 0, boulder.z - boulder.r - 1.6], o: [20, 0, 20] });
   await S(() => { window.__EF.player.faceYaw = 0; window.__EF.camCtl.yaw = 0; });
-  await stick(0, -45); await press('btn-jump', 1); await stepN(4); await press('btn-jump', 1);
+  await stick(0, -45); await press('btn-jump', 1);
   let onB = 0, released = false;
   for (let i = 0; i < 40; i++) {
     await stepN(1);

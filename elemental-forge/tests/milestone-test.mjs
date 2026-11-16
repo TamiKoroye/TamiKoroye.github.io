@@ -140,11 +140,12 @@ await stick(80, 0); await press('btn-dodge', 2);
 let whirl = 0; for (let j = 0; j < 12; j++) { await stepN(1); whirl = Math.max(whirl, await S(() => window.__EF.world.bending.weapons.whirls.length)); if (j === 5) await shot('air-whirl'); }
 await stickUp();
 const a1 = await S(() => { const { player: p, opp: o } = window.__EF; let face = Math.abs(((p.faceYaw - Math.atan2(o.pos.x - p.pos.x, o.pos.z - p.pos.z)) + Math.PI * 3) % (Math.PI * 2) - Math.PI); return { x: p.pos.x, z: p.pos.z, face }; });
-check('DODGE: a whirlwind wraps the airbender and throws them sideways in the stick direction', whirl > 0 && a1.x - a0.x > 2.5 && Math.abs(a1.z - a0.z) < 1.2, `moved ${(a1.x - a0.x).toFixed(1)} m sideways, ${(a1.z - a0.z).toFixed(1)} m forward/back; whirlwind drawn ${whirl > 0}`);
+// the stick's right is the screen's right: the bender faces +z here, so that is world -x
+check('DODGE: a whirlwind wraps the airbender and throws them sideways in the stick direction', whirl > 0 && a0.x - a1.x > 2.5 && Math.abs(a1.z - a0.z) < 1.2, `moved ${(a0.x - a1.x).toFixed(1)} m to the screen's right, ${(a1.z - a0.z).toFixed(1)} m forward/back; whirlwind drawn ${whirl > 0}`);
 check('the bender keeps facing the opponent through the dash', a1.face < 0.6, `${(a1.face * 180 / Math.PI).toFixed(0)} degrees off`);
 await stick(-80, 0); await press('btn-dodge', 2); await stepN(12); await stickUp();
 const a2 = await S(() => window.__EF.player.pos.x);
-check('the dash goes whichever way the stick points (back to the left)', a1.x - a2 > 2.5, `moved ${(a1.x - a2).toFixed(1)} m to the left`);
+check('the dash goes whichever way the stick points (back to the left)', a2 - a1.x > 2.5, `moved ${(a2 - a1.x).toFixed(1)} m to the screen's left`);
 
 // ------------------------------------------------------------------ all elements
 head('Kicks while running');
@@ -167,7 +168,7 @@ const trial = async (d) => {
     await S(() => { const o = window.__EF.opp; o.action = null; o.tech = null; window.__EF.ai.combo = []; });
     await press('btn-hand', 1);
     let r = false;
-    for (let i = 0; i < 12; i++) { await stepN(1); r = r || await S(() => { const o = window.__EF.opp; return o.guarding || o.dodgeT > 0; }); }
+    for (let i = 0; i < 12; i++) { await stepN(1); r = r || await S(() => { const o = window.__EF.opp; return o.guarding || o.dodgeT > 0 || (o.tech && o.tech.name === 'Roll'); });   /* (17 Nov: Earth evades with a roll; its DODGE is the rock slide) */ }
     if (r) reacted++;
     await stubAI();
   }

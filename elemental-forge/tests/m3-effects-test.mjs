@@ -199,7 +199,7 @@ for (const el of (process.env.ONLY || process.env.WHIPS ? [] : ["fire", "earth",
   }
   if (el === 'water') {
     // (17 Nov brief: the SPECIAL engulfs the opponent in a ball of water that freezes and shatters)
-    check('water: SPECIAL engulfs the rival in a ball of water, freezes it, shatters it for the damage', rows.some(r => r.kinds.includes('drown')) && hits.includes('drown'), `effects ${[...new Set(rows.flatMap(r => r.kinds))].join(',')}; hits ${hits.join(',')}`);
+    check('water: SPECIAL engulfs the rival in a ball of water, freezes it, shatters it for the damage', rows.some(r => r.kinds.some(k => k.startsWith('drown'))) && hits.includes('drown'), `effects ${[...new Set(rows.flatMap(r => r.kinds))].join(',')}; hits ${hits.join(',')}`);
   }
   if (el === 'air') {
     const t0 = rows.find(r => r.torn);

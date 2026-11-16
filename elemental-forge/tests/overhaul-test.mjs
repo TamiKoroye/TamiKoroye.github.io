@@ -212,9 +212,9 @@ head('Fire: stomp');
 //  fire round the opponent for one to two seconds, in place of a ring expanding from the stamping foot)
 await setup({ el: 'fire', p: [0, 0, -12], o: [0, 0, -6] }); await stepN(3);
 await hold('btn-leg'); await stepN(30); await fUp(6); await clearHits();
-let ringMax = 0, ringAt = null, ringT = 0; for (let j = 0; j < 75; j++) { await stepN(1); const r = await S(() => { const T = window.__EF.world.bending.weapons.traps[0]; return T && T.phase === 'ring' ? { R: 1.9 * Math.min(1, T.rt / 0.18), x: T.pos.x, z: T.pos.z } : null; }); if (r) { ringMax = Math.max(ringMax, r.R); ringAt = r; ringT++; } if (j === 22) await shot('fire-stomp-ring'); }
+let ringMax = 0, ringAt = null, ringT = 0, oAtRing = null; for (let j = 0; j < 100; j++) { await stepN(1); const r = await S(() => { const T = window.__EF.world.bending.weapons.traps[0], o = window.__EF.opp; return T && T.phase === 'ring' ? { R: 1.9 * Math.min(1, T.rt / 0.18), x: T.pos.x, z: T.pos.z, ox: o.pos.x, oz: o.pos.z } : null; }); if (r) { ringMax = Math.max(ringMax, r.R); ringAt = r; if (!oAtRing) oAtRing = r; ringT++; } if (j === 22) await shot('fire-stomp-ring'); }
 const oNow = await S(() => ({ x: window.__EF.opp.pos.x, z: window.__EF.opp.pos.z }));
-check('charged LEG: a fireball runs along the ground and spreads into a ring of fire round the rival', ringMax > 1.5 && ringAt && Math.hypot(ringAt.x - 0, ringAt.z + 6) < 1.5, ringAt ? `ring ${ringMax.toFixed(1)} m across at (${ringAt.x.toFixed(1)}, ${ringAt.z.toFixed(1)}); rival started at (0, -6)` : 'no ring');
+check('charged LEG: a fireball runs along the ground and spreads into a ring of fire round the rival', ringMax > 1.5 && oAtRing && Math.hypot(oAtRing.x - oAtRing.ox, oAtRing.z - oAtRing.oz) < 1.5, oAtRing ? `ring ${ringMax.toFixed(1)} m across at (${oAtRing.x.toFixed(1)}, ${oAtRing.z.toFixed(1)}); rival at (${oAtRing.ox.toFixed(1)}, ${oAtRing.oz.toFixed(1)}) when it formed` : 'no ring');
 const frHits = await hitsOn();
 check('the ring burns a rival 6 m away, several times', frHits.filter(h => h === 'fireTrap').length >= 3, `rival hit by: ${frHits.join(',') || 'nothing'}`);
 check('the ring of fire burns out within two seconds', ringT > 0 && ringT / 30 <= 2.0 && !(await S(() => window.__EF.world.bending.weapons.traps.length)), `burned ${(ringT / 30).toFixed(2)} s`);

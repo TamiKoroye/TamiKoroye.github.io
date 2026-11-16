@@ -408,7 +408,7 @@ export class Bending {
     const mesh = new THREE.Mesh(this.pillarGeo, this.mat.stone);
     mesh.scale.set(0.75, 1.05, 0.75); mesh.position.set(x, gy - 1.6, z); mesh.castShadow = mesh.receiveShadow = true;
     w.scene.add(mesh);
-    const col = { kind: 'b', x, z, hx: 0.6, hz: 0.6, top: gy + 1.45, walk: true, mesh, pillar: true };
+    const col = { kind: 'b', x, z, hx: 0.6, hz: 0.6, top: gy + 0.07, walk: true, mesh, pillar: true };   // the top rises with the rock (updated every frame)
     w.arena.colliders.push(col); w.arena.cameraBlockers.push(mesh);
     const p = { owner: f, mesh, col, t: 0, life: 14, gy };
     this.pillars.push(p);
