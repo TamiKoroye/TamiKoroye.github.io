@@ -251,10 +251,12 @@ export class Fighter {
       const canStrike = this.free('attack') && !this.guarding && !this.holding;
       // one buffered strike starts per frame, the earlier press first (more buffer time used up); the other stays
       // queued for the next opening instead of replacing this one in the same frame
-      const handFirst = this.buf.hand && (!this.buf.leg || this.buf.hand <= this.buf.leg);
+      // with both waiting, the opposite of the last strike goes first, so alternating presses (hand, leg, hand, leg)
+      // come out alternating even when a slow strike's recovery lets both queue up
+      const handFirst = this.buf.hand && (!this.buf.leg || (this.lastStrike ? this.lastStrike === 'leg' : this.buf.hand <= this.buf.leg));
       let struck = false;
       if (this.buf.hand && handFirst && !this.charging && canStrike) {
-        struck = true;
+        struck = true; this.lastStrike = 'hand';
         this.buf.hand = 0; this.dodgeT = 0;
         if (this.counterT > 0) { this.counterT = 0; this.startAction('counter'); w.combat.lunge(this, ACTIONS.counter); w.popup(this, 'COUNTER', true); w.audio.whoosh(0.9); }
         else if (B.spiralRelease && B.spiralRelease(this)) { w.popup(this, 'RELEASE', true); }
@@ -262,7 +264,7 @@ export class Fighter {
         this.handHoldT = 0;
       }
       if (this.buf.leg && !struck && !this.charging && canStrike) {
-        this.buf.leg = 0; this.dodgeT = 0;
+        this.buf.leg = 0; this.dodgeT = 0; this.lastStrike = 'leg';
         if (!this.onGround && (this.pos.y - this.groundY > 0.4 || this.airTime > 0.12) && this.vel.y > -12 && st.tech.airKick && !(this.mob && this.mob.kind === 'surf')) {
           // in the air: a jumping kick, the right foot first, then the left, then the right again
           this.airKickN = (this.airKickN || 0) + 1; this.startTech(st.tech.airKick, this.airKickN % 2 ? -1 : 1, true);
