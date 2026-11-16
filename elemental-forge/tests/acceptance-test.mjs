@@ -79,7 +79,7 @@ const frame = () => page.evaluate(() => {
   E.step(1 / 30);
   const name = h ? (h.curName || '').split('|')[0] : null;
   return { el: p.el, act: p.action, tech: p.tech ? p.tech.name : null, guard: p.guarding, hold: p.holding, charge: p.charging, moving: Math.hypot(p.vel.x, p.vel.z) > 1, en: p.en, unp: !!(p.unpowered && p.action === 'tech'),
-    hero: !!h, clip: name, layer: h && h.low ? h.lowName.split('|')[0] : null, authored: !!(name && E.MOCAP[name]), wU: h ? h.wU : 1, wL: h ? h.wL : 1, counter: p.action === 'counter', hp: p.hp, ohp: E.opp.hp };
+    hero: !!h, clip: name, layer: h && h.low ? h.lowName.split('|')[0] : null, authored: !!(name && (E.MOCAP[name.split('|')[0]] || (h && h.actions[name.split('|')[0]]))),   /* any clip the character plays: the retargeted pack or its own UAL library (procedural blending is caught by wU / wL) */ wU: h ? h.wU : 1, wL: h ? h.wL : 1, counter: p.action === 'counter', hp: p.hp, ohp: E.opp.hp };
 });
 const log = [];
 const run = async (n) => { for (let i = 0; i < n; i++) log.push(await frame()); };
