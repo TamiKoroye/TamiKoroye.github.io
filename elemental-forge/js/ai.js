@@ -142,7 +142,8 @@ export class AI {
     }
     if (this.reaction) {
       this.reactT -= dt;
-      if (this.reactT <= 0) {
+      // a decision to evade is kept until the fighter can act (a stagger would otherwise use it up)
+      if (this.reactT <= 0 && !(this.reaction === 'dodge' && !f.free('dodge') && (f.stunT > 0 || f.reacting()))) {
         if (this.reaction === 'dodge') {
           const s = Math.random() < 0.5 ? -1 : 1;
           inp.mx = -tz * s; inp.mz = tx * s; inp.dodge = true;
