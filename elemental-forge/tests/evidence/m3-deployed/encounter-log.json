@@ -1,0 +1,947 @@
+{
+ "base": "https://tamikoroye.github.io/elemental-forge-dev/",
+ "summary": {
+  "earth": {
+   "load": {
+    "mode": "authored",
+    "character": "ok",
+    "clipsDecoded": 100,
+    "clipsExpected": 100,
+    "missing": [],
+    "errors": [],
+    "ok": true
+   },
+   "errors": [],
+   "frames": 552,
+   "steps": [
+    {
+     "step": "1. Approach",
+     "frames": [
+      45,
+      165
+     ],
+     "note": null,
+     "rivalHp": [
+      100,
+      100
+     ],
+     "playerHp": [
+      100,
+      100
+     ],
+     "playerTechniques": [],
+     "rivalActions": [
+      "Fire Fist"
+     ]
+    },
+    {
+     "step": "2. Opponent attacks",
+     "frames": [
+      165,
+      221
+     ],
+     "note": "rival used Fire Fist",
+     "rivalHp": [
+      100,
+      100
+     ],
+     "playerHp": [
+      100,
+      100
+     ],
+     "playerTechniques": [],
+     "rivalActions": [
+      "landHigh",
+      "Fire Fist"
+     ]
+    },
+    {
+     "step": "3. Evade / defend",
+     "frames": [
+      221,
+      235
+     ],
+     "note": null,
+     "rivalHp": [
+      100,
+      100
+     ],
+     "playerHp": [
+      100,
+      100
+     ],
+     "playerTechniques": [
+      "GUARD"
+     ],
+     "rivalActions": [
+      "Fire Fist"
+     ]
+    },
+    {
+     "step": "4. Hand counter",
+     "frames": [
+      235,
+      250
+     ],
+     "note": null,
+     "rivalHp": [
+      100,
+      100
+     ],
+     "playerHp": [
+      100,
+      85
+     ],
+     "playerTechniques": [
+      "Stone Punch"
+     ],
+     "rivalActions": [
+      "Dragon Descent"
+     ]
+    },
+    {
+     "step": "5. Leg follow-up",
+     "frames": [
+      250,
+      268
+     ],
+     "note": null,
+     "rivalHp": [
+      100,
+      100
+     ],
+     "playerHp": [
+      85,
+      85
+     ],
+     "playerTechniques": [],
+     "rivalActions": [
+      "Dragon Descent",
+      "dodge"
+     ]
+    },
+    {
+     "step": "6. Sustained bending, steered",
+     "frames": [
+      268,
+      316
+     ],
+     "note": null,
+     "rivalHp": [
+      100,
+      100
+     ],
+     "playerHp": [
+      85,
+      85
+     ],
+     "playerTechniques": [],
+     "rivalActions": [
+      "Running Kick"
+     ]
+    },
+    {
+     "step": "7. Opponent reacts / counters",
+     "frames": [
+      316,
+      362
+     ],
+     "note": "rival: Running Kick, Flame Kick",
+     "rivalHp": [
+      100,
+      100
+     ],
+     "playerHp": [
+      85,
+      85
+     ],
+     "playerTechniques": [
+      "GUARD"
+     ],
+     "rivalActions": [
+      "Running Kick",
+      "Flame Kick",
+      "stagger"
+     ]
+    },
+    {
+     "step": "8. Elemental mobility (DODGE held)",
+     "frames": [
+      362,
+      432
+     ],
+     "note": null,
+     "rivalHp": [
+      100,
+      100
+     ],
+     "playerHp": [
+      85,
+      85
+     ],
+     "playerTechniques": [
+      "dodge:roll"
+     ],
+     "rivalActions": [
+      "Fire Fist"
+     ]
+    },
+    {
+     "step": "9. Respond",
+     "frames": [
+      432,
+      462
+     ],
+     "note": null,
+     "rivalHp": [
+      100,
+      91
+     ],
+     "playerHp": [
+      85,
+      85
+     ],
+     "playerTechniques": [
+      "Stone Punch",
+      "Earth Kick"
+     ],
+     "rivalActions": [
+      "stagger"
+     ]
+    },
+    {
+     "step": "10. Earth Stomp (rocks erupt under the rival)",
+     "frames": [
+      462,
+      532
+     ],
+     "note": null,
+     "rivalHp": [
+      91,
+      76
+     ],
+     "playerHp": [
+      85,
+      80
+     ],
+     "playerTechniques": [
+      "Earth Kick",
+      "Earth Sweep"
+     ],
+     "rivalActions": [
+      "stagger",
+      "GUARD",
+      "Dragon Descent"
+     ]
+    }
+   ]
+  },
+  "fire": {
+   "load": {
+    "mode": "authored",
+    "character": "ok",
+    "clipsDecoded": 100,
+    "clipsExpected": 100,
+    "missing": [],
+    "errors": [],
+    "ok": true
+   },
+   "errors": [],
+   "frames": 490,
+   "steps": [
+    {
+     "step": "1. Approach",
+     "frames": [
+      45,
+      150
+     ],
+     "note": null,
+     "rivalHp": [
+      100,
+      100
+     ],
+     "playerHp": [
+      100,
+      100
+     ],
+     "playerTechniques": [],
+     "rivalActions": [
+      "Running Kick"
+     ]
+    },
+    {
+     "step": "2. Opponent attacks",
+     "frames": [
+      150,
+      172
+     ],
+     "note": "rival used Dragon Stream",
+     "rivalHp": [
+      100,
+      100
+     ],
+     "playerHp": [
+      100,
+      100
+     ],
+     "playerTechniques": [],
+     "rivalActions": [
+      "Dragon Stream"
+     ]
+    },
+    {
+     "step": "3. Evade / defend",
+     "frames": [
+      172,
+      182
+     ],
+     "note": null,
+     "rivalHp": [
+      100,
+      100
+     ],
+     "playerHp": [
+      100,
+      100
+     ],
+     "playerTechniques": [
+      "dodge:dash"
+     ],
+     "rivalActions": [
+      "Dragon Stream"
+     ]
+    },
+    {
+     "step": "4. Hand counter",
+     "frames": [
+      182,
+      197
+     ],
+     "note": null,
+     "rivalHp": [
+      100,
+      100
+     ],
+     "playerHp": [
+      100,
+      100
+     ],
+     "playerTechniques": [
+      "Fire Fist"
+     ],
+     "rivalActions": [
+      "Dragon Stream"
+     ]
+    },
+    {
+     "step": "5. Leg follow-up",
+     "frames": [
+      197,
+      215
+     ],
+     "note": null,
+     "rivalHp": [
+      100,
+      100
+     ],
+     "playerHp": [
+      100,
+      100
+     ],
+     "playerTechniques": [
+      "Flame Kick"
+     ],
+     "rivalActions": [
+      "Dragon Stream",
+      "Dragon Release"
+     ]
+    },
+    {
+     "step": "6. Sustained bending, steered",
+     "frames": [
+      215,
+      263
+     ],
+     "note": null,
+     "rivalHp": [
+      100,
+      94
+     ],
+     "playerHp": [
+      100,
+      100
+     ],
+     "playerTechniques": [
+      "Fire Fist",
+      "sustained"
+     ],
+     "rivalActions": [
+      "Dragon Release",
+      "hit",
+      "GUARD"
+     ]
+    },
+    {
+     "step": "7. Opponent reacts / counters",
+     "frames": [
+      263,
+      303
+     ],
+     "note": "rival did not strike",
+     "rivalHp": [
+      94,
+      94
+     ],
+     "playerHp": [
+      100,
+      100
+     ],
+     "playerTechniques": [],
+     "rivalActions": [
+      "hit"
+     ]
+    },
+    {
+     "step": "8. Elemental mobility (DODGE held)",
+     "frames": [
+      303,
+      370
+     ],
+     "note": null,
+     "rivalHp": [
+      94,
+      94
+     ],
+     "playerHp": [
+      100,
+      93
+     ],
+     "playerTechniques": [
+      "dodge:dash",
+      "flame jets"
+     ],
+     "rivalActions": [
+      "Water Whip",
+      "Running Kick"
+     ]
+    },
+    {
+     "step": "9. Respond",
+     "frames": [
+      370,
+      400
+     ],
+     "note": null,
+     "rivalHp": [
+      94,
+      94
+     ],
+     "playerHp": [
+      93,
+      93
+     ],
+     "playerTechniques": [
+      "Fire Fist",
+      "Flame Kick"
+     ],
+     "rivalActions": [
+      "Running Kick"
+     ]
+    },
+    {
+     "step": "10. Fire Stomp (expanding ring)",
+     "frames": [
+      400,
+      470
+     ],
+     "note": null,
+     "rivalHp": [
+      94,
+      78
+     ],
+     "playerHp": [
+      93,
+      93
+     ],
+     "playerTechniques": [
+      "Spinning Flame Kick"
+     ],
+     "rivalActions": [
+      "Running Kick",
+      "stagger"
+     ]
+    }
+   ]
+  },
+  "water": {
+   "load": {
+    "mode": "authored",
+    "character": "ok",
+    "clipsDecoded": 100,
+    "clipsExpected": 100,
+    "missing": [],
+    "errors": [],
+    "ok": true
+   },
+   "errors": [],
+   "frames": 557,
+   "steps": [
+    {
+     "step": "1. Approach",
+     "frames": [
+      45,
+      165
+     ],
+     "note": null,
+     "rivalHp": [
+      100,
+      100
+     ],
+     "playerHp": [
+      100,
+      100
+     ],
+     "playerTechniques": [],
+     "rivalActions": [
+      "Fire Fist"
+     ]
+    },
+    {
+     "step": "2. Opponent attacks",
+     "frames": [
+      165,
+      213
+     ],
+     "note": "rival used Dragon Descent",
+     "rivalHp": [
+      100,
+      100
+     ],
+     "playerHp": [
+      100,
+      100
+     ],
+     "playerTechniques": [],
+     "rivalActions": [
+      "Dragon Descent"
+     ]
+    },
+    {
+     "step": "3. Evade / defend",
+     "frames": [
+      213,
+      227
+     ],
+     "note": null,
+     "rivalHp": [
+      100,
+      100
+     ],
+     "playerHp": [
+      100,
+      100
+     ],
+     "playerTechniques": [
+      "GUARD"
+     ],
+     "rivalActions": [
+      "Dragon Descent",
+      "stagger"
+     ]
+    },
+    {
+     "step": "4. Hand counter",
+     "frames": [
+      227,
+      242
+     ],
+     "note": null,
+     "rivalHp": [
+      100,
+      86
+     ],
+     "playerHp": [
+      100,
+      98
+     ],
+     "playerTechniques": [],
+     "rivalActions": [
+      "stagger"
+     ]
+    },
+    {
+     "step": "5. Leg follow-up",
+     "frames": [
+      242,
+      260
+     ],
+     "note": null,
+     "rivalHp": [
+      86,
+      78
+     ],
+     "playerHp": [
+      98,
+      96
+     ],
+     "playerTechniques": [
+      "Crescent Water Kick"
+     ],
+     "rivalActions": [
+      "stagger",
+      "Running Kick"
+     ]
+    },
+    {
+     "step": "6. Sustained bending, steered",
+     "frames": [
+      260,
+      308
+     ],
+     "note": null,
+     "rivalHp": [
+      78,
+      66
+     ],
+     "playerHp": [
+      96,
+      88
+     ],
+     "playerTechniques": [
+      "Water Whip",
+      "sustained"
+     ],
+     "rivalActions": [
+      "stagger",
+      "hit",
+      "GUARD",
+      "Fire Fist"
+     ]
+    },
+    {
+     "step": "7. Opponent reacts / counters",
+     "frames": [
+      308,
+      348
+     ],
+     "note": "rival did not strike",
+     "rivalHp": [
+      66,
+      66
+     ],
+     "playerHp": [
+      88,
+      70
+     ],
+     "playerTechniques": [],
+     "rivalActions": []
+    },
+    {
+     "step": "8. Elemental mobility (DODGE held)",
+     "frames": [
+      348,
+      418
+     ],
+     "note": null,
+     "rivalHp": [
+      66,
+      66
+     ],
+     "playerHp": [
+      70,
+      70
+     ],
+     "playerTechniques": [
+      "dodge:slide"
+     ],
+     "rivalActions": [
+      "landHigh",
+      "Fire Fist"
+     ]
+    },
+    {
+     "step": "9. Respond",
+     "frames": [
+      418,
+      448
+     ],
+     "note": null,
+     "rivalHp": [
+      66,
+      66
+     ],
+     "playerHp": [
+      70,
+      70
+     ],
+     "playerTechniques": [
+      "Water Whip",
+      "Crescent Water Kick"
+     ],
+     "rivalActions": []
+    },
+    {
+     "step": "10. Spiral streams, redirected one by one",
+     "frames": [
+      448,
+      537
+     ],
+     "note": null,
+     "rivalHp": [
+      66,
+      66
+     ],
+     "playerHp": [
+      70,
+      53
+     ],
+     "playerTechniques": [
+      "Dragon Stream",
+      "Dragon Release"
+     ],
+     "rivalActions": [
+      "Dragon Descent",
+      "Flame Kick"
+     ]
+    }
+   ]
+  },
+  "air": {
+   "load": {
+    "mode": "authored",
+    "character": "ok",
+    "clipsDecoded": 100,
+    "clipsExpected": 100,
+    "missing": [],
+    "errors": [],
+    "ok": true
+   },
+   "errors": [],
+   "frames": 572,
+   "steps": [
+    {
+     "step": "1. Approach",
+     "frames": [
+      45,
+      165
+     ],
+     "note": null,
+     "rivalHp": [
+      100,
+      100
+     ],
+     "playerHp": [
+      100,
+      100
+     ],
+     "playerTechniques": [],
+     "rivalActions": [
+      "Stone Punch"
+     ]
+    },
+    {
+     "step": "2. Opponent attacks",
+     "frames": [
+      165,
+      199
+     ],
+     "note": "rival used Running Kick",
+     "rivalHp": [
+      100,
+      100
+     ],
+     "playerHp": [
+      100,
+      100
+     ],
+     "playerTechniques": [],
+     "rivalActions": [
+      "Running Kick"
+     ]
+    },
+    {
+     "step": "3. Evade / defend",
+     "frames": [
+      199,
+      211
+     ],
+     "note": null,
+     "rivalHp": [
+      100,
+      100
+     ],
+     "playerHp": [
+      100,
+      100
+     ],
+     "playerTechniques": [
+      "dodge:airdash"
+     ],
+     "rivalActions": [
+      "Running Kick"
+     ]
+    },
+    {
+     "step": "4. Hand counter",
+     "frames": [
+      211,
+      226
+     ],
+     "note": null,
+     "rivalHp": [
+      100,
+      100
+     ],
+     "playerHp": [
+      100,
+      100
+     ],
+     "playerTechniques": [
+      "Air Whip"
+     ],
+     "rivalActions": [
+      "Running Kick",
+      "dodge"
+     ]
+    },
+    {
+     "step": "5. Leg follow-up",
+     "frames": [
+      226,
+      244
+     ],
+     "note": null,
+     "rivalHp": [
+      100,
+      100
+     ],
+     "playerHp": [
+      100,
+      100
+     ],
+     "playerTechniques": [
+      "Crescent Air Kick"
+     ],
+     "rivalActions": [
+      "Ground Rupture"
+     ]
+    },
+    {
+     "step": "6. Sustained bending, steered",
+     "frames": [
+      244,
+      292
+     ],
+     "note": null,
+     "rivalHp": [
+      100,
+      99
+     ],
+     "playerHp": [
+      100,
+      100
+     ],
+     "playerTechniques": [
+      "Air Whip",
+      "sustained"
+     ],
+     "rivalActions": [
+      "Ground Rupture",
+      "GUARD"
+     ]
+    },
+    {
+     "step": "7. Opponent reacts / counters",
+     "frames": [
+      292,
+      350
+     ],
+     "note": "rival: Running Kick, Stone Punch",
+     "rivalHp": [
+      99,
+      99
+     ],
+     "playerHp": [
+      100,
+      100
+     ],
+     "playerTechniques": [
+      "GUARD"
+     ],
+     "rivalActions": [
+      "Running Kick",
+      "Stone Punch"
+     ]
+    },
+    {
+     "step": "8. Elemental mobility (DODGE held)",
+     "frames": [
+      350,
+      452
+     ],
+     "note": null,
+     "rivalHp": [
+      99,
+      99
+     ],
+     "playerHp": [
+      100,
+      100
+     ],
+     "playerTechniques": [
+      "dodge:airdash",
+      "Air Whip"
+     ],
+     "rivalActions": [
+      "GUARD",
+      "Ground Rupture"
+     ]
+    },
+    {
+     "step": "9. Respond",
+     "frames": [
+      452,
+      482
+     ],
+     "note": null,
+     "rivalHp": [
+      99,
+      93
+     ],
+     "playerHp": [
+      100,
+      83
+     ],
+     "playerTechniques": [
+      "Air Whip"
+     ],
+     "rivalActions": [
+      "Ground Rupture",
+      "stagger"
+     ]
+    },
+    {
+     "step": "10. Air Compression",
+     "frames": [
+      482,
+      552
+     ],
+     "note": null,
+     "rivalHp": [
+      93,
+      93
+     ],
+     "playerHp": [
+      83,
+      68
+     ],
+     "playerTechniques": [],
+     "rivalActions": [
+      "stagger",
+      "Running Kick"
+     ]
+    }
+   ]
+  }
+ }
+}

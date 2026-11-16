@@ -96,9 +96,38 @@ Existing tests changed, with the reason:
   - it catches a fireball;
   - HAND throws it and it hits.
 
-## 9. Remaining problems
+## 9. Results on the deployed dev build (r8, commit 6b27d7d)
 
-See the end of the report in the conversation for the latest run. Known now:
+https://tamikoroye.github.io/elemental-forge-dev/, tested in headless Chromium through the network proxy (not on a phone):
+
+| Suite | Result |
+|---|---|
+| M3 effects | 54/54 |
+| Milestone | 23/23 |
+| Overhaul | 52/52 |
+| Play | 86/86 |
+| Acceptance | 13/15 on the first run; 15/15 on two reruns |
+
+The acceptance failures were check 6 (the strike that follows a guard) and check 8 (six quick attacks). The rival AI is live in that test, and the same build failed once and passed twice.
+
+Bugs found and fixed while making these pass:
+- Whips missed a rival who had been knocked back past their reach. The strike now steps in.
+- The overhead and diagonal whips laid the rope about 9 degrees off the aim. The rope now follows the aim alone through the lash.
+- Dragon Descent leapt in place. The leap now carries the fighter to the rival and stops where the kicking foot lands.
+- The thrown Dragon Stream kept flying after it struck. It now splashes out 0.15 s after impact.
+- Two buffered strikes started in the same frame, so the HAND strike was replaced by the LEG strike. One starts per frame now, the earlier press first.
+- A press made during a kick's recovery expired too early. The input buffer rose from 0.35 s to 0.45 s.
+
+Evidence is in `tests/evidence/m3-deployed/`:
+- close-up sheets of the whips, kicks, all four SPECIALs, Earth gathering and the get-up;
+- normal-camera frames;
+- every suite log;
+- four unscripted encounters in the barn ruin (`encounter-<element>.mp4`) with a step log. The rival is the game's own AI on Normal.
+
+## 10. Remaining problems
+
+- Acceptance checks 6 and 8 depend on the live AI rival. They failed in one of three deployed runs.
+- At the normal camera distance, the whips and kick arcs are small on screen. They read clearly in the close-ups.
 - Air's stance is a held Tai Chi posture. There is no circle-walking (Baguazhang stepping) clip in the supplied files, so Air's footwork is the standard walk and strafe.
 - The Tai Chi based clips (`water_redirect`, `water_palm`) are played at 1.4 to 2.3 times the captured speed and still read as slow.
 - The whip clips come from boxing and sword takes. Their arm paths are correct, but the legs step the way those takes do.
