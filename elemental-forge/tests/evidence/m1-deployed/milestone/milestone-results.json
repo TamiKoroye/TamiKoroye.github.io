@@ -1,0 +1,144 @@
+{
+ "base": "https://tamikoroye.github.io/elemental-forge-dev/",
+ "build": "dev 2026-11-16 r6 · commit e4feda9 · character OK · 74/74 martial-arts clips decoded",
+ "results": [
+  {
+   "section": "Load",
+   "name": "build loads its character and every clip",
+   "ok": true,
+   "detail": "74/74 clips, character ok"
+  },
+  {
+   "section": "Load",
+   "name": "fight phase begins",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "Fire: flame-jet jump",
+   "name": "holding JUMP drives the firebender higher than a plain jump",
+   "ok": true,
+   "detail": "plain jump 0.56 m, jet jump 3.55 m, 25 frames of thrust"
+  },
+  {
+   "section": "Fire: flame-jet jump",
+   "name": "the flame jets cost energy",
+   "ok": true,
+   "detail": "22 energy used"
+  },
+  {
+   "section": "Fire: flame-jet jump",
+   "name": "a jet landing bursts flame outward",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "Water: spiral streams SPECIAL",
+   "name": "SPECIAL gathers three streams circling the body",
+   "ok": true,
+   "detail": "3 streams"
+  },
+  {
+   "section": "Water: spiral streams SPECIAL",
+   "name": "the streams stay below the head",
+   "ok": true,
+   "detail": "highest stream point 1.11 m, head 1.41 m"
+  },
+  {
+   "section": "Water: spiral streams SPECIAL",
+   "name": "circulating streams catch an incoming fireball",
+   "ok": true,
+   "detail": "caught 1, player hp 100"
+  },
+  {
+   "section": "Water: spiral streams SPECIAL",
+   "name": "HAND releases the streams at the opponent",
+   "ok": true,
+   "detail": "rival hp 82"
+  },
+  {
+   "section": "Water: icebending",
+   "name": "the tidal sweep freezes into a line of ice spikes",
+   "ok": true,
+   "detail": "5 ice spikes"
+  },
+  {
+   "section": "Water: icebending",
+   "name": "the ice spikes hit the opponent",
+   "ok": true,
+   "detail": "rival hp 85 (wave and spikes together)"
+  },
+  {
+   "section": "Water: icebending",
+   "name": "fire melts ice",
+   "ok": true,
+   "detail": "spike life jumped to 1.43 s (it would be <0.8 s without the fireball)"
+  },
+  {
+   "section": "Air: Baguazhang circling evasion",
+   "name": "a sideways air dodge circles around the opponent",
+   "ok": true,
+   "detail": "109 degrees around, distance 4.0 -> 4.0 m"
+  },
+  {
+   "section": "Air: Baguazhang circling evasion",
+   "name": "the bender keeps facing the opponent while circling",
+   "ok": true,
+   "detail": "6 degrees off"
+  },
+  {
+   "section": "Air: Baguazhang circling evasion",
+   "name": "the circle ends in a counter window: HAND counters from the flank",
+   "ok": true,
+   "detail": "counter window 0.32 s, action counter"
+  },
+  {
+   "section": "Kicks while running",
+   "name": "earth: LEG while running gives a running kick that keeps momentum",
+   "ok": true,
+   "detail": "Running Kick, 4.6 m/s during the kick"
+  },
+  {
+   "section": "Kicks while running",
+   "name": "fire: LEG while running gives a running kick that keeps momentum",
+   "ok": true,
+   "detail": "Running Kick, 4.6 m/s during the kick"
+  },
+  {
+   "section": "Kicks while running",
+   "name": "water: LEG while running gives a running kick that keeps momentum",
+   "ok": true,
+   "detail": "Running Kick, 4.6 m/s during the kick"
+  },
+  {
+   "section": "Kicks while running",
+   "name": "air: LEG while running gives a running kick that keeps momentum",
+   "ok": true,
+   "detail": "Running Kick, 4.6 m/s during the kick"
+  },
+  {
+   "section": "Opponent reads strikes",
+   "name": "master opponent guards or evades most close strikes",
+   "ok": true,
+   "detail": "9/10 reacted"
+  },
+  {
+   "section": "Opponent reads strikes",
+   "name": "training opponent reacts less than master",
+   "ok": true,
+   "detail": "training 0/10, master 9/10"
+  },
+  {
+   "section": "Opponent combinations and counters",
+   "name": "master opponent strings strikes into combinations",
+   "ok": true,
+   "detail": "6/6 close engagements had a strike following the previous one with no idle gap (under 0.25 s): Spinning Flame Kick+Flame Kick | Fire Fist+Fire Fist+Flame Kick | Fire Fist+Running Kick+Flame Kick | Fire Fist+Fire Fist+Flame Kick | Fire Fist+Fire Fist+Flame Kick | Fire Fist+Flame Kick+Spinning Flame Kick"
+  },
+  {
+   "section": "Regression",
+   "name": "no runtime errors during the test",
+   "ok": true,
+   "detail": ""
+  }
+ ]
+}
