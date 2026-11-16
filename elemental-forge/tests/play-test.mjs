@@ -341,7 +341,7 @@ if (boulder) {
   // (17 Nov brief: Air's JUMP is now flight and Earth's a 4 m launch; Fire's plain jump is used to hop onto the boulder)
   await setup({ el: 'fire', locked: false, p: [boulder.x, 0, boulder.z - boulder.r - 1.1], o: [20, 0, 20] });   // Fire's hop is shorter than Air's old double jump
   await S(() => { window.__EF.player.faceYaw = 0; window.__EF.camCtl.yaw = 0; });
-  await stick(0, -45); await press('btn-jump', 1);
+  await stick(0, -45); await stepN(2); await press('btn-jump', 2);   // a one-frame press right after the stick touch was not registered
   let onB = 0, released = false;
   const trace = [];
   for (let i = 0; i < 40; i++) {
