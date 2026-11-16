@@ -339,17 +339,20 @@ check('a pillar raised under the player throws them up and they stand on its top
 const boulder = await S(() => { const c = window.__EF.world.arena.colliders.find(c => c.rock && c.walk && c.top < 1.25 && Math.hypot(c.x, c.z) < 26); return c ? { x: c.x, z: c.z, r: c.r, top: c.top } : null; });
 if (boulder) {
   // (17 Nov brief: Air's JUMP is now flight and Earth's a 4 m launch; Fire's plain jump is used to hop onto the boulder)
-  await setup({ el: 'fire', locked: false, p: [boulder.x, 0, boulder.z - boulder.r - 1.6], o: [20, 0, 20] });
+  await setup({ el: 'fire', locked: false, p: [boulder.x, 0, boulder.z - boulder.r - 1.1], o: [20, 0, 20] });   // Fire's hop is shorter than Air's old double jump
   await S(() => { window.__EF.player.faceYaw = 0; window.__EF.camCtl.yaw = 0; });
   await stick(0, -45); await press('btn-jump', 1);
   let onB = 0, released = false;
+  const trace = [];
   for (let i = 0; i < 40; i++) {
     await stepN(1);
-    const st = await S((b) => { const p = window.__EF.player; return { d: Math.hypot(p.pos.x - b.x, p.pos.z - b.z), y: p.onGround ? p.pos.y : 0 }; }, boulder);
+    const st = await S((b) => { const p = window.__EF.player; return { d: Math.hypot(p.pos.x - b.x, p.pos.z - b.z), y: p.onGround ? p.pos.y : 0, h: p.pos.y }; }, boulder);
+    if (process.env.DBG) trace.push(`${st.d.toFixed(2)}/${st.h.toFixed(2)}`);
     if (!released && st.d < 0.35) { released = true; await stickUp(); }   // let go of the stick once over the boulder
     onB = Math.max(onB, st.y);
   }
   if (!released) await stickUp();
+  if (process.env.DBG) console.log('boulder', JSON.stringify(boulder), trace.join(' '));
   check('player can jump onto a boulder and stand on it', onB > boulder.top - 0.1, `boulder top ${boulder.top.toFixed(2)} m, standing at ${onB.toFixed(2)} m`);
 }
 // loose stone lifted from the arena
