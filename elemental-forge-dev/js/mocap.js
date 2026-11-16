@@ -33,7 +33,7 @@ export async function loadMocap() {
 export function requiredClips(styles) {
   const need = new Set(['hit_a', 'hit_b', 'ko', 'getup', 'dodge_side', 'dodge_side_M', 'dodge_back', 'block_hit', 'strafe', 'strafe_M', 'water_redirect']);
   for (const L of Object.values(LOOPS)) for (const n of Object.values(L)) need.add(n);
-  for (const st of Object.values(styles)) { const t = st.tech; for (const T of [t.hand, ...(t.leg || []), t.charged, t.special]) if (T && T.clip) for (const n of (Array.isArray(T.clip) ? T.clip : [T.clip])) need.add(n); }
+  for (const st of Object.values(styles)) { const t = st.tech; for (const T of [t.hand, ...(t.leg || []), t.legMove, t.charged, t.special]) if (T && T.clip) for (const n of (Array.isArray(T.clip) ? T.clip : [T.clip])) need.add(n); }
   return [...need].filter(n => !MOCAP[n]);
 }
 
@@ -67,7 +67,7 @@ const CLIP_SPEED = { water_palm: 2.3, water_tidal: 2.0, water_sphere: 1.5, earth
 
 const names = (T) => (Array.isArray(T.clip) ? T.clip : [T.clip]);
 function techList(st) {
-  const t = st.tech; return [t.hand, ...(t.leg || []), t.charged, t.special].filter(Boolean);
+  const t = st.tech; return [t.hand, ...(t.leg || []), t.legMove, t.charged, t.special].filter(Boolean);
 }
 
 // Rewrites dur / events / active window / jump / cancel of every technique that names a clip, keeping each

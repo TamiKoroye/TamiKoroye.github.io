@@ -9,7 +9,7 @@ import * as THREE from 'three';
 import { jaggedRockGeometry, HALF } from './arena.js';
 import { clamp, mulberry32, smooth01, rand } from './util.js';
 import { TOON_RAMP } from './hero.js';
-import { makeWaterWall, makeWaterRing, makeIceWall, makeWaterTube, waterMaterial } from './defence-fx.js';
+import { makeWaterWall, makeWaterRing, makeIceWall, makeWaterTube, waterMaterial, iceMat } from './defence-fx.js';
 
 const SPEC = {
   rock:     { el: 'earth', r: 0.36, speed: 30, grav: 6,  dmg: 12, knock: 6.5, level: 1, life: 4 },
@@ -46,6 +46,8 @@ export class Bending {
     this.rings = [];     // expanding area attacks (spin fire, tidal sweep, cyclone)
     this.spikes = [];    // seismic spikes
     this.pillars = [];   // raised stone platforms
+    this.spirals = [];   // water SPECIAL: streams circulating around the bender
+    this.iceShard = (() => { const g = new THREE.OctahedronGeometry(0.5, 0); g.scale(0.7, 2.2, 0.6); g.translate(0, 0.55, 0); return g; })();
     this.holds = new Map(); // fighter -> sustained technique state
     const rng = mulberry32(99);
     this.rockGeos = [0, 1, 2, 3, 4].map(() => jaggedRockGeometry(rng, 1, 0.3, 0.9));
@@ -145,6 +147,10 @@ export class Bending {
   launch(o, f, speedMul = 1, target) {
     const S = SPEC[o.kind];
     o.state = 'flying'; o.t = 0; o.life = S.life;
+    // a held object that has drifted inside an obstacle (orbiting through a boulder, say) is thrown from in front of
+    // the bender's chest instead, so it is not destroyed on the spot
+    const inside = this.world.arena.solidAt(o.pos, o.r * 0.6);
+    if (inside) { f.chestPos(o.pos); o.pos.y = Math.max(o.pos.y, (inside.top ?? 0) + o.r * 0.6 + 0.05); }
     const aim = target || f.input.aimPoint;
     const tgt = _a.copy(aim); if (S.grav > 0) tgt.y += o.r * 0.6;
     const speed = S.speed * speedMul;
@@ -262,12 +268,21 @@ export class Bending {
       }
       case 'water.charged': {
         const g = this.heldList(f, 'water'); g.forEach(o => this.kill(o, 'silent'));
-        this.ring(f, 'water', 3 + g.length * 1.0, 9, { dmg: 6 + g.length * 2, knock: 9, level: g.length >= 2 ? 2 : 1 }); w.audio.splash(1.3); w.shake(0.2, f.pos); return;
+        this.ring(f, 'water', 3 + g.length * 1.0, 9, { dmg: 6 + g.length * 2, knock: 9, level: g.length >= 2 ? 2 : 1 }); w.audio.splash(1.3); w.shake(0.2, f.pos);
+        // icebending: the wave's leading edge freezes into a line of ice spikes driven toward the aim
+        const fw = this.aimDir(f, f.pos, _v2).setY(0).normalize();
+        for (let i = 1; i <= 5; i++) this.spikes.push({ owner: f, ice: true, t: -0.12 - i * 0.06, pos: new THREE.Vector3(f.pos.x + fw.x * (1.3 + i * 1.2), f.groundY, f.pos.z + fw.z * (1.3 + i * 1.2)), mesh: null, hit: new Set() });
+        return;
       }
       case 'water.special': {
-        const g = this.heldList(f, 'water').filter(o => o.state === 'orbit');
-        if (g.length) this.kill(g[0], 'silent'); else if (f.en < 10) return; else f.en -= 10;
-        this.fire('sphere', f, this.forwardPoint(f, 0.9, 1.3)); w.audio.splash(0.6); return;
+        // Spiral streams: water is gathered from the ground (or from held globes, which make it stronger) into three
+        // streams circling the body below head height; they intercept projectiles and push attackers away while they
+        // circulate, then are released at the opponent one after another (HAND releases early)
+        if (this.spirals.some(sp => sp.owner === f)) return;
+        const g = this.heldList(f, 'water').filter(o => o.state === 'orbit'); g.forEach(o => this.kill(o, 'silent'));
+        const streams = [0, 1, 2].map(() => { const tb = makeWaterTube(22, 8); w.scene.add(tb.mesh); return tb; });
+        this.spirals.push({ owner: f, t: 0, streams, pts: streams.map(() => Array.from({ length: 12 }, () => new THREE.Vector3())), boost: g.length, tick: 0, released: -1, caught: 0 });
+        w.fx.splash(f.pos.clone().setY(f.pos.y + 0.2), 18); w.audio.splash(0.8); return;
       }
       // ---------------- air
       case 'air.hand': {
@@ -719,6 +734,7 @@ export class Bending {
     this.updateDefences(dt);   // first, so a defence raised this frame is already in place for projectiles
     this.updateObjects(dt);
     this.updateRings(dt);
+    this.updateSpirals(dt);
     this.updateEnvironment(dt);
     // one shared flickering light makes fire read as a light source without per-flame lights
     let fireN = 0; for (const o of this.objs) if (o.el === 'fire' && o.state !== 'dead') { fireN++; if (!this.lightBoost) this.light.position.copy(o.pos); }
@@ -967,14 +983,22 @@ export class Bending {
     for (const s of this.spikes) {
       s.t += dt;
       if (s.t >= 0 && !s.mesh) {
-        s.mesh = new THREE.Mesh(this.pillarGeo, this.mat.stone); s.mesh.scale.set(0.35, 0.9, 0.35); s.mesh.castShadow = true;
+        s.mesh = s.ice ? new THREE.Mesh(this.iceShard, iceMat) : new THREE.Mesh(this.pillarGeo, this.mat.stone);
+        if (s.ice) { s.mesh.rotation.set(rand(-0.25, 0.25), rand(0, 6), rand(-0.25, 0.25)); s.mesh.scale.setScalar(0.8 + Math.random() * 0.3); } else s.mesh.scale.set(0.35, 0.9, 0.35);
+        s.mesh.castShadow = true;
         s.mesh.position.copy(s.pos).setY(s.pos.y - 1); w.scene.add(s.mesh);
-        w.fx.debrisBurst(s.pos.clone().setY(s.pos.y + 0.1), 8, 3, 0.1, 0x7a6a58); w.audio.rumble(0.4);
+        if (s.ice) { w.fx.splash(s.pos.clone().setY(s.pos.y + 0.2), 6); w.audio.splash(0.4); } else { w.fx.debrisBurst(s.pos.clone().setY(s.pos.y + 0.1), 8, 3, 0.1, 0x7a6a58); w.audio.rumble(0.4); }
         for (const t of w.fighters) if (t !== s.owner && !t.dead && !s.hit.has(t) && Math.hypot(t.pos.x - s.pos.x, t.pos.z - s.pos.z) < 1.0 && t.pos.y - t.groundY < 0.6 && t.invuln <= 0) {
           s.hit.add(t); w.combat.damage(t, 9, new THREE.Vector3(t.pos.x - s.owner.pos.x, 0, t.pos.z - s.owner.pos.z).normalize(), s.owner, 'spike', t.chestPos(new THREE.Vector3()), 3, 2); t.vel.y = 7;
         }
       }
       if (s.mesh) { const k = s.t < 0.15 ? smooth01(s.t / 0.15) : s.t > 1.3 ? 1 - smooth01((s.t - 1.3) / 0.3) : 1; s.mesh.position.y = s.pos.y - 1 + k * 1.15; }
+      // ice reacts to the other elements: fire melts it (steam), rock projectiles shatter it
+      if (s.ice && s.mesh && s.t < 1.3) for (const o of this.objs) {
+        if (o.state !== 'flying' || (o.el !== 'fire' && o.el !== 'earth') || Math.hypot(o.pos.x - s.pos.x, o.pos.z - s.pos.z) > 0.9 || o.pos.y > s.pos.y + 1.6) continue;
+        s.t = 1.3; if (o.el === 'fire') { w.fx.steam(s.pos.clone().setY(s.pos.y + 0.6), 10); this.kill(o, 'steam'); } else { w.fx.debrisBurst(s.pos.clone().setY(s.pos.y + 0.6), 12, 3, 0.08, 0xbfe8ff); this.kill(o); }
+        break;
+      }
       if (s.t > 1.6) { if (s.mesh) w.scene.remove(s.mesh); s.dead = true; }
     }
     this.spikes = this.spikes.filter(s => !s.dead);
@@ -993,7 +1017,67 @@ export class Bending {
     w.arena.updateLoose(dt, w.fx);
   }
 
+  // HAND during the circulation releases the streams early; returns true if it did
+  spiralRelease(f) {
+    const sp = this.spirals.find(s => s.owner === f && s.t > 0.45 && s.released < 0);
+    if (!sp) return false;
+    sp.released = 0; return true;
+  }
+  updateSpirals(dt) {
+    const w = this.world;
+    for (const sp of this.spirals) {
+      const f = sp.owner; sp.t += dt; sp.tick -= dt;
+      if (f.dead || f.el !== 'water' || f.reacting() && f.action === 'down') sp.released = sp.released < 0 ? 99 : sp.released;   // knocked down: the water collapses
+      if (sp.released < 0 && sp.t > 2.6) sp.released = 0;
+      const gather = smooth01(Math.min(1, sp.t / 0.45)), R = 0.75 + 0.35 * gather;
+      sp.streams.forEach((tb, i) => {
+        const gone = sp.released >= 0 && sp.released > i * 0.12;
+        if (gone) { tb.mesh.visible = false; return; }
+        const pts = sp.pts[i], base = sp.t * 5.2 + i * Math.PI * 2 / 3;
+        for (let k = 0; k < 12; k++) {
+          const a = base - k * 0.2, hh = 0.45 + 0.42 * Math.sin(sp.t * 2.3 + i * 2.1 - k * 0.12) + 0.25;   // between 0.3 m and 1.35 m: the head stays clear
+          pts[k].set(f.pos.x + Math.sin(a) * R, f.pos.y + 0.1 + (hh - 0.1) * gather, f.pos.z + Math.cos(a) * R);
+        }
+        tb.set(pts, (t) => (0.13 + 0.03 * sp.boost) * (1 - t * 0.7) * (0.3 + 0.7 * gather), sp.t);
+        if (Math.random() < dt * 8) w.fx.splash(pts[0], 1);
+      });
+      if (sp.released < 0) {
+        // circulating: intercept projectiles and push attackers out
+        for (const o of this.objs) {
+          if (o.state !== 'flying' || o.owner === f) continue;
+          if (Math.hypot(o.pos.x - f.pos.x, o.pos.z - f.pos.z) > R + 0.5 || o.pos.y < f.pos.y - 0.2 || o.pos.y > f.pos.y + 1.7) continue;
+          sp.caught++; this.kill(o, o.el === 'fire' ? 'steam' : undefined);
+          if (sp.caught === 1 || Math.random() < 0.3) w.popup(f, o.el === 'water' ? 'ABSORBED' : 'CAUGHT', false);
+        }
+        if (sp.tick <= 0) {
+          sp.tick = 0.35;
+          for (const t of w.fighters) {
+            if (t === f || t.dead || t.invuln > 0) continue;
+            const dx = t.pos.x - f.pos.x, dz = t.pos.z - f.pos.z, d = Math.hypot(dx, dz) || 1;
+            if (d < R + 0.7 && Math.abs(t.pos.y - f.pos.y) < 1.5) {
+              // the circling water shoves attackers out; it stings once, it does not grind them down
+              t.ext.x += dx / d * 5; t.ext.z += dz / d * 5;
+              if (!(sp.stung ||= new Set()).has(t)) { sp.stung.add(t); w.combat.damage(t, 3, _v.set(dx / d, 0, dz / d), f, 'spiral', t.chestPos(new THREE.Vector3()), 1, 0); }
+            }
+          }
+          w.audio.splash(0.25);
+        }
+      } else if (sp.released < 99) {
+        // release: each stream leaves from its head toward the opponent, 0.12 s apart
+        const prev = sp.released; sp.released += dt;
+        for (let i = 0; i < 3; i++) if (prev <= i * 0.12 && sp.released > i * 0.12) {
+          const o = this.fire('water', f, sp.pts[i][0].clone(), { scale: 1.25 }); o.dmg = 6 + sp.boost * 2; o.knock = 7; o.level = 1;
+          w.audio.splash(0.7);
+        }
+      }
+      if (sp.released > 0.5) { sp.dead = true; for (const tb of sp.streams) { w.scene.remove(tb.mesh); tb.mesh.geometry.dispose(); tb.mat.dispose(); } }
+    }
+    this.spirals = this.spirals.filter(s => !s.dead);
+  }
+
   clear() {
+    for (const sp of this.spirals) for (const tb of sp.streams) this.world.scene.remove(tb.mesh);
+    this.spirals = [];
     for (const o of this.objs) this.world.scene.remove(o.mesh);
     for (const d of this.defs) this.world.scene.remove(d.mesh);
     this.world.arena.colliders = this.world.arena.colliders.filter(c => !c.ice);

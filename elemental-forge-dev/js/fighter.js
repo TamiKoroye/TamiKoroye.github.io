@@ -115,7 +115,7 @@ export class Fighter {
   startTech(def, side, basic = false) {
     if (!def) return false;
     // alternating authored takes (e.g. hook / lunge punch) each carry their own timing
-    if (def.variants) { this.altN = (this.altN || 0) + 1; def = def.variants[this.altN % def.variants.length]; }
+    if (def.variants) { const n = this.altN || 0; this.altN = n + 1; def = def.variants[n % def.variants.length]; }
     const powered = this.en >= (def.cost || 0);
     if (!powered) {
       if ((this.noEnPopT || 0) <= 0) { this.world.popup(this, 'NO ENERGY', true); this.noEnPopT = 1; }
@@ -168,21 +168,27 @@ export class Fighter {
     if (live && !restrained) {
       if (this.buf.dodge && this.dodgeCd <= 0 && this.en >= 10 && this.free('dodge') && !this.charging) { this.buf.dodge = 0; this.endHold(); this.doDodge(); }
       if (this.buf.jump && this.free('jump') && !this.charging && !this.guarding) {
-        if (this.onGround) { this.buf.jump = 0; this.action = null; this.vel.y = st.jump.v; this.onGround = false; this.airJumps = 0; this.jumpFx(false); }
+        if (this.onGround) { this.buf.jump = 0; this.action = null; this.vel.y = st.jump.v; this.onGround = false; this.airJumps = 0; this.jetFuel = 0.8; this.jetUsed = false; this.jumpFx(false); }
         else if (this.airJumps < st.jump.air && this.vel.y < 5) { this.buf.jump = 0; this.airJumps++; this.vel.y = 7.2; this.jumpFx(true); }
       }
       const canStrike = this.free('attack') && !this.guarding && !this.holding;
       if (this.buf.hand && !this.charging && canStrike) {
         this.buf.hand = 0; this.dodgeT = 0;
         if (this.counterT > 0) { this.counterT = 0; this.startAction('counter'); w.combat.lunge(this, ACTIONS.counter); w.popup(this, 'COUNTER', true); w.audio.whoosh(0.9); }
+        else if (B.spiralRelease && B.spiralRelease(this)) { w.popup(this, 'RELEASE', true); }
         else { this.handSide = -this.handSide; this.startTech(st.tech.hand, this.handSide, true); }
         this.handHoldT = 0;
       }
       if (this.buf.leg && !this.charging && canStrike) {
         this.buf.leg = 0; this.dodgeT = 0;
-        this.legIdx = this.comboTimer > 0 ? (this.legIdx + 1) % st.tech.leg.length : 0;
-        this.comboTimer = 0.9;
-        this.startTech(st.tech.leg[this.legIdx], this.legIdx === 0 ? -1 : 1, true);
+        if (st.tech.legMove && this.onGround && this.speedNorm > 0.45 && !this.action && this.comboTimer <= 0) {
+          // LEG while running: a kick delivered on the move, keeping the run's momentum
+          this.comboTimer = 0.9; this.legIdx = -1; this.startTech(st.tech.legMove, 1, true);
+        } else {
+          this.legIdx = this.comboTimer > 0 ? (this.legIdx + 1) % st.tech.leg.length : 0;
+          this.comboTimer = 0.9;
+          this.startTech(st.tech.leg[this.legIdx], this.legIdx === 0 ? -1 : 1, true);
+        }
         this.legHoldT = 0;
       }
       // icebending: SPECIAL while the water wall is up freezes it into an ice wall (progression flag iceUnlocked)
@@ -247,7 +253,7 @@ export class Fighter {
     this.sprinting = live && inp.sprint && mlen > 0.85 && this.onGround && !this.guarding && !this.holding && !this.charging && !this.action && this.en > 2;
     if (this.guarding) this.en -= 8 * dt;
     else if (this.sprinting) this.en -= 7 * dt;
-    else if (!this.holding && !this.charging) this.en += (this.onGround ? 20 : 10) * dt;
+    else if (!this.holding && !this.charging && !this.jetting) this.en += (this.onGround ? 20 : 10) * dt;
     this.en = clamp(this.en, 0, this.maxEn);
 
     // ---- movement
@@ -265,6 +271,15 @@ export class Fighter {
       const k = smooth01(this.dodgeT / this.dodgeDur), D = st.dodge;
       const sp = this.dodgeKind === 'side' ? 2 + 13 * k : this.dodgeKind === 'back' ? 2 + 10 * k : 2.5 + (D.speed - 2.5) * k;
       this.vel.x = this.dodgeDir.x * sp; this.vel.z = this.dodgeDir.z * sp;
+      const tg = this.target;
+      if (this.dodgeKind === 'circle' && tg) {
+        // move along the circle around the opponent (about 110 degrees over the dodge), facing them throughout
+        const ang = Math.atan2(this.pos.x - tg.pos.x, this.pos.z - tg.pos.z) + this.circleDir * (1.9 / this.dodgeDur) * dt * (0.4 + 1.2 * k);
+        const nx = tg.pos.x + Math.sin(ang) * this.circleR, nz = tg.pos.z + Math.cos(ang) * this.circleR;
+        this.vel.x = (nx - this.pos.x) / dt; this.vel.z = (nz - this.pos.z) / dt;
+        const l = Math.hypot(this.vel.x, this.vel.z) || 1; this.dodgeDir.set(this.vel.x / l, 0, this.vel.z / l);
+        this.faceYaw = Math.atan2(tg.pos.x - this.pos.x, tg.pos.z - this.pos.z);
+      }
       if (this.dodgeKind === 'back' && this.dodgeT > this.dodgeDur * 0.5 && this.onGround) { this.vel.y = 2.6; this.onGround = false; }
       if (this.dodgeKind === 'airdash' && this.dodgeT > this.dodgeDur * 0.6) this.vel.y = Math.max(this.vel.y, 1.2);
       this.dodgeTrail();
@@ -280,6 +295,23 @@ export class Fighter {
       if (dl <= step || dl < 1e-6) { this.vel.x = tx; this.vel.z = tz; }
       else { this.vel.x += dx / dl * step; this.vel.z += dz / dl * step; }
     }
+    // firebenders: holding JUMP after take-off drives flame jets from the feet. The thrust is real upward force
+    // (it beats gravity for up to ~1 s), costs energy, steers in the air, and scorches whoever is underneath.
+    this.jetting = false;
+    if (this.el === 'fire' && live && !restrained && !this.onGround && inp.jumpHeld && this.jetFuel > 0 && this.en > 1 && this.dodgeT <= 0 && !(this.A && this.A.react)) {
+      this.jetting = true; this.jetUsed = true;
+      this.jetFuel -= dt; this.en -= 32 * dt;
+      this.vel.y = Math.min(this.vel.y + 30 * dt, 4.6);
+      this.vel.x += mx * 14 * dt; this.vel.z += mz * 14 * dt;
+      const hs = Math.hypot(this.vel.x, this.vel.z); if (hs > 7.5) { this.vel.x *= 7.5 / hs; this.vel.z *= 7.5 / hs; }
+      for (const sd of ['L', 'R']) { const fp = this.footPos(sd, _v); for (let i = 0; i < 2; i++) w.fx.fire(fp, _v2.set(rand(-0.5, 0.5), rand(-7, -4.5), rand(-0.5, 0.5)), rand(0.35, 0.55), 0.28); }
+      this.jetTick = (this.jetTick || 0) - dt;
+      if (this.jetTick <= 0) {
+        this.jetTick = 0.2; w.audio.fireWhoosh(0.35);
+        for (const t of w.fighters) if (t !== this && !t.dead && t.invuln <= 0 && Math.hypot(t.pos.x - this.pos.x, t.pos.z - this.pos.z) < 1.2 && t.pos.y < this.pos.y - 0.4 && this.pos.y - t.pos.y < 3.2)
+          w.combat.damage(t, 3, _v.set(t.pos.x - this.pos.x, 0, t.pos.z - this.pos.z).normalize(), this, 'jet', t.chestPos(new THREE.Vector3()), 2, 0);
+      }
+    }
     // airbenders fall more slowly while holding JUMP after the peak (air-assisted glide)
     const glide = this.el === 'air' && !this.onGround && inp.jumpHeld && this.vel.y < 0;
     this.vel.y -= (glide ? 7 : 21) * dt;
@@ -291,6 +323,10 @@ export class Fighter {
     const gy = w.arena.groundAt(this.pos.x, this.pos.z, this.pos.y);
     if (this.pos.y <= gy + 0.001) {
       if (!this.onGround && this.airTime > 0.28 && (!this.A || this.A.soft) && this.dodgeT <= 0) { this.startAction('land'); w.fx.dust(this.pos, 6, 1.4); w.audio.step(1); }
+      if (!this.onGround && this.jetUsed && this.el === 'fire' && !this.dead) {
+        // a jet landing: the flames hit the ground and burst outward
+        this.jetUsed = false; B.ring(this, 'fire', 2.4, 9, { dmg: 6, knock: 6, level: 1 }); w.shake(0.12, this.pos); w.audio.fireWhoosh(0.9);
+      }
       this.pos.y = gy; if (this.vel.y < 0) this.vel.y = 0; this.onGround = true; this.airTime = 0; this.airJumps = 0;
     } else if (this.pos.y > gy + 0.03) {
       if (this.onGround && this.vel.y <= 0 && this.pos.y - gy < 0.5) { this.pos.y = gy; this.vel.y = 0; }
@@ -368,7 +404,15 @@ export class Fighter {
     // earth rolls (or sidesteps / backsteps while locked on); fire dashes; water slides; air dashes
     if (D.kind === 'roll') this.dodgeKind = !strafing ? 'roll' : lz < -0.6 ? 'back' : Math.abs(lz) < 0.6 ? 'side' : 'roll';
     else this.dodgeKind = D.kind;
-    this.dodgeDur = this.dodgeKind === 'side' ? 0.26 : this.dodgeKind === 'back' ? 0.3 : D.dur;
+    // Baguazhang: a sideways air dodge near the opponent walks a fast arc around them, ending at their flank
+    const tg = this.target;
+    if (this.el === 'air' && tg && !tg.dead && Math.abs(lz) < 0.7 && tg.pos.distanceTo(this.pos) < 7) {
+      const lx = this.dodgeDir.x * c - this.dodgeDir.z * s;
+      this.dodgeKind = 'circle'; this.circleDir = lx >= 0 ? -1 : 1;
+      this.circleR = Math.max(1.8, Math.hypot(this.pos.x - tg.pos.x, this.pos.z - tg.pos.z));
+      this.counterT = 0.75;   // ending at the flank opens a counter window
+    }
+    this.dodgeDur = this.dodgeKind === 'side' ? 0.26 : this.dodgeKind === 'back' ? 0.3 : this.dodgeKind === 'circle' ? 0.42 : D.dur;
     this.dodgeT = this.dodgeDur; this.dodgeCd = 0.42; this.invuln = this.dodgeDur * (D.iframes || 0.75); this.en -= 10;
     this.action = null; this.tech = null; this.spinYaw = 0;
     this.world.fx.dust(this.pos, 5, 1.2);
