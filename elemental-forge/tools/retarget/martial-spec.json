@@ -812,5 +812,68 @@
   "mirror": false,
   "aim": "hips",
   "note": "Mixamo Fight Idle (1): light stance, open palms forward (Air idle, Baguazhang palm)"
+ },
+ {
+  "name": "fire_front",
+  "src": ".anim-src/drive2/mf/Animations/tkd_front_kick_high.fbx",
+  "start": 0.1,
+  "end": 1.4,
+  "impact": 0.6,
+  "limb": "kL",
+  "note": "Motifect taekwondo high front kick"
+ },
+ {
+  "name": "fire_backkick",
+  "src": ".anim-src/drive2/mf/Animations/tkd_back_kick.fbx",
+  "start": 0.6,
+  "end": 1.9,
+  "impact": 1.2,
+  "limb": "kR",
+  "note": "Motifect taekwondo back kick"
+ },
+ {
+  "name": "fire_jumpfront",
+  "src": ".anim-src/drive2/mf/Animations/tkd_jump_front_kick.fbx",
+  "start": 0.5,
+  "end": 2.6,
+  "impact": 1.5,
+  "limb": "kL",
+  "note": "Motifect taekwondo jumping front kick"
+ },
+ {
+  "name": "fire_heel",
+  "src": ".anim-src/drive2/mf/Animations/tkd_spinning_heel_kick.fbx",
+  "start": 1.2,
+  "end": 2.8,
+  "impact": 1.9,
+  "limb": "kR",
+  "note": "Motifect taekwondo spinning heel kick"
+ },
+ {
+  "name": "fire_body",
+  "src": ".anim-src/drive2/mf/Animations/muay_thai_body_kick.fbx",
+  "start": 0.3,
+  "end": 1.9,
+  "impact": 1.0,
+  "limb": "kR",
+  "note": "Motifect Muay Thai body kick"
+ },
+ {
+  "name": "fire_mtround",
+  "src": ".anim-src/drive2/mf/Animations/muay_thai_roundhouse.fbx",
+  "start": 1.7,
+  "end": 3.6,
+  "impact": 2.5,
+  "limb": "kR",
+  "note": "Motifect Muay Thai roundhouse"
+ },
+ {
+  "name": "earth_teep",
+  "src": ".anim-src/drive2/mf/Animations/muay_thai_teep.fbx",
+  "start": 0.2,
+  "end": 1.9,
+  "impact": 0.9,
+  "limb": "kR",
+  "note": "Motifect Muay Thai teep (push kick): Earth drives a rock slab out with it"
  }
 ]

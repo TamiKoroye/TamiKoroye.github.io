@@ -93,7 +93,8 @@ export class FX {
   }
   // element particles
   // fire: solid cel-shaded flame blobs
-  fire(pos, vel, size = 0.45, life = 0.35) { this.flames.spawn(pos, vel, size * 0.5, life * 1.25); return { alpha: 1 }; }
+  // every flame in the game is now a sprite of the EmberGen fire sheet (the old low-poly flame blobs are retired)
+  fire(pos, vel, size = 0.45, life = 0.35) { this.flip.spawn('fire_flames', { pos, vel, size: [size * 1.5, size * 1.8], grow: 1.8, life: life * 1.1, f0: 10 + rand(0, 8), f1: 34, rise: 2, drag: 1.5, fadeIn: 0.02, rot: rand(-0.6, 0.6) }); return { alpha: 1 }; }
   smoke(pos, size = 0.5) { return this.puff(pos, new THREE.Vector3(rand(-0.3, 0.3), 1.2, rand(-0.3, 0.3)), size, 0.9, 0x55504c, 0.35, 2.2); }
   steam(pos, n = 8) { for (let i = 0; i < n; i++) this.puff(pos.clone().add(new THREE.Vector3(rand(-0.3, 0.3), rand(0, 0.3), rand(-0.3, 0.3))), new THREE.Vector3(rand(-1, 1), rand(1.5, 3), rand(-1, 1)), 0.5, 0.9, 0xe8eef2, 0.55, 2.5); }
   // water: faceted light-blue chunks with gravity

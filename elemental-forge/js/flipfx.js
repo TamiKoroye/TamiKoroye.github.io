@@ -56,7 +56,7 @@ class Sheet {
     const tex = new THREE.TextureLoader().load('assets/fx/' + def.file);
     tex.colorSpace = THREE.SRGBColorSpace; tex.generateMipmaps = true; tex.minFilter = THREE.LinearMipmapLinearFilter;
     this.mat = new THREE.ShaderMaterial({
-      uniforms: { uMap: { value: tex }, uGrid: { value: new THREE.Vector2(...def.grid) }, uBright: { value: def.blend === 'fire' ? 1.35 : 1.0 } },
+      uniforms: { uMap: { value: tex }, uGrid: { value: new THREE.Vector2(...def.grid) }, uBright: { value: def.blend === 'fire' ? 1.12 : 1.0 } },
       vertexShader: VERT, fragmentShader: FRAG, transparent: true, depthWrite: false,
       blending: def.blend === 'fire' ? THREE.CustomBlending : THREE.NormalBlending,
     });

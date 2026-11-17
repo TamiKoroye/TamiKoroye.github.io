@@ -256,13 +256,14 @@ export class Fighter {
       }
       if (this.buf.jump && this.free('jump') && !this.charging && !this.guarding && this.onGround && !this.mob && this.el === 'earth') {
         // Earth: the ground thrusts up under the feet and launches the bender straight up (the column stays as a platform)
-        this.buf.jump = 0; this.action = null; B.weapons.surfLaunch(this, 'earth'); this.vel.y = 13.5; this.onGround = false; this.highJump = true; this.airJumps = 0; w.audio.rumble(0.8);
+        this.buf.jump = 0; this.action = null; B.weapons.surfLaunch(this, 'earth'); this.vel.y = 15.5; this.onGround = false; this.highJump = true; this.airJumps = 0; w.audio.rumble(0.8);
       }
       if (this.buf.jump && this.free('jump') && !this.charging && !this.guarding) {
         if (this.onGround) { this.buf.jump = 0; this.action = null; this.vel.y = st.jump.v; this.onGround = false; this.airJumps = 0; this.jetFuel = 0.8; this.jetUsed = false; this.highJump = false; this.jumpFx(false); }
         else if (this.airJumps < st.jump.air && this.vel.y < 5) { this.buf.jump = 0; this.airJumps++; this.vel.y = 7.2; this.jumpFx(true); }
       }
-      const canStrike = this.free('attack') && !this.guarding && !this.holding;
+      // Fire can punch and kick out of its fire wall without dropping it
+      const canStrike = this.free('attack') && (!this.guarding || this.el === 'fire') && !this.holding;
       // one buffered strike starts per frame, the earlier press first (more buffer time used up); the other stays
       // queued for the next opening instead of replacing this one in the same frame
       // with both waiting, the opposite of the last strike goes first, so alternating presses (hand, leg, hand, leg)
@@ -288,8 +289,8 @@ export class Fighter {
           this.comboTimer = 0.9; this.legIdx = -1; this.startTech(st.tech.legMove, 1, true);
         } else {
           this.legIdx = this.comboTimer > 0 ? (this.legIdx + 1) % st.tech.leg.length : 0;
-          this.comboTimer = 0.9;
           this.startTech(st.tech.leg[this.legIdx], this.legIdx === 0 ? -1 : 1, true);
+          this.comboTimer = Math.max(0.9, (this.tech ? this.tech.dur : 0) + 0.45);   // a long kick (the hurricane) keeps the chain open
         }
         this.legHoldT = 0;
       }
@@ -391,6 +392,13 @@ export class Fighter {
         const gsp = 4 + 9 * k;
         this.vel.x = this.dodgeDir.x * gsp; this.vel.z = this.dodgeDir.z * gsp;
         this.vel.y = (0.7 - (this.pos.y - this.groundY)) * 6 + 21 * dt; this.onGround = false;
+      } else if (this.dodgeKind === 'rocket') {
+        const rsp = 3 + 15 * k;
+        this.vel.x = this.dodgeDir.x * rsp; this.vel.z = this.dodgeDir.z * rsp;
+        this.vel.y = (0.3 * Math.sin(Math.PI * (1 - this.dodgeT / this.dodgeDur)) - (this.pos.y - this.groundY)) * 10 + 21 * dt; this.onGround = false;
+        // the jets: flame driven out of both feet against the direction of travel
+        const F = this.world.fx.flip;
+        for (const sd of ['L', 'R']) { const fp = this.footPos(sd, _v2); F.spawn('fire_flames', { pos: fp, vel: _v.copy(this.dodgeDir).multiplyScalar(-14).add(_fwd.set(rand(-1, 1), rand(-1.5, 0.5), rand(-1, 1))), size: [0.5, 0.65], grow: 3, life: 0.22, f0: 8, f1: 32, drag: 4, fadeIn: 0.01, rot: rand(-1, 1) }); }
       } else {
       const sp = this.dodgeKind === 'side' ? 2 + (this.el === 'air' ? 19 : 13) * k : this.dodgeKind === 'back' ? 2 + 10 * k : 2.5 + (D.speed - 2.5) * k;
       this.vel.x = this.dodgeDir.x * sp; this.vel.z = this.dodgeDir.z * sp;
@@ -676,6 +684,7 @@ export class Fighter {
     else w.fx.debrisBurst(this.pos.clone().setY(this.pos.y + 0.05), 1, 1.2, 0.06, 0x7a6a58, 0.5);
   }
   dodgeTrail() {
+    if (this.dodgeKind === 'rocket' || this.dodgeKind === 'glide') return;   // these draw their own jets / whirlwind
     const w = this.world, t = this.style.dodge.trail, p = _v.copy(this.pos).setY(this.pos.y + 0.3);
     if (t === 'fire') { for (let i = 0; i < 3; i++) w.fx.fire(p, _v2.set(-this.vel.x * 0.1 + rand(-0.5, 0.5), rand(0, 1.5), -this.vel.z * 0.1 + rand(-0.5, 0.5)), 0.5, 0.35); }
     else if (t === 'water') { if (Math.random() < 0.7) w.fx.splash(p, 2); }
@@ -701,7 +710,13 @@ export class Fighter {
       if (Math.hypot(inp.mx, inp.mz) < 0.2) { this.whirlSide = -(this.whirlSide || 1); const sx = Math.cos(this.faceYaw) * this.whirlSide, sz = -Math.sin(this.faceYaw) * this.whirlSide, bx = -Math.sin(this.faceYaw), bz = -Math.cos(this.faceYaw); this.dodgeDir.set(sx * 0.7 + bx * 0.7, 0, sz * 0.7 + bz * 0.7).normalize(); }
       this.dodgeKind = 'glide'; this.world.bending.weapons.whirlwind(this, 2.0);
     }
-    this.dodgeDur = this.dodgeKind === 'glide' ? 2.0 : this.dodgeKind === 'side' ? 0.26 : this.dodgeKind === 'back' ? 0.3 : this.dodgeKind === 'circle' ? 0.42 : D.dur;
+    // Fire: a rocket dodge. The legs hold a stable stance a little off the floor while flame jets from both feet
+    // drive the bender fast to the side (or the stick's direction); no steps
+    if (this.el === 'fire') {
+      if (Math.hypot(inp.mx, inp.mz) < 0.2) { this.whirlSide = -(this.whirlSide || 1); this.dodgeDir.set(Math.cos(this.faceYaw) * this.whirlSide, 0, -Math.sin(this.faceYaw) * this.whirlSide); }
+      this.dodgeKind = 'rocket';
+    }
+    this.dodgeDur = this.dodgeKind === 'glide' ? 2.0 : this.dodgeKind === 'rocket' ? 0.36 : this.dodgeKind === 'side' ? 0.26 : this.dodgeKind === 'back' ? 0.3 : this.dodgeKind === 'circle' ? 0.42 : D.dur;
     this.dodgeT = this.dodgeDur; this.dodgeCd = this.dodgeKind === 'glide' ? 0.6 : 0.42; this.invuln = this.dodgeKind === 'glide' ? 0.6 : this.dodgeDur * (D.iframes || 0.75); this.en -= this.dodgeKind === 'glide' ? 16 : 10;
     this.action = null; this.tech = null; this.spinYaw = 0;
     this.world.fx.dust(this.pos, 5, 1.2);

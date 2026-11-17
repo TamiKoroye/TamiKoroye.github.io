@@ -52,7 +52,7 @@ const earth = {
   key: 'earth', name: 'Earth', art: 'Hung Gar', color: 0x9a7b4f, sash: 0x6b8a3a,
   stance: earthStance,
   loco: { walk: 2.6, run: 5.9, sprint: 8.4, accel: 30, stride: 0.9, bob: 0.55, knee: 0.8, lean: 0.8, swing: 0.55, elbow: 1.7, carry: -0.2, out: 0.1, heavy: 1.4 },
-  jump: { v: 7.2, air: 0 },
+  jump: { v: 8.4, air: 0 },
   dodge: { kind: 'roll', dur: 0.44, speed: 12, iframes: 0.7 },
   labels: { hand: 'STONE PUNCH', leg: 'EARTH KICK', guard: 'WALL', special: 'RUPTURE' },
   tech: {
@@ -123,7 +123,7 @@ const fire = {
   key: 'fire', name: 'Fire', art: 'Northern Shaolin', color: 0xe2552b, sash: 0xc8341f,
   stance: fireStance,
   loco: { walk: 3.2, run: 7.0, sprint: 9.8, accel: 40, stride: 1.05, bob: 1.1, knee: 1.25, lean: 1.4, swing: 1.1, elbow: 1.55, carry: -0.15, out: 0.03, heavy: 0.9 },
-  jump: { v: 7.9, air: 0 },
+  jump: { v: 9.6, air: 0 },   // Fire jumps high (Air keeps flight, the highest)
   dodge: { kind: 'dash', dur: 0.32, speed: 17, iframes: 0.75, trail: 'fire' },
   labels: { hand: 'FIRE FIST', leg: 'FLAME KICK', guard: 'FIRE WALL', special: 'DRAGON DESCENT' },
   tech: {
@@ -360,6 +360,25 @@ for (const k of Object.keys(THIRD)) STYLES[k].tech.leg.push(THIRD[k]);
 // Fire's fourth kick: a cartwheel flip whose feet pass overhead throwing flame along their path
 STYLES.fire.tech.leg.push(T({ name: 'Flip Kick', clip: 'flip_kick', dur: 0.9, cost: 12, cancel: 0.82, move: 2, lunge: 3,
   active: { from: 0.45, to: 0.6, dmg: 9, range: 2.0, arc: 0.3, knock: 7, level: 1 }, events: [[0.42, 'fire.flip'], [0.55, 'fire.flip2']], keys: K0 }));
+// Fire's kick chain (17 Nov, M6): kick-heavy and flowing, each kick its own authored clip, every kick throwing flame
+// from the kicking leg. LEG taps run through it in order; the chain restarts after a pause.
+{
+  const F = STYLES.fire.tech, byName = (n) => F.leg.find(t => t.name === n);
+  const flame = byName('Flame Kick'), spin = byName('Spinning Flame Kick'), flip = byName('Flip Kick');
+  const K = (o) => T({ cost: 9, cancel: 0.7, move: 0.8, lunge: 5, keys: K0, ...o });
+  F.leg = [
+    flame,
+    K({ name: 'High Front Kick', clip: 'fire_front', dur: 0.5, active: { from: 0.4, to: 0.58, dmg: 8, range: 2.2, arc: 0.3, knock: 6, level: 1 }, events: [[0.45, 'fire.leg']] }),
+    spin,
+    K({ name: 'Body Kick', clip: 'fire_body', dur: 0.55, active: { from: 0.42, to: 0.6, dmg: 9, range: 2.2, arc: 0.4, knock: 6, level: 1 }, events: [[0.48, 'fire.leg']] }),
+    K({ name: 'Flaming Sweep', clip: 'sweep_spin', dur: 0.62, cost: 11, active: { from: 0.45, to: 0.7, dmg: 9, range: 2.4, arc: -1.4, knock: 4, level: 2 }, events: [[0.5, 'fire.sweep']] }),
+    K({ name: 'Hurricane Kick', clip: 'hurricane', clipSpeed: 1.6, dur: 1.0, cost: 14, cancel: 0.8, move: 1.5, jumpAt: [0.05, 6.5],
+      active: { from: 0.3, to: 0.8, dmg: 7, range: 2.4, arc: -1.4, knock: 6, level: 1 }, events: [[0.32, 'fire.hurricane'], [0.52, 'fire.hurricane'], [0.72, 'fire.hurricane']] }),
+    K({ name: 'Jumping Front Kick', clip: 'fire_jumpfront', dur: 0.75, cost: 11, jumpAt: [0.25, 5.5], active: { from: 0.45, to: 0.62, dmg: 10, range: 2.3, arc: 0.3, knock: 8, level: 1 }, events: [[0.48, 'fire.leg']] }),
+    K({ name: 'Spinning Heel Kick', clip: 'fire_heel', dur: 0.62, cost: 11, active: { from: 0.42, to: 0.62, dmg: 10, range: 2.3, arc: -1.1, knock: 7, level: 1 }, events: [[0.46, 'fire.spin']] }),
+    flip,
+  ].filter(Boolean);
+}
 // every element: LEG in the air is a jumping kick, right foot first, then the left (alternating while airborne)
 for (const k of ['earth', 'fire', 'water', 'air']) STYLES[k].tech.airKick = T({ name: 'Air Kick', clip: 'jump_kick', clipSpeed: 3.0, dur: 0.38, cost: 6, cancel: 0.55, move: 2.5, lunge: 4,
   active: { from: 0.5, to: 0.68, dmg: 7, range: 2.1, arc: 0.4, knock: 6, level: 1 }, events: [[0.55, k + '.airKick']], keys: K0 });

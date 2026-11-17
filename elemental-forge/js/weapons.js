@@ -269,7 +269,9 @@ export class Weapons {
       const fade = 1 - smooth01((u - 0.7) / 0.3), N = A.pts.length;
       if (A.tube) A.tube.set(A.pts, (s) => (A.el === 'air' ? 0.22 : 0.19) * (0.35 + 0.65 * Math.sin(Math.PI * s)) * fade + 0.01, A.t * 2);
       if (A.ribbons) { A.ribbons[0].push(A.pts[0]); A.ribbons[1].push(A.pts[N - 1]); }
-      if (A.el === 'fire') for (let k = 0; k < N; k++) if (Math.random() < 0.85 * fade) w.fx.fire(A.pts[k], _a.copy(A.v).multiplyScalar(0.25).add(_b.set(0, 1.2, 0)), (0.3 + 0.25 * Math.sin(Math.PI * k / (N - 1))) * (0.6 + 0.4 * fade), 0.2);
+      // fire: EmberGen flame sprites laid along the whole curve every frame, so the kick throws one connected arc of
+      // flame that follows the leg's path (thicker in the middle of the arc, thinning at its ends)
+      if (A.el === 'fire') for (let k = 0; k < N; k++) if (Math.random() < 0.6 * fade * (1 - 0.6 * u)) { const mid = Math.sin(Math.PI * k / (N - 1)); w.fx.flip.spawn('fire_flames', { pos: A.pts[k], vel: _a.copy(A.v).multiplyScalar(0.3).add(_b.set(rand(-0.4, 0.4), 1.4, rand(-0.4, 0.4))), size: [0.45 + 0.5 * mid, 0.55 + 0.6 * mid], grow: 1.2, life: 0.22, f0: 10 + rand(0, 8), f1: 34, rise: 1.5, fadeIn: 0.02, rot: rand(-0.6, 0.6), alpha: 0.9 * fade }); }
       if (A.el === 'water' && Math.random() < 0.4) w.fx.splash(A.pts[(Math.random() * N) | 0], 1);
       if (A.el === 'air' && Math.random() < 0.5) w.fx.wind(A.pts[(Math.random() * N) | 0], _a.copy(A.v).multiplyScalar(0.3), 0.6, 0.25);
       for (const t of w.fighters) {

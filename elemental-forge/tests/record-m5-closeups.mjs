@@ -163,6 +163,22 @@ if (want('stomp')) {
   cam = ['P', 'body', 9, Math.PI / 2 + 0.5, 2.2]; note = 'LEG (G) held: the stomp; the foot plant sends one rolling wave of fire out in a full circle';
   await key('KeyG', true); await run(26); await key('KeyG', false); await run(50); made.push(end());
 }
+if (want('firekicks')) {
+  begin('fire_kick_chain'); await setup('fire', 'earth', [0, -1.6], [0, 1.6]);
+  cam = ['P', 'body', 5.2, Math.PI / 2 + 0.4, 0.4]; note = 'LEG (G) nine taps: flame kick, high front kick, spinning kick, body kick, flaming sweep, hurricane kick, jumping front kick, spinning heel kick, flip kick';
+  for (let i = 0; i < 9; i++) { await page.evaluate(() => { const E = window.__EF, P = E.player, O = E.opp; O.hp = 100; O.action = null; O.stunT = 0; O.pos.set(P.pos.x + Math.sin(P.yaw) * 2.2, 0, P.pos.z + Math.cos(P.yaw) * 2.2); O.vel.set(0, 0, 0); }); await tap('KeyG'); await run(i === 5 ? 34 : 22); }
+  await run(15); made.push(end());
+}
+if (want('fireguard')) {
+  begin('fire_guard_wall'); await setup('fire', 'earth', [0, -4], [0, 4]);
+  cam = ['P', 'body', 7, Math.PI / 2 + 0.6, 1.2]; note = 'GUARD (Q) held: the wall of fire rises from the feet; HAND (F) twice and LEG (G) from behind it';
+  await key('KeyQ', true); await run(30); await tap('KeyF'); await run(14); await tap('KeyF'); await run(14); await tap('KeyG'); await run(22); await key('KeyQ', false); await run(20); made.push(end());
+}
+if (want('rocket')) {
+  begin('fire_rocket_dodge'); await setup('fire', 'earth', [0, -3], [0, 3]);
+  cam = ['P', 'body', 5.5, Math.PI + 0.25, 0.6]; note = 'DODGE (Shift) tap twice: the rocket dodge, flame jets from both feet, legs braced';
+  await run(4); await tap('ShiftLeft'); await run(24); await tap('ShiftLeft'); await run(26); made.push(end());
+}
 if (want('water')) {
   begin('water_punches_and_whips'); await setup('water', 'earth', [0, -3.5], [0, 3.5]);
   cam = ['P', 'body', 4.2, Math.PI / 2 + 0.5, 0.2]; note = 'HAND (F) six taps: whip, jab (water ball), overhead whip, cross (ice ball), diagonal whip, hook (water ball)  -  no droplets';
