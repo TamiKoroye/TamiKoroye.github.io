@@ -85,7 +85,7 @@ const HANDS = {
   relax: { f: [0.45, 0.55, 0.35], pinky: 0.12, thumb: [0.2, 0.25, 0.2], spread: 0.02 },
 };
 const FINGERS = ['index', 'middle', 'ring', 'pinky'];
-const REACT = /^(hit_|Hit_|knockback|getup|block_hit|run_stop)/;
+const REACT = /^(hit_|Hit_|knockback|getup|block_hit|run_stop|struggle)/;
 
 function rigQuat(o, stop, out) { out.identity(); for (let x = o; x && x !== stop; x = x.parent) out.premultiply(x.quaternion); return out; }
 function rigPos(o, stop, out) { o.updateWorldMatrix(true, false); stop.updateWorldMatrix(true, false); return out.setFromMatrixPosition(o.matrixWorld).applyMatrix4(_m.copy(stop.matrixWorld).invert()); }
@@ -309,7 +309,17 @@ export class Hero {
       // struck while lying down: the lying pose held (the knockdown's last frame), no standing reaction
       clip = 'knockback'; ts = this.curName === 'knockback' ? 1.5 : 0; wU = wL = 0; fade = 0.3; if (this.curName !== 'knockback') { restart = true; startAt = this.actions.knockback.getClip().duration - 0.03; }   // still falling: the fall finishes
     }
-    else if (f.action === 'down' && has('knockback')) once('knockback', 1.25, 0.12);   // knocked off the feet: Mixamo Knocked Down, onto the back
+    else if (f.action === 'down' && has('knockback')) {
+      // knocked off the feet: Mixamo Knocked Down, onto the back. Thrown high (a tornado, a rupture, a slam), the
+      // fall is spread over the time left in the air, so the back meets the floor when the body does instead of
+      // the lying pose hanging in mid-air
+      once('knockback', 1.25, 0.12);
+      const alt = f.pos.y - f.groundY;
+      if (!f.onGround && alt > 0.3 && this.cur) {
+        const g = 21, tLand = (f.vel.y + Math.sqrt(Math.max(0, f.vel.y * f.vel.y + 2 * g * alt))) / g, left = this.cur.getClip().duration * 0.92 - (restart ? 0 : this.cur.time);
+        ts = THREE.MathUtils.clamp(left / Math.max(0.15, tLand), 0.25, 1.25);
+      }
+    }
     else if (f.action === 'down' && has('ko')) once('ko', 1.6, 0.1);
     // recovery from the floor: the Mixamo get-up (on the back, roll to a crouch, stand). UAL2's LayToIdle starts
     // from a crumpled pose that does not match the knockdown, so it is no longer used
@@ -331,9 +341,13 @@ export class Hero {
       // dodge direction relative to facing picks the clip: sideways steps aside, backwards flips (air), anything
       // else is an authored roll
       const c = Math.cos(f.yaw), s = Math.sin(f.yaw), lx = f.dodgeDir.x * c - f.dodgeDir.z * s, lz = f.dodgeDir.x * s + f.dodgeDir.z * c;
+      // Air's two-second whirlwind glide: the airborne gliding pose (UAL2 NinjaJump idle, as in flight)
+      if (f.dodgeKind === 'glide' && has('air_loop')) { clip = 'air_loop'; ts = 1; wU = wL = 0; fade = 0.2; }
+      else {
       const n = f.dodgeKind !== 'roll' && Math.abs(lx) > 0.5 && has('dodge_side') ? (lx < 0 ? 'dodge_side' : 'dodge_side_M') : lz < -0.6 && f.el === 'air' && has('dodge_back') ? 'dodge_back' : 'Roll';
       if (n === 'Roll') { clip = 'Roll'; wU = wL = 0; ts = 1.46 / (f.dodgeDur * 1.7); fade = 0.06; if (this.curName !== 'Roll') restart = true; }
       else once(n, this.actions[n].getClip().duration / Math.max(0.2, f.dodgeDur) * 0.8, 0.06);
+      }
     }
     // running along a wall (Mixamo Wall Run, mirrored for a wall on the right) or up it (Diagonal Wall Run)
     if (clip === 'Idle_Loop' && f.wall && f.action !== 'tech') {
@@ -353,7 +367,9 @@ export class Hero {
       const T = f.style.tech.leg[1] || f.style.tech.leg[0], n = T && T.clip && (Array.isArray(T.clip) ? T.clip[0] : T.clip);
       if (has(n)) { clip = n; ts = this.actions[n].getClip().duration / Math.max(0.25, f.A.dur); wU = wL = 0; fade = 0.08; if (this.curName !== n) restart = true; }
     }
-    if (clip === 'Idle_Loop' && f.restrainT > 0 && has(L.guard)) { clip = L.guard; ts = 0.6; wU = wL = 0; fade = 0.15; }   // trapped: struggling inside the guard
+    // caught (drowning sphere, tornado, whip capture): thrashing to get free (Mixamo Being Electrocuted), not a held pose
+    if (clip === 'Idle_Loop' && f.restrainT > 0 && has('struggle')) { clip = 'struggle'; ts = 1.2; wU = wL = 0; fade = 0.15; }
+    else if (clip === 'Idle_Loop' && f.restrainT > 0 && has(L.guard)) { clip = L.guard; ts = 0.6; wU = wL = 0; fade = 0.15; }
     if (clip === 'Idle_Loop' && f.charging) {
       // gathering force: the charged technique's own wind-up, held
       const T = f.style.tech.charged, n = T && T.clip;
@@ -423,7 +439,7 @@ export class Hero {
       if (el === 'fire' && T === st.charged) return ['palm', 'palm'];
       if (el === 'water' && T === st.release) return ['palm', 'palm'];
       if (el === 'earth' && (T === st.special || T === st.stomp)) return ['claw', 'claw'];
-      if (el === 'water' && isHand) return ['palm', 'palm'];     // the striking palm opens as the water is driven
+      if (el === 'water' && isHand) return /punch|jab/.test(T.clip) ? ['fist', 'fist'] : ['palm', 'palm'];     // whips: open palms; punches: fists
       return [base, base];
     }
     if (f.guarding) return el === 'water' || el === 'air' ? ['palm', 'palm'] : ['fist', 'fist'];

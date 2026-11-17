@@ -80,7 +80,8 @@ export function makeWaterRing() {
 }
 
 // Ice wall: angular shards along an arc; real colliders are created by the caller.
-export const iceMat = new THREE.MeshToonMaterial({ color: 0xbfe8ff, emissive: 0x2a5d80, emissiveIntensity: 0.35, transparent: true, opacity: 0.9, flatShading: true });
+// ice: pale, nearly white blue, translucent, with a faint cold glow (frozen water, not blue plastic)
+export const iceMat = new THREE.MeshToonMaterial({ color: 0xe6f7ff, emissive: 0x9ccfe6, emissiveIntensity: 0.22, transparent: true, opacity: 0.8, flatShading: true });
 export function makeIceWall(r = 1.25, half = 0.95, n = 7) {
   const group = new THREE.Group(), shards = [];
   for (let i = 0; i < n; i++) {

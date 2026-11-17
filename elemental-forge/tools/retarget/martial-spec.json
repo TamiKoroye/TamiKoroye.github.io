@@ -776,5 +776,15 @@
   "loop": true,
   "aim": "hips",
   "note": "Mixamo Jog Backward Diagonal (back-right; mirror = back-left)"
+ },
+ {
+  "name": "struggle",
+  "src": ".anim-src/drive3/Being Electrocuted.fbx",
+  "start": 1.0,
+  "end": 4.0,
+  "loop": true,
+  "mirror": false,
+  "aim": "hips",
+  "note": "Mixamo Being Electrocuted: thrashing, used while caught (drowning sphere, whip capture)"
  }
 ]

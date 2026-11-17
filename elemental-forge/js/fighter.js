@@ -23,8 +23,8 @@ export const ACTIONS = {
 // Elemental mobility (DODGE held). All values are tunable: speeds in m/s, accelerations in m/s^2, turn in rad/s,
 // drains in energy per second, flight duration in seconds, maximum altitude in metres above the ground below.
 export const MOBILITY = {
-  water: { top: 12.5, accel: 9, turn: 3.0, brake: 14, cruise: 5, coast: 3, drain: 5, launch: 12.5, lift: 0.45 },     // ice surfing (on an ice sheet raised 0.45 m)
-  earth: { top: 10.5, accel: 5, turn: 2.4, brake: 9, cruise: 5, coast: 2, drain: 7, launch: 13.5, lift: 0.6, last: 4 },     // rock slide (heavy, on a slab raised 0.6 m; DODGE starts and ends it)
+  water: { top: 12.5, accel: 9, turn: 3.0, brake: 14, cruise: 5, coast: 3, drain: 5, launch: 12.5, lift: 1.0 },     // ice surfing: riding a crest of ice that holds the feet 1 m off the floor
+  earth: { top: 10.5, accel: 5, turn: 2.4, brake: 9, cruise: 5, coast: 2, drain: 7, launch: 13.5, lift: 1.0, last: 4 },     // rock slide (heavy, on a slab of rock held 1 m off the floor; DODGE starts and ends it)
   flame: { top: 13, accel: 30, turn: 6, drain: 14, launch: 11 },                                         // flame-propelled run
   fly:   { duration: 6, takeoff: 8, ascent: 7, sink: 1.2, maxAlt: 14, speed: 9.5, accel: 14, drain: 8, recover: 1.5 }, // airbending flight
 };
@@ -372,8 +372,17 @@ export class Fighter {
     } else if (this.dodgeT > 0) {
       this.dodgeT -= dt;
       const k = smooth01(this.dodgeT / this.dodgeDur), D = st.dodge;
+      if (this.dodgeKind === 'glide') {
+        // Air: a two-second glide inside the whirlwind, held about 0.7 m off the floor, fast at first and easing;
+        // the stick steers it
+        if (Math.hypot(mx, mz) > 0.3) { const l = Math.hypot(mx, mz), kk = 1 - Math.exp(-3 * dt); this.dodgeDir.x += (mx / l - this.dodgeDir.x) * kk; this.dodgeDir.z += (mz / l - this.dodgeDir.z) * kk; const n = Math.hypot(this.dodgeDir.x, this.dodgeDir.z) || 1; this.dodgeDir.x /= n; this.dodgeDir.z /= n; }
+        const gsp = 4 + 9 * k;
+        this.vel.x = this.dodgeDir.x * gsp; this.vel.z = this.dodgeDir.z * gsp;
+        this.vel.y = (0.7 - (this.pos.y - this.groundY)) * 6 + 21 * dt; this.onGround = false;
+      } else {
       const sp = this.dodgeKind === 'side' ? 2 + (this.el === 'air' ? 19 : 13) * k : this.dodgeKind === 'back' ? 2 + 10 * k : 2.5 + (D.speed - 2.5) * k;
       this.vel.x = this.dodgeDir.x * sp; this.vel.z = this.dodgeDir.z * sp;
+      }
       const tg = this.target;
       if (this.dodgeKind === 'circle' && tg) {
         // move along the circle around the opponent (about 110 degrees over the dodge), facing them throughout
@@ -674,13 +683,14 @@ export class Fighter {
     // earth rolls (or sidesteps / backsteps while locked on); fire dashes; water slides; air dashes
     if (D.kind === 'roll') this.dodgeKind = !strafing ? 'roll' : lz < -0.6 ? 'back' : Math.abs(lz) < 0.6 ? 'side' : 'roll';
     else this.dodgeKind = D.kind;
-    // Air: a whirlwind wraps round the bender and throws them fast in the stick's direction (sideways without it)
+    // Air: a whirlwind wraps round the bender and carries them away in a two-second glide: in the stick's
+    // direction, or without it back and to the side, away from the attack
     if (this.el === 'air') {
-      if (Math.hypot(inp.mx, inp.mz) < 0.2) { this.whirlSide = -(this.whirlSide || 1); this.dodgeDir.set(Math.cos(this.faceYaw) * this.whirlSide, 0, -Math.sin(this.faceYaw) * this.whirlSide); }
-      this.dodgeKind = 'side'; this.world.bending.weapons.whirlwind(this, 0.34);
+      if (Math.hypot(inp.mx, inp.mz) < 0.2) { this.whirlSide = -(this.whirlSide || 1); const sx = Math.cos(this.faceYaw) * this.whirlSide, sz = -Math.sin(this.faceYaw) * this.whirlSide, bx = -Math.sin(this.faceYaw), bz = -Math.cos(this.faceYaw); this.dodgeDir.set(sx * 0.7 + bx * 0.7, 0, sz * 0.7 + bz * 0.7).normalize(); }
+      this.dodgeKind = 'glide'; this.world.bending.weapons.whirlwind(this, 2.0);
     }
-    this.dodgeDur = this.dodgeKind === 'side' ? (this.el === 'air' ? 0.34 : 0.26) : this.dodgeKind === 'back' ? 0.3 : this.dodgeKind === 'circle' ? 0.42 : D.dur;
-    this.dodgeT = this.dodgeDur; this.dodgeCd = 0.42; this.invuln = this.dodgeDur * (D.iframes || 0.75); this.en -= 10;
+    this.dodgeDur = this.dodgeKind === 'glide' ? 2.0 : this.dodgeKind === 'side' ? 0.26 : this.dodgeKind === 'back' ? 0.3 : this.dodgeKind === 'circle' ? 0.42 : D.dur;
+    this.dodgeT = this.dodgeDur; this.dodgeCd = this.dodgeKind === 'glide' ? 0.6 : 0.42; this.invuln = this.dodgeKind === 'glide' ? 0.6 : this.dodgeDur * (D.iframes || 0.75); this.en -= this.dodgeKind === 'glide' ? 16 : 10;
     this.action = null; this.tech = null; this.spinYaw = 0;
     this.world.fx.dust(this.pos, 5, 1.2);
     if (this.el === 'air') this.world.audio.gust(0.6); else if (this.el === 'fire') this.world.audio.fireWhoosh(0.6); else this.world.audio.whoosh(0.6);

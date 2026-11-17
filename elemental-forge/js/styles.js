@@ -199,7 +199,8 @@ const water = {
   tech: {
     // the water whip: one arm path per strike (across the body, overhead, diagonal), each hand in turn; the rope
     // comes out of the hand as the arm winds up (onStart) and is thrown on the impact frame
-    hand: T({ name: 'Water Palm', clip: ['whip_h', 'whip_h', 'whip_v', 'whip_d'], onStart: 'water.whipOut', dur: 0.5, reach: 4.3, cost: 6, cancel: 0.62, upper: true, move: 3.8, lunge: 11,
+    // HAND alternates the twin whips with punches; each punch throws a ball of water or ice from the fist
+    hand: T({ name: 'Water Palm', clip: ['whip_h', 'fire_jab', 'whip_v', 'fire_punch', 'whip_d', 'earth_punch'], onStart: 'water.whipOut', dur: 0.5, reach: 4.3, cost: 6, cancel: 0.62, upper: true, move: 3.8, lunge: 11,
       active: { from: 0.5, to: 0.64, dmg: 5, range: 1.9, arc: 0.4, knock: 4, level: 0 },
       events: [[0.52, 'water.hand']],
       keys: [

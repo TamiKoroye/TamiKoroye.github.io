@@ -190,7 +190,7 @@ export class Specials {
             if (!t.dead) { t.restrainT = Math.max(t.restrainT, 0.2); t.vel.set(0, 0, 0); }
             if (S.ft > 0.45) {
               // shatter: the damage, ice flying outward, the ball gone
-              w.fx.debrisBurst(c, 36, 7, 0.1, 0xbfe8ff); w.fx.splash(c, 16); w.shake(0.35, c); w.audio.impact(1.2);
+              w.fx.debrisBurst(c, 36, 7, 0.1, 0xe0f4ff); w.fx.splash(c, 16); w.shake(0.35, c); w.audio.impact(1.2);
               if (!t.dead) { t.restrainT = 0; w.combat.damage(t, 22, _b.set(t.pos.x - S.f.pos.x, 0, t.pos.z - S.f.pos.z).normalize().clone(), S.f, 'drown', c.clone(), 10, 2); }
               S.dead = true; w.scene.remove(S.mesh); w.scene.remove(S.shards);
             }
@@ -313,6 +313,7 @@ export class Specials {
       const a = S.t * 7, r = 0.9;
       t.ext.x += ((S.c.x + Math.cos(a) * r - t.pos.x) * 6 - t.ext.x) * Math.min(1, dt * 6); t.ext.z += ((S.c.z + Math.sin(a) * r - t.pos.z) * 6 - t.ext.z) * Math.min(1, dt * 6);
       t.vel.y = Math.max(t.vel.y, (S.c.y + 2.6 - t.pos.y) * 3); t.onGround = false;
+      t.restrainT = Math.max(t.restrainT, 0.15);   // caught in the funnel: the body thrashes (struggle clip), it does not hang in a pose
       if (nt > 1.4 || end) {
         S.held.delete(t);
         const out = _a.set(t.pos.x - S.c.x, 0, t.pos.z - S.c.z); if (out.lengthSq() < 1e-3) out.copy(S.v || f.forward(_b)); out.normalize();

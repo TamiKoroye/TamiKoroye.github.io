@@ -158,6 +158,33 @@ if (want('wallrun')) {
   await tap('Space'); await run(50); made.push(end());
 }
 
+if (want('water')) {
+  begin('water_punches_and_whips'); await setup('water', 'earth', [0, -3.5], [0, 3.5]);
+  cam = ['P', 'body', 4.2, Math.PI / 2 + 0.5, 0.2]; note = 'HAND (F) six taps: whip, jab (water ball), overhead whip, cross (ice ball), diagonal whip, hook (water ball)  -  no droplets';
+  for (let i = 0; i < 6; i++) { await tap('KeyF'); await run(16); }
+  await run(10); made.push(end());
+}
+if (want('surf')) {
+  begin('water_ice_surf'); await setup('water', 'earth', [0, -14], [0, 14]);
+  cam = ['P', 'body', 4.5, Math.PI / 2, 0.0]; note = 'DODGE (Shift) held with the stick forward: riding a ridge of ice, feet 1 m off the floor';
+  await key('KeyW', true); await key('ShiftLeft', true); await run(60); await key('ShiftLeft', false); await key('KeyW', false); await run(20); made.push(end());
+  begin('earth_rock_surf'); await setup('earth', 'fire', [0, -14], [0, 14]);
+  cam = ['P', 'body', 4.5, Math.PI / 2, 0.0]; note = 'DODGE (Shift) tap: a slab of rock lifts the bender 1 m and slides; DODGE again steps off';
+  await key('KeyW', true); await tap('ShiftLeft'); await run(60); await tap('ShiftLeft'); await key('KeyW', false); await run(25); made.push(end());
+}
+if (want('glide')) {
+  begin('air_whirlwind_glide'); await setup('air', 'earth', [0, -3], [0, 3]);
+  cam = ['P', 'body', 6, Math.PI / 2 + 0.3, 0.4]; note = 'DODGE (Shift) tap: a two-second glide inside the whirlwind, back and to the side, away from the rival';
+  await run(5); await tap('ShiftLeft'); await run(70); made.push(end());
+}
+if (want('caught')) {
+  begin('caught_in_tornado'); await setup('air', 'earth', [0, -3], [0, 3]);
+  cam = ['O', 'body', 6, Math.PI / 2 - 0.4, 0.8]; note = 'Air SPECIAL (E): the rival is drawn into the tornado, lifted and thrown';
+  await tap('KeyE'); await run(20); await tap('KeyE'); await run(90); made.push(end());
+  begin('caught_in_drowning_sphere'); await setup('water', 'fire', [0, -3], [0, 3]);
+  cam = ['O', 'body', 4.5, Math.PI / 2 - 0.4, 0.4]; note = 'Water SPECIAL (E): the rival is engulfed, frozen and the ice shatters';
+  await tap('KeyE'); await run(100); made.push(end());
+}
 fs.writeFileSync(path.join(OUT, 'trace.json'), JSON.stringify(trace));
 // a compact clip sequence per scenario (each change of the main clip, with the frame it started)
 const seq = {};

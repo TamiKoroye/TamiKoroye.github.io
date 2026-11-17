@@ -29,6 +29,7 @@ const SPEC = {
   blade:    { el: 'air',   r: 0.85, speed: 32, grav: 0,  dmg: 7,  knock: 8,   level: 1, life: 0.6, wide: true },
   vortex:   { el: 'air',   r: 1.5,  speed: 13, grav: 0,  dmg: 12, knock: 3,   level: 2, life: 1.7, pull: true },
   orbVortex:{ el: 'air',   r: 0.45, speed: 30, grav: 0,  dmg: 8,  knock: 9,   level: 1, life: 0.9 },
+  iceBall:  { el: 'water', r: 0.27, speed: 36, grav: 1,  dmg: 9,  knock: 6,   level: 1, life: 1.3, ice: true, ball: true },
   iceSpear: { el: 'water', r: 0.24, speed: 38, grav: 1,  dmg: 11, knock: 7,   level: 1, life: 1.3, ice: true },
   waterLance:{ el: 'water', r: 0.3, speed: 34, grav: 0,  dmg: 9,  knock: 8,   level: 1, life: 0.7 },
 };
@@ -130,7 +131,8 @@ export class Bending {
     else if (el === 'fire') {
       if (S.wide) { m = new THREE.Mesh(this.geo.crescent, this.mat.fireArc); m.scale.set(S.r, S.r, S.r * 1.6); }
       else { m = new THREE.Mesh(this.geo.sphere, this.mat.fireCore); m.scale.setScalar(S.r * 0.6); m.visible = false; }   // the flame tongues are the fireball
-    } else if (S.ice) { m = new THREE.Mesh(this.iceSpearGeo, iceMat); m.castShadow = true; }
+    } else if (S.ice && S.ball) { m = new THREE.Mesh(this.iceBallGeo || (this.iceBallGeo = new THREE.IcosahedronGeometry(1, 0)), iceMat); m.scale.setScalar(S.r); m.castShadow = true; }
+    else if (S.ice) { m = new THREE.Mesh(this.iceSpearGeo, iceMat); m.castShadow = true; }
     else if (el === 'water') {
       if (S.wide) { m = new THREE.Mesh(this.geo.crescent, this.mat.waterArc); m.scale.set(S.r, S.r, S.r * 2); }
       else { m = new THREE.Mesh(this.geo.sphereHi, this.mat.water); m.scale.setScalar(S.r); m.castShadow = true; }
@@ -301,13 +303,18 @@ export class Bending {
         // the water whip: consecutive strikes go right-to-left, left-to-right, overhead, then diagonally
         const g = this.heldList(f, 'water').filter(o => o.state === 'orbit');
         if (g.length) { this.launch(g[0], f, 1); return; }
+        // a punch (jab, cross or hook): a ball of water, every second one frozen to ice, is driven out of the fist
+        if (f.tech && /punch|jab/.test(f.tech.clip)) {
+          const o = this.fire((f.waterBallN = (f.waterBallN || 0) + 1) % 2 ? 'water' : 'iceBall', f, this.handPoint(f, -s, new THREE.Vector3()));
+          o.dmg = o.kind === 'iceBall' ? 9 : 7; w.audio.splash(0.5); return;
+        }
         // the water whip: the rope has hung from the striking hand since the wind-up (water.whipOut); the impact
         // frame throws it. The arm clip sets the direction: across the body, overhead, or high-to-low diagonal.
         this.whipRelease(f, 'water');
         return;
       }
       case 'water.whipOut': case 'air.whipOut': {
-        if (f.tech && /^fire_punch/.test(f.tech.clip)) return;   // Air's cross punch carries no whip: it fires an air cannon
+        if (f.tech && /punch|jab/.test(f.tech.clip)) return;   // punches carry no whip: Air's cross fires an air cannon, Water's punches throw balls
         const k = this.whipKind(f), el = name.split('.')[0];
         const stats = el === 'water' ? { h: [10, 7, 1], v: [12, 6, 1], d: [12, 8, 1] } : { h: [9, 12, 1], v: [9, 10, 1], d: [9, 12, 1] };
         const [dmg, knock, level] = stats[k] || stats.h;
@@ -323,7 +330,7 @@ export class Bending {
         const g = this.heldList(f, 'water').filter(o => o.state === 'orbit');
         // the water follows the kicking foot's path off the ground and is thrown on as one arc
         // every third water kick freezes what it throws into a fan of ice daggers
-        if (((f.iceN = (f.iceN || 0) + 1) % 3) === 0) { for (const d of [-0.18, 0, 0.18]) { const o = this.fire('iceSpear', f, this.footPoint(f, s, new THREE.Vector3()).setY(f.pos.y + 1.0)); o.vel.applyAxisAngle(_up, d); o.dmg = 6; } w.fx.debrisBurst(this.footPoint(f, s, _v), 8, 2, 0.05, 0xbfe8ff); w.audio.splash(0.8); return; }
+        if (((f.iceN = (f.iceN || 0) + 1) % 3) === 0) { for (const d of [-0.18, 0, 0.18]) { const o = this.fire('iceSpear', f, this.footPoint(f, s, new THREE.Vector3()).setY(f.pos.y + 1.0)); o.vel.applyAxisAngle(_up, d); o.dmg = 6; } w.fx.debrisBurst(this.footPoint(f, s, _v), 8, 2, 0.05, 0xe0f4ff); w.audio.splash(0.8); return; }
         this.weapons.limbArc(f, 'water', 'foot', s > 0 ? 'L' : 'R', { span: 0.24, speed: 13, grow: g.length ? 1.8 : 1.4, dmg: g.length ? 12 : 10, knock: 7, level: 1 });
         if (g.length) this.kill(g[0], 'silent');
         w.fx.splash(this.forwardPoint(f, 1, 0.4, _v), 12); w.audio.splash(0.9); return;
@@ -1125,7 +1132,7 @@ export class Bending {
       // ice reacts to the other elements: fire melts it (steam), rock projectiles shatter it
       if (s.ice && s.mesh && s.t < 1.3) for (const o of this.objs) {
         if (o.state !== 'flying' || (o.el !== 'fire' && o.el !== 'earth') || Math.hypot(o.pos.x - s.pos.x, o.pos.z - s.pos.z) > 0.9 || o.pos.y > s.pos.y + 1.6) continue;
-        s.t = 1.3; if (o.el === 'fire') { w.fx.steam(s.pos.clone().setY(s.pos.y + 0.6), 10); this.kill(o, 'steam'); } else { w.fx.debrisBurst(s.pos.clone().setY(s.pos.y + 0.6), 12, 3, 0.08, 0xbfe8ff); this.kill(o); }
+        s.t = 1.3; if (o.el === 'fire') { w.fx.steam(s.pos.clone().setY(s.pos.y + 0.6), 10); this.kill(o, 'steam'); } else { w.fx.debrisBurst(s.pos.clone().setY(s.pos.y + 0.6), 12, 3, 0.08, 0xe0f4ff); this.kill(o); }
         break;
       }
       if (s.t > 1.6) { if (s.mesh) w.scene.remove(s.mesh); s.dead = true; }
@@ -1147,7 +1154,7 @@ export class Bending {
   }
 
   // water GUARD + HAND: an ice spear formed from the guard and thrown at the opponent
-  iceSpear(f) { const o = this.fire('iceSpear', f, this.handPoint(f, 1).setY(f.pos.y + 1.35)); this.world.fx.debrisBurst(o.pos, 6, 2, 0.05, 0xbfe8ff); this.world.audio.splash(0.6); return o; }
+  iceSpear(f) { const o = this.fire('iceSpear', f, this.handPoint(f, 1).setY(f.pos.y + 1.35)); this.world.fx.debrisBurst(o.pos, 6, 2, 0.05, 0xe0f4ff); this.world.audio.splash(0.6); return o; }
   // HAND during the circulation releases the streams early; returns true if it did
   spiralRelease(f) {
     // the Dragon Stream: HAND is the two-handed push that throws it
