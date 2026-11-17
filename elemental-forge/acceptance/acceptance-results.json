@@ -4,7 +4,7 @@
   {
    "name": "1 complete animation pack loads (decoded == expected, nothing missing, character OK)",
    "ok": true,
-   "detail": "stamp \"dev 2026-11-17 r14 · commit 6e7f12b · character OK · 151/151 martial-arts clips decoded\""
+   "detail": "stamp \"dev 2026-11-17 r15 · commit 516976c · character OK · 151/151 martial-arts clips decoded\""
   },
   {
    "name": "1 no page errors while loading",
@@ -14,7 +14,7 @@
   {
    "name": "1b pack loads with fetch/XHR blocked (embedded-viewer conditions)",
    "ok": true,
-   "detail": "stamp \"dev 2026-11-17 r14 · commit 6e7f12b · character OK · 151/151 martial-arts clips decoded\""
+   "detail": "stamp \"dev 2026-11-17 r15 · commit 516976c · character OK · 151/151 martial-arts clips decoded\""
   },
   {
    "name": "1c missing pack: start is blocked with a visible error, no procedural fallback",
@@ -24,7 +24,7 @@
   {
    "name": "3 punch plays its authored clip in every element",
    "ok": true,
-   "detail": "earth: earth_punch2_M; fire: fire_jab_M; water: whip_h_M; air: whip_h_M"
+   "detail": "earth: earth_punch2_M; fire: fire_jab; water: whip_h; air: whip_h_M"
   },
   {
    "name": "4 kick plays its authored clip in every element",
@@ -44,12 +44,12 @@
   {
    "name": "7 attacks while moving: authored upper body over authored footwork, never running legs",
    "ok": true,
-   "detail": "earth: 24 frames, legs earth_punch2_M/earth_punch/fire_punch2_M/mma_kick; fire: 63 frames, legs fire_jab_M/fire_punch/earth_punch/fire_jab/fire_round_M/fire_fly; water: 52 frames, legs whip_h_M/whip_h/fire_jab_M/whip_v_M/water_kick; air: 35 frames, legs air_crescent_M/whip_h/whip_d/air_whirl"
+   "detail": "earth: 9 frames, legs earth_punch; fire: 60 frames, legs fire_jab/earth_punch_M/fire_jab_M/fire_round_M/fire_front/fire_fly_M; water: 56 frames, legs whip_h/water_kick/fire_jab/water_turn; air: 69 frames, legs whip_h_M/air_crescent_M/whip_h/whip_d/fire_punch/whip_v"
   },
   {
    "name": "8 six quick attacks per element without refilling energy all play authored clips",
    "ok": true,
-   "detail": "distinct strikes 5/4/6/4, energy at the end 94/100/98/100, strikes without bending 0 frames"
+   "detail": "distinct strikes 4/4/3/4, energy at the end 95/100/100/100, strikes without bending 0 frames"
   },
   {
    "name": "9 switching through all four elements via the element buttons",
@@ -59,17 +59,17 @@
   {
    "name": "SPECIAL plays its authored clip in every element",
    "ok": true,
-   "detail": "earth: earth_gather; fire: fire_fly; water: water_cast; air: turn_spin"
+   "detail": "earth: earth_gather; fire: fire_fly_M; water: water_cast; air: turn_spin"
   },
   {
    "name": "NO procedural fallback: every technique/guard/hold frame shows a clip from the pack",
    "ok": true,
-   "detail": "929 frames checked, 0 procedural"
+   "detail": "962 frames checked, 0 procedural"
   },
   {
    "name": "NO procedural body in ANY frame of the session (stance, movement, reactions included)",
    "ok": true,
-   "detail": "1285 frames, 0 procedural"
+   "detail": "1279 frames, 0 procedural"
   },
   {
    "name": "10 all of the above through touch controls only, no page errors",
