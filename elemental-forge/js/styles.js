@@ -336,7 +336,7 @@ export const ELEMENTS = ['earth', 'fire', 'water', 'air'];
 // LEG while running uses it, so attacks keep the fighter's momentum instead of stopping the run.
 const MOVE_EVENT = { earth: 'earth.leg', fire: 'fire.leg', water: 'water.lance', air: 'air.leg' };
 for (const st of Object.values(STYLES)) {
-  st.tech.legMove = T({ name: 'Running Kick', clip: 'move_kick', dur: 0.55, cost: 9, cancel: 0.7, move: 4.6, lunge: 3,
+  st.tech.legMove = T({ name: 'Running Kick', clip: 'move_kick', travels: true, dur: 0.55, cost: 9, cancel: 0.7, move: 4.6, lunge: 3,
     active: { from: 0.4, to: 0.58, dmg: 8, range: 2.3, arc: 0.45, knock: 6, level: 1 },
     events: [[0.45, MOVE_EVENT[st.key]]],
     keys: [[0.0, () => {}], [1.0, () => {}]] });

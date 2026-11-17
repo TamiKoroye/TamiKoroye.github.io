@@ -63,10 +63,10 @@ export const LOOP_SPEED = { water_spell: 1.3, run_loop: 1, water_flow: 1.9, wate
 // stances whose authored legs are deeper than the style wants: the standing idle's legs are mixed in at this weight
 export const STANCE_MIX = { earth_idle: 0.75, earth_guard: 0.6 };
 export const LOOPS = {
-  earth: { idle: 'earth_idle', guard: 'earth_guard', hold: 'earth_lift' },
+  earth: { idle: 'earth_stance', guard: 'earth_guard', hold: 'earth_lift' },   // idle: Mixamo Idle (1), low and rooted
   fire: { idle: 'fire_idle', guard: 'fire_guard', hold: 'fire_stream' },
-  water: { idle: 'water_flow2', guard: 'water_guard', hold: 'water_spell' },   // sustained whips: Mixamo Spell Casting, both palms working the water
-  air: { idle: 'air_idle', guard: 'water_flow', hold: 'air_push' },   // guard: cloud hands, the arms keep circling inside the whirlwind
+  water: { idle: 'water_stance', guard: 'water_guard', hold: 'water_spell' },   // sustained whips: Mixamo Spell Casting, both palms working the water
+  air: { idle: 'air_stance', guard: 'water_flow', hold: 'air_push' },   // guard: cloud hands, the arms keep circling inside the whirlwind
 };
 
 // playback speed relative to the capture, per style (earth heavy, fire and air quick, water measured);

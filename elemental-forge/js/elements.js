@@ -267,11 +267,9 @@ export class Bending {
       case 'fire.knee': { this.ring(f, 'fire', 2.4, 10, { dmg: 6, knock: 7, level: 1 }); for (let i = 0; i < 10; i++) w.fx.fire(foot, _v.set(rand(-3, 3), rand(0, 3), rand(-3, 3)), 0.5, 0.3); w.audio.fireWhoosh(1); return; }
       case 'fire.stompMark': return;   // no flame before the foot comes down: the stomp ignites on the plant
       case 'fire.stomp': {
-        // ignition on the foot plant: a short flare at the stamping foot, then a fireball runs along the ground to the
-        // opponent and spreads into a ring of fire around them
-        const ft = this.footPoint(f, -1, new THREE.Vector3());
-        for (let i = 0; i < 8; i++) { const a = rand(0, 6.28); w.fx.fire(ft, _v2.set(Math.sin(a) * 2.5, rand(1, 2.5), Math.cos(a) * 2.5), 0.4, 0.25); }
-        w.fx.crater(ft, 1); w.shake(0.2, ft); this.weapons.fireTrap(f, ft); return;
+        // ignition on the foot plant: one wave of fire rolls out of the stamping foot in a full circle
+        const ft = this.footPoint(f, -1, new THREE.Vector3()); ft.y = f.groundY;
+        this.fireWave(f, ft); return;
       }
       case 'fire.flip': case 'fire.flip2': {
         // the cartwheel's feet pass overhead: each throws flame along the path it travelled
@@ -403,8 +401,37 @@ export class Bending {
     const mesh = new THREE.Mesh(this.geo.flatRing, el === 'fire' ? this.mat.fireArc : el === 'water' ? this.mat.waterArc : this.mat.air);
     mesh.position.set(owner.pos.x, owner.pos.y + 0.25, owner.pos.z); mesh.scale.setScalar(0.5);
     this.world.scene.add(mesh);
-    this.rings.push({ owner, el, r: 0.5, maxR, speed, mesh, hit, done: new Set(), center: owner.pos.clone() });
+    const R = { owner, el, r: 0.5, maxR, speed, mesh, hit, done: new Set(), center: owner.pos.clone() };
+    this.rings.push(R);
     // projectiles caught inside an air or water ring are thrown outward / extinguished
+    return R;
+  }
+
+  // Fire's stomp: on the foot plant one rolling wave of fire bursts out of the stamping foot in a full circle.
+  // The flames are the EmberGen fire sheet: three overlapping rows of sprites ride the expanding front (the leading
+  // row tallest, the trailing rows lower and further into their burn), so the front reads as one continuous rolling
+  // wall rather than separate tongues. A gasoline-explosion fireball (EmberGen) rises from the foot itself.
+  fireWave(f, at, maxR = 8.5, speed = 10.5) {
+    const w = this.world, F = w.fx.flip;
+    const R = this.ring(f, 'fire', maxR, speed, { dmg: 14, knock: 10, level: 2 });
+    R.center.copy(at); R.r = 0.4; R.mesh.visible = false; R.quiet = true;
+    F.spawn('fire_explosion', { pos: at.clone().setY(at.y - 0.2), size: [4.6, 4.6], life: 1.5, pivot: 1, f0: 1, f1: 26, grow: 0.25, fadeIn: 0.03 });
+    F.spawn('fire_flames', { pos: at.clone(), size: [2.4, 3.2], life: 0.7, pivot: 1, f0: 6, f1: 20, grow: 0.6, fadeIn: 0.02 });
+    const N = 30, rows = [1, 0.8, 0.58].map((k, j) => Array.from({ length: N }, (_, i) => ({ a: (i + j * 0.5) / N * Math.PI * 2 + rand(-0.06, 0.06), f: rand(4, 14), h: rand(0.85, 1.15), k, j })));
+    const gy = at.y;
+    F.control((dt, put, t) => {
+      const r = Math.min(maxR, 0.4 + speed * t), u = r / maxR;
+      if (t > maxR / speed + 0.55) return false;
+      const fade = t > maxR / speed ? 1 - (t - maxR / speed) / 0.55 : 1;
+      for (const row of rows) for (const s of row) {
+        const rr = Math.max(0.3, r * s.k), circ = 2 * Math.PI * rr;
+        const wdt = Math.max(1.1, circ / N * 2.2), hgt = (s.j === 0 ? 3.0 : s.j === 1 ? 2.3 : 1.5) * s.h * (0.55 + 0.6 * Math.min(1, t / 0.18)) * (1 - 0.35 * u);
+        _v.set(at.x + Math.cos(s.a) * rr, gy - 0.05, at.z + Math.sin(s.a) * rr);
+        put('fire_flames', _v, wdt, hgt, Math.min(35, s.f + t * (22 + s.j * 6)), fade * (s.j === 0 ? 1 : 0.85), 1, 0);
+      }
+    });
+    w.fx.crater(at, 2.2); w.shake(0.35, at); w.audio.fireWhoosh(1.4); w.audio.impact(1);
+    return R;
   }
 
   raisePillar(f, x, z) {
@@ -1023,7 +1050,7 @@ export class Bending {
       const k = r.r / r.maxR;
       r.mesh.scale.setScalar(r.r); r.mesh.position.set(r.center.x, r.center.y + 0.3 + (r.el === 'air' ? k * 0.8 : 0), r.center.z);
       r.mesh.material = r.el === 'fire' ? this.mat.fireArc : r.el === 'water' ? this.mat.waterArc : this.mat.air;
-      const n = r.el === 'fire' ? 10 : 6;
+      const n = r.quiet ? 0 : r.el === 'fire' ? 10 : 6;
       for (let i = 0; i < n; i++) {
         const a = Math.random() * Math.PI * 2, p = _v.set(r.center.x + Math.cos(a) * r.r, r.center.y + 0.3 + Math.random() * 0.6, r.center.z + Math.sin(a) * r.r);
         if (r.el === 'fire') w.fx.fire(p, _v2.set(Math.cos(a) * 2, 1.5, Math.sin(a) * 2), 0.6, 0.3);
@@ -1034,6 +1061,8 @@ export class Bending {
         if (t === r.owner || t.dead || r.done.has(t) || t.invuln > 0) continue;
         const d = Math.hypot(t.pos.x - r.center.x, t.pos.z - r.center.z);
         if (Math.abs(d - r.r) < 0.7 && t.pos.y - r.center.y < 1.6) {
+          // a wall between the stomp and the rival holds the wave back
+          if (r.quiet) { let blocked = false; for (let k = 1; k < 8 && !blocked; k++) { const q = k / 8; if (w.arena.solidAt(_v.set(r.center.x + (t.pos.x - r.center.x) * q, r.center.y + 0.6, r.center.z + (t.pos.z - r.center.z) * q))) blocked = true; } if (blocked) continue; }
           r.done.add(t);
           const dir = new THREE.Vector3(t.pos.x - r.center.x, 0, t.pos.z - r.center.z).normalize();
           w.combat.damage(t, r.hit.dmg, dir, r.owner, r.el + 'Ring', t.chestPos(new THREE.Vector3()), r.hit.knock, r.hit.level);
@@ -1224,7 +1253,7 @@ export class Bending {
   clear() {
     for (const sp of this.spirals) for (const tb of sp.streams) this.world.scene.remove(tb.mesh);
     this.spirals = [];
-    this.weapons.clear(); this.specials.clear();
+    this.weapons.clear(); this.specials.clear(); this.world.fx.flip.clear();
     // projectiles leave nothing behind: their mesh and, for water, the stream drawn behind them
     for (const o of this.objs) { this.world.scene.remove(o.mesh); if (o.tube) { this.world.scene.remove(o.tube.mesh); o.tube.mesh.geometry.dispose(); o.tube.mesh.material.dispose(); o.tube = null; } }
     for (const d of this.defs) { this.world.scene.remove(d.mesh); if (d.tubes) d.tubes.forEach(t => this.weapons.freeTube(t)); }

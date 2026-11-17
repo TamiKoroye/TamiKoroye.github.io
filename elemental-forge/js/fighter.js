@@ -330,7 +330,11 @@ export class Fighter {
           // a held LEG starts gathering force straight away: a kick that has not landed yet is abandoned
           const K = this.tech, kev = K && K.events && K.events.length ? K.events[0][0] : 0.3;
           const kickDone = !this.action || (this.action === 'tech' && (this.actionU < kev || this.actionU > Math.min(0.6, K.cancel ?? 0.6)));
-          if (!this.charging && this.legHoldT > 0.38 && kickDone && !this.guarding && !this.reacting()) { this.charging = true; this.chargeT = 0; this.action = null; this.tech = null; }
+          // Fire: LEG held is the stomp, straight away (the tap kick is dropped if it has not landed yet)
+          if (this.el === 'fire' && st.tech.stomp && this.onGround && !this.mob && this.legHoldT > 0.3 && !this.charging && !this.guarding && !this.reacting() && (!this.action || this.action === 'land' || (this.action === 'tech' && this.tech !== st.tech.stomp && this.actionU < kev))) {
+            this.legHoldT = -1; this.action = null; this.tech = null; this.startTech(st.tech.stomp, 1);
+          }
+          else if (!this.charging && this.legHoldT > 0.38 && kickDone && !this.guarding && !this.reacting()) { this.charging = true; this.chargeT = 0; this.action = null; this.tech = null; }
         }
       }
       if (this.charging) {
@@ -370,6 +374,9 @@ export class Fighter {
     else if (this.holding) maxSpeed = st.tech.handHold.move;
     const A = this.A;
     if (A && !A.soft) maxSpeed = A.react ? 0 : (A.move !== undefined ? A.move : (A.upper ? 3.5 : 0.5));
+    // on the ground a strike is delivered from planted feet: at most a shuffle (the running kick, whose clip steps
+    // forward, keeps its own speed)
+    if (A && !A.soft && !A.react && this.onGround && !this.mob && !(this.tech && this.tech.travels)) maxSpeed = Math.min(maxSpeed, 1.0);
     if (this.stunT > 0 || restrained) maxSpeed = 0;
 
     if (this.mob && this.mobMove(dt, mx, mz)) {

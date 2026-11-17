@@ -50,6 +50,12 @@ const RIGS = {
       thigh: S + 'Leg', shin: S + 'Shin', foot: S + 'Foot', toe: S + 'ToeBase',
       thumb: [1, 2, 3].map(i => S + 'HandThumb' + i), index: [1, 2, 3].map(i => S + 'HandIndex' + i), middle: [1, 2, 3].map(i => S + 'HandMiddle' + i),
       ring: [1, 2, 3].map(i => S + 'HandRing' + i), pinky: [1, 2, 3].map(i => S + 'HandPinky' + i) }) },
+  // Human Basic Motions (Unity, "B-" bones): two spine bones, so the third slot is left out
+  hbm: { hips: 'B-hips', spine: ['B-spine', 'B-chest', null], neck: 'B-neck', head: 'B-head',
+    side: (S) => { const s = S === 'Left' ? 'L' : 'R'; return { shoulder: 'B-shoulder' + s, arm: 'B-upperArm' + s, fore: 'B-forearm' + s, hand: 'B-hand' + s, handChild: 'B-middleFinger01' + s,
+      thigh: 'B-thigh' + s, shin: 'B-shin' + s, foot: 'B-foot' + s, toe: 'B-toe' + s,
+      thumb: [1, 2, 3].map(i => `B-thumb0${i}${s}`), index: [1, 2, 3].map(i => `B-indexFinger0${i}${s}`), middle: [1, 2, 3].map(i => `B-middleFinger0${i}${s}`),
+      ring: [1, 2, 3].map(i => `B-ringFinger0${i}${s}`), pinky: [1, 2, 3].map(i => `B-pinky0${i}${s}`) }; } },
   rokoko: { hips: 'Hips', spine: ['Spine1', 'Spine2', 'Spine4'], neck: 'Neck', head: 'Head',
     side: (S) => ({ shoulder: S + 'Shoulder', arm: S + 'Arm', fore: S + 'ForeArm', hand: S + 'Hand', handChild: S + 'Finger3Proximal',
       thigh: S + 'Thigh', shin: S + 'Shin', foot: S + 'Foot', toe: S + 'Toe',
@@ -64,6 +70,7 @@ const wp = (o) => o.getWorldPosition(new THREE.Vector3());
 export function detectRig(names) {
   const has = (n) => names.includes(n);
   if (has('LowerBack')) return 'cmu';
+  if (has('B-hips') && has('B-upperArmL')) return 'hbm';
   if (has('pelvis') && has('calf_l') && has('spine_05')) return 'ue5';
   if (has('pelvis') && has('calf_l')) return 'ue';
   if (has('LeftThigh') && has('Spine4')) return 'rokoko';
@@ -77,7 +84,8 @@ function pairs(rig, opts) {
   const R = RIGS[rig], T = TARGET, rows = [];
   const add = (s, t, sc, tc) => { if (s && t) rows.push([s, t, sc ?? null, tc ?? null]); };
   add(R.hips, T.hips, R.spine[0], T.spine[0]);
-  for (let i = 0; i < 3; i++) add(R.spine[i], T.spine[i], i < 2 ? R.spine[i + 1] : R.neck, i < 2 ? T.spine[i + 1] : T.neck);
+  // each spine bone aims at the next source bone that exists (a rig with fewer spine bones skips a slot)
+  for (let i = 0; i < 3; i++) { if (!R.spine[i]) continue; const j = [1, 2].map(k => i + k).find(k => k < 3 && R.spine[k]); add(R.spine[i], T.spine[i], j !== undefined ? R.spine[j] : R.neck, j !== undefined ? T.spine[j] : T.neck); }
   add(R.neck, T.neck, R.head, T.head);
   add(R.head, T.head, null, null);
   for (let k = 0; k < 2; k++) {

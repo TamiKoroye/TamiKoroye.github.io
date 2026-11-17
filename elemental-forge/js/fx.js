@@ -2,6 +2,7 @@
 import * as THREE from 'three';
 import { rand } from './util.js';
 import { FlameBlobs, WaterChunks, Ribbons } from './fxstyle.js';
+import { FlipFX } from './flipfx.js';
 
 function softTexture() {
   const c = document.createElement('canvas'); c.width = c.height = 64;
@@ -27,6 +28,7 @@ export class FX {
     this.scene = scene;
     // stylised element primitives (toon fire blobs, faceted water chunks, wind ribbons)
     this.flames = new FlameBlobs(scene); this.water = new WaterChunks(scene); this.ribbons = new Ribbons(scene, camera);
+    this.flip = new FlipFX(scene);   // flipbook sheets: EmberGen fire and explosion, KanaWorks water and ice
     // --- debris (instanced chunks)
     this.debrisMax = 320;
     const dg = new THREE.DodecahedronGeometry(1, 0);
@@ -129,7 +131,7 @@ export class FX {
   }
 
   update(dt, groundAt) {
-    this.flames.update(dt); this.water.update(dt, groundAt); this.ribbons.update(dt);
+    this.flames.update(dt); this.water.update(dt, groundAt); this.ribbons.update(dt); this.flip.update(dt);
     // debris
     const items = this.dItems;
     for (let i = items.length - 1; i >= 0; i--) {

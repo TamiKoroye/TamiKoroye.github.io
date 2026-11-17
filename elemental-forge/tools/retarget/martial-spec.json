@@ -786,5 +786,31 @@
   "mirror": false,
   "aim": "hips",
   "note": "Mixamo Being Electrocuted: thrashing, used while caught (drowning sphere, whip capture)"
+ },
+ {
+  "name": "water_stance",
+  "src": ".anim-src/drive2/qg/AS_Move1-VUE5.FBX",
+  "start": 0.3,
+  "end": 5.3,
+  "loop": true,
+  "mirror": false,
+  "aim": "hips",
+  "note": "Qi Gong take 1 opening: standing, hands resting at the dantian, breathing (Water idle)"
+ },
+ {
+  "name": "earth_stance",
+  "src": ".anim-src/drive3/Idle (1).fbx",
+  "loop": true,
+  "mirror": false,
+  "aim": "hips",
+  "note": "Mixamo Idle (1): low rooted stance, fists up (Earth idle, Hung Gar)"
+ },
+ {
+  "name": "air_stance",
+  "src": ".anim-src/drive3/Fight Idle (1).fbx",
+  "loop": true,
+  "mirror": false,
+  "aim": "hips",
+  "note": "Mixamo Fight Idle (1): light stance, open palms forward (Air idle, Baguazhang palm)"
  }
 ]

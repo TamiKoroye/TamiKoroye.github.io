@@ -158,6 +158,11 @@ if (want('wallrun')) {
   await tap('Space'); await run(50); made.push(end());
 }
 
+if (want('stomp')) {
+  begin('fire_stomp_wave'); await setup('fire', 'earth', [0, -3.5], [0, 3.5]);
+  cam = ['P', 'body', 9, Math.PI / 2 + 0.5, 2.2]; note = 'LEG (G) held: the stomp; the foot plant sends one rolling wave of fire out in a full circle';
+  await key('KeyG', true); await run(26); await key('KeyG', false); await run(50); made.push(end());
+}
 if (want('water')) {
   begin('water_punches_and_whips'); await setup('water', 'earth', [0, -3.5], [0, 3.5]);
   cam = ['P', 'body', 4.2, Math.PI / 2 + 0.5, 0.2]; note = 'HAND (F) six taps: whip, jab (water ball), overhead whip, cross (ice ball), diagonal whip, hook (water ball)  -  no droplets';

@@ -18,14 +18,14 @@ export class Combat {
     // a ranged strike (whip) steps in only as far as its reach needs: a rival just beyond it is closed on
     if (spec.reach && d > spec.reach - 0.5 && d < spec.reach + 3.5 && (facing > 0.3 || f.input.strafe)) {
       _d.normalize();
-      f.lungeDir.copy(_d).multiplyScalar(Math.min(spec.lunge, (d - spec.reach + 0.7) / 0.14));
+      f.lungeDir.copy(_d).multiplyScalar(Math.min(spec.lunge, Math.min(1.8, d - spec.reach + 0.7) / 0.14));   // a step of at most 1.8 m
       f.lungeT = 0.14; f.faceYaw = Math.atan2(_d.x, _d.z);
       return;
     }
     if (spec.reach) return;   // already inside its reach: the whip is thrown from where the bender stands
     if (d < 5 && d > 1.1 && (facing > 0.3 || f.input.strafe)) {
       _d.normalize();
-      f.lungeDir.copy(_d).multiplyScalar(Math.min(spec.lunge, (d - 1.0) / 0.14));
+      f.lungeDir.copy(_d).multiplyScalar(Math.min(spec.lunge, Math.min(1.0, d - 1.0) / 0.14));   // one step in (at most 1 m)
       f.lungeT = 0.14;
       f.faceYaw = Math.atan2(_d.x, _d.z);
     }

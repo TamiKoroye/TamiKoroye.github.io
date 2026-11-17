@@ -281,7 +281,7 @@ export class Hero {
     const L = LOOPS[f.el] || {}, has = (n) => n && this.actions[n];
     // coming out of a run: the authored run-to-stop plays as the fighter halts
     // (the run counts if it was playing within the last 0.25 s: the walk can take over for a frame or two as the speed drops)
-    if (this.curName === 'run_loop' || this.curName === 'sprint_loop') { this.runSp = this.runT > 0.5 ? sp : Math.max(this.runSp || 0, sp); this.runT = 0; } else this.runT = (this.runT ?? 9) + dt;
+    if (this.curName === 'Jog_Fwd_Loop' || this.curName === 'sprint_loop') { this.runSp = this.runT > 0.5 ? sp : Math.max(this.runSp || 0, sp); this.runT = 0; } else this.runT = (this.runT ?? 9) + dt;
     if (this.runT < 0.25 && (this.runSp || 0) > 4.5 && sp < 2.4 && f.onGround && !(this.stopT > 0)) { this.stopT = 0.55; this.runT = 9; }
     else this.stopT = (this.stopT || 0) - dt;
     const free = (!A || A.soft) && !f.guarding && !f.holding && !f.charging && !(f.restrainT > 0) && f.dodgeT <= 0 && !f.dead;
@@ -290,7 +290,8 @@ export class Hero {
     const loco = () => {
       // captured speeds: Mixamo Run 3.6 m/s, Sprint 5.2 m/s, Jog Strafe 2.5 m/s, Jog Backward 2.0 m/s, Walking Backwards 0.47 m/s
       const C = THREE.MathUtils.clamp;
-      if (fwd > 0.55) return sp < 2.4 ? ['Walk_Loop', C(sp / 1.5, 0.7, 1.6)] : sp < 7.0 && has('run_loop') ? ['run_loop', C(sp / 3.6, 0.8, 1.7)] : has('sprint_loop') ? ['sprint_loop', C(sp / 5.2, 0.9, 1.7)] : ['Sprint_Loop', C(sp / 7.4, 0.9, 1.5)];
+      // forward: walk, the character's own jog, then the Mixamo Sprint (the Mixamo Run, arms swept back, is not used)
+      if (fwd > 0.55) return sp < 2.4 ? ['Walk_Loop', C(sp / 1.5, 0.7, 1.6)] : sp < 6.0 ? ['Jog_Fwd_Loop', C(sp / 4.2, 0.8, 1.5)] : has('sprint_loop') ? ['sprint_loop', C(sp / 5.2, 0.9, 1.7)] : ['Sprint_Loop', C(sp / 7.4, 0.9, 1.5)];
       if (fwd < -0.55) return sp < 1.2 && has('walk_back') ? ['walk_back', C(sp / 0.47, 0.8, 2.4)] : has('jog_back') ? [side > 0 ? 'jog_back_M' : 'jog_back', C(sp / 2.0, 0.8, 1.9)] : ['Walk_Loop', -C(sp / 1.5, 0.7, 1.8)];
       return [side > 0 ? 'strafe' : 'strafe_M', C(sp / 2.5, 0.7, 1.9)];
     };
@@ -359,7 +360,9 @@ export class Hero {
       if (has(n)) {
         clip = n; ts = scale; wU = wL = 0; fade = 0.14;
         if (f.techN !== this.techN) { this.techN = f.techN; restart = true; }
-        if ((f.tech.upper && moving) || lowOv) layered = true;
+        // a strike on the ground is the whole authored clip, feet planted; only on the ice, the rock slab or in flight
+        // do the arms strike over the riding pose
+        if (lowOv) layered = true;
       }
     }
     if (clip === 'Idle_Loop' && f.action === 'counter') {
