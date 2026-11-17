@@ -12,6 +12,7 @@ import * as THREE from 'three';
 import { makeWaterTube, waterMaterial, iceMat } from './defence-fx.js';
 import { smooth01, rand, clamp } from './util.js';
 import { GroundBurst } from './crack.js';
+import { ICE, iceClusterMesh } from './ice.js';
 
 const UP = new THREE.Vector3(0, 1, 0);
 const _a = new THREE.Vector3(), _b = new THREE.Vector3(), _c = new THREE.Vector3(), _d = new THREE.Vector3(), _e = new THREE.Vector3(), _q = new THREE.Quaternion();
@@ -25,7 +26,7 @@ function distPointSeg(p, a, b) {
 export class Weapons {
   constructor(B) {
     this.B = B; this.w = B.world;
-    this.whips = []; this.waves = []; this.columns = []; this.erupts = []; this.fireRings = []; this.captures = [];
+    this.whips = []; this.waves = []; this.columns = []; this.erupts = []; this.fireRings = []; this.captures = []; this.grabs = [];
     this.trails = []; this.platforms = []; this.arcs = []; this.traps = []; this.whirls = []; this.spires = [];
     this.tubeMat = waterMaterial(-4); this.tubeMat.uniforms.uRise.value = 1;
     this.tubePool = [];
@@ -50,6 +51,58 @@ export class Weapons {
 
   tube() { const t = this.tubePool.pop() || makeWaterTube(22, 7, this.tubeMat); t.mesh.material = this.tubeMat; t.mesh.visible = true; this.w.scene.add(t.mesh); return t; }
   freeTube(t) { if (!t) return; this.w.scene.remove(t.mesh); t.mesh.visible = false; if (this.tubePool.length < 12) this.tubePool.push(t); else t.mesh.geometry.dispose(); }
+
+  // ============================================================ water whip: grab, lift and slam
+  // The whip stays wrapped round the rival: a rope of water from the bender's hand to the rival's chest (redrawn every
+  // frame, taut while lifting, sagging a little as it swings). The bender plays the two-handed raise-and-slam clip
+  // (Mixamo Sword And Shield Casting); the rival, held (thrashing, the struggle clip), is lifted to about 2.6 m and
+  // carried over to the bender's front, then on the clip's slam frame driven down into the floor: a heavy knockdown.
+  grabSlam(f, t, hand) {
+    const T = f.style.tech.whipSlam;
+    f.whipW = null; f.whipW2 = null;
+    f.startTech(T, 1, true);
+    const G = { f, t, hand: hand || 'R', T: 0, tube: this.tube(), start: t.pos.clone(), slamAt: Math.max(0.35, T.impactT || 0.6), slammed: false, slamT: 0 };
+    this.grabs.push(G);
+    t.restrainT = Math.max(t.restrainT, G.slamAt + 0.2); t.action = null; t.tech = null; t.vel.set(0, 0, 0); t.endMob && t.endMob();
+    this.w.popup(f, 'WHIP GRAB', true); this.w.audio.splash(0.9);
+  }
+  updateGrabs(dt) {
+    const w = this.w;
+    for (const G of this.grabs) {
+      const f = G.f, t = G.t; G.T += dt;
+      if (t.dead || f.dead || (f.reacting() && !G.slammed)) { G.dead = true; t.restrainT = 0; continue; }
+      const fw = f.forward(_a).setY(0).normalize(), gy = t.groundY;
+      if (!G.slammed) {
+        const u = Math.min(1, G.T / G.slamAt), e = smooth01(u);
+        // up and over: from where the rival was caught to above a point 1.7 m in front of the bender
+        const tx = G.start.x + (f.pos.x + fw.x * 1.7 - G.start.x) * e, tz = G.start.z + (f.pos.z + fw.z * 1.7 - G.start.z) * e;
+        const ty = gy + 2.6 * Math.sin(Math.min(1, u * 1.25) * Math.PI / 2) + (G.start.y - gy) * (1 - e);
+        t.pos.x += (tx - t.pos.x) * Math.min(1, dt * 10); t.pos.y += (ty - t.pos.y) * Math.min(1, dt * 10); t.pos.z += (tz - t.pos.z) * Math.min(1, dt * 10);
+        t.vel.set(0, 0, 0); t.onGround = false; t.restrainT = Math.max(t.restrainT, 0.2);
+        if (G.T >= G.slamAt) {
+          G.slammed = true; t.restrainT = 0;
+          w.combat.damage(t, 16, fw.clone(), f, 'whipSlam', t.chestPos(new THREE.Vector3()), 3, 2);
+          t.vel.set(fw.x * 2, -24, fw.z * 2); t.onGround = false; t.invuln = Math.max(t.invuln, 0.6);
+          w.audio.splash(1.2);
+        }
+      } else {
+        G.slamT += dt;
+        if (t.onGround || G.slamT > 0.45) {
+          G.dead = true;
+          const at = _b.set(t.pos.x, t.groundY, t.pos.z);
+          w.fx.flip.spawn('water_impact', { pos: at, size: [4.2, 4.2], life: 0.9, pivot: 1, fps: 50, f0: 0, f1: 44, fadeIn: 0.01, rot: 0 });
+          w.fx.crater(at, 2.4); w.shake(0.45, at); w.audio.impact(1.3); w.popup(f, 'SLAM', true);
+          this.burst.spawn(at.x, at.y, at.z, 0.3);
+        }
+      }
+      // the rope: hand to chest, taut while lifting (a slight sag), whipping straight on the slam
+      const h = f.handPos(G.hand, _c), c = t.chestPos(_d), n = 12, pts = [];
+      const sag = G.slammed ? 0.05 : 0.35 * (1 - Math.min(1, G.T / G.slamAt));
+      for (let k = 0; k <= n; k++) { const s = k / n; pts.push(new THREE.Vector3(h.x + (c.x - h.x) * s, h.y + (c.y - h.y) * s - Math.sin(Math.PI * s) * sag + Math.sin(G.T * 18 + s * 9) * 0.04, h.z + (c.z - h.z) * s)); }
+      G.tube.set(pts, (q) => 0.075 + 0.03 * Math.sin(Math.PI * q), G.T * 3);
+    }
+    this.grabs = this.grabs.filter(G => { if (G.dead) this.freeTube(G.tube); return !G.dead; });
+  }
 
   // ============================================================ whips
   // A whip is a rope of 14 points hanging from the striking hand (or foot), simulated every frame:
@@ -182,6 +235,8 @@ export class Weapons {
           const dir = v.normalize().multiplyScalar(0.6).add(_d.set(t.pos.x - f.pos.x, 0, t.pos.z - f.pos.z).normalize().multiplyScalar(0.7)).normalize();
           // a whip that catches a rival in the air drives them back down onto the floor with full force
           const airborne = !t.onGround && t.pos.y - t.groundY > 0.5;
+          // Water's whip wraps the rival (airborne, or caught by the overhead lash on the ground): grab, lift, slam
+          if (W.el === 'water' && !W.frozen && (airborne || W.kind === 'v') && f.style.tech.whipSlam && !this.grabs.length && t.hp > 0) { W.hit.add(t); this.grabSlam(f, t, W.ls); break; }
           w.combat.damage(t, Math.round((W.frozen ? 1.4 : 1) * (airborne ? 1.5 : 1) * W.dmg), dir.clone(), f, W.tag, p.clone(), W.knock, W.frozen || airborne ? 2 : W.level);
           if (airborne && !t.dead) { t.vel.y = -18; t.vel.x *= 0.3; t.vel.z *= 0.3; w.shake(0.3, p); w.popup(f, 'SLAM', true); }
           if (W.frozen) { w.fx.debrisBurst(p, 10, 3, 0.07, 0xe0f4ff); }
@@ -562,25 +617,41 @@ export class Weapons {
     if (!mob.board) {
       mob.board = new THREE.Mesh(mob.el === 'water' ? this.iceSheetGeo : this.slabGeo, mob.el === 'water' ? iceMat : this.rockMat);
       mob.board.castShadow = true; w.scene.add(mob.board); mob.trailT = 0;
-      // the support that holds the slab / ice sheet up off the floor
+      // the support that holds the slab / ice sheet up off the floor: for water a sculpted crest of ice with crystals
+      // growing from its base (the downloaded ice cluster); for earth a column of rock
+      if (mob.el === 'water' && ICE.crestGeo) {
+        mob.post = new THREE.Mesh(ICE.crestGeo, iceMat); mob.post.castShadow = true; w.scene.add(mob.post);
+        mob.crystals = [[-0.72, -0.5, 0.75], [0.7, -0.9, 0.62], [-0.55, -1.5, 0.5], [0.5, 0.3, 0.55]].map(([x, z, k]) => { const c = iceClusterMesh(k, k * 0.8); c.userData.off = new THREE.Vector3(x, 0, z); c.rotation.y = rand(0, 6.28); w.scene.add(c); return c; });
+      } else {
       mob.post = new THREE.Mesh(this.postGeo || (this.postGeo = (() => { const g = new THREE.CylinderGeometry(0.45, 0.75, 1, 7, 1); g.translate(0, -0.5, 0); return g; })()), mob.el === 'water' ? iceMat : this.rockMat);
       mob.post.castShadow = true; w.scene.add(mob.post);
+      }
     }
     const gy = f.groundY, top = f.pos.y + (mob.el === 'water' ? -0.02 : -0.17);
     mob.board.position.set(f.pos.x, top, f.pos.z);
     mob.board.rotation.y = mob.heading;
     // the support: for water a ridge of ice rising from the floor, long along the direction of travel; for earth a
     // column of rock
+    if (mob.crystals) {
+      // the crest stands on the floor under the bender, its profile along the direction of travel; it grows up to
+      // the full lift as the surf starts
+      const h = Math.max(0.05, top - gy);
+      mob.post.position.set(f.pos.x, gy, f.pos.z); mob.post.scale.set(1, h, 1); mob.post.rotation.y = mob.heading;
+      const c = Math.cos(mob.heading), sn = Math.sin(mob.heading);
+      for (const k of mob.crystals) { const o = k.userData.off; k.position.set(f.pos.x + o.x * c + o.z * sn, gy - 0.05, f.pos.z - o.x * sn + o.z * c); }
+    } else {
     mob.post.position.set(f.pos.x, top - (mob.el === 'water' ? 0.18 : 0.15), f.pos.z); mob.post.scale.set(mob.el === 'water' ? 0.75 : 1, Math.max(0.05, top - 0.18 - gy), mob.el === 'water' ? 1.5 : 1); mob.post.rotation.y = mob.heading;
+    }
     mob.trailT -= dt;
     if (mob.trailT <= 0 && mob.speed > 2) {
       mob.trailT = 0.07;
-      if (mob.el === 'water') { const m = new THREE.Mesh(this.iceSheetGeo, iceMat); m.position.set(f.pos.x, f.groundY + 0.1, f.pos.z); m.rotation.y = mob.heading; m.scale.set(0.8, 1, 1.1); w.scene.add(m); this.trails.push({ m, t: 0, life: 2.6 }); }
+      // water leaves a frozen path: ice crystals (the downloaded cluster) of varied height and angle along the track
+      if (mob.el === 'water') { const k = rand(0.35, 0.8); const m = iceClusterMesh(k, k * rand(0.7, 1.1)); m.position.set(f.pos.x + rand(-0.4, 0.4), f.groundY - 0.05, f.pos.z + rand(-0.4, 0.4)); m.rotation.set(rand(-0.25, 0.25), rand(0, 6.28), rand(-0.25, 0.25)); w.scene.add(m); this.trails.push({ m, t: 0, life: 3.0 }); mob.trailT = 0.11; }
       else w.fx.debrisBurst(_a.set(f.pos.x, f.pos.y, f.pos.z), 2, 1.5, 0.08, 0x7a6a58, 0.7);
     }
     if (mob.el === 'earth' && Math.random() < 0.5) w.fx.dust(f.pos, 1, 1.2);
   }
-  surfEnd(mob) { if (mob && mob.board) { this.w.scene.remove(mob.board); mob.board = null; } if (mob && mob.post) { this.w.scene.remove(mob.post); mob.post = null; } }
+  surfEnd(mob) { if (mob && mob.board) { this.w.scene.remove(mob.board); mob.board = null; } if (mob && mob.post) { this.w.scene.remove(mob.post); mob.post = null; } if (mob && mob.crystals) { for (const c of mob.crystals) this.w.scene.remove(c); mob.crystals = null; } }
   // JUMP while surfing: the element itself launches the bender. Water raises an ice ramp under the feet and leaves
   // an ice platform; earth thrusts a slab up on a pillar that stays as a platform.
   surfLaunch(f, el) {
@@ -664,7 +735,7 @@ export class Weapons {
   update(dt) {
     this.tubeMat.uniforms.uTime.value += dt;
     this.burst.update(dt);
-    this.updateWhips(dt); this.updateArcs(dt); this.updateTraps(dt); this.updateWhirls(dt); this.updateSpires(dt); this.updateWaves(dt); this.updateColumns(dt); this.updateErupts(dt); this.updateFireRings(dt); this.updateCaptures(dt); this.updateTrails(dt);
+    this.updateWhips(dt); this.updateGrabs(dt); this.updateArcs(dt); this.updateTraps(dt); this.updateWhirls(dt); this.updateSpires(dt); this.updateWaves(dt); this.updateColumns(dt); this.updateErupts(dt); this.updateFireRings(dt); this.updateCaptures(dt); this.updateTrails(dt);
   }
   clear() {
     for (const W of this.whips) this.dropWhip(W);
@@ -681,6 +752,8 @@ export class Weapons {
     for (const T of this.trails) this.w.scene.remove(T.m);
     for (const P of this.platforms) { this.w.scene.remove(P.m); P.col.dead = true; }
     this.w.arena.colliders = this.w.arena.colliders.filter(c => !this.platforms.some(P => P.col === c));
+    for (const G of this.grabs || []) { this.freeTube(G.tube); if (G.t) G.t.restrainT = 0; }
+    this.grabs = [];
     this.whips = []; this.waves = []; this.columns = []; this.erupts = []; this.fireRings = []; this.captures = []; this.trails = []; this.platforms = []; this.arcs = []; this.traps = []; this.whirls = []; this.spires = [];
   }
 }

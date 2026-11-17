@@ -8,6 +8,7 @@
 import * as THREE from 'three';
 import { jaggedRockGeometry, HALF } from './arena.js';
 import { clamp, mulberry32, smooth01, rand } from './util.js';
+import { iceClusterMesh } from './ice.js';
 import { TOON_RAMP } from './hero.js';
 import { makeWaterWall, makeWaterRing, makeIceWall, makeWaterTube, waterMaterial, iceMat } from './defence-fx.js';
 import { Weapons } from './weapons.js';
@@ -200,7 +201,8 @@ export class Bending {
     if (how === 'silent') return;
     if (o.el === 'earth') { fx.debrisBurst(o.pos, 12, 3.5, 0.1, 0x6e665e); fx.dust(o.pos, 5, 2, 0x9f9282); w.audio.impact(0.6); }
     if (o.el === 'fire') { for (let i = 0; i < 10; i++) fx.fire(o.pos, _v.set(rand(-3, 3), rand(-1, 3), rand(-3, 3)), 0.5, 0.35); fx.smoke(o.pos); w.audio.fireHit(0.6); }
-    if (o.el === 'water') { fx.splash(o.pos, 14); w.audio.splash(0.7); this.extinguishNear(o.pos, 1.8); }
+    // water bursts in the KanaWorks splash flipbook; ice shatters into pale fragments
+    if (o.el === 'water') { if (SPEC[o.kind] && SPEC[o.kind].ice) fx.debrisBurst(o.pos, 14, 4, 0.08, 0xe0f4ff); else fx.flip.spawn('water_impact', { pos: o.pos, size: [2.0, 2.0], life: 0.6, fps: 75, fadeIn: 0.01, rot: 0 }); w.audio.splash(0.7); this.extinguishNear(o.pos, 1.8); }
     if (o.el === 'air') { for (let i = 0; i < 6; i++) fx.wind(o.pos, _v.set(rand(-4, 4), rand(-1, 2), rand(-4, 4)), 0.6, 0.35); }
     if (how === 'steam') fx.steam(o.pos, 10);
     if (o.src) o.src.respawnT = 18; // loose stone comes back later
@@ -333,6 +335,11 @@ export class Bending {
         // the water whip: consecutive strikes go right-to-left, left-to-right, overhead, then diagonally
         const g = this.heldList(f, 'water').filter(o => o.state === 'orbit');
         if (g.length) { this.launch(g[0], f, 1); return; }
+        // the Tai Chi push: both palms drive a wide wave of water straight out
+        if (f.tech && f.tech.clip === 'water_palm') {
+          for (const sd of ['L', 'R']) this.weapons.limbArc(f, 'water', 'hand', sd, { span: 0.25, speed: 14, grow: 2.2, dmg: 9, knock: 11, level: 1 });
+          w.fx.flip.spawn('water_impact', { pos: this.forwardPoint(f, 1.4, 0).setY(f.groundY), size: [2.6, 2.6], life: 0.7, pivot: 1, fps: 60, fadeIn: 0.01, rot: 0 }); w.audio.splash(1); return;
+        }
         // a punch (jab, cross or hook): a ball of water, every second one frozen to ice, is driven out of the fist
         if (f.tech && /punch|jab/.test(f.tech.clip)) {
           const o = this.fire((f.waterBallN = (f.waterBallN || 0) + 1) % 2 ? 'water' : 'iceBall', f, this.handPoint(f, -s, new THREE.Vector3()));
@@ -344,7 +351,7 @@ export class Bending {
         return;
       }
       case 'water.whipOut': case 'air.whipOut': {
-        if (f.tech && /punch|jab/.test(f.tech.clip)) return;   // punches carry no whip: Air's cross fires an air cannon, Water's punches throw balls
+        if (f.tech && /punch|jab|palm/.test(f.tech.clip)) return;   // punches and the push carry no whip: Air's cross fires an air cannon, Water's punches throw balls
         const k = this.whipKind(f), el = name.split('.')[0];
         const stats = el === 'water' ? { h: [10, 7, 1], v: [12, 6, 1], d: [12, 8, 1] } : { h: [9, 12, 1], v: [9, 10, 1], d: [9, 12, 1] };
         const [dmg, knock, level] = stats[k] || stats.h;
@@ -354,6 +361,11 @@ export class Bending {
         else f.whipW2 = null;
         if (el === 'water') w.fx.splash(this.handPoint(f, -s, _v), 4);
         return;
+      }
+      case 'water.sweep': {
+        // the low sweep: the sweeping foot drags a crescent of water along the floor round the bender
+        this.weapons.limbArc(f, 'water', 'foot', s > 0 ? 'L' : 'R', { span: 0.32, speed: 9, grow: 1.8, dmg: 8, knock: 4, level: 2 });
+        w.fx.flip.spawn('water_impact', { pos: _v.set(f.pos.x, f.groundY, f.pos.z), size: [3.2, 2.2], life: 0.6, pivot: 1, fps: 70, fadeIn: 0.01, rot: 0 }); w.audio.splash(0.9); return;
       }
       case 'water.leg': {
         // crescent kick: a broad, low arc of water sweeping out at leg height (takes the opponent's footing)
@@ -711,7 +723,7 @@ export class Bending {
         // rotating streams made from the water already being held
         d.fx = makeWaterRing(); d.ring = { r0: 0.45, r1: 1.4, y0: 0.2, y1: 1.75 }; d.hp = 40 + globes.length * 15;
         for (const g of globes) this.kill(g, 'silent');
-      } else { d.fx = makeWaterWall(1.2, 1.15, 2.3); d.arc = { r: 1.2, band: 0.5, half: 1.15, h: 2.3 }; }
+      } else { d.fx = makeWaterWall(1.55, 1.3, 3.1); d.arc = { r: 1.55, band: 0.55, half: 1.3, h: 3.1 }; }   // a bigger wall of water (M6)
       d.mesh = d.fx.mesh; this.placeDef(d, 1); w.fx.splash(_v.copy(f.pos).setY(f.pos.y + 0.4), 14); w.audio.splash(0.8);
     } else {
       d.mesh = new THREE.Group();
@@ -1209,8 +1221,9 @@ export class Bending {
     for (const s of this.spikes) {
       s.t += dt;
       if (s.t >= 0 && !s.mesh) {
-        s.mesh = s.ice ? new THREE.Mesh(this.iceShard, iceMat) : new THREE.Mesh(this.pillarGeo, this.mat.stone);
-        if (s.ice) { s.mesh.rotation.set(rand(-0.25, 0.25), rand(0, 6), rand(-0.25, 0.25)); s.mesh.scale.setScalar(0.8 + Math.random() * 0.3); } else s.mesh.scale.set(0.35, 0.9, 0.35);
+        // ice spikes: the downloaded ice cluster, each with its own height, width and lean (no row of identical cones)
+        s.mesh = s.ice ? iceClusterMesh(rand(1.0, 1.9), rand(0.7, 1.25)) : new THREE.Mesh(this.pillarGeo, this.mat.stone);
+        if (s.ice) { s.mesh.rotation.set(rand(-0.35, 0.35), rand(0, 6.28), rand(-0.35, 0.35)); s.iceCluster = true; } else s.mesh.scale.set(0.35, 0.9, 0.35);
         s.mesh.castShadow = true;
         s.mesh.position.copy(s.pos).setY(s.pos.y - 1); w.scene.add(s.mesh);
         if (s.ice) { w.fx.splash(s.pos.clone().setY(s.pos.y + 0.2), 6); w.audio.splash(0.4); } else { w.fx.debrisBurst(s.pos.clone().setY(s.pos.y + 0.1), 8, 3, 0.1, 0x7a6a58); w.audio.rumble(0.4); }
@@ -1218,7 +1231,7 @@ export class Bending {
           s.hit.add(t); w.combat.damage(t, 9, new THREE.Vector3(t.pos.x - s.owner.pos.x, 0, t.pos.z - s.owner.pos.z).normalize(), s.owner, 'spike', t.chestPos(new THREE.Vector3()), 3, 2); t.vel.y = 7;
         }
       }
-      if (s.mesh) { const k = s.t < 0.15 ? smooth01(s.t / 0.15) : s.t > 1.3 ? 1 - smooth01((s.t - 1.3) / 0.3) : 1; s.mesh.position.y = s.pos.y - 1 + k * 1.15; }
+      if (s.mesh) { const k = s.t < 0.15 ? smooth01(s.t / 0.15) : s.t > 1.3 ? 1 - smooth01((s.t - 1.3) / 0.3) : 1; s.mesh.position.y = s.iceCluster ? s.pos.y - 1.9 * (1 - k) - 0.1 : s.pos.y - 1 + k * 1.15; }
       // ice reacts to the other elements: fire melts it (steam), rock projectiles shatter it
       if (s.ice && s.mesh && s.t < 1.3) for (const o of this.objs) {
         if (o.state !== 'flying' || (o.el !== 'fire' && o.el !== 'earth') || Math.hypot(o.pos.x - s.pos.x, o.pos.z - s.pos.z) > 0.9 || o.pos.y > s.pos.y + 1.6) continue;

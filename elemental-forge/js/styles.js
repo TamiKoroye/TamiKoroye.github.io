@@ -365,6 +365,12 @@ STYLES.fire.tech.leg.push(T({ name: 'Flip Kick', clip: 'flip_kick', dur: 0.9, co
 STYLES.earth.tech.leg.push(T({ name: 'Rock Push Kick', clip: 'earth_teep', dur: 0.6, cost: 11, cancel: 0.72, move: 0.5, lunge: 3, keys: K0,
   active: { from: 0.45, to: 0.6, dmg: 9, range: 2.2, arc: 0.3, knock: 9, level: 1 }, events: [[0.48, 'earth.teep']] }));
 STYLES.earth.tech.hand.clip = ['earth_punch', 'earth_punch2', 'fire_punch2'];
+// Water's whip slam (M6): the whip wraps the rival and the bender lifts them overhead and slams them down
+// (Mixamo Sword And Shield Casting: both arms raised, then driven down with the hips and legs; see weapons.grabSlam)
+STYLES.water.tech.hand.clip = ['whip_h', 'fire_jab', 'whip_v', 'fire_punch', 'whip_d', 'earth_punch', 'water_palm'];
+STYLES.water.tech.leg.push(T({ name: 'Water Sweep', clip: 'earth_sweep', dur: 0.62, cost: 11, cancel: 0.75, move: 0.5, lunge: 3, keys: K0,
+  active: { from: 0.45, to: 0.68, dmg: 8, range: 2.4, arc: -1.4, knock: 4, level: 2 }, events: [[0.5, 'water.sweep']] }));
+STYLES.water.tech.whipSlam = T({ name: 'Whip Slam', clip: 'earth_stomp', clipSpeed: 1.5, dur: 1.1, cost: 0, cancel: 0.85, move: 0, keys: K0, events: [] });
 // Fire's kick chain (17 Nov, M6): kick-heavy and flowing, each kick its own authored clip, every kick throwing flame
 // from the kicking leg. LEG taps run through it in order; the chain restarts after a pause.
 {
@@ -387,6 +393,10 @@ STYLES.earth.tech.hand.clip = ['earth_punch', 'earth_punch2', 'fire_punch2'];
 // every element: LEG in the air is a jumping kick, right foot first, then the left (alternating while airborne)
 for (const k of ['earth', 'fire', 'water', 'air']) STYLES[k].tech.airKick = T({ name: 'Air Kick', clip: 'jump_kick', clipSpeed: 3.0, dur: 0.38, cost: 6, cancel: 0.55, move: 2.5, lunge: 4,
   active: { from: 0.5, to: 0.68, dmg: 7, range: 2.1, arc: 0.4, knock: 6, level: 1 }, events: [[0.55, k + '.airKick']], keys: K0 });
+// Fire in the air: quick alternating kicks (bicycle-style), each throwing flame from its own foot (Mixamo Kicking and
+// its mirror; a dedicated bicycle-kick clip is not among the downloads)
+STYLES.fire.tech.airKick = T({ name: 'Flaming Air Kick', clip: 'jump_kick', clipSpeed: 3.6, dur: 0.3, cost: 5, cancel: 0.5, move: 2.5, lunge: 3,
+  active: { from: 0.45, to: 0.65, dmg: 7, range: 2.1, arc: 0.4, knock: 6, level: 1 }, events: [[0.5, 'fire.airKick']], keys: K0 });
 // Air's kick in the air is the spinning hurricane kick (Mixamo Hurricane Kick), the leg extended through the turn
 STYLES.air.tech.airKick = T({ name: 'Hurricane Kick', clip: 'hurricane', clipSpeed: 2.0, dur: 0.8, cost: 7, cancel: 0.6, move: 3, lunge: 4,
   active: { from: 0.5, to: 0.7, dmg: 8, range: 2.3, arc: 0.6, knock: 6, level: 1 }, events: [[0.55, 'air.airKick']], keys: K0 });

@@ -198,6 +198,26 @@ if (want('earthmoves')) {
   for (let i = 0; i < 4; i++) { await page.evaluate(() => { const E = window.__EF; E.opp.hp = 100; E.opp.pos.set(0, 0, 3.0); E.opp.vel.set(0, 0, 0); E.opp.action = null; E.opp.stunT = 0; }); await tap('KeyG'); await run(22); }
   await run(20); made.push(end());
 }
+if (want('watersurf')) {
+  begin('water_surf_attacks'); await setup('water', 'earth', [0, -14], [0, 6]);
+  cam = ['P', 'body', 6, Math.PI / 2 + 0.3, 0.8]; note = 'DODGE (Shift) held with the stick forward: ice surfing; HAND (F) four taps and LEG (G) without leaving the ice';
+  await key('KeyW', true); await key('ShiftLeft', true); await run(24);
+  for (let i = 0; i < 4; i++) { await tap('KeyF'); await run(12); }
+  await tap('KeyG'); await run(20); await key('ShiftLeft', false); await key('KeyW', false); await run(20); made.push(end());
+}
+if (want('whipgrab')) {
+  begin('water_whip_grab_slam'); await setup('water', 'earth', [0, -1.8], [0, 1.8]);
+  cam = ['P', 'body', 7, Math.PI / 2 + 0.45, 1.0]; note = 'HAND (F) three taps: the third is the overhead whip: it wraps the rival, lifts them and slams them down';
+  for (let i = 0; i < 3; i++) { await page.evaluate(() => { const E = window.__EF, P = E.player, O = E.opp; O.hp = 100; O.action = null; O.stunT = 0; O.invuln = 0; O.pos.set(P.pos.x + Math.sin(P.yaw) * 3.4, 0, P.pos.z + Math.cos(P.yaw) * 3.4); O.vel.set(0, 0, 0); }); await tap('KeyF'); await run(i === 2 ? 75 : 16); }
+  note = 'the rival thrown into the air (scripted), then HAND: the whip catches them in the air and slams them down';
+  await page.evaluate(() => { const E = window.__EF, P = E.player, O = E.opp; P.altN = 0; O.hp = 100; O.action = null; O.stunT = 0; O.invuln = 0; O.pos.set(P.pos.x + Math.sin(P.yaw) * 3.4, 0, P.pos.z + Math.cos(P.yaw) * 3.4); O.vel.set(0, 9, 0); O.onGround = false; });
+  await run(8); await tap('KeyF'); await run(70); made.push(end());
+}
+if (want('icespikes')) {
+  begin('water_ice_spikes'); await setup('water', 'fire', [0, -6], [0, 4]);
+  cam = ['P', 'body', 8, Math.PI / 2 + 0.5, 1.8]; note = 'LEG (G) held: the tidal sweep; the wave freezes into a line of ice crystals (the downloaded ice cluster model)';
+  await key('KeyG', true); await run(32); await key('KeyG', false); await run(55); made.push(end());
+}
 if (want('water')) {
   begin('water_punches_and_whips'); await setup('water', 'earth', [0, -3.5], [0, 3.5]);
   cam = ['P', 'body', 4.2, Math.PI / 2 + 0.5, 0.2]; note = 'HAND (F) six taps: whip, jab (water ball), overhead whip, cross (ice ball), diagonal whip, hook (water ball)  -  no droplets';
