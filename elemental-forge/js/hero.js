@@ -307,7 +307,7 @@ export class Hero {
     }
     else if (f.action === 'down' && f.floorHit && has('knockback')) {
       // struck while lying down: the lying pose held (the knockdown's last frame), no standing reaction
-      clip = 'knockback'; ts = this.curName === 'knockback' ? 1.5 : 0; wU = wL = 0; fade = 0.12; if (this.curName !== 'knockback') { restart = true; startAt = this.actions.knockback.getClip().duration - 0.03; }   // still falling: the fall finishes
+      clip = 'knockback'; ts = this.curName === 'knockback' ? 1.5 : 0; wU = wL = 0; fade = 0.3; if (this.curName !== 'knockback') { restart = true; startAt = this.actions.knockback.getClip().duration - 0.03; }   // still falling: the fall finishes
     }
     else if (f.action === 'down' && has('knockback')) once('knockback', 1.25, 0.12);   // knocked off the feet: Mixamo Knocked Down, onto the back
     else if (f.action === 'down' && has('ko')) once('ko', 1.6, 0.1);
@@ -320,7 +320,11 @@ export class Hero {
       // the blow came from) or, for a blow straight on, Receive Stomach Uppercut
       const heavy = f.action === 'stagger';
       const n = heavy ? (Math.abs(hlx) > 0.45 && has('hit_big') ? (hlx > 0 ? 'hit_big_M' : 'hit_big') : has('hit_body') ? 'hit_body' : 'hit_b') : f.hitAlt ? 'hit_b' : 'hit_a';
-      if (has(n)) { clip = n; ts = heavy ? 1.15 : 1.35; wU = wL = 0; fade = 0.1; if (f.actionT < dt * 1.5 || this.curName !== n) restart = true; }
+      // several hits landing together (a punch and its fireball, a whip's two lashes) are one reaction: within
+      // 0.3 s of a reaction starting, the clip already playing continues instead of switching or restarting
+      const recent = /^hit_/.test(this.curName || '') && this.clock - (this.reactAt || -9) < 0.3 && !(heavy && !/^hit_(big|body)/.test(this.curName));
+      if (recent) { clip = this.curName; ts = this.cur.timeScale; wU = wL = 0; fade = 0.1; }
+      else if (has(n)) { clip = n; ts = heavy ? 1.15 : 1.35; wU = wL = 0; fade = 0.1; if (f.actionT < dt * 1.5 || this.curName !== n) { restart = true; this.reactAt = this.clock; } }
       else { clip = f.hitAlt ? 'Hit_Head' : 'Hit_Chest'; wU = wL = 0; if (this.curName !== clip || f.actionT < dt * 1.5) restart = true; ts = 1.2; fade = 0.05; }
     }
     else if (f.dodgeT > 0) {

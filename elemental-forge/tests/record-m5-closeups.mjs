@@ -153,7 +153,9 @@ if (want('wallrun')) {
   begin('wall_flip'); await setup('fire', 'water', [0, 27.0], [0, 10], 'P.yaw = P.faceYaw = 0; E.camCtl.yaw = 0;');
   cam = ['P', 'body', 6.5, -Math.PI / 2 - 0.5, 0.6]; note = 'run straight at the wall (W), JUMP: up the wall and off in a back somersault';
   await page.evaluate(() => { window.__EF.state.locked = false; });
-  await key('KeyW', true); await run(17); await tap('Space'); await key('KeyW', false); await run(50); made.push(end());
+  note = 'running straight at the wall (6.5 m/s, at arm length), JUMP: up the wall and off in a back somersault';
+  await page.evaluate(() => { const P = window.__EF.player; P.pos.set(0, 0, 28.95); P.vel.set(0, 0, 6.5); P.yaw = P.faceYaw = 0; });
+  await tap('Space'); await run(50); made.push(end());
 }
 
 fs.writeFileSync(path.join(OUT, 'trace.json'), JSON.stringify(trace));
