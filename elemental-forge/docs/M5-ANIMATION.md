@@ -110,6 +110,32 @@ The retargeter now reads their bones, but the body turns upside down mid-kick. T
 - **Running straight at the wall:** a 0.5 s run up it, then a back somersault off it.
 - **Footfalls:** Fire leaves flame, Earth knocks rock grit from the wall, Air leaves gusts.
 
+## Second pass (your message of 17 Nov, later)
+
+- **Water droplets:** removed. The droplet spray behind whips, kicks, surfing, guards and specials is gone (`fx.splash` is now a no-op).
+  - What is left of Water is the whips, the balls, the streams, the waves and the Drowning Sphere.
+- **Water HAND:** whips and punches alternate:
+  - right-to-left whip;
+  - jab, throwing a ball of water;
+  - overhead whip;
+  - cross, throwing a ball of ice;
+  - diagonal whip;
+  - hook, throwing a ball of water.
+
+  The fists close for the punches and the palms open for the whips.
+- **Ice:**
+  - **Colour:** pale, almost white blue and translucent, with a faint cold glow (`js/defence-fx.js`, `iceMat`). The old blue was 0xbfe8ff; the new ice is 0xe6f7ff.
+  - **Ice surf:** the bender rides a thick ice floe on a ridge of ice. The feet are held 1 m off the floor (it was 0.45 m), and the ice trail stays on the floor behind.
+- **Earth rock slide:** the slab rides on a column of rock, 1 m up (it was 0.6 m).
+- **Air DODGE:** a 2-second glide inside the whirlwind, about 0.7 m off the floor.
+  - It goes in the stick's direction, or back and to the side away from the rival if the stick is centred, and the stick steers it.
+  - It starts fast and eases (13 m/s down to 4 m/s). It protects for the first 0.6 s and costs 16 energy.
+  - The body plays the airborne gliding pose (UAL2 NinjaJump idle, as in flight). The old move was a 0.34 s sideways dash.
+- **Caught in the air:** caught fighters (Tornado, Drowning Sphere, whip capture) thrash in a struggle loop (Mixamo Being Electrocuted, 1.0 to 4.0 s). They used to hold the guard pose at 0.6 speed.
+  - The Tornado now marks its victim as caught for as long as it holds them.
+- **Thrown high:** the knockdown fall is slowed to match the time left in the air, so the back lands when the body reaches the floor. It no longer finishes early and hangs lying in mid-air.
+- **Procedural motion:** none. Every technique for every element names an authored clip. The procedural tumble and pose layers stay at 0 throughout every traced scenario.
+
 ## Trace (from `tests/record-m5-closeups.mjs`)
 
 Each line lists every clip change with the time it started. A "|U" or "|L" suffix means the upper body or legs only. Procedural weight is 0 throughout every scenario.
