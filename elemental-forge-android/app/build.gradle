@@ -6,8 +6,8 @@ android {
     applicationId 'io.github.tamikoroye.elementalforge'
     minSdk 26
     targetSdk 35
-    versionCode 1
-    versionName '0.1-dev'
+    versionCode 2
+    versionName '0.2-dev'
   }
   // test builds only: signed with the key in test-signing.keystore so each new build installs over the last one.
   // A Play Store release needs its own private key, kept out of the repository.
