@@ -23,7 +23,7 @@ export const ACTIONS = {
 // Elemental mobility (DODGE held). All values are tunable: speeds in m/s, accelerations in m/s^2, turn in rad/s,
 // drains in energy per second, flight duration in seconds, maximum altitude in metres above the ground below.
 export const MOBILITY = {
-  water: { top: 12.5, accel: 9, turn: 3.0, brake: 14, cruise: 5, coast: 3, drain: 5, launch: 12.5, lift: 1.5 },     // ice surfing: riding a sculpted crest of ice that holds the feet 1.5 m off the floor
+  water: { top: 12.5, accel: 9, turn: 3.0, brake: 14, cruise: 5, coast: 3, drain: 4, launch: 12.5, lift: 3.0, last: 8 },     // ice surfing: riding a sculpted crest of ice that holds the feet 3 m off the floor; DODGE held starts it, it keeps going after DODGE is let go (so the thumb is free to attack), DODGE tapped again ends it
   earth: { top: 10.5, accel: 5, turn: 2.4, brake: 9, cruise: 5, coast: 2, drain: 7, launch: 13.5, lift: 1.0, last: 4 },     // rock slide (heavy, on a slab of rock held 1 m off the floor; DODGE starts and ends it)
   flame: { top: 13, accel: 30, turn: 6, drain: 14, launch: 11 },                                         // flame-propelled run
   fly:   { duration: 6, takeoff: 8, ascent: 7, sink: 1.2, maxAlt: 14, speed: 9.5, accel: 14, drain: 8, recover: 1.5 }, // airbending flight
@@ -82,6 +82,8 @@ export class Fighter {
     const old = this.el;
     if (old && this.world.bending) { this.world.bending.dropAll(this, old); if (this.guarding) { this.guarding = false; this.world.bending.guardEnd(this); } }
     this.holding = false; this.charging = false; this.handHoldT = -1; this.legHoldT = -1;
+    // a ride of the old element (ice surf, rock slide, flame run, flight) ends: the new element cannot keep it up
+    if (this.mob && this.mob.el !== el) this.endMob();
     if (this.action === 'tech') { this.action = null; this.tech = null; }   // switching is instant: the technique in progress stops
     this.el = el; this.style = STYLES[el];
     // the sash takes the element's colour
@@ -209,7 +211,7 @@ export class Fighter {
       this.mobCd = (this.mobCd || 0) - dt;
       // a spent mobility needs DODGE released (and, for flight, a recovery time) before it can start again
       // DODGE held: Water's ice surfing and Fire's flame run (Earth's rock slide and Air's flight start on a tap)
-      if (!this.mob && !this.mobLock && this.mobCd <= 0 && this.dodgeHoldT > 0.28 && (this.el === 'water' || this.el === 'fire') && !this.guarding && !this.charging && !this.reacting() && this.en > 12) this.startMob();
+      if (!this.mob && !this.mobLock && this.mobCd <= 0 && this.dodgeHoldT > 0.28 && (this.el === 'water' || this.el === 'fire') && !this.guarding && !this.charging && !this.reacting() && this.en > 12) { this.startMob(); if (this.mob && this.el === 'water') { this.mob.tap = true; this.mobLock = true; } }
       // tap-started mobility ends by itself: the rock slide after a few seconds, flight when its fuel is spent
       if (this.mob && this.mob.tap && this.mob.kind === 'surf' && (this.mob.t > (MOBILITY[this.mob.el].last || 4) || this.en < 2)) { this.endMob(); this.mobCd = 0.4; }
       // (an Earth slab beside a wall goes onto the wall instead of launching: see the wall checks below)
@@ -245,6 +247,9 @@ export class Fighter {
           this.buf.dodge = 0;
           if (this.mob && this.mob.kind === 'surf') { this.endMob(); this.mobCd = 0.3; }
           else if (this.en >= 12 && !this.reacting()) { this.endHold(); this.startMob(); if (this.mob) this.mob.tap = true; }
+        } else if (this.el === 'water' && this.mob && this.mob.kind === 'surf') {
+          // Water: a DODGE tap while riding the ice steps off it
+          this.buf.dodge = 0; this.endMob(); this.mobCd = 0.3;
         } else if (this.en >= 10 && !(this.mob && this.mob.kind === 'surf' && this.el === 'earth')) { this.buf.dodge = 0; this.endHold(); this.doDodge(); }
       }
       // Fire, Earth and Air: JUMP next to a wall while moving runs along it (or, heading straight into it, up it
@@ -411,10 +416,13 @@ export class Fighter {
       } else if (this.dodgeKind === 'rocket') {
         const rsp = 3 + 15 * k;
         this.vel.x = this.dodgeDir.x * rsp; this.vel.z = this.dodgeDir.z * rsp;
-        this.vel.y = (0.3 * Math.sin(Math.PI * (1 - this.dodgeT / this.dodgeDur)) - (this.pos.y - this.groundY)) * 10 + 21 * dt; this.onGround = false;
-        // the jets: flame driven out of both feet against the direction of travel
+        this.vel.y = (0.45 * Math.sin(Math.PI * (1 - this.dodgeT / this.dodgeDur)) - (this.pos.y - this.groundY)) * 10 + 21 * dt; this.onGround = false;
+        // the jets: tight streams of flame driven out of both feet against the direction of travel, small and bright at
+        // the sole and widening behind (two per foot per frame, fast and short-lived, so they read as thrust)
         const F = this.world.fx.flip;
-        for (const sd of ['L', 'R']) { const fp = this.footPos(sd, _v2); F.spawn('fire_flames', { pos: fp, vel: _v.copy(this.dodgeDir).multiplyScalar(-14).add(_fwd.set(rand(-1, 1), rand(-1.5, 0.5), rand(-1, 1))), size: [0.5, 0.65], grow: 3, life: 0.22, f0: 8, f1: 32, drag: 4, fadeIn: 0.01, rot: rand(-1, 1) }); }
+        for (const sd of ['L', 'R']) for (let j = 0; j < 2; j++) { const fp = this.footPos(sd, _v2).addScaledVector(this.dodgeDir, -0.12 - j * 0.18); F.spawn('fire_flames', { pos: fp, vel: _v.copy(this.dodgeDir).multiplyScalar(-rand(16, 22)).add(_fwd.set(rand(-0.6, 0.6), rand(-1.2, -0.2), rand(-0.6, 0.6))), size: [0.32, 0.42], grow: 4.5, life: 0.16, f0: 4, f1: 26, drag: 2.5, fadeIn: 0.0, rot: rand(-0.5, 0.5) }); }
+        // a flame held right under each sole (it moves with the body), so the jets visibly come out of the feet
+        for (const sd of ['L', 'R']) F.spawn('fire_flames', { pos: this.footPos(sd, _v2).add(_fwd.set(0, -0.08, 0)), vel: _v.copy(this.vel).addScaledVector(this.dodgeDir, -3), size: [0.55, 0.6], grow: 1, life: 0.07, f0: 10, f1: 16, fadeIn: 0.0, rot: rand(-0.3, 0.3) });
       } else {
       const sp = this.dodgeKind === 'side' ? 2 + (this.el === 'air' ? 19 : 13) * k : this.dodgeKind === 'back' ? 2 + 10 * k : 2.5 + (D.speed - 2.5) * k;
       this.vel.x = this.dodgeDir.x * sp; this.vel.z = this.dodgeDir.z * sp;
@@ -538,8 +546,15 @@ export class Fighter {
     // on a wall the whole body tips over so the feet meet the face: sideways for a run along it, backwards for a
     // run up it (eased in and out)
     const W = this.wall, wantRoll = W && (W.kind === 'run' || W.kind === 'surf') ? W.side * (W.kind === 'surf' ? 1.35 : 0.95) * Math.min(1, W.T / 0.12) : 0, wantPitch = W && W.kind === 'up' ? -0.8 * Math.min(1, W.T / 0.12) : 0;
+    // rocket dodge: the jets at the feet push the body sideways, so the upper body leans away from the travel (about
+    // 14 degrees, in and out with the thrust) while the stance holds
+    let rocketRoll = 0;
+    if (this.dodgeKind === 'rocket' && this.dodgeT > 0) {
+      const lx = this.dodgeDir.x * Math.cos(this.yaw) - this.dodgeDir.z * Math.sin(this.yaw);   // + : towards the fighter's left
+      rocketRoll = -Math.sign(lx || 1) * 0.25 * Math.sin(Math.PI * (1 - this.dodgeT / this.dodgeDur)) * Math.min(1, Math.abs(lx) * 1.5);
+    }
     const kw = 1 - Math.exp(-14 * dt);
-    this.wallRoll = (this.wallRoll || 0) + (wantRoll - (this.wallRoll || 0)) * kw; this.wallPitch = (this.wallPitch || 0) + (wantPitch - (this.wallPitch || 0)) * kw;
+    this.wallRoll = (this.wallRoll || 0) + (wantRoll + rocketRoll - (this.wallRoll || 0)) * kw; this.wallPitch = (this.wallPitch || 0) + (wantPitch - (this.wallPitch || 0)) * kw;
     if (Math.abs(this.wallRoll) > 1e-3 || Math.abs(this.wallPitch) > 1e-3) {
       this.root.quaternion.setFromAxisAngle(_up, this.yaw).multiply(_qw.setFromAxisAngle(_zx.set(0, 0, 1), this.wallRoll)).multiply(_qw.setFromAxisAngle(_zx.set(1, 0, 0), this.wallPitch));
     }

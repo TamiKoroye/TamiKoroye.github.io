@@ -702,7 +702,8 @@ export class Weapons {
       // the crest stands on the floor under the bender, its profile along the direction of travel; it grows up to
       // the full lift as the surf starts
       const h = Math.max(0.05, top - gy);
-      mob.post.position.set(f.pos.x, gy, f.pos.z); mob.post.scale.set(1, h, 1); mob.post.rotation.y = mob.heading;
+      // taller crests get longer and a little wider, so a high ride stays a wave of ice, not a thin wall
+      mob.post.position.set(f.pos.x, gy, f.pos.z); mob.post.scale.set(1 + Math.max(0, h - 1.5) * 0.25, h, 1 + Math.max(0, h - 1.5) * 0.4); mob.post.rotation.y = mob.heading;
       const c = Math.cos(mob.heading), sn = Math.sin(mob.heading);
       for (const k of mob.crystals) { const o = k.userData.off; k.position.set(f.pos.x + o.x * c + o.z * sn, gy - 0.05, f.pos.z - o.x * sn + o.z * c); }
     } else {

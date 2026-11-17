@@ -336,11 +336,11 @@ export class Bending {
         const g = this.heldList(f, 'water').filter(o => o.state === 'orbit');
         if (g.length) { this.launch(g[0], f, 1); return; }
         // the Tai Chi push: both palms drive a wide wave of water straight out
-        if (f.tech && f.tech.clip === 'water_palm') {
+        if (f.tech && (f.tech.clip === 'water_palm' || /^tc_push/.test(f.tech.clip))) {
           for (const sd of ['L', 'R']) this.weapons.limbArc(f, 'water', 'hand', sd, { span: 0.25, speed: 14, grow: 2.2, dmg: 9, knock: 11, level: 1 }); w.audio.splash(1); return;
         }
         // a punch (jab, cross or hook): a ball of water, every second one frozen to ice, is driven out of the fist
-        if (f.tech && /punch|jab/.test(f.tech.clip)) {
+        if (f.tech && /punch|jab|_palm/.test(f.tech.clip)) {
           const o = this.fire((f.waterBallN = (f.waterBallN || 0) + 1) % 2 ? 'water' : 'iceBall', f, this.handPoint(f, -s, new THREE.Vector3()));
           o.dmg = o.kind === 'iceBall' ? 9 : 7; w.audio.splash(0.5); return;
         }
@@ -350,7 +350,7 @@ export class Bending {
         return;
       }
       case 'water.whipOut': case 'air.whipOut': {
-        if (f.tech && /punch|jab|palm/.test(f.tech.clip)) return;   // punches and the push carry no whip: Air's cross fires an air cannon, Water's punches throw balls
+        if (f.tech && /punch|jab|palm|push/.test(f.tech.clip)) return;   // punches and the push carry no whip: Air's cross fires an air cannon, Water's punches throw balls
         const k = this.whipKind(f), el = name.split('.')[0];
         const stats = el === 'water' ? { h: [10, 7, 1], v: [12, 6, 1], d: [12, 8, 1] } : { h: [9, 12, 1], v: [9, 10, 1], d: [9, 12, 1] };
         const [dmg, knock, level] = stats[k] || stats.h;
@@ -394,7 +394,7 @@ export class Bending {
       case 'water.charged': {
         const g = this.heldList(f, 'water'); g.forEach(o => this.kill(o, 'silent'));
         // Tidal Wave: a wall of water advancing over the ground; where it stops it freezes into a line of ice spikes
-        this.weapons.wave(f, 'water', { freeze: true, width: 6.5 + g.length, h: 3.8 + g.length * 0.3, dmg: 9 + g.length * 2, life: 1.3 }); w.shake(0.3, f.pos);
+        this.weapons.wave(f, 'water', { freeze: true, width: 6.5 + g.length, h: 3.8 + g.length * 0.3, dmg: 9 + g.length * 2, life: 1.15 }); w.shake(0.3, f.pos);
         return;
       }
       case 'water.specialStart': this.specials.waterStart(f); return;
