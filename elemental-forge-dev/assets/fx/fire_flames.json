@@ -1,0 +1,19 @@
+{
+ "grid": [
+  6,
+  6
+ ],
+ "cell": [
+  256,
+  256
+ ],
+ "frames": 36,
+ "pivot": [
+  0.5,
+  0.0
+ ],
+ "alpha": "straight",
+ "source": "JangaFX EmberGen embergen_fire_a_ (CC0), rendered by tools/vdb-flipbook.py",
+ "axis": "y",
+ "image": "fire_flames.webp"
+}

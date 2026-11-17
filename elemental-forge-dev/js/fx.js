@@ -2,6 +2,7 @@
 import * as THREE from 'three';
 import { rand } from './util.js';
 import { FlameBlobs, WaterChunks, Ribbons } from './fxstyle.js';
+import { FlipFX } from './flipfx.js';
 
 function softTexture() {
   const c = document.createElement('canvas'); c.width = c.height = 64;
@@ -27,6 +28,7 @@ export class FX {
     this.scene = scene;
     // stylised element primitives (toon fire blobs, faceted water chunks, wind ribbons)
     this.flames = new FlameBlobs(scene); this.water = new WaterChunks(scene); this.ribbons = new Ribbons(scene, camera);
+    this.flip = new FlipFX(scene);   // flipbook sheets: EmberGen fire and explosion, KanaWorks water and ice
     // --- debris (instanced chunks)
     this.debrisMax = 320;
     const dg = new THREE.DodecahedronGeometry(1, 0);
@@ -91,7 +93,8 @@ export class FX {
   }
   // element particles
   // fire: solid cel-shaded flame blobs
-  fire(pos, vel, size = 0.45, life = 0.35) { this.flames.spawn(pos, vel, size * 0.5, life * 1.25); return { alpha: 1 }; }
+  // every flame in the game is now a sprite of the EmberGen fire sheet (the old low-poly flame blobs are retired)
+  fire(pos, vel, size = 0.45, life = 0.35) { this.flip.spawn('fire_flames', { pos, vel, size: [size * 1.5, size * 1.8], grow: 1.8, life: life * 1.1, f0: 10 + rand(0, 8), f1: 34, rise: 2, drag: 1.5, fadeIn: 0.02, rot: rand(-0.6, 0.6) }); return { alpha: 1 }; }
   smoke(pos, size = 0.5) { return this.puff(pos, new THREE.Vector3(rand(-0.3, 0.3), 1.2, rand(-0.3, 0.3)), size, 0.9, 0x55504c, 0.35, 2.2); }
   steam(pos, n = 8) { for (let i = 0; i < n; i++) this.puff(pos.clone().add(new THREE.Vector3(rand(-0.3, 0.3), rand(0, 0.3), rand(-0.3, 0.3))), new THREE.Vector3(rand(-1, 1), rand(1.5, 3), rand(-1, 1)), 0.5, 0.9, 0xe8eef2, 0.55, 2.5); }
   // water: faceted light-blue chunks with gravity
@@ -129,7 +132,7 @@ export class FX {
   }
 
   update(dt, groundAt) {
-    this.flames.update(dt); this.water.update(dt, groundAt); this.ribbons.update(dt);
+    this.flames.update(dt); this.water.update(dt, groundAt); this.ribbons.update(dt); this.flip.update(dt);
     // debris
     const items = this.dItems;
     for (let i = items.length - 1; i >= 0; i--) {

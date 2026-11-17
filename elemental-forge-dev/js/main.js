@@ -9,6 +9,7 @@ import { FollowCam } from './camera.js';
 import { Controls } from './controls.js';
 import { AI } from './ai.js';
 import { FX } from './fx.js';
+import { loadIce } from './ice.js';
 import { Audio } from './audio.js';
 import { clamp, damp } from './util.js';
 import { loadHeroAssets, TOON_RAMP, heroReady } from './hero.js';
@@ -76,6 +77,7 @@ const LOAD = { mode: /[?&]mocap=0/.test(location.search) ? 'procedural compariso
 try { await loadHeroAssets(); LOAD.character = 'ok'; } catch (e) { LOAD.character = 'failed'; LOAD.errors.push('Character: ' + (e && e.message || e)); }
 if (LOAD.character === 'ok' && LOAD.mode === 'authored') {
   try { await loadMocap(); } catch (e) { LOAD.errors.push('Animations: ' + (e && e.message || e)); }
+  await loadIce();   // the downloaded ice cluster model and the ice-surf crest (procedural fallback if it fails)
   LOAD.clipsDecoded = PACK_STATUS.decoded; LOAD.clipsExpected = PACK_STATUS.expected;
   for (const er of PACK_STATUS.errors) if (!LOAD.errors.some(x => x.includes(er))) LOAD.errors.push('Animations: ' + er);
   if (LOAD.clipsDecoded) adoptTiming(STYLES);

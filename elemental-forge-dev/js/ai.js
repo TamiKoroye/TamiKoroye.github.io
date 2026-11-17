@@ -16,7 +16,7 @@ export class AI {
     this.strafeDir = 1; this.strafeT = 0;
     this.throwT = 2.5; this.thinkT = 0; this.reactT = -1; this.reaction = null;
     this.guardT = 0; this.holdT = 0; this.meleeT = 0;
-    this.seen = new WeakSet();
+    this.seen = new WeakSet(); this.seen2 = new WeakSet();
     this.seenTech = -1; this.combo = []; this.comboT = 0; this.punishT = 0; this.jetT = 0;
   }
   setDifficulty(d) { this.d = d; this.P = PROFILES[d] || PROFILES.normal; }
@@ -114,12 +114,22 @@ export class AI {
         if (Math.hypot(f.pos.x - E.x, f.pos.z - E.z) > 2.4) continue;
         away(E.x, E.z);
         if (!this.seen.has(E)) { this.seen.add(E); if (Math.random() < P.react) { this.reaction = 'dodge'; this.reactT = P.reactDelay * rand(0.6, 1); this.dodgeFrom = E; } }
+        // a second look once free to act (the first came during a roll or a hit reaction and could not be acted on)
+        else if (!this.seen2.has(E) && !f.action && f.onGround && !this.reaction && Math.hypot(f.pos.x - E.x, f.pos.z - E.z) < 1.9) {
+          this.seen2.add(E); if (Math.random() < P.react) { this.reaction = 'dodge'; this.reactT = 0.05; this.dodgeFrom = E; }
+        }
       }
       // an expanding fire ring closing in: jump it
       for (const R of Wp.fireRings) {
         if (R.f !== foe || R.hit.has(f)) continue;
         const gap = Math.hypot(f.pos.x - R.x, f.pos.z - R.z) - R.r;
         if (gap > 0.3 && gap < 1.9 && f.onGround && !this.seen.has(R)) { this.seen.add(R); if (Math.random() < P.react) inp.jump = true; }
+      }
+      // Fire's stomp wave rolling out toward us: jump it as the front arrives
+      for (const R of w.bending.rings) {
+        if (!R.quiet || R.owner !== foe || R.done.has(f)) continue;
+        const gap = Math.hypot(f.pos.x - R.center.x, f.pos.z - R.center.z) - R.r;
+        if (gap > 0.2 && gap < 2.2 && f.onGround && !this.seen.has(R)) { this.seen.add(R); if (Math.random() < P.react) inp.jump = true; }
       }
       // a wave advancing on us: guard against it
       for (const V of Wp.waves) {
