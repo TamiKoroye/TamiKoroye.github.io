@@ -108,14 +108,21 @@ for (const el of (process.env.WHIPS ? [process.env.WHIPS] : process.env.ONLY ? [
     // a hit knocks the rival out of reach; each strike is measured against a rival standing 4 m in front again
     await S(() => { const { player: p, opp: o } = window.__EF; const fw = p.forward(); o.pos.set(p.pos.x + fw.x * 4, p.pos.y, p.pos.z + fw.z * 4); o.vel.set(0, 0, 0); o.action = null; o.stunT = 0; o.invuln = 0; });
     await press('btn-hand', 2);
-    const rows = []; let shot = 0;
+    const rows = []; let shot = 0, ballSeen = [];
     for (let j = 0; j < 30; j++) {
       await stepN(1); const r = await whipSample(); if (r) rows.push(r);
+      if (el === 'water' && !ballSeen.length) ballSeen = await S(() => window.__EF.world.bending.objs.filter(o => o.owner === window.__EF.player && (o.kind === 'water' || o.kind === 'iceBall')).map(o => o.kind));
       if (r && r.rel && shot < 2 && i < 3 && (shot === 0 || rows.filter(x => x.rel).length === 4)) { await snap(`${el}-whip${i}-${shot ? 'lash' : 'release'}`); if (shot && i < 2) await snap(`${el}-whip${i}-lash-normal`, 'normal'); shot++; }
     }
     // (17 Nov brief: Air's third strike is a cross punch firing an air cannon, not a whip)
     const isCannon = await S(() => /^fire_punch/.test(window.__EF.player.hero.curName || '') || (window.__hits || []).length && false);
     if (!rows.length && el === 'air' && i === 2) { per.cannon = 1; await stepN(12); continue; }
+    // (17 Nov, later: Water's second and fourth strikes are punches that throw a ball of water or ice, not whips;
+    //  for those the check is that a ball really left the fist)
+    if (!rows.length && el === 'water' && i % 2 === 1) {
+      check(`water strike ${i + 1}: the punch throws a water or ice ball`, ballSeen.length > 0, ballSeen.join(',') || 'no ball');
+      await stepN(12); continue;
+    }
     if (!rows.length) { check(`${el} strike ${i + 1}: a whip came out`, false); continue; }
     const k = rows[0].kind, clip = rows[0].clip;
     const maxRoot = Math.max(...rows.map(r => r.rootD)), maxTip = Math.max(...rows.map(r => r.tipD));
@@ -129,7 +136,7 @@ for (const el of (process.env.WHIPS ? [process.env.WHIPS] : process.env.ONLY ? [
     await stepN(12);
   }
   check(`${el}: strikes use different arm paths (whip kinds)`, Object.keys(per).length >= 2, JSON.stringify(per));
-  const hl = await hitsOn(), hits = hl.filter(t => /Whip/.test(t)).length + (el === 'air' ? hl.filter(t => t === 'proj').length : 0); check(`${el}: strikes land on the rival at 4 m (at least 3 of 4; Air's third is the air cannon)`, hits >= 3, `${hits} hits: ${hl.join(',')}`); await clearHits();
+  const hl = await hitsOn(), hits = hl.filter(t => /Whip/.test(t)).length + hl.filter(t => t === 'proj').length; check(`${el}: strikes land on the rival at 4 m (at least 3 of 4; Air's third is the air cannon, Water's second and fourth throw balls)`, hits >= 3, `${hits} hits: ${hl.join(',')}`); await clearHits();
 }
 
 // ------------------------------------------------------------------ kicks throw the element along the foot's path

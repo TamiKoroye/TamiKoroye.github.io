@@ -130,7 +130,8 @@ export class Fighter {
   reacting() { const A = this.A; return !!(A && A.react); }
   free(kind) {
     if (this.dead || this.stunT > 0 || this.restrainT > 0 || this.reacting()) return false;
-    if (this.dodgeT > 0) return kind === 'attack' ? this.dodgeT < this.dodgeDur * 0.3 : false;
+    // Air's glide can be broken off into a strike once it has carried the bender clear (0.3 s)
+    if (this.dodgeT > 0) return kind === 'attack' ? (this.dodgeKind === 'glide' ? this.dodgeDur - this.dodgeT > 0.3 : this.dodgeT < this.dodgeDur * 0.3) : false;
     const A = this.A;
     if (!A || A.soft) return true;
     return A.cancel !== undefined && this.actionU >= A.cancel;
@@ -144,6 +145,7 @@ export class Fighter {
     if (!def) return false;
     // alternating authored takes (e.g. hook / lunge punch) each carry their own timing
     if (def.variants) { const n = this.altN || 0; this.altN = n + 1; def = def.variants[n % def.variants.length]; }
+    if (this.dodgeKind === 'glide' && this.dodgeT > 0) { this.dodgeT = 0; this.vel.y = Math.min(this.vel.y, 0); }   // a strike ends the glide
     const powered = this.en >= (def.cost || 0);
     if (!powered) {
       if ((this.noEnPopT || 0) <= 0) { this.world.popup(this, 'NO ENERGY', true); this.noEnPopT = 1; }
@@ -245,7 +247,10 @@ export class Fighter {
         const W = this.wallNear(0.9), hs = Math.hypot(this.vel.x, this.vel.z);
         if (W && hs > 3) { this.buf.jump = 0; this.wallStart(W, hs); }
       }
-      if (this.buf.jump && this.free('jump') && !this.charging && !this.guarding && this.onGround && !this.mob && this.el === 'air' && this.en > 12 && this.mobCd <= 0) {
+      const gliding = this.dodgeKind === 'glide' && this.dodgeT > 0;
+      if (this.buf.jump && (this.free('jump') || gliding) && !this.charging && !this.guarding && (this.onGround || gliding) && !this.mob && this.el === 'air' && this.en > 12 && this.mobCd <= 0) {
+        // (from the whirlwind glide, JUMP takes off straight into flight)
+        if (gliding) this.dodgeT = 0;
         // Air: JUMP takes off into sustained, steerable flight (JUMP held climbs; it lands when the wind runs out)
         this.buf.jump = 0; this.action = null; this.startMob(); if (this.mob) this.mob.tap = true;
       }
@@ -475,7 +480,7 @@ export class Fighter {
     else if (this.sprinting && mlen > 0.15) wantYaw = Math.atan2(mx, mz);
     else if (inp.strafe || this.guarding || this.holding || this.charging || (this.action && this.action !== 'land')) wantYaw = inp.faceYaw;
     else if (mlen > 0.15 && this.dodgeT <= 0) wantYaw = Math.atan2(mx, mz);
-    if (wantYaw !== null && wantYaw !== undefined && this.dodgeT <= 0) {
+    if (wantYaw !== null && wantYaw !== undefined && (this.dodgeT <= 0 || this.dodgeKind === 'glide')) {   // (the glide keeps turning to face the rival)
       const rate = this.action && this.action !== 'land' ? 18 : (inp.strafe ? 14 : (this.sprinting ? 7 : 11));
       this.faceYaw = dampAngle(this.faceYaw, wantYaw, rate, dt);
     }

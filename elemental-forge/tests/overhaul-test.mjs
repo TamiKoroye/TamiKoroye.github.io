@@ -75,7 +75,8 @@ await page.locator('#btn-start').tap(); await ev(() => { window.__EF.state.manua
 head('Water: whips');
 await setup({ el: 'water', p: [0, 0, -9], o: [0, 0, -4] }); await stepN(3);
 const kinds = [];
-for (let i = 0; i < 4; i++) { await press('btn-hand', 2); for (let j = 0; j < 14; j++) { await stepN(1); const k = await S(() => window.__EF.world.bending.weapons.whips.map(W => W.kind)); for (const x of k) if (kinds[kinds.length - 1] !== x) kinds.push(x); } if (i === 2) await shot('water-whip'); }
+// (17 Nov, later: Water's HAND alternates whips with ball-throwing punches, so six presses are needed for the three whips)
+for (let i = 0; i < 6; i++) { await press('btn-hand', 2); for (let j = 0; j < 14; j++) { await stepN(1); const k = await S(() => window.__EF.world.bending.weapons.whips.map(W => W.kind)); for (const x of k) if (kinds[kinds.length - 1] !== x) kinds.push(x); } if (i === 2) await shot('water-whip'); }
 const whipHp = await S(() => window.__EF.opp.hp);
 check('HAND chain lashes the whip in different directions', new Set(kinds).size >= 3, kinds.join(' > '));
 check('the whip strikes connect', whipHp <= 100 - 14, `rival hp ${whipHp}`);

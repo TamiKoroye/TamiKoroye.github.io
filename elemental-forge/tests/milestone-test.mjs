@@ -141,13 +141,16 @@ let whirl = 0; for (let j = 0; j < 12; j++) { await stepN(1); whirl = Math.max(w
 await stickUp();
 const a1 = await S(() => { const { player: p, opp: o } = window.__EF; let face = Math.abs(((p.faceYaw - Math.atan2(o.pos.x - p.pos.x, o.pos.z - p.pos.z)) + Math.PI * 3) % (Math.PI * 2) - Math.PI); return { x: p.pos.x, z: p.pos.z, face }; });
 // the stick's right is the screen's right: the bender faces +z here, so that is world -x
-check('DODGE: a whirlwind wraps the airbender and throws them sideways in the stick direction', whirl > 0 && a0.x - a1.x > 2.5 && Math.abs(a1.z - a0.z) < 1.2, `moved ${(a0.x - a1.x).toFixed(1)} m to the screen's right, ${(a1.z - a0.z).toFixed(1)} m forward/back; whirlwind drawn ${whirl > 0}`);
+// (17 Nov, later: the dodge became a two-second glide that the stick steers and that turns with the lock-on, so a
+//  little forward drift is expected; the check is now the direction of travel, within 25 degrees of the stick)
+check('DODGE: a whirlwind wraps the airbender and throws them sideways in the stick direction', whirl > 0 && a0.x - a1.x > 2.5 && Math.abs(Math.atan2(a1.z - a0.z, a0.x - a1.x)) < 25 * Math.PI / 180, `moved ${(a0.x - a1.x).toFixed(1)} m to the screen's right, ${(a1.z - a0.z).toFixed(1)} m forward/back; whirlwind drawn ${whirl > 0}`);
 check('the bender keeps facing the opponent through the dash', a1.face < 0.6, `${(a1.face * 180 / Math.PI).toFixed(0)} degrees off`);
-await stepN(10); await stick(-80, 0); await press('btn-dodge', 2); await stepN(14); await stickUp();
+// (the first glide lasts two seconds: the second DODGE is pressed after it has ended)
+await stepN(60); const a1b = await S(() => ({ x: window.__EF.player.pos.x, z: window.__EF.player.pos.z })); await stick(-80, 0); await press('btn-dodge', 2); await stepN(14); await stickUp();
 const a2 = await S(() => ({ x: window.__EF.player.pos.x, z: window.__EF.player.pos.z }));
 // lock-on turns the bender (and the camera) to keep facing the rival after the first dash, so 'left' is measured as
 // the whole distance moved and its direction against the first dash's
-const d1 = [a1.x - a0.x, a1.z - a0.z], d2 = [a2.x - a1.x, a2.z - a1.z], L2 = Math.hypot(...d2), cosD = (d1[0] * d2[0] + d1[1] * d2[1]) / (Math.hypot(...d1) * L2 || 1);
+const d1 = [a1.x - a0.x, a1.z - a0.z], d2 = [a2.x - a1b.x, a2.z - a1b.z], L2 = Math.hypot(...d2), cosD = (d1[0] * d2[0] + d1[1] * d2[1]) / (Math.hypot(...d1) * L2 || 1);
 check('the dash goes whichever way the stick points (back to the left)', L2 > 2.5 && cosD < 0.3, `moved ${L2.toFixed(1)} m, direction ${(Math.acos(Math.max(-1, Math.min(1, cosD))) * 180 / Math.PI).toFixed(0)} degrees from the first dash`);
 
 // ------------------------------------------------------------------ all elements
