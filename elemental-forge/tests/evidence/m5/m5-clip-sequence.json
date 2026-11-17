@@ -1,0 +1,316 @@
+{
+ "caught_in_tornado you": [
+  "0.00s earth_idle",
+  "0.03s Idle_Loop|L",
+  "0.07s turn_spin",
+  "1.77s air_idle"
+ ],
+ "caught_in_tornado rival": [
+  "0.00s earth_idle",
+  "1.30s Idle_Loop|L",
+  "1.33s hit_body",
+  "2.07s struggle",
+  "2.80s knockback"
+ ],
+ "caught_in_drowning_sphere you": [
+  "0.00s air_idle",
+  "0.07s water_cast",
+  "1.23s water_flow2"
+ ],
+ "caught_in_drowning_sphere rival": [
+  "0.00s fire_idle",
+  "0.77s struggle",
+  "2.33s knockback",
+  "3.27s getup"
+ ],
+ "rival_knockdown_getup you": [
+  "0.00s earth_idle"
+ ],
+ "rival_knockdown_getup rival": [
+  "0.00s air_idle",
+  "0.10s fire_idle",
+  "0.13s knockback",
+  "1.10s getup",
+  "1.70s knockback",
+  "1.93s getup",
+  "3.17s fire_idle"
+ ],
+ "rival_knockout you": [
+  "0.00s earth_idle",
+  "0.03s Idle_Loop|L",
+  "0.07s fire_round_M",
+  "0.77s fire_idle"
+ ],
+ "rival_knockout rival": [
+  "0.00s fire_idle",
+  "0.10s water_flow2",
+  "0.50s ko_b"
+ ],
+ "air_whirlwind_glide you": [
+  "0.00s earth_idle",
+  "0.10s air_idle",
+  "0.27s air_loop",
+  "2.20s Jump_Loop",
+  "2.50s air_idle"
+ ],
+ "air_whirlwind_glide rival": [
+  "0.00s air_idle",
+  "0.03s Idle_Loop|L",
+  "0.17s earth_idle"
+ ],
+ "fire_hands_jab_cross_hook you": [
+  "0.00s earth_idle",
+  "0.07s fire_jab|U",
+  "0.33s Walk_Loop|L",
+  "0.43s fire_jab",
+  "0.47s Walk_Loop|L",
+  "0.50s fire_punch_M",
+  "0.93s earth_punch_M|U",
+  "1.03s run_loop|L",
+  "1.10s earth_punch_M|U",
+  "1.17s Walk_Loop|L",
+  "1.23s earth_punch_M",
+  "1.70s fire_idle"
+ ],
+ "fire_hands_jab_cross_hook rival": [
+  "0.00s earth_idle",
+  "0.30s Idle_Loop|L",
+  "0.33s hit_b",
+  "0.77s hit_a",
+  "1.13s earth_idle|U",
+  "1.17s Idle_Loop|L",
+  "1.30s earth_idle",
+  "1.37s Idle_Loop|L",
+  "1.40s hit_b",
+  "1.70s hit_a"
+ ],
+ "water_hands_whips_and_cast you": [
+  "0.00s fire_idle",
+  "0.07s fire_punch_M|U",
+  "0.57s run_loop|L",
+  "0.60s fire_punch_M|U",
+  "0.63s run_loop|L",
+  "0.67s Walk_Loop|L",
+  "0.70s Walk_Loop",
+  "0.73s Walk_Loop|L",
+  "0.77s whip_d_M",
+  "1.13s water_spell",
+  "2.13s water_flow2",
+  "2.43s water_cast_M",
+  "3.60s water_flow2"
+ ],
+ "water_hands_whips_and_cast rival": [
+  "0.00s Idle_Loop|L",
+  "0.13s earth_idle",
+  "0.43s Idle_Loop|L",
+  "0.47s hit_body",
+  "1.13s hit_a",
+  "1.50s hit_b",
+  "1.80s jog_back|L",
+  "1.83s hit_b",
+  "1.90s jog_back_M|L",
+  "1.97s earth_idle|U",
+  "2.00s Idle_Loop|L",
+  "2.13s earth_idle",
+  "3.13s struggle"
+ ],
+ "earth_hands_gather you": [
+  "0.00s water_flow2",
+  "0.07s earth_punch2",
+  "0.50s Fixing_Kneeling",
+  "1.37s Idle_Loop|L",
+  "1.50s earth_idle",
+  "1.63s Idle_Loop|L",
+  "1.67s earth_punch_M",
+  "2.30s earth_punch2"
+ ],
+ "earth_hands_gather rival": [
+  "0.00s struggle",
+  "0.13s fire_idle",
+  "0.53s hit_body",
+  "1.33s fire_idle",
+  "2.53s hit_body"
+ ],
+ "rival_hit_reactions you": [
+  "0.00s earth_idle",
+  "0.07s fire_jab|U",
+  "0.33s Walk_Loop|L",
+  "0.47s fire_jab",
+  "0.57s fire_punch_M|U",
+  "0.67s Walk_Loop|L",
+  "0.80s fire_punch_M",
+  "1.03s fire_idle",
+  "1.33s fire_round_M",
+  "2.13s fire_idle"
+ ],
+ "rival_hit_reactions rival": [
+  "0.00s air_idle",
+  "0.03s Idle_Loop|L",
+  "0.17s earth_idle",
+  "0.30s Idle_Loop|L",
+  "0.33s hit_b",
+  "0.70s hit_a",
+  "1.17s earth_idle|U",
+  "1.20s Idle_Loop|L",
+  "1.33s earth_idle",
+  "1.67s Idle_Loop|L",
+  "1.73s hit_body",
+  "2.53s hit_big",
+  "3.27s Idle_Loop|L",
+  "3.40s earth_idle"
+ ],
+ "fire_roundhouse_effects_off you": [
+  "0.00s earth_idle",
+  "0.10s fire_idle",
+  "0.20s fire_round_M",
+  "1.00s fire_idle"
+ ],
+ "fire_roundhouse_effects_off rival": [
+  "0.00s earth_idle",
+  "0.53s Idle_Loop|L",
+  "0.60s hit_body"
+ ],
+ "fire_roundhouse you": [
+  "0.00s fire_idle",
+  "0.20s round_kick2",
+  "1.13s fire_idle"
+ ],
+ "fire_roundhouse rival": [
+  "0.00s earth_idle|U",
+  "0.03s Idle_Loop|L",
+  "0.17s earth_idle",
+  "0.50s Idle_Loop|L",
+  "0.57s hit_body",
+  "1.37s jog_back|L",
+  "1.40s earth_idle|U",
+  "1.43s Idle_Loop|L"
+ ],
+ "run you": [
+  "0.00s earth_idle",
+  "0.03s Walk_Loop",
+  "0.13s run_loop",
+  "1.77s run_stop",
+  "2.27s fire_idle",
+  "2.70s jog_back|L",
+  "2.83s fire_idle|U",
+  "4.83s fire_idle"
+ ],
+ "run rival": [
+  "0.00s air_idle",
+  "0.03s Idle_Loop|L",
+  "0.17s earth_idle"
+ ],
+ "water_ice_surf you": [
+  "0.00s Idle_Loop|L",
+  "0.03s Roll",
+  "0.40s surf_stance",
+  "2.07s Jump_Loop",
+  "2.40s sprint_loop",
+  "2.50s run_loop"
+ ],
+ "water_ice_surf rival": [
+  "0.00s earth_idle"
+ ],
+ "earth_rock_surf you": [
+  "0.00s run_stop",
+  "0.13s surf_stance",
+  "2.10s Jump_Loop",
+  "2.40s run_loop",
+  "2.57s run_stop"
+ ],
+ "earth_rock_surf rival": [
+  "0.00s earth_idle",
+  "0.10s fire_idle"
+ ],
+ "fire_wall_run you": [
+  "0.00s earth_idle",
+  "0.03s Walk_Loop",
+  "0.13s run_loop",
+  "0.27s sprint_loop",
+  "0.70s wall_run",
+  "1.30s air_loop",
+  "1.80s fall_loop",
+  "2.00s land_high",
+  "2.53s fire_idle"
+ ],
+ "fire_wall_run rival": [
+  "0.00s fire_idle",
+  "0.10s water_flow2"
+ ],
+ "earth_wall_run you": [
+  "0.00s fire_idle",
+  "0.07s Walk_Loop",
+  "0.17s run_loop",
+  "0.47s sprint_loop",
+  "0.70s wall_run",
+  "1.30s air_loop",
+  "1.80s fall_loop",
+  "2.00s land_high",
+  "2.47s Idle_Loop|L"
+ ],
+ "earth_wall_run rival": [
+  "0.00s water_flow2"
+ ],
+ "air_wall_run you": [
+  "0.00s earth_idle",
+  "0.03s Walk_Loop",
+  "0.13s run_loop",
+  "0.23s sprint_loop",
+  "0.70s wall_run",
+  "1.30s air_loop",
+  "1.80s fall_loop",
+  "2.00s land_high",
+  "2.53s air_idle"
+ ],
+ "air_wall_run rival": [
+  "0.00s water_flow2"
+ ],
+ "wall_flip you": [
+  "0.00s air_idle",
+  "0.03s wall_flip",
+  "0.57s dodge_back",
+  "1.50s fire_idle"
+ ],
+ "wall_flip rival": [
+  "0.00s water_flow2"
+ ],
+ "water_punches_and_whips you": [
+  "0.00s earth_idle",
+  "0.07s whip_h_M|U",
+  "0.57s run_loop|L",
+  "0.77s fire_jab_M|U",
+  "0.87s Walk_Loop|L",
+  "0.93s fire_jab_M",
+  "1.20s whip_v_M|U",
+  "1.30s sprint_loop|L",
+  "1.47s whip_v_M|U",
+  "1.63s run_loop|L",
+  "1.67s whip_v_M|U",
+  "1.83s Walk_Loop|L",
+  "1.90s fire_punch_M",
+  "2.37s whip_d_M|U",
+  "2.47s sprint_loop|L",
+  "2.63s whip_d_M|U",
+  "2.80s run_loop|L",
+  "2.90s earth_punch|U",
+  "3.00s sprint_loop|L",
+  "3.17s earth_punch|U",
+  "3.33s run_loop|L",
+  "3.40s earth_punch|U",
+  "3.57s Walk_Loop|L",
+  "3.63s earth_punch"
+ ],
+ "water_punches_and_whips rival": [
+  "0.00s earth_idle",
+  "0.37s Idle_Loop|L",
+  "0.40s hit_body",
+  "3.03s jog_back|L",
+  "3.07s hit_body",
+  "3.10s jog_back_M|L",
+  "3.13s earth_idle|U",
+  "3.17s Idle_Loop|L",
+  "3.30s earth_idle",
+  "3.53s Idle_Loop|L",
+  "3.57s hit_body"
+ ]
+}

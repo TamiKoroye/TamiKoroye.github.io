@@ -159,3 +159,26 @@ Each line lists every clip change with the time it started. A "|U" or "|L" suffi
 - The arena is mostly open floor, so walls for wall running are at its edges and on the tall rocks.
 - The AI does not use the wall run yet.
 - The new run clips are used only when moving forward. Fast backpedalling still uses the jog-backward clip at up to 1.9 times its captured speed.
+
+## Results
+
+These are local runs in headless Chromium, not on a phone.
+
+| Suite | Result |
+|---|---|
+| M3 effects | 46/46 |
+| Overhaul | 52/52 |
+| Milestone | 22/22 |
+| Play | 86/86 |
+| Acceptance | 15/15 |
+
+Tests changed, with the reason given in each:
+- `m3-effects-test.mjs`: Water's second and fourth strikes are punches. Those strikes are checked for a water or ice ball leaving the fist, and ball hits count toward the strikes that land.
+- `overhaul-test.mjs`: Water's HAND chain needs six presses to show the three whips.
+- `milestone-test.mjs`: Air's DODGE is a two-second glide.
+  - The sideways check is the direction of travel, within 25 degrees of the stick.
+  - The second glide is pressed after the first has ended, and is measured from where the first one stopped.
+
+The development build r12 (commit 5f672be) is live at https://tamikoroye.github.io/elemental-forge-dev/. The public game is unchanged.
+
+Captures: `tests/evidence/m5/m5-all-moves.mp4` (55 s, every scenario, with clip names and blend weights on each frame) and `tests/evidence/m5/m5-clip-sequence.json` (the clip sequence per scenario).
