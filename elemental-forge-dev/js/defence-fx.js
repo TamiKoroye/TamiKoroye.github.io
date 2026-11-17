@@ -19,7 +19,7 @@ const waterVS = /* glsl */`
     gl_Position = projectionMatrix * mv;
   }`;
 const waterFS = /* glsl */`
-  uniform float uTime, uOpacity, uFlow, uHit;
+  uniform float uTime, uOpacity, uFlow, uHit, uFoamFrom;
   uniform vec3 uDeep, uLight, uFoam;
   varying vec2 vUv; varying vec3 vN; varying vec3 vView;
   float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
@@ -37,7 +37,7 @@ const waterFS = /* glsl */`
     vec3 col = mix(uDeep, uLight, 0.35 + band * 0.45);
     col = mix(col, uFoam, streak * 0.7);
     // foam along the top edge and the sides
-    float edge = max(smoothstep(0.86, 0.98, uv.y + n * 0.08), max(smoothstep(0.93, 1.0, uv.x), smoothstep(0.07, 0.0, uv.x)));
+    float edge = max(smoothstep(uFoamFrom, uFoamFrom + 0.12, uv.y + n * 0.08), max(smoothstep(0.93, 1.0, uv.x), smoothstep(0.07, 0.0, uv.x)));
     col = mix(col, uFoam, edge);
     col += uHit * 0.35;
     float a = uOpacity * (0.62 + band * 0.25 + streak * 0.2 + edge * 0.3);
@@ -49,7 +49,7 @@ const waterFS = /* glsl */`
 export function waterMaterial(flow = 1.6) {
   return new THREE.ShaderMaterial({
     vertexShader: waterVS, fragmentShader: waterFS, transparent: true, depthWrite: false, side: THREE.DoubleSide,
-    uniforms: { uTime: { value: 0 }, uRise: { value: 0 }, uWobble: { value: 1 }, uOpacity: { value: 0.85 }, uFlow: { value: flow }, uHit: { value: 0 },
+    uniforms: { uTime: { value: 0 }, uRise: { value: 0 }, uWobble: { value: 1 }, uOpacity: { value: 0.85 }, uFlow: { value: flow }, uHit: { value: 0 }, uFoamFrom: { value: 0.86 },
       uDeep: { value: new THREE.Color(0x2f7fd0) }, uLight: { value: new THREE.Color(0x8fd2ff) }, uFoam: { value: new THREE.Color(0xeef9ff) } },
   });
 }
