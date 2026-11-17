@@ -1,0 +1,25 @@
+plugins { id 'com.android.application' }
+android {
+  namespace 'io.github.tamikoroye.elementalforge'
+  compileSdk 35
+  defaultConfig {
+    applicationId 'io.github.tamikoroye.elementalforge'
+    minSdk 26
+    targetSdk 35
+    versionCode 1
+    versionName '0.1-dev'
+  }
+  // test builds only: signed with the key in test-signing.keystore so each new build installs over the last one.
+  // A Play Store release needs its own private key, kept out of the repository.
+  signingConfigs {
+    test { storeFile file('../test-signing.keystore'); storePassword 'elementalforge'; keyAlias 'test'; keyPassword 'elementalforge' }
+  }
+  buildTypes {
+    release { minifyEnabled false; signingConfig signingConfigs.test }
+    debug { signingConfig signingConfigs.test }
+  }
+  compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
+  // the game's files are large binary-ish assets: keep them uncompressed-friendly and never strip them
+  androidResources { noCompress += ['webp', 'glb', 'png', 'jpg'] }
+}
+dependencies { implementation 'androidx.webkit:webkit:1.12.1' }
