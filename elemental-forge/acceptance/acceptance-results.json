@@ -4,7 +4,7 @@
   {
    "name": "1 complete animation pack loads (decoded == expected, nothing missing, character OK)",
    "ok": true,
-   "detail": "stamp \"dev 2026-11-17 r12 · commit 5f672be · character OK · 151/151 martial-arts clips decoded\""
+   "detail": "stamp \"dev 2026-11-17 r14 · commit 6e7f12b · character OK · 151/151 martial-arts clips decoded\""
   },
   {
    "name": "1 no page errors while loading",
@@ -14,7 +14,7 @@
   {
    "name": "1b pack loads with fetch/XHR blocked (embedded-viewer conditions)",
    "ok": true,
-   "detail": "stamp \"dev 2026-11-17 r12 · commit 5f672be · character OK · 151/151 martial-arts clips decoded\""
+   "detail": "stamp \"dev 2026-11-17 r14 · commit 6e7f12b · character OK · 151/151 martial-arts clips decoded\""
   },
   {
    "name": "1c missing pack: start is blocked with a visible error, no procedural fallback",
@@ -44,12 +44,12 @@
   {
    "name": "7 attacks while moving: authored upper body over authored footwork, never running legs",
    "ok": true,
-   "detail": "earth: 49 frames, legs earth_punch2_M/earth_punch/fire_punch2_M/mma_kick; fire: 61 frames, legs fire_punch/earth_punch/fire_jab/fire_round_M/fire_front/fire_fly; water: 52 frames, legs whip_h_M/water_kick/whip_h/fire_jab_M; air: 45 frames, legs whip_h_M/air_crescent_M/whip_h/whip_d"
+   "detail": "earth: 24 frames, legs earth_punch2_M/earth_punch/fire_punch2_M/mma_kick; fire: 63 frames, legs fire_jab_M/fire_punch/earth_punch/fire_jab/fire_round_M/fire_fly; water: 52 frames, legs whip_h_M/whip_h/fire_jab_M/whip_v_M/water_kick; air: 35 frames, legs air_crescent_M/whip_h/whip_d/air_whirl"
   },
   {
    "name": "8 six quick attacks per element without refilling energy all play authored clips",
    "ok": true,
-   "detail": "distinct strikes 4/4/5/3, energy at the end 94/100/100/100, strikes without bending 0 frames"
+   "detail": "distinct strikes 5/4/6/4, energy at the end 94/100/98/100, strikes without bending 0 frames"
   },
   {
    "name": "9 switching through all four elements via the element buttons",
@@ -64,12 +64,12 @@
   {
    "name": "NO procedural fallback: every technique/guard/hold frame shows a clip from the pack",
    "ok": true,
-   "detail": "994 frames checked, 0 procedural"
+   "detail": "929 frames checked, 0 procedural"
   },
   {
    "name": "NO procedural body in ANY frame of the session (stance, movement, reactions included)",
    "ok": true,
-   "detail": "1219 frames, 0 procedural"
+   "detail": "1285 frames, 0 procedural"
   },
   {
    "name": "10 all of the above through touch controls only, no page errors",
