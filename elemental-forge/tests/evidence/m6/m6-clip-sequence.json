@@ -1,0 +1,184 @@
+{
+ "earth_wall_surf you": [
+  "0.00s earth_stance",
+  "0.07s Walk_Loop",
+  "0.17s Jog_Fwd_Loop",
+  "0.30s surf_stance",
+  "3.17s dodge_back",
+  "4.10s earth_stance"
+ ],
+ "earth_wall_surf rival": [
+  "0.00s water_stance"
+ ],
+ "earth_guard_rock_punch you": [
+  "0.00s earth_stance",
+  "0.03s Idle_Loop|L",
+  "0.07s earth_guard",
+  "0.80s earth_punch2_M",
+  "1.40s Idle_Loop|L",
+  "1.43s earth_guard",
+  "1.50s earth_punch",
+  "2.20s fire_punch2_M",
+  "2.60s earth_stance"
+ ],
+ "earth_guard_rock_punch rival": [
+  "0.00s water_stance",
+  "0.10s fire_idle",
+  "1.37s knockback",
+  "1.53s jog_back_M|L",
+  "1.67s fire_idle|U",
+  "1.77s fire_idle",
+  "2.40s knockback"
+ ],
+ "earth_new_moves you": [
+  "0.00s earth_stance",
+  "0.07s earth_punch2",
+  "0.57s earth_stance",
+  "0.70s earth_punch_M",
+  "1.40s fire_punch2",
+  "1.80s Jump_Start",
+  "2.00s Jump_Loop",
+  "2.40s earth_stance",
+  "2.97s earth_kick",
+  "3.70s sweep_spin_M",
+  "4.50s axe_kick_M",
+  "5.33s earth_teep_M",
+  "6.47s earth_stance"
+ ],
+ "earth_new_moves rival": [
+  "0.00s fire_idle",
+  "1.27s hit_b",
+  "1.40s fire_idle",
+  "1.70s knockback",
+  "2.63s getup",
+  "3.03s fire_idle",
+  "4.30s hit_a",
+  "4.57s fire_idle",
+  "5.10s knockback",
+  "5.33s fire_idle"
+ ],
+ "fire_guard_wall you": [
+  "0.00s earth_stance",
+  "0.03s fire_guard",
+  "1.07s fire_jab",
+  "1.63s fire_punch_M",
+  "2.13s fire_round_M",
+  "2.77s fire_idle"
+ ],
+ "fire_guard_wall rival": [
+  "0.00s water_stance",
+  "0.10s earth_stance",
+  "1.63s hit_body",
+  "2.97s earth_stance",
+  "3.10s hit_body"
+ ],
+ "fire_rocket_dodge you": [
+  "0.00s fire_idle",
+  "0.17s surf_stance",
+  "0.53s Jump_Loop",
+  "0.60s fire_idle|U",
+  "0.70s fire_idle",
+  "1.00s surf_stance",
+  "1.37s Jump_Loop",
+  "1.43s fire_idle|U",
+  "1.53s fire_idle"
+ ],
+ "fire_rocket_dodge rival": [
+  "0.00s hit_body",
+  "0.13s earth_stance"
+ ],
+ "fire_stomp_wave you": [
+  "0.00s earth_stance",
+  "0.07s fire_round_M",
+  "0.37s stomp_M",
+  "1.17s fire_idle"
+ ],
+ "fire_stomp_wave rival": [
+  "0.00s fire_idle",
+  "0.10s earth_stance",
+  "1.40s hit_body",
+  "2.13s jog_back|L",
+  "2.17s earth_stance|U",
+  "2.27s earth_stance"
+ ],
+ "fire_kick_chain you": [
+  "0.00s fire_idle",
+  "0.07s fire_round_M",
+  "0.83s fire_front",
+  "1.60s fire_spinback",
+  "2.43s fire_body_M",
+  "3.13s sweep_spin_M",
+  "3.90s hurricane",
+  "5.00s fire_jumpfront",
+  "6.10s jump_kick",
+  "6.67s fire_heel_M",
+  "7.63s fire_idle"
+ ],
+ "fire_kick_chain rival": [
+  "0.00s earth_stance",
+  "0.47s hit_body",
+  "0.90s earth_stance",
+  "1.17s hit_body",
+  "1.67s earth_stance",
+  "2.00s hit_body",
+  "2.33s earth_stance",
+  "2.47s hit_body",
+  "3.20s earth_stance",
+  "3.67s knockback",
+  "3.97s earth_stance",
+  "4.70s hit_body",
+  "5.10s earth_stance",
+  "5.23s hit_body",
+  "6.57s earth_stance",
+  "6.70s hit_body"
+ ],
+ "water_surf_attacks you": [
+  "0.00s Roll",
+  "0.40s surf_stance",
+  "0.87s whip_h_M|U",
+  "1.23s surf_stance|L",
+  "3.30s water_kick"
+ ],
+ "water_surf_attacks rival": [
+  "0.00s earth_stance",
+  "1.87s hit_body",
+  "2.37s struggle",
+  "2.87s knockback"
+ ],
+ "water_whip_grab_slam you": [
+  "0.00s whip_h",
+  "0.63s fire_jab",
+  "1.20s whip_v",
+  "1.77s earth_stomp",
+  "2.90s water_stance",
+  "4.00s whip_h_M",
+  "4.27s earth_stomp",
+  "5.40s water_stance"
+ ],
+ "water_whip_grab_slam rival": [
+  "0.00s earth_stance",
+  "0.40s hit_body",
+  "0.70s earth_stance",
+  "1.03s hit_body",
+  "1.27s earth_stance",
+  "1.77s struggle",
+  "2.50s knockback",
+  "3.20s getup",
+  "3.80s Jump_Start",
+  "4.00s Jump_Loop",
+  "4.27s struggle",
+  "4.77s knockback",
+  "5.70s getup"
+ ],
+ "water_ice_spikes you": [
+  "0.00s water_stance",
+  "0.07s water_kick",
+  "0.60s water_tidal",
+  "2.37s water_stance"
+ ],
+ "water_ice_spikes rival": [
+  "0.00s getup",
+  "0.13s fire_idle",
+  "2.77s knockback"
+ ]
+}

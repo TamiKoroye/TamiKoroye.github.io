@@ -70,7 +70,7 @@ Retargeting fixes: the Human Basic Motions skeleton ("B-" bones, two spine bones
 | Wall surfing | DODGE (the slab), then JUMP beside a wall, or slide into it | The slab goes onto the wall. The bender rides it sideways along the face, about 1.4 m up, body perpendicular to the wall. The stick along the wall speeds it up or slows it; JUMP kicks off (back somersault), DODGE drops off |
 | Rock punched from the guard | GUARD + HAND | Each punch drives one rock of the three out of the guard formation at the rival, from where it stands. The others stay up; the guard drops when the last is thrown |
 | Rock Push Kick (new kick) | 4th LEG | The push kick drives a slab of rock out of the ground in front of the foot |
-| Rising Uppercut (new move) | 3rd HAND | A rock column erupts under the rival and throws them up |
+| Rising Uppercut (new move) | 3rd HAND (the chain opens with the quick jab, then the heavy lunge punch) | A rock column erupts under the rival and throws them up |
 
 ## 6. Water
 
@@ -92,3 +92,25 @@ Retargeting fixes: the Human Basic Motions skeleton ("B-" bones, two spine bones
 - **The seven EEJANAIBot kicks** (webster side kick, webster axe kick, spinning axe kick, side-back kick, jumping side kick, double side kick, guyver kick) still turn upside down mid-kick when retargeted.
 - **3D water assets.** The water downloads are 2D anime-style flipbooks. They are used for impacts; the whips, waves and guard are the game's own shader water. A water-surface or wave flipbook in a less cel-shaded style would match the reference footage better.
 - **The Ember Godot shaders** were inspected but not ported.
+
+## 8. Tests and evidence (dev build r13, commit 0af9684)
+
+All five suites pass against the local build: overhaul 52/52, play 86/86, milestone 22/22, M3 effects 49/49, acceptance 15/15. They run in headless Chromium with a software renderer; none of this was run on a phone.
+
+Game changes made because of what the suites found:
+- A raised guard facing the whip now stops Water's grab and slam (it used to wrap a guarding rival).
+- Earth's eruption, when LEG is held, waits until the rival is out of a hit reaction; letting go of LEG still stamps at once. Before, the opening kick's rock could stagger the rival through the whole warning.
+- The AI looks again at marked ground once it can act, and the roll is quicker (0.62 s from 0.83 s).
+- Strike chains start again from the first strike once the bender has been back in stance for 0.9 s.
+
+Test changes (each explained in a comment beside it):
+- The charged LEG check waits for the stomp, which can now start while LEG is held.
+- Acceptance check 6 and check 8 press again when the live rival knocked the player down or caught them in the whip slam.
+- Check 7 now checks that moving strikes never use running legs, instead of requiring every element to strike while moving, which the planted strikes rule out.
+
+Video: `tests/evidence/m6/m6-priority-moves.mp4` (43 s), in this order: fire_stomp_wave, fire_kick_chain (includes the hurricane kick), fire_rocket_dodge, fire_guard_wall, earth_wall_surf, earth_guard_rock_punch, earth_new_moves, water_surf_attacks, water_whip_grab_slam, water_ice_spikes. Each frame's caption names the clips playing. `m6-clip-sequence.json` lists the clip sequence per scenario.
+
+Seen in the video and not yet fixed:
+- At the end of earth_wall_surf the recording camera, placed close to the body, ends up inside the arena wall after the dismount. This is the capture script's camera, not the game camera.
+- The rocket dodge's flame jets read as low flames trailing on the floor more than as jets from the feet.
+- The ice-surf crest is translucent and its inner faces show through.
