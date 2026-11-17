@@ -56,6 +56,11 @@ const RIGS = {
       thigh: 'B-thigh' + s, shin: 'B-shin' + s, foot: 'B-foot' + s, toe: 'B-toe' + s,
       thumb: [1, 2, 3].map(i => `B-thumb0${i}${s}`), index: [1, 2, 3].map(i => `B-indexFinger0${i}${s}`), middle: [1, 2, 3].map(i => `B-middleFinger0${i}${s}`),
       ring: [1, 2, 3].map(i => `B-ringFinger0${i}${s}`), pinky: [1, 2, 3].map(i => `B-pinky0${i}${s}`) }; } },
+  // generic humanoid (Hips, Spine, Chest, LeftUpperArm, LeftLowerLeg): the keyframed water prototypes of 17 Nov
+  // (ElementalForge_Water_PrototypeAnimations.glb), two spine bones, index finger only
+  humanoid: { hips: 'Hips', spine: ['Spine', 'Chest', null], neck: 'Neck', head: 'Head',
+    side: (S) => ({ shoulder: S + 'Shoulder', arm: S + 'UpperArm', fore: S + 'ForeArm', hand: S + 'Hand', handChild: S + 'Index1',
+      thigh: S + 'UpperLeg', shin: S + 'LowerLeg', foot: S + 'Foot', toe: S + 'Toe' }) },
   rokoko: { hips: 'Hips', spine: ['Spine1', 'Spine2', 'Spine4'], neck: 'Neck', head: 'Head',
     side: (S) => ({ shoulder: S + 'Shoulder', arm: S + 'Arm', fore: S + 'ForeArm', hand: S + 'Hand', handChild: S + 'Finger3Proximal',
       thigh: S + 'Thigh', shin: S + 'Shin', foot: S + 'Foot', toe: S + 'Toe',
@@ -75,6 +80,7 @@ export function detectRig(names) {
   if (has('pelvis') && has('calf_l')) return 'ue';
   if (has('LeftThigh') && has('Spine4')) return 'rokoko';
   if (has('Hips') && has('Spine2') && has('LeftUpLeg')) return 'mixamo';
+  if (has('Hips') && has('LeftUpperArm') && has('LeftLowerLeg')) return 'humanoid';
   if (has('Hips') && has('LeftShin') && has('Chest')) return 'motifect';
   return null;
 }

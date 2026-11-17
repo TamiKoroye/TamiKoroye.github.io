@@ -43,6 +43,33 @@ export class Weapons {
     this.ringGeo = (() => { const g = new THREE.TorusGeometry(1, 0.16, 6, 64); g.rotateX(Math.PI / 2); return g; })();
     this.markGeo = (() => { const g = new THREE.RingGeometry(0.6, 1.0, 32); g.rotateX(-Math.PI / 2); return g; })();
     this.waveGeo = (() => { const g = new THREE.PlaneGeometry(1, 1, 16, 6); const p = g.attributes.position; for (let i = 0; i < p.count; i++) { const y = p.getY(i) + 0.5; p.setZ(i, Math.sin(y * Math.PI) * 0.35 - y * y * 0.4); p.setY(i, y); } g.computeVertexNormals(); return g; })();
+    // a breaking wave, 1 m tall and 1 m wide: the back rises from the floor, the crest curls forward and over, the lip
+    // hangs down in front. uv.y runs from the floor (0) to the lip (1), so the water shader's foam sits on the curl
+    this.breakerGeo = (() => {
+      const prof = [];
+      for (let i = 0; i <= 22; i++) {
+        const u = i / 22;
+        // back slope (0..0.55), crest (0.55..0.75), curl over and down (0.75..1)
+        const a = u < 0.55 ? u / 0.55 : 1;
+        let z = -1.0 + 1.1 * Math.sin(a * Math.PI / 2), y = Math.pow(a, 1.35) * 0.92;   // a concave back face rising steeply to the crest
+        if (u > 0.55) { const c = (u - 0.55) / 0.45, ang = c * Math.PI * 1.05; z = 0.15 + Math.sin(ang) * 0.42; y = 0.92 + (Math.cos(ang) - 1) * 0.25 + 0.08 * Math.sin(c * Math.PI); }
+        prof.push([z, y]);
+      }
+      const W = 28, pos = [], uv = [], idx = [];
+      for (let j = 0; j <= W; j++) for (let i = 0; i < prof.length; i++) {
+        const x = j / W - 0.5, edge = 1 - Math.pow(Math.abs(x) * 2, 8);   // full height almost to the ends, which drop away
+        pos.push(x, prof[i][1] * (0.15 + 0.85 * edge), prof[i][0] * (0.7 + 0.3 * edge)); uv.push(j / W, i / (prof.length - 1));
+      }
+      const P = prof.length;
+      for (let j = 0; j < W; j++) for (let i = 0; i < P - 1; i++) { const a = j * P + i, b = a + P; idx.push(a, b, a + 1, b, b + 1, a + 1); }
+      const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); g.setIndex(idx); g.computeVertexNormals();
+      return g;
+    })();
+    // one sheet of an eruption: a curved strip of water, 1 m tall (uv.y up), opening outward
+    this.surgeGeo = (() => { const g = new THREE.CylinderGeometry(0.55, 0.8, 1, 10, 6, true, -0.55, 1.1); g.translate(0, 0.5, 0); return g; })();
+    this.surges = [];
+    // the waves' water: more solid than the guard, foam all along the crest and over the curl
+    this.waveMat = waterMaterial(-2.6); this.waveMat.uniforms.uRise.value = 1; this.waveMat.uniforms.uWobble.value = 0.8; this.waveMat.uniforms.uOpacity.value = 0.97; this.waveMat.uniforms.uFoamFrom.value = 0.6;
     this.rockMat = B.mat.stone;
     this.markMat = { earth: new THREE.MeshBasicMaterial({ color: 0x5b4632, transparent: true, opacity: 0.0, depthWrite: false }), water: new THREE.MeshBasicMaterial({ color: 0x9fd6ff, transparent: true, opacity: 0.0, depthWrite: false }), air: new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.0, depthWrite: false }) };
     this.fireRingMat = new THREE.MeshBasicMaterial({ color: 0xff7a1a, transparent: true, opacity: 0.85, depthWrite: false });
@@ -80,7 +107,7 @@ export class Weapons {
         t.pos.x += (tx - t.pos.x) * Math.min(1, dt * 10); t.pos.y += (ty - t.pos.y) * Math.min(1, dt * 10); t.pos.z += (tz - t.pos.z) * Math.min(1, dt * 10);
         t.vel.set(0, 0, 0); t.onGround = false; t.restrainT = Math.max(t.restrainT, 0.2);
         if (G.T >= G.slamAt) {
-          G.slammed = true; t.restrainT = 0;
+          G.slammed = true; t.restrainT = 0; t.slamFall = true;
           w.combat.damage(t, 16, fw.clone(), f, 'whipSlam', t.chestPos(new THREE.Vector3()), 3, 2);
           t.vel.set(fw.x * 2, -24, fw.z * 2); t.onGround = false; t.invuln = Math.max(t.invuln, 0.6);
           w.audio.splash(1.2);
@@ -88,9 +115,10 @@ export class Weapons {
       } else {
         G.slamT += dt;
         if (t.onGround || G.slamT > 0.45) {
-          G.dead = true;
+          G.dead = true; t.slamFall = false;
           const at = _b.set(t.pos.x, t.groundY, t.pos.z);
           w.fx.crater(at, 2.4); w.shake(0.45, at); w.audio.impact(1.3); w.popup(f, 'SLAM', true);
+          this.ringBurst(at, 1.5, 2.1, 11); w.audio.splash(1.2, at);
           this.burst.spawn(at.x, at.y, at.z, 0.3);
         }
       }
@@ -360,12 +388,48 @@ export class Weapons {
   // sweep away projectiles; the water wave freezes into ice spikes where it stops if `freeze`
   wave(f, el, opts = {}) {
     const w = this.w, dir = this.B.aimDir(f, f.pos, new THREE.Vector3()).setY(0).normalize();
-    const mesh = new THREE.Mesh(this.waveGeo, el === 'water' ? this.B.waterSurf : this.airWaveMat);
-    mesh.scale.set(opts.width || 6, el === 'water' ? 1.8 : 2.2, 1.6);
+    // water: a breaking wave (default 3.4 m tall, about twice the bender) launched by an eruption of water in front
+    const water = el === 'water', H = opts.h || (water ? 3.4 : 2.2);
+    const mesh = new THREE.Mesh(water ? this.breakerGeo : this.waveGeo, water ? this.waveMat : this.airWaveMat);
+    mesh.scale.set(opts.width || 6, H, water ? H * 0.75 : 1.6); mesh.renderOrder = 3;
     const pos = new THREE.Vector3(f.pos.x + dir.x * 1.2, f.groundY, f.pos.z + dir.z * 1.2);
     mesh.position.copy(pos); mesh.rotation.y = Math.atan2(dir.x, dir.z); w.scene.add(mesh);
     this.waves.push({ f, el, dir, pos, mesh, t: 0, life: opts.life || 1.1, speed: opts.speed || (el === 'water' ? 10 : 18), width: opts.width || 6, hit: new Set(), dmg: opts.dmg ?? (el === 'water' ? 10 : 6), knock: opts.knock ?? (el === 'water' ? 10 : 14), level: opts.level ?? 2, freeze: !!opts.freeze });
+    this.waves[this.waves.length - 1].h = H;
+    if (water) this.eruption(f, pos, dir, opts.width || 6, H * 1.15);
     if (el === 'water') w.audio.splash(1.2); else w.audio.gust(1.2);
+  }
+  // water bursts up out of the floor in a fan of sheets in front of the bender (staggered from the middle outwards),
+  // rises past the bender's head and falls back: the burst that launches a wave
+  eruption(f, at, dir, width = 5, h = 3.8) {
+    const side = new THREE.Vector3().crossVectors(dir, UP).normalize(), n = Math.max(5, Math.round(width / 0.9)), yaw = Math.atan2(dir.x, dir.z);
+    for (let i = 0; i < n; i++) {
+      const u = n === 1 ? 0 : i / (n - 1) - 0.5, m = new THREE.Mesh(this.surgeGeo, this.waveMat);
+      m.position.set(at.x + side.x * u * width + dir.x * (0.2 - Math.abs(u) * 0.8), at.y, at.z + side.z * u * width + dir.z * (0.2 - Math.abs(u) * 0.8));
+      m.rotation.set(0, yaw + Math.PI + u * 0.6, 0); m.renderOrder = 3; m.scale.set(1.3, 0.01, 1.3); this.w.scene.add(m);
+      this.surges.push({ m, t: -Math.abs(u) * 0.12, life: 0.75, h: h * (1 - Math.abs(u) * 0.35) * rand(0.85, 1.1), lean: rand(-0.25, 0.25), tilt: rand(0.15, 0.35) });
+    }
+    this.w.shake(0.18, at);
+  }
+  // a ring of water bursting out round a point (the whip slam's impact)
+  ringBurst(at, r = 1.2, h = 2.6, n = 9) {
+    for (let i = 0; i < n; i++) {
+      const a = i / n * Math.PI * 2, m = new THREE.Mesh(this.surgeGeo, this.waveMat);
+      m.position.set(at.x + Math.sin(a) * r, at.y, at.z + Math.cos(a) * r); m.rotation.set(0, a + Math.PI, 0); m.renderOrder = 3; m.scale.set(1.1, 0.01, 1.1);
+      this.w.scene.add(m); this.surges.push({ m, t: -rand(0, 0.06), life: 0.65, h: h * rand(0.8, 1.15), lean: rand(-0.2, 0.2), tilt: rand(0.35, 0.6) });
+    }
+  }
+  updateSurges(dt) {
+    this.waveMat.uniforms.uTime.value += dt;
+    for (const S of this.surges) {
+      S.t += dt; if (S.t < 0) continue; const k = S.t / S.life;
+      // shoots up fast (eased), hangs, then drops back and thins
+      const up = k < 0.35 ? 1 - Math.pow(1 - k / 0.35, 3) : 1 - smooth01((k - 0.55) / 0.45);
+      S.m.scale.set(1.3 * (1 + k * 0.5), Math.max(0.01, S.h * up), 1.3 * (1 + k * 0.5));
+      S.m.rotation.x = -S.tilt * k; S.m.rotation.z = S.lean * k;
+      if (S.t >= S.life) { S.dead = true; this.w.scene.remove(S.m); }
+    }
+    this.surges = this.surges.filter(S => !S.dead);
   }
   updateWaves(dt) {
     const w = this.w, B = this.B;
@@ -378,14 +442,15 @@ export class Weapons {
       if (w.arena.solidAt(_a.set(V.pos.x, gy + 0.6, V.pos.z), 0.2)) V.t = Math.max(V.t, V.life * 0.92);
       V.mesh.position.copy(V.pos);
       const grow = Math.sin(Math.min(1, k * 1.4) * Math.PI * 0.5) * (1 - smooth01((k - 0.75) / 0.25));
-      V.mesh.scale.y = (V.el === 'water' ? 1.8 : 2.2) * Math.max(0.05, grow);
-      if (V.el === 'water' && Math.random() < 0.8) w.fx.splash(_a.copy(V.pos).addScaledVector(_b.crossVectors(V.dir, UP), rand(-V.width / 2, V.width / 2)).setY(V.pos.y + 1), 2);
+      V.mesh.scale.y = (V.h || 2.2) * Math.max(0.05, grow);
+      // the water wave rears up as it travels: the curl deepens and the crest pitches forward, then it collapses
+      if (V.el === 'water') { V.mesh.scale.z = (V.h || 2.2) * (0.6 + 0.35 * Math.min(1, k * 1.6)); V.mesh.rotation.x = 0.12 * Math.sin(Math.min(1, k * 1.3) * Math.PI); }
       if (V.el === 'air') for (let i = 0; i < 2; i++) w.fx.wind(_a.copy(V.pos).addScaledVector(_b.crossVectors(V.dir, UP), rand(-V.width / 2, V.width / 2)).setY(V.pos.y + rand(0.3, 1.8)), _c.copy(V.dir).multiplyScalar(14), 0.5, 0.3);
       const side = _b.crossVectors(V.dir, UP).normalize();
       for (const t of w.fighters) {
         if (t === V.f || t.dead || V.hit.has(t) || t.invuln > 0) continue;
         const rx = t.pos.x - V.pos.x, rz = t.pos.z - V.pos.z, along = rx * V.dir.x + rz * V.dir.z, lat = rx * side.x + rz * side.z;
-        if (Math.abs(along) < 0.9 && Math.abs(lat) < V.width / 2 && t.pos.y - V.pos.y < 1.6 * grow + 0.2) {
+        if (Math.abs(along) < 1.2 && Math.abs(lat) < V.width / 2 && t.pos.y - V.pos.y < (V.h || 1.8) * 0.9 * grow + 0.2) {
           V.hit.add(t);
           w.combat.damage(t, V.dmg, V.dir.clone(), V.f, V.el + 'Wave', t.chestPos(new THREE.Vector3()), V.knock, V.level);
           t.ext.addScaledVector(V.dir, V.el === 'air' ? 9 : 6);
@@ -736,7 +801,7 @@ export class Weapons {
   update(dt) {
     this.tubeMat.uniforms.uTime.value += dt;
     this.burst.update(dt);
-    this.updateWhips(dt); this.updateGrabs(dt); this.updateArcs(dt); this.updateTraps(dt); this.updateWhirls(dt); this.updateSpires(dt); this.updateWaves(dt); this.updateColumns(dt); this.updateErupts(dt); this.updateFireRings(dt); this.updateCaptures(dt); this.updateTrails(dt);
+    this.updateWhips(dt); this.updateGrabs(dt); this.updateArcs(dt); this.updateTraps(dt); this.updateWhirls(dt); this.updateSpires(dt); this.updateWaves(dt); this.updateSurges(dt); this.updateColumns(dt); this.updateErupts(dt); this.updateFireRings(dt); this.updateCaptures(dt); this.updateTrails(dt);
   }
   clear() {
     for (const W of this.whips) this.dropWhip(W);
@@ -746,6 +811,7 @@ export class Weapons {
     for (const T of this.traps) { this.w.scene.remove(T.ball); if (T.mesh) this.w.scene.remove(T.mesh); }
     this.burst.clear();
     for (const V of this.waves) this.w.scene.remove(V.mesh);
+    for (const S of this.surges) this.w.scene.remove(S.m); this.surges = [];
     for (const C of this.columns) { this.w.scene.remove(C.mark); this.freeTube(C.tube); }
     for (const E of this.erupts) { this.w.scene.remove(E.mark); for (const s of E.spikes) this.w.scene.remove(s.m); }
     for (const R of this.fireRings) this.w.scene.remove(R.mesh);

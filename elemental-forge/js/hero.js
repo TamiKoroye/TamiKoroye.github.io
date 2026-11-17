@@ -315,10 +315,15 @@ export class Hero {
       // fall is spread over the time left in the air, so the back meets the floor when the body does instead of
       // the lying pose hanging in mid-air
       once('knockback', 1.25, 0.12);
+      // slammed down from above (the water whip slam): the fall is joined where the body already tips back (60 % in),
+      // so the back, not the knees, meets the floor; it may play fast enough to finish in the short drop
+      const slam = f.slamFall && restart;
+      if (slam) { startAt = this.actions.knockback.getClip().duration * 0.6; fade = 0.06; }
       const alt = f.pos.y - f.groundY;
       if (!f.onGround && alt > 0.3 && this.cur) {
-        const g = 21, tLand = (f.vel.y + Math.sqrt(Math.max(0, f.vel.y * f.vel.y + 2 * g * alt))) / g, left = this.cur.getClip().duration * 0.92 - (restart ? 0 : this.cur.time);
-        ts = THREE.MathUtils.clamp(left / Math.max(0.15, tLand), 0.25, 1.25);
+        const g = 21, tLand = (f.vel.y + Math.sqrt(Math.max(0, f.vel.y * f.vel.y + 2 * g * alt))) / g;
+        const left = this.actions.knockback.getClip().duration * 0.92 - (restart ? startAt : this.cur.time);
+        ts = THREE.MathUtils.clamp(left / Math.max(0.08, tLand), 0.25, f.slamFall ? 4 : 1.25);
       }
     }
     else if (f.action === 'down' && has('ko')) once('ko', 1.6, 0.1);

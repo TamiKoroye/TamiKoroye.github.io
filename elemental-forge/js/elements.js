@@ -380,7 +380,7 @@ export class Bending {
         const g = this.heldList(f, 'water').filter(o => o.state === 'orbit'); if (g.length) this.kill(g[0], 'silent');
         // the spinning kick throws water round the body and releases a wave on the kick itself
         this.weapons.whipStrike(f, 'water', 'circle', { foot: s > 0 ? 'L' : 'R', released: true, hitWin: 0.4, len: g.length ? 3.8 : 3.2, dmg: 10, knock: 8, level: 1 });
-        this.weapons.wave(f, 'water', { width: 4.2, dmg: 8, life: 0.9 }); return;
+        this.weapons.wave(f, 'water', { width: 4.2, h: 2.4, dmg: 8, life: 0.9 }); return;
       }
       case 'water.column': {
         // rising kick: the water surges up under the opponent
@@ -394,7 +394,7 @@ export class Bending {
       case 'water.charged': {
         const g = this.heldList(f, 'water'); g.forEach(o => this.kill(o, 'silent'));
         // Tidal Wave: a wall of water advancing over the ground; where it stops it freezes into a line of ice spikes
-        this.weapons.wave(f, 'water', { freeze: true, width: 5.5 + g.length, dmg: 9 + g.length * 2 }); w.shake(0.2, f.pos);
+        this.weapons.wave(f, 'water', { freeze: true, width: 6.5 + g.length, h: 3.8 + g.length * 0.3, dmg: 9 + g.length * 2, life: 1.3 }); w.shake(0.3, f.pos);
         return;
       }
       case 'water.specialStart': this.specials.waterStart(f); return;

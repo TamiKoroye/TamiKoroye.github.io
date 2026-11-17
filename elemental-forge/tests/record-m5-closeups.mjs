@@ -231,6 +231,14 @@ if (want('water')) {
   for (let i = 0; i < 6; i++) { await tap('KeyF'); await run(16); }
   await run(10); made.push(end());
 }
+if (want('tidal')) {
+  begin('water_tidal_wave'); await setup('water', 'earth', [0, -4], [0, 4.5]);
+  cam = ['P', 'body', 9, Math.PI / 2 + 1.25, 1.4]; note = 'LEG (G) held and released: water erupts in front of the bender and a breaking wave, twice their height, rolls out and freezes into ice spikes';
+  await key('KeyG', true); await run(30); await key('KeyG', false); await run(55); made.push(end());
+  begin('water_spin_wave'); await setup('water', 'earth', [0, -3], [0, 3.5]);
+  cam = ['P', 'body', 7, Math.PI / 2 + 0.6, 0.8]; note = 'LEG (G) second tap: the turning kick whips water round and sends a smaller breaking wave';
+  await tap('KeyG'); await run(18); await tap('KeyG'); await run(40); made.push(end());
+}
 if (want('surf')) {
   begin('water_ice_surf'); await setup('water', 'earth', [0, -14], [0, 14]);
   cam = ['P', 'body', 4.5, Math.PI / 2, 0.0]; note = 'DODGE (Shift) held with the stick forward: riding a ridge of ice, feet 1 m off the floor';
