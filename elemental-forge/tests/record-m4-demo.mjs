@@ -89,7 +89,10 @@ for (const el of ELS) {
 
   // throw an attack at the player from the rival (to test a defence)
   const rivalThrows = (kind) => page.evaluate((kind) => { const { world, opp, player } = window.__EF; const p = opp.chestPos(); return world.bending.fire(kind, opp, p, { target: player.chestPos() }).kind; }, kind);
-  const reset = (o = {}) => page.evaluate((o) => { const E = window.__EF, P = E.player, O = E.opp; P.en = 100; O.hp = Math.max(O.hp, 80); if (o.d) { const fw = P.forward(); O.pos.set(P.pos.x + fw.x * o.d, O.pos.y, P.pos.z + fw.z * o.d); O.vel.set(0, 0, 0); O.action = null; } }, o);
+  // every step starts on the ground and out of any mobility, so the move recorded is the one named
+  const settleGround = async () => { for (let i = 0; i < 40; i++) { const g = await page.evaluate(() => { const P = window.__EF.player; return P.onGround && !P.mob && !P.action; }); if (g) break; await run(3); } };
+  const reset = async (o = {}) => { await settleGround(); return reset0(o); };
+  const reset0 = (o = {}) => page.evaluate((o) => { const E = window.__EF, P = E.player, O = E.opp; P.en = 100; O.hp = Math.max(O.hp, 80); if (o.d) { const fw = P.forward(); O.pos.set(P.pos.x + fw.x * o.d, O.pos.y, P.pos.z + fw.z * o.d); O.vel.set(0, 0, 0); O.action = null; } }, o);
   const fx = (on) => page.evaluate((on) => {
     // effects switch for this recording only: element particles, whips, arcs and projectiles are not drawn
     const E = window.__EF, w = E.world, F = w.fx, Wp = w.bending.weapons; window.__fxOff = !on;
@@ -107,8 +110,8 @@ for (const el of ELS) {
     await begin('Jab, cross, hook: fireball from the fist (HAND x3)'); await reset({ d: 4 }); for (let i = 0; i < 3; i++) await tapS('hand', 12); await run(10); await end();
     await begin('Kicks: roundhouse, spinning back kick, knee, flip kick (LEG x4)'); await reset({ d: 2.6 }); for (let i = 0; i < 4; i++) await tapS('leg', 18); await run(14); await end();
     await begin('Jump, then kick right and left in the air (JUMP, LEG, LEG)'); await reset({ d: 3.5 }); await press('jump', 2); await run(6); await tapS('leg', 9); await tapS('leg', 18); await end();
-    await begin('Flame kicked in the air destroys an incoming rock (JUMP, LEG)'); await reset({ d: 6 }); await press('jump', 2); await run(5); await rivalThrows('rock'); await tapS('leg', 22); await end();
-    await begin('Fireball intercepts an incoming attack (HAND)'); await reset({ d: 7 }); await rivalThrows('water'); await run(3); await tapS('hand', 22); await end();
+    await begin('Flame kicked in the air destroys an incoming rock (JUMP, LEG)'); await reset({ d: 13 }); await press('jump', 2); await run(5); await rivalThrows('rock'); await tapS('leg', 22); await end();
+    await begin('Fireball intercepts an incoming attack (HAND)'); await reset({ d: 13 }); await rivalThrows('water'); await run(3); await tapS('hand', 22); await end();
     await begin('Stomp: ignites on the foot plant, fire ring round the rival (LEG held)'); await reset({ d: 5 }); await holdDown('leg'); await run(30); await fUp(6); await run(60); await end();
     await begin('Fire stream (HAND held)'); await reset({ d: 3.5 }); await holdDown('hand'); await run(40); await fUp(6); await run(10); await end();
     await begin('SPECIAL: Dragon Descent'); await reset({ d: 5 }); await tapS('special', 50); await end();
