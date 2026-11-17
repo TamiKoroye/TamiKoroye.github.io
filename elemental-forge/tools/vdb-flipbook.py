@@ -3,7 +3,10 @@
 # (a black-body style ramp: deep red at the edges, orange, then a pale yellow core), the density channel (smoke,
 # where present) absorbs. Output: an RGBA PNG atlas (straight alpha) plus a JSON description.
 # Usage: /usr/bin/python3.12 tools/vdb-flipbook.py <vdb dir> <prefix> <out.png> [frames=64] [cell=256] [axis=y]
-#        [first=0] [last=-1] [gain=1.0] [smoke=1]
+#        [first=0] [last=-1] [gain=1.0] [smoke=1] [base=0] [toon=0]
+# toon=1: the stylised look of the reference footage. The marched coverage and heat are smoothed (no grainy
+# sim detail), then cut into flat colour bands (pale yellow core, yellow, golden orange, a thin red-orange rim)
+# with a crisp edge, and no smoke.
 import sys, os, json, glob, re
 import numpy as np
 import pyopenvdb as vdb
@@ -18,6 +21,8 @@ LAST = int(sys.argv[8]) if len(sys.argv) > 8 else -1
 GAIN = float(sys.argv[9]) if len(sys.argv) > 9 else 1.0
 SMOKE = float(sys.argv[10]) if len(sys.argv) > 10 else 1.0
 BASE = int(sys.argv[11]) if len(sys.argv) > 11 else 0     # voxels at the bottom faded out (the source emitter)
+TOON = int(sys.argv[12]) if len(sys.argv) > 12 else 0
+if TOON: SMOKE = 0.0
 
 files = sorted(glob.glob(os.path.join(src, prefix + '*.vdb')), key=lambda f: int(re.findall(r'(\d+)\.vdb$', f)[0]))
 if LAST < 0: LAST = len(files) - 1
@@ -49,13 +54,20 @@ def dense(g):
 # emission colour ramp over normalised heat 0..1
 ramp_t = np.array([0.0, 0.18, 0.4, 0.62, 0.82, 1.0])
 ramp_c = np.array([[0.25, 0.02, 0.0], [0.75, 0.10, 0.01], [1.0, 0.35, 0.03], [1.0, 0.62, 0.12], [1.0, 0.86, 0.45], [1.0, 0.97, 0.85]])
+def blur2(a, sig):
+  # separable gaussian blur of a 2D map
+  r = int(sig * 3) + 1; x = np.arange(-r, r + 1); k = np.exp(-x * x / (2 * sig * sig)); k /= k.sum()
+  a = np.apply_along_axis(lambda v: np.convolve(np.pad(v, r, mode='edge'), k, 'valid'), 0, a)
+  return np.apply_along_axis(lambda v: np.convolve(np.pad(v, r, mode='edge'), k, 'valid'), 1, a)
+# toon bands, from the rim inwards: red-orange, golden orange, yellow, pale yellow (sampled from the references)
+TOON_C = np.array([[0.90, 0.28, 0.06], [1.0, 0.55, 0.08], [1.0, 0.78, 0.10], [1.0, 0.93, 0.38]], np.float32)
 def ramp(h):
   r = np.stack([np.interp(h, ramp_t, ramp_c[:, k]) for k in range(3)], -1)
   return r
 
 ax = {'x': 0, 'y': 1, 'z': 2}[AXIS]
 cols = int(np.ceil(np.sqrt(N))); rows = int(np.ceil(N / cols))
-atlas = Image.new('RGBA', (cols * CELL, rows * CELL), (0, 0, 0, 0))
+atlas = Image.new('RGBA', (cols * CELL, rows * CELL), (237, 71, 15, 0) if TOON else (0, 0, 0, 0))
 # global normalisation from a mid-sequence frame
 mx_fl = 1e-6; mx_t = 1e-6
 for f in pick[len(pick) // 3: len(pick) // 3 + 3]:
@@ -80,7 +92,7 @@ for i, f in enumerate(pick):
   em_amt = np.transpose(em_amt, perm); heat = np.transpose(heat, perm)
   if de is not None: de = np.transpose(de, perm)
   W, H, D = em_amt.shape
-  col = np.zeros((W, H, 3), np.float32); T = np.ones((W, H), np.float32)
+  col = np.zeros((W, H, 3), np.float32); T = np.ones((W, H), np.float32); hs = np.zeros((W, H), np.float32)
   step = 1.0
   for k in range(D):
     e = em_amt[:, :, k]; h = heat[:, :, k]
@@ -89,9 +101,32 @@ for i, f in enumerate(pick):
     a_e = 1 - np.exp(-e * 0.35 * GAIN * step)
     a_s = (1 - np.exp(-de[:, :, k] * 0.08 * SMOKE * step)) if de is not None else 0
     col += (T * a_e)[..., None] * c
+    hs += T * a_e * np.clip(h, 0, 1)
     if de is not None: col += (T * a_s)[..., None] * (np.array([0.09, 0.075, 0.065]) + 0.5 * c * np.clip(e, 0, 1)[..., None]) * (1 - a_e)[..., None]   # smoke, lit from inside by the flames
     T *= (1 - np.clip(a_e + a_s, 0, 1))
   alpha = np.clip(1 - T, 0, 1)
+  if TOON:
+    sig = max(1.0, W / 120)
+    cov = blur2(alpha, sig); ht = blur2(hs, sig * 2.2) / np.maximum(blur2(alpha, sig * 2.2), 1e-3)
+    # how deep inside the flame a pixel is: coverage and heat together, so cores sit where the fire is thick and hot
+    v = np.clip(0.3 * np.clip((cov - 0.22) / 0.6, 0, 1) + 0.85 * np.clip(ht, 0, 1) ** 1.3, 0, 1)
+    # the alpha channel stores a soft coverage (0.2 at the flame's outline); the game cuts the crisp edge from it in
+    # the shader and raises the cut as a flame dies, so flames burn away from their edges instead of turning see-through
+    edge = np.clip((cov - 0.05) / 0.75, 0, 1)
+    band = np.digitize(v, [0.3, 0.52, 0.86])
+    rgb = TOON_C[band]
+    rim = (cov < 0.3)                                               # a thin red-orange outline
+    rgb[rim] = TOON_C[0]
+    img = np.concatenate([rgb, edge[..., None]], -1)
+    img = np.transpose(img, (1, 0, 2))[::-1]
+    im = Image.fromarray((np.clip(img, 0, 1) * 255).astype(np.uint8), 'RGBA')
+    s_ = CELL / max(im.size); im = im.resize((max(1, int(im.size[0] * s_)), max(1, int(im.size[1] * s_))), Image.LANCZOS)
+    # empty pixels carry the rim colour (not black), so texture filtering never darkens the edges
+    rimc = tuple(int(c * 255) for c in TOON_C[0])
+    cell = Image.new('RGBA', (CELL, CELL), rimc + (0,)); cell.paste(im, ((CELL - im.size[0]) // 2, CELL - im.size[1]))
+    atlas.paste(cell, ((i % cols) * CELL, (i // cols) * CELL))
+    print('frame', i, os.path.basename(f), 'coverage', round(float((edge > 0.2).mean()), 3), flush=True)
+    continue
   rgb = np.where(alpha[..., None] > 1e-4, col / np.maximum(alpha, 1e-4)[..., None], 0)
   img = np.concatenate([np.clip(rgb, 0, 1), alpha[..., None]], -1)
   img = np.transpose(img, (1, 0, 2))[::-1]          # rows = height, top first
@@ -101,6 +136,9 @@ for i, f in enumerate(pick):
   atlas.paste(cell, ((i % cols) * CELL, (i // cols) * CELL))
   print('frame', i, os.path.basename(f), 'coverage', round(float((alpha > 0.05).mean()), 3), flush=True)
 
+if TOON:
+  # fully transparent pixels take the rim colour (resizing zeroes them), so filtering and mipmaps never pull in black
+  A = np.array(atlas); A[A[..., 3] == 0, :3] = (TOON_C[0] * 255).astype(np.uint8); atlas = Image.fromarray(A, 'RGBA')
 atlas.save(out, optimize=True)
 json.dump({'grid': [cols, rows], 'cell': [CELL, CELL], 'frames': N, 'pivot': [0.5, 0.0], 'alpha': 'straight',
   'source': 'JangaFX EmberGen ' + prefix + ' (CC0), rendered by tools/vdb-flipbook.py', 'axis': AXIS},

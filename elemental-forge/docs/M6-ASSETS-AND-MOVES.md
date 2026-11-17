@@ -114,3 +114,13 @@ Seen in the video and not yet fixed:
 - At the end of earth_wall_surf the recording camera, placed close to the body, ends up inside the arena wall after the dismount. This is the capture script's camera, not the game camera.
 - The rocket dodge's flame jets read as low flames trailing on the floor more than as jets from the feet.
 - The ice-surf crest is translucent and its inner faces show through.
+
+## 9. Fire restyled, water splashes removed (17 Nov, later)
+
+- **Fire is now stylised toon fire, matching the fire-bending reference footage** (ref9 `fire1.mp4`, `fire2.mp4`). The reference flames are solid and saturated: bright yellow cores, golden-orange bands, a thin red-orange rim, rounded puffs and no smoke.
+  - The EmberGen volumes are re-rendered with `tools/vdb-flipbook.py` in toon mode (last argument `1`). The coverage and heat maps are smoothed to remove the grainy simulation detail, then cut into four flat colour bands.
+  - The sheet's alpha holds a soft coverage. The shader (`js/flipfx.js`, `uToon`) cuts a crisp edge from it and raises the cut as a flame dies, so flames break up from their edges instead of turning see-through.
+  - Transparent pixels carry the rim colour, so texture filtering no longer turns the flame edges olive.
+  - The fireball at the stomping foot uses the same treatment, without smoke.
+  - Every fire effect (stomp wave, guard wall, kick arcs, fist streams, rocket jets, sweep) uses these two sheets, so all of them changed together.
+- **The KanaWorks water splash sprites are removed** (ball hits, Tai Chi push, water sweep, whip slam). The sheet files stay in `assets/fx/` but nothing plays them.

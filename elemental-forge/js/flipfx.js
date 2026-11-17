@@ -1,5 +1,6 @@
 // Flipbook effects: camera-facing sprites that play the downloaded / pre-rendered effect sheets.
-//   fire_flames    : JangaFX EmberGen "Fire_01" (CC0), rendered to a 6x6 sheet by tools/vdb-flipbook.py
+//   fire_flames    : JangaFX EmberGen "Fire_01" (CC0), rendered to a 6x6 toon sheet by tools/vdb-flipbook.py (toon=1:
+//                    flat bands of pale yellow, yellow, golden orange and a red-orange rim, as in the reference footage)
 //   fire_explosion : JangaFX EmberGen "Gasoline_Explosion_01" (CC0), rendered the same way (fireball, then smoke)
 //   water_impact_01, water_column_01, ice_projectile_01 : KanaWorks SAKUGA VFX (credit: VFX: KanaWorks_AI (@KanaWorks_AI))
 // Each sheet is drawn by one instanced mesh (one draw call), so hundreds of flame sprites stay cheap on a phone.
@@ -34,10 +35,16 @@ const VERT = `
     gl_Position = projectionMatrix * viewMatrix * vec4(wp, 1.0);
   }`;
 const FRAG = `
-  uniform sampler2D uMap; uniform float uBright; varying vec2 vUv; varying float vAlpha;
+  uniform sampler2D uMap; uniform float uBright; uniform float uToon; varying vec2 vUv; varying float vAlpha;
   void main() {
     vec4 t = texture2D(uMap, vUv);
     float a = t.a * vAlpha;
+    if (uToon > 0.5) {
+      // toon fire: the sheet's alpha is a soft coverage; cut a crisp edge at 0.2 and raise the cut as the flame fades,
+      // so a dying flame shrinks and breaks up from its edges and stays solid inside
+      float cut = 0.2 + (1.0 - vAlpha) * 0.75;
+      a = smoothstep(cut, cut + 0.035, t.a);
+    }
     if (a < 0.01) discard;
     gl_FragColor = vec4(t.rgb * uBright, a);
     #include <colorspace_fragment>
@@ -56,7 +63,7 @@ class Sheet {
     const tex = new THREE.TextureLoader().load('assets/fx/' + def.file);
     tex.colorSpace = THREE.SRGBColorSpace; tex.generateMipmaps = true; tex.minFilter = THREE.LinearMipmapLinearFilter;
     this.mat = new THREE.ShaderMaterial({
-      uniforms: { uMap: { value: tex }, uGrid: { value: new THREE.Vector2(...def.grid) }, uBright: { value: def.blend === 'fire' ? 1.12 : 1.0 } },
+      uniforms: { uMap: { value: tex }, uGrid: { value: new THREE.Vector2(...def.grid) }, uBright: { value: 1.0 }, uToon: { value: def.blend === 'fire' ? 1 : 0 } },
       vertexShader: VERT, fragmentShader: FRAG, transparent: true, depthWrite: false,
       blending: def.blend === 'fire' ? THREE.CustomBlending : THREE.NormalBlending,
     });

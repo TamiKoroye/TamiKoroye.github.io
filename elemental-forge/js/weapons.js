@@ -90,7 +90,6 @@ export class Weapons {
         if (t.onGround || G.slamT > 0.45) {
           G.dead = true;
           const at = _b.set(t.pos.x, t.groundY, t.pos.z);
-          w.fx.flip.spawn('water_impact', { pos: at, size: [4.2, 4.2], life: 0.9, pivot: 1, fps: 50, f0: 0, f1: 44, fadeIn: 0.01, rot: 0 });
           w.fx.crater(at, 2.4); w.shake(0.45, at); w.audio.impact(1.3); w.popup(f, 'SLAM', true);
           this.burst.spawn(at.x, at.y, at.z, 0.3);
         }
