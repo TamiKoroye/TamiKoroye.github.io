@@ -15,5 +15,6 @@
  "alpha": "straight",
  "source": "JangaFX EmberGen embergen_gasoline_explosion_a_ (CC0), rendered by tools/vdb-flipbook.py",
  "axis": "y",
- "image": "fire_explosion.webp"
+ "image": "fire_explosion.webp",
+ "style": "toon: alpha is soft coverage, the edge is cut in js/flipfx.js"
 }

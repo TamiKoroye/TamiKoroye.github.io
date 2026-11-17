@@ -202,7 +202,7 @@ export class Bending {
     if (o.el === 'earth') { fx.debrisBurst(o.pos, 12, 3.5, 0.1, 0x6e665e); fx.dust(o.pos, 5, 2, 0x9f9282); w.audio.impact(0.6); }
     if (o.el === 'fire') { for (let i = 0; i < 10; i++) fx.fire(o.pos, _v.set(rand(-3, 3), rand(-1, 3), rand(-3, 3)), 0.5, 0.35); fx.smoke(o.pos); w.audio.fireHit(0.6); }
     // water bursts in the KanaWorks splash flipbook; ice shatters into pale fragments
-    if (o.el === 'water') { if (SPEC[o.kind] && SPEC[o.kind].ice) fx.debrisBurst(o.pos, 14, 4, 0.08, 0xe0f4ff); else fx.flip.spawn('water_impact', { pos: o.pos, size: [2.0, 2.0], life: 0.6, fps: 75, fadeIn: 0.01, rot: 0 }); w.audio.splash(0.7); this.extinguishNear(o.pos, 1.8); }
+    if (o.el === 'water') { if (SPEC[o.kind] && SPEC[o.kind].ice) fx.debrisBurst(o.pos, 14, 4, 0.08, 0xe0f4ff); w.audio.splash(0.7); this.extinguishNear(o.pos, 1.8); }
     if (o.el === 'air') { for (let i = 0; i < 6; i++) fx.wind(o.pos, _v.set(rand(-4, 4), rand(-1, 2), rand(-4, 4)), 0.6, 0.35); }
     if (how === 'steam') fx.steam(o.pos, 10);
     if (o.src) o.src.respawnT = 18; // loose stone comes back later
@@ -337,8 +337,7 @@ export class Bending {
         if (g.length) { this.launch(g[0], f, 1); return; }
         // the Tai Chi push: both palms drive a wide wave of water straight out
         if (f.tech && f.tech.clip === 'water_palm') {
-          for (const sd of ['L', 'R']) this.weapons.limbArc(f, 'water', 'hand', sd, { span: 0.25, speed: 14, grow: 2.2, dmg: 9, knock: 11, level: 1 });
-          w.fx.flip.spawn('water_impact', { pos: this.forwardPoint(f, 1.4, 0).setY(f.groundY), size: [2.6, 2.6], life: 0.7, pivot: 1, fps: 60, fadeIn: 0.01, rot: 0 }); w.audio.splash(1); return;
+          for (const sd of ['L', 'R']) this.weapons.limbArc(f, 'water', 'hand', sd, { span: 0.25, speed: 14, grow: 2.2, dmg: 9, knock: 11, level: 1 }); w.audio.splash(1); return;
         }
         // a punch (jab, cross or hook): a ball of water, every second one frozen to ice, is driven out of the fist
         if (f.tech && /punch|jab/.test(f.tech.clip)) {
@@ -364,8 +363,7 @@ export class Bending {
       }
       case 'water.sweep': {
         // the low sweep: the sweeping foot drags a crescent of water along the floor round the bender
-        this.weapons.limbArc(f, 'water', 'foot', s > 0 ? 'L' : 'R', { span: 0.32, speed: 9, grow: 1.8, dmg: 8, knock: 4, level: 2 });
-        w.fx.flip.spawn('water_impact', { pos: _v.set(f.pos.x, f.groundY, f.pos.z), size: [3.2, 2.2], life: 0.6, pivot: 1, fps: 70, fadeIn: 0.01, rot: 0 }); w.audio.splash(0.9); return;
+        this.weapons.limbArc(f, 'water', 'foot', s > 0 ? 'L' : 'R', { span: 0.32, speed: 9, grow: 1.8, dmg: 8, knock: 4, level: 2 }); w.audio.splash(0.9); return;
       }
       case 'water.leg': {
         // crescent kick: a broad, low arc of water sweeping out at leg height (takes the opponent's footing)
