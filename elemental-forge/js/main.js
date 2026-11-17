@@ -414,6 +414,18 @@ function showGame() {
   controls.enabled = true; state.paused = false;
 }
 world.audio.setListener(camera);
+// installable app: offline support, and an INSTALL APP button on the menu where the browser offers installation
+if ('serviceWorker' in navigator && window.isSecureContext) {
+  navigator.serviceWorker.register('sw.js').catch(e => console.warn('offline support unavailable', e));
+  // once everything has loaded, hand the worker the list of files so the whole game is stored for offline play
+  const store = () => navigator.serviceWorker.ready.then(r => r.active && r.active.postMessage({ type: 'cache', urls: [location.href.split('#')[0], ...performance.getEntriesByType('resource').map(e => e.name)] }));
+  window.addEventListener('load', () => setTimeout(store, 4000));
+  if (state.venueReady && state.venueReady.then) state.venueReady.then(() => setTimeout(store, 1000));
+}
+{ let ask = null; const b = $('btn-install');
+  window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); ask = e; if (b) b.style.display = ''; });
+  window.addEventListener('appinstalled', () => { ask = null; if (b) b.style.display = 'none'; });
+  if (b) b.addEventListener('click', async () => { if (!ask) return; ask.prompt(); await ask.userChoice; ask = null; b.style.display = 'none'; }); }
 $('btn-start').addEventListener('click', async () => { if (!LOAD.ok) return; world.audio.unlock(); goFullscreen(); await state.venueReady; showGame(); startMatch(); });
 $('btn-again').addEventListener('click', () => { showGame(); startMatch(); });
 const toMenu = () => {
