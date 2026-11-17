@@ -26,7 +26,7 @@ export class Weapons {
   constructor(B) {
     this.B = B; this.w = B.world;
     this.whips = []; this.waves = []; this.columns = []; this.erupts = []; this.fireRings = []; this.captures = [];
-    this.trails = []; this.platforms = []; this.arcs = [];
+    this.trails = []; this.platforms = []; this.arcs = []; this.traps = []; this.whirls = []; this.spires = [];
     this.tubeMat = waterMaterial(-4); this.tubeMat.uniforms.uRise.value = 1;
     this.tubePool = [];
     // air: the same rope drawn as a pale, fast-turning translucent current (it has a body, not only streaks)
@@ -179,7 +179,10 @@ export class Weapons {
           // the push follows the whip's motion at the point of contact, mixed with the direction of the strike
           const v = _c.subVectors(W.pts[k], W.prev[k]); v.y = 0; if (v.lengthSq() < 1e-6) v.copy(W.aim);
           const dir = v.normalize().multiplyScalar(0.6).add(_d.set(t.pos.x - f.pos.x, 0, t.pos.z - f.pos.z).normalize().multiplyScalar(0.7)).normalize();
-          w.combat.damage(t, W.frozen ? Math.round(W.dmg * 1.4) : W.dmg, dir.clone(), f, W.tag, p.clone(), W.knock, W.frozen ? 2 : W.level);
+          // a whip that catches a rival in the air drives them back down onto the floor with full force
+          const airborne = !t.onGround && t.pos.y - t.groundY > 0.5;
+          w.combat.damage(t, Math.round((W.frozen ? 1.4 : 1) * (airborne ? 1.5 : 1) * W.dmg), dir.clone(), f, W.tag, p.clone(), W.knock, W.frozen || airborne ? 2 : W.level);
+          if (airborne && !t.dead) { t.vel.y = -18; t.vel.x *= 0.3; t.vel.z *= 0.3; w.shake(0.3, p); w.popup(f, 'SLAM', true); }
           if (W.frozen) { w.fx.debrisBurst(p, 10, 3, 0.07, 0xbfe8ff); }
           else if (W.el === 'water') w.fx.splash(p, 14);
           if (W.el === 'fire' && Math.random() < 0.5) B.burn(t.pos.x, t.pos.z, t.groundY, f);
@@ -245,7 +248,7 @@ export class Weapons {
     const off = pts.map(p => p.clone().sub(c).multiplyScalar(st));
     const aim = this.B.aimDir(f, c, new THREE.Vector3()); aim.y = clamp(aim.y, -0.15, 0.25); aim.normalize();
     const A = { f, el, c, off, v: aim.multiplyScalar(opts.speed || 15), t: 0, life: opts.life || 0.65, grow: opts.grow ?? 1.4,
-      pts: off.map(o => o.clone().add(c)), prev: off.map(o => o.clone().add(c)), hit: new Set(), dmg: opts.dmg ?? 8, knock: opts.knock ?? 8, level: opts.level ?? 1, tag: opts.tag || el + 'Arc' };
+      pts: off.map(o => o.clone().add(c)), prev: off.map(o => o.clone().add(c)), hit: new Set(), dmg: (opts.dmg ?? 8) + (el === 'air' ? 2 : 0), knock: opts.knock ?? 8, level: opts.level ?? 1, tag: opts.tag || el + 'Arc' };
     if (el === 'water' || el === 'air') { A.tube = this.tube(); if (el === 'air') A.tube.mesh.material = this.airTubeMat; }
     if (el === 'air') A.ribbons = [0, N - 1].map(() => this.w.fx.ribbons.start({ color: 0xb8c8f4, width: 0.18, life: 0.28, alpha: 0.95 }));
     this.arcs.push(A);
@@ -422,6 +425,54 @@ export class Weapons {
     for (let i = 0; i < 26; i++) { const a = rand(0, Math.PI * 2); w.fx.fire(_a.set(foot.x, gy + 0.2, foot.z), _b.set(Math.sin(a) * 5, rand(1.5, 4), Math.cos(a) * 5), 0.7, 0.4); }
     w.audio.fireWhoosh(1.4); w.shake(0.3, foot); w.fx.crater(_a.set(foot.x, gy, foot.z), 1.6);
   }
+  // Fire stomp: a fireball runs along the ground from the stamping foot to the opponent (or 9 m ahead), then spreads
+  // into a ring of fire around that spot for 1.6 s: whoever is inside burns, and anything thrown into it is destroyed
+  fireTrap(f, foot) {
+    const w = this.w, t = f.target && !f.target.dead && f.target.pos.distanceTo(f.pos) < 11 ? f.target : null;
+    const to = t ? new THREE.Vector3(t.pos.x, 0, t.pos.z) : new THREE.Vector3(f.pos.x + Math.sin(f.faceYaw) * 9, 0, f.pos.z + Math.cos(f.faceYaw) * 9);
+    const ball = new THREE.Mesh(this.trapBallGeo || (this.trapBallGeo = new THREE.IcosahedronGeometry(0.28, 1)), this.trapBallMat || (this.trapBallMat = new THREE.MeshBasicMaterial({ color: 0xffb040 })));
+    ball.position.copy(foot); w.scene.add(ball);
+    this.traps.push({ f, ball, pos: foot.clone(), to, t: 0, phase: 'roll', hit: new Set(), tick: 0, R: 0 });
+    w.audio.fireWhoosh(1.1);
+  }
+  updateTraps(dt) {
+    const w = this.w;
+    for (const T of this.traps) {
+      T.t += dt;
+      if (T.phase === 'roll') {
+        const d = _a.set(T.to.x - T.pos.x, 0, T.to.z - T.pos.z), L = d.length();
+        if (T.t > 0.05 && T.f.target && !T.f.target.dead && T.t < 0.5) { T.to.x = T.f.target.pos.x; T.to.z = T.f.target.pos.z; }   // follows a moving target briefly
+        const step = 15 * dt;
+        if (L <= step || T.t > 1.0) { T.pos.x = T.to.x; T.pos.z = T.to.z; T.phase = 'ring'; T.rt = 0; w.audio.fireWhoosh(1.3); w.fx.crater(_a.set(T.pos.x, T.gy || 0, T.pos.z), 1.4);
+          T.mesh = new THREE.Mesh(this.ringGeo, this.fireRingMat.clone()); w.scene.add(T.mesh); }
+        else T.pos.addScaledVector(d.normalize(), step);
+        T.gy = w.arena.groundAt(T.pos.x, T.pos.z, T.pos.y + 1); T.pos.y = T.gy + 0.3;
+        T.ball.position.copy(T.pos); if (Math.random() < 0.8) w.fx.fire(T.pos, _b.set(0, 1.2, 0), 0.35, 0.18);
+        if (T.phase === 'ring') { w.scene.remove(T.ball); }
+        continue;
+      }
+      // the ring: spreads to 1.9 m, burns for 1.6 s, then dies down
+      T.rt += dt; const R = 1.9 * smooth01(Math.min(1, T.rt / 0.18)), fade = 1 - smooth01((T.rt - 1.4) / 0.3);
+      T.mesh.position.set(T.pos.x, T.gy + 0.12, T.pos.z); T.mesh.scale.set(Math.max(0.05, R), 1.6, Math.max(0.05, R)); T.mesh.material.opacity = 0.85 * fade;
+      // flames stand round the edge (kept sparse so the fighters stay visible)
+      if (Math.random() < 0.7 * fade) { const a = rand(0, 6.28); w.fx.fire(_a.set(T.pos.x + Math.sin(a) * R, T.gy + 0.1, T.pos.z + Math.cos(a) * R), _b.set(0, rand(1.5, 2.8), 0), 0.42, 0.3); }
+      T.tick -= dt;
+      if (T.tick <= 0 && fade > 0.2) {
+        T.tick = 0.3;
+        for (const t of w.fighters) {
+          if (t === T.f || t.dead || t.invuln > 0) continue;
+          const d = Math.hypot(t.pos.x - T.pos.x, t.pos.z - T.pos.z);
+          if (d < R + 0.3 && t.pos.y - T.gy < 1.2) {
+            const first = !T.hit.has(t); T.hit.add(t);
+            w.combat.damage(t, first ? 8 : 3, _b.set(t.pos.x - T.pos.x, 0, t.pos.z - T.pos.z).normalize().clone(), T.f, 'fireTrap', t.chestPos(new THREE.Vector3()), first ? 3 : 0, first ? 1 : -1);
+          }
+        }
+      }
+      for (const o of this.B.objs) if (o.state === 'flying' && o.owner !== T.f && Math.hypot(o.pos.x - T.pos.x, o.pos.z - T.pos.z) < R && o.pos.y - T.gy < 2) this.B.kill(o, o.el === 'water' ? 'steam' : undefined);
+      if (T.rt > 1.75) { T.dead = true; w.scene.remove(T.mesh); T.mesh.material.dispose(); }
+    }
+    this.traps = this.traps.filter(T => !T.dead);
+  }
   updateFireRings(dt) {
     const w = this.w;
     for (const R of this.fireRings) {
@@ -476,14 +527,38 @@ export class Weapons {
 
   // ============================================================ surfing and flight effects
   // the sheet of ice / slab of rock under the surfer, and the path of ice left behind
+  // Air dodge: two bands of wind wound round the bender for the length of the dash, carried with them
+  whirlwind(f, dur) {
+    const tubes = [0, 1].map(() => { const t = this.tube(); t.mesh.material = this.airTubeMat; return t; });
+    this.whirls.push({ f, tubes, t: 0, dur: dur + 0.15, pts: [0, 1].map(() => Array.from({ length: 18 }, () => new THREE.Vector3())) });
+    this.w.fx.dust(f.pos, 8, 3); this.w.audio.gust(0.9);
+  }
+  updateWhirls(dt) {
+    for (const W of this.whirls) {
+      W.t += dt; const f = W.f, k = Math.min(1, W.t / 0.08) * (1 - smooth01((W.t - W.dur + 0.12) / 0.12));
+      W.tubes.forEach((tb, i) => {
+        const P = W.pts[i];
+        for (let j = 0; j < P.length; j++) { const s = j / (P.length - 1), a = -W.t * 22 + s * 9 + i * Math.PI, r = (0.55 + 0.35 * s) * k; P[j].set(f.pos.x + Math.cos(a) * r, f.pos.y + 0.1 + s * 1.9, f.pos.z + Math.sin(a) * r); }
+        tb.set(P, (q) => (0.05 + 0.08 * Math.sin(Math.PI * q)) * k + 0.005, W.t * 3);
+      });
+      if (Math.random() < 0.6) this.w.fx.wind(_a.set(f.pos.x, f.pos.y + rand(0.2, 1.6), f.pos.z), _b.set(rand(-4, 4), 1, rand(-4, 4)), 0.5, 0.25);
+      if (W.t > W.dur) { W.dead = true; W.tubes.forEach(t => this.freeTube(t)); }
+    }
+    this.whirls = this.whirls.filter(W => !W.dead);
+  }
   surfTick(f, mob, dt) {
     const w = this.w;
     if (!mob.board) {
       mob.board = new THREE.Mesh(mob.el === 'water' ? this.iceSheetGeo : this.slabGeo, mob.el === 'water' ? iceMat : this.rockMat);
       mob.board.castShadow = true; w.scene.add(mob.board); mob.trailT = 0;
+      // the support that holds the slab / ice sheet up off the floor
+      mob.post = new THREE.Mesh(this.postGeo || (this.postGeo = (() => { const g = new THREE.CylinderGeometry(0.45, 0.75, 1, 7, 1); g.translate(0, -0.5, 0); return g; })()), mob.el === 'water' ? iceMat : this.rockMat);
+      mob.post.castShadow = true; w.scene.add(mob.post);
     }
-    mob.board.position.set(f.pos.x, f.pos.y + (mob.el === 'water' ? 0.03 : -0.12), f.pos.z);
+    const gy = f.groundY, top = f.pos.y + (mob.el === 'water' ? -0.02 : -0.17);
+    mob.board.position.set(f.pos.x, top, f.pos.z);
     mob.board.rotation.y = mob.heading;
+    mob.post.position.set(f.pos.x, top - (mob.el === 'water' ? 0.02 : 0.15), f.pos.z); mob.post.scale.set(mob.el === 'water' ? 0.55 : 1, Math.max(0.05, top - gy), mob.el === 'water' ? 0.55 : 1); mob.post.rotation.y = mob.heading;
     mob.trailT -= dt;
     if (mob.trailT <= 0 && mob.speed > 2) {
       mob.trailT = 0.07;
@@ -493,7 +568,7 @@ export class Weapons {
     if (mob.el === 'water' && Math.random() < 0.6) w.fx.splash(_a.set(f.pos.x, f.pos.y + 0.05, f.pos.z), 1);
     if (mob.el === 'earth' && Math.random() < 0.5) w.fx.dust(f.pos, 1, 1.2);
   }
-  surfEnd(mob) { if (mob && mob.board) { this.w.scene.remove(mob.board); mob.board = null; } }
+  surfEnd(mob) { if (mob && mob.board) { this.w.scene.remove(mob.board); mob.board = null; } if (mob && mob.post) { this.w.scene.remove(mob.post); mob.post = null; } }
   // JUMP while surfing: the element itself launches the bender. Water raises an ice ramp under the feet and leaves
   // an ice platform; earth thrusts a slab up on a pillar that stays as a platform.
   surfLaunch(f, el) {
@@ -504,9 +579,47 @@ export class Weapons {
       w.arena.colliders.push(col);
       this.platforms.push({ m, col, t: 0, life: 5, y0: f.pos.y - 2.4, rise: 2.35, el });
       w.fx.debrisBurst(_a.set(f.pos.x, f.pos.y + 0.3, f.pos.z), 16, 4, 0.08, 0xbfe8ff); w.fx.splash(f.pos, 12); w.audio.splash(1);
-    } else {
-      this.B.raisePillar(f, f.pos.x - Math.sin(f.faceYaw) * 0.2, f.pos.z - Math.cos(f.faceYaw) * 0.2);
+    } else this.launchSpire(f);
+  }
+  // Earth's launch: a mountain of rock drives up out of the ground under the feet and throws the bender upward: a
+  // cluster of tall faceted grey peaks of different heights on one broad base (as in the reference videos), the
+  // tallest under the feet; it holds for a moment, then sinks back
+  peakGeo(rng) {
+    // one faceted peak: six sides, ridges jittered, the point a little off-centre
+    const g = new THREE.CylinderGeometry(0, 1, 1, 6, 5, false), p = g.attributes.position, tip = [rand(-0.12, 0.12), rand(-0.12, 0.12)];
+    for (let i = 0; i < p.count; i++) {
+      const y = p.getY(i) + 0.5, k = 1 - y;   // 0 at the base, 1 at the point
+      if (y > 0.999) p.setXYZ(i, tip[0], 1, tip[1]);
+      else { const j = 0.75 + rng() * 0.5; p.setXYZ(i, p.getX(i) * j + tip[0] * y, y + (y > 0.01 ? rand(-0.04, 0.04) : 0), p.getZ(i) * j + tip[1] * y); }
     }
+    const n = g.toNonIndexed(); n.computeVertexNormals(); return n;
+  }
+  launchSpire(f) {
+    const w = this.w, x = f.pos.x, z = f.pos.z, gy = w.arena.groundAt(x, z, f.pos.y + 0.5);
+    if (!this.peakGeos) this.peakGeos = [0, 1, 2, 3, 4].map(() => this.peakGeo(Math.random));
+    const mat = this.peakMat || (this.peakMat = new THREE.MeshStandardMaterial({ color: 0x8e8d92, roughness: 0.95, flatShading: true })), m = new THREE.Group();   // light grey, faceted, as in the references
+    // the tallest peak under the feet, the others crowded round it, leaning out a little
+    const peaks = [[0, 0, 1.05, 3.6]];
+    for (let i = 0; i < 7; i++) { const a = i / 7 * 6.28 + rand(-0.3, 0.3), d = rand(0.7, 1.35); peaks.push([Math.cos(a) * d, Math.sin(a) * d, rand(0.55, 0.9), rand(1.5, 3.0)]); }
+    for (const [px, pz, r, h] of peaks) {
+      const k = new THREE.Mesh(this.peakGeos[(Math.random() * 5) | 0], mat); k.castShadow = k.receiveShadow = true;
+      k.position.set(px, 0, pz); k.scale.set(r, h, r * rand(0.8, 1.15)); k.rotation.set(pz * 0.1, rand(0, 6), -px * 0.1);
+      m.add(k);
+    }
+    m.position.set(x, gy - 3.8, z); m.rotation.y = rand(0, 6); w.scene.add(m);
+    this.spires.push({ m, gy, t: 0 });
+    this.burst.spawn(x, gy, z, 0.5); w.fx.debrisBurst(_a.set(x, gy + 0.1, z), 22, 4.5, 0.12, 0x6a6870); w.fx.dust(_a.set(x, gy, z), 12, 3); w.fx.crater(_a.set(x, gy, z), 2.4);
+    w.audio.rumble(1.1); w.shake(0.3, f.pos);
+  }
+  updateSpires(dt) {
+    for (const S of this.spires) {
+      S.t += dt;
+      // the point bursts up past where the feet were in 0.14 s, holds, then sinks back into the ground
+      const up = S.t < 0.14 ? smooth01(S.t / 0.14) : S.t < 1.3 ? 1 : 1 - smooth01((S.t - 1.3) / 0.5);
+      S.m.position.y = S.gy - 3.8 + up * 3.6;   // the main peak's point ends 3.4 m up, where the feet were thrown from
+      if (S.t > 1.85) { S.dead = true; this.w.scene.remove(S.m); }
+    }
+    this.spires = this.spires.filter(S => !S.dead);
   }
   flyTick(f, dt) {
     const w = this.w;
@@ -539,11 +652,14 @@ export class Weapons {
   update(dt) {
     this.tubeMat.uniforms.uTime.value += dt;
     this.burst.update(dt);
-    this.updateWhips(dt); this.updateArcs(dt); this.updateWaves(dt); this.updateColumns(dt); this.updateErupts(dt); this.updateFireRings(dt); this.updateCaptures(dt); this.updateTrails(dt);
+    this.updateWhips(dt); this.updateArcs(dt); this.updateTraps(dt); this.updateWhirls(dt); this.updateSpires(dt); this.updateWaves(dt); this.updateColumns(dt); this.updateErupts(dt); this.updateFireRings(dt); this.updateCaptures(dt); this.updateTrails(dt);
   }
   clear() {
     for (const W of this.whips) this.dropWhip(W);
     for (const A of this.arcs) { this.freeTube(A.tube); if (A.ribbons) A.ribbons.forEach(r => r.release()); }
+    for (const W of this.whirls) W.tubes.forEach(t => this.freeTube(t));
+    for (const S of this.spires) this.w.scene.remove(S.m);
+    for (const T of this.traps) { this.w.scene.remove(T.ball); if (T.mesh) this.w.scene.remove(T.mesh); }
     this.burst.clear();
     for (const V of this.waves) this.w.scene.remove(V.mesh);
     for (const C of this.columns) { this.w.scene.remove(C.mark); this.freeTube(C.tube); }
@@ -553,6 +669,6 @@ export class Weapons {
     for (const T of this.trails) this.w.scene.remove(T.m);
     for (const P of this.platforms) { this.w.scene.remove(P.m); P.col.dead = true; }
     this.w.arena.colliders = this.w.arena.colliders.filter(c => !this.platforms.some(P => P.col === c));
-    this.whips = []; this.waves = []; this.columns = []; this.erupts = []; this.fireRings = []; this.captures = []; this.trails = []; this.platforms = []; this.arcs = [];
+    this.whips = []; this.waves = []; this.columns = []; this.erupts = []; this.fireRings = []; this.captures = []; this.trails = []; this.platforms = []; this.arcs = []; this.traps = []; this.whirls = []; this.spires = [];
   }
 }

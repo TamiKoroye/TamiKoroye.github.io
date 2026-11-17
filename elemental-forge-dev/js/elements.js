@@ -112,7 +112,11 @@ export class Bending {
   whipKind(f) { const c = f.tech && f.tech.clip || ''; return c.startsWith('whip_v') ? 'v' : c.startsWith('whip_d') ? 'd' : 'h'; }
   whipRelease(f, el) {
     const W = f.whipW;
-    if (W && !W.dead && W.tech === f.tech && W.f === f) { this.weapons.releaseWhip(W); return; }
+    if (W && !W.dead && W.tech === f.tech && W.f === f) {
+      this.weapons.releaseWhip(W);
+      const W2 = f.whipW2; if (W2 && !W2.dead && W2.tech === f.tech) setTimeout(() => { if (!W2.dead) this.weapons.releaseWhip(W2); }, 90);
+      return;
+    }
     // no rope out yet (the technique started without energy for it, or was entered mid-way): thrown from the hand now
     const s = f.techSide || 1; f.whipW = this.weapons.whipStrike(f, el, this.whipKind(f), { hand: s > 0 ? 'R' : 'L', tech: f.tech, released: true, dmg: 7, knock: el === 'air' ? 10 : 7, level: 1 });
   }
@@ -215,6 +219,7 @@ export class Bending {
       case 'earth.hand': {
         const held = this.heldList(f, 'earth').filter(o => o.state === 'orbit');
         if (held.length) { const o = held[0]; this.launch(o, f, 1.05); w.fx.dust(o.pos, 3, 1); return; }
+        if (this.strikeStone(f, hand)) return;
         // burst a stone from the ground in front and punch it straight out
         const p = this.forwardPoint(f, 1.1, 0); p.y = w.arena.groundAt(p.x, p.z, f.pos.y + 0.3) + 0.9;
         w.fx.debrisBurst(_v.set(p.x, p.y - 0.8, p.z), 8, 2, 0.08, 0x7a7068); w.fx.crater(_v.set(p.x, p.y - 0.9, p.z), 1);
@@ -223,8 +228,10 @@ export class Bending {
       case 'earth.leg': {
         const held = this.heldList(f, 'earth').filter(o => o.state === 'orbit');
         if (held.length) { const o = held[0]; o.kind = o.kind === 'boulder' ? 'boulder' : 'rockKick'; this.launch(o, f, 1.2); w.shake(0.12, o.pos); return; }
-        const p = this.forwardPoint(f, 1.2, 0); p.y = w.arena.groundAt(p.x, p.z, f.pos.y + 0.3) + 0.55;
-        w.fx.debrisBurst(_v.set(p.x, p.y - 0.5, p.z), 10, 2.4, 0.09, 0x7a7068); w.fx.crater(_v.set(p.x, p.y - 0.55, p.z), 1.2);
+        if (this.strikeStone(f, foot)) return;
+        // the kick tears a rock out of the ground at the kicking foot and drives it on along the kick's line
+        const p = foot.clone(); const gy = w.arena.groundAt(p.x, p.z, f.pos.y + 0.3); p.y = Math.max(p.y, gy + 0.45);
+        w.fx.debrisBurst(_v.set(p.x, gy + 0.05, p.z), 10, 2.4, 0.09, 0x7a7068); w.fx.crater(_v.set(p.x, gy, p.z), 1.0);
         this.fire('rockKick', f, p); w.audio.rumble(0.5); return;
       }
       case 'earth.sweep': {
@@ -252,13 +259,32 @@ export class Bending {
       case 'fire.hand': {
         const orbs = this.heldList(f, 'fire').filter(o => o.state === 'orbit');
         if (orbs.length) { this.launch(orbs[0], f, 1); return; }
-        // every third strike in a chain cracks a flame whip instead of a fireball
-        if (((f.fireN = (f.fireN || 0) + 1) % 3) === 0) { this.weapons.whipStrike(f, 'fire', 'd', { hand: s > 0 ? 'R' : 'L', released: true, len: 3.6, dmg: 9, knock: 7, level: 1 }); return; }
-        this.fire('fireball', f, hand); w.audio.fireWhoosh(0.6); return;
+        // a compact fireball punched out of the striking fist (jab, cross or hook)
+        const o = this.fire('fireball', f, hand, { scale: 0.72 }); o.dmg = 7; w.fx.fire(hand, _v2.set(0, 1, 0), 0.3, 0.12); w.audio.fireWhoosh(0.6); return;
       }
       case 'fire.knee': { this.ring(f, 'fire', 2.4, 10, { dmg: 6, knock: 7, level: 1 }); for (let i = 0; i < 10; i++) w.fx.fire(foot, _v.set(rand(-3, 3), rand(0, 3), rand(-3, 3)), 0.5, 0.3); w.audio.fireWhoosh(1); return; }
-      case 'fire.stompMark': { for (let i = 0; i < 6; i++) w.fx.fire(this.footPoint(f, -1, _v), _v2.set(rand(-0.5, 0.5), rand(1, 2.5), rand(-0.5, 0.5)), 0.3, 0.5); return; }
-      case 'fire.stomp': { this.weapons.fireRing(f, this.footPoint(f, -1, new THREE.Vector3())); return; }
+      case 'fire.stompMark': return;   // no flame before the foot comes down: the stomp ignites on the plant
+      case 'fire.stomp': {
+        // ignition on the foot plant: a short flare at the stamping foot, then a fireball runs along the ground to the
+        // opponent and spreads into a ring of fire around them
+        const ft = this.footPoint(f, -1, new THREE.Vector3());
+        for (let i = 0; i < 8; i++) { const a = rand(0, 6.28); w.fx.fire(ft, _v2.set(Math.sin(a) * 2.5, rand(1, 2.5), Math.cos(a) * 2.5), 0.4, 0.25); }
+        w.fx.crater(ft, 1); w.shake(0.2, ft); this.weapons.fireTrap(f, ft); return;
+      }
+      case 'fire.flip': case 'fire.flip2': {
+        // the cartwheel's feet pass overhead: each throws flame along the path it travelled
+        this.weapons.limbArc(f, 'fire', 'foot', name === 'fire.flip' ? 'R' : 'L', { span: 0.22, speed: 14, grow: 1.2, dmg: 7, knock: 6, level: 1 }); return;
+      }
+      case 'fire.airKick': case 'water.airKick': case 'air.airKick': {
+        // a kick in the air throws the element along the kicking foot's path (it also intercepts what it meets)
+        const el = name.split('.')[0], ft = f.airKickN % 2 ? 'R' : 'L';
+        this.weapons.limbArc(f, el, 'foot', ft, { span: 0.2, speed: el === 'air' ? 20 : 15, grow: 1.1, dmg: 7, knock: el === 'air' ? 11 : 6, level: 1 }); return;
+      }
+      case 'earth.airKick': {
+        // a rock knocked from the kicking foot
+        const ft = f.footPos(f.airKickN % 2 ? 'R' : 'L', new THREE.Vector3());
+        w.fx.debrisBurst(ft, 6, 2, 0.07, 0x7a7068); this.fire('rockKick', f, ft); w.audio.rumble(0.4); return;
+      }
       case 'earth.stompMark': { this.weapons.eruptionMark(f); return; }
       case 'earth.stomp': { this.weapons.eruptionFire(f); w.fx.dust(f.pos, 8, 2); w.fx.crater(f.pos, 1.2); return; }
       // kicks throw fire along the path the foot travelled: the roundhouse a rising flame arc, the spinning kick a wide flat one
@@ -281,10 +307,14 @@ export class Bending {
         return;
       }
       case 'water.whipOut': case 'air.whipOut': {
+        if (f.tech && /^fire_punch/.test(f.tech.clip)) return;   // Air's cross punch carries no whip: it fires an air cannon
         const k = this.whipKind(f), el = name.split('.')[0];
-        const stats = el === 'water' ? { h: [7, 7, 0], v: [9, 5, 1], d: [9, 7, 1] } : { h: [6, 11, 1], v: [6, 9, 1], d: [6, 11, 1] };
+        const stats = el === 'water' ? { h: [10, 7, 1], v: [12, 6, 1], d: [12, 8, 1] } : { h: [9, 12, 1], v: [9, 10, 1], d: [9, 12, 1] };
         const [dmg, knock, level] = stats[k] || stats.h;
         f.whipW = this.weapons.whipStrike(f, el, k, { hand: s > 0 ? 'R' : 'L', tech: f.tech, dmg, knock, level });
+        // Water carries a whip on each arm, like two snakes: the second follows its own arm and strikes just after
+        if (el === 'water') f.whipW2 = this.weapons.whipStrike(f, el, k, { hand: s > 0 ? 'L' : 'R', tech: f.tech, dmg: Math.round(dmg * 0.6), knock, level: 0, len: 3.6 });
+        else f.whipW2 = null;
         if (el === 'water') w.fx.splash(this.handPoint(f, -s, _v), 4);
         return;
       }
@@ -292,14 +322,18 @@ export class Bending {
         // crescent kick: a broad, low arc of water sweeping out at leg height (takes the opponent's footing)
         const g = this.heldList(f, 'water').filter(o => o.state === 'orbit');
         // the water follows the kicking foot's path off the ground and is thrown on as one arc
-        this.weapons.limbArc(f, 'water', 'foot', s > 0 ? 'L' : 'R', { span: 0.24, speed: 13, grow: g.length ? 1.8 : 1.4, dmg: g.length ? 10 : 8, knock: 7, level: 1 });
+        // every third water kick freezes what it throws into a fan of ice daggers
+        if (((f.iceN = (f.iceN || 0) + 1) % 3) === 0) { for (const d of [-0.18, 0, 0.18]) { const o = this.fire('iceSpear', f, this.footPoint(f, s, new THREE.Vector3()).setY(f.pos.y + 1.0)); o.vel.applyAxisAngle(_up, d); o.dmg = 6; } w.fx.debrisBurst(this.footPoint(f, s, _v), 8, 2, 0.05, 0xbfe8ff); w.audio.splash(0.8); return; }
+        this.weapons.limbArc(f, 'water', 'foot', s > 0 ? 'L' : 'R', { span: 0.24, speed: 13, grow: g.length ? 1.8 : 1.4, dmg: g.length ? 12 : 10, knock: 7, level: 1 });
         if (g.length) this.kill(g[0], 'silent');
         w.fx.splash(this.forwardPoint(f, 1, 0.4, _v), 12); w.audio.splash(0.9); return;
       }
       case 'water.leg2': {
         // spinning kick: a water whip swung all the way round the body
         const g = this.heldList(f, 'water').filter(o => o.state === 'orbit'); if (g.length) this.kill(g[0], 'silent');
-        this.weapons.whipStrike(f, 'water', 'circle', { foot: s > 0 ? 'L' : 'R', released: true, hitWin: 0.4, len: g.length ? 3.8 : 3.2, dmg: 9, knock: 8, level: 1 }); return;
+        // the spinning kick throws water round the body and releases a wave on the kick itself
+        this.weapons.whipStrike(f, 'water', 'circle', { foot: s > 0 ? 'L' : 'R', released: true, hitWin: 0.4, len: g.length ? 3.8 : 3.2, dmg: 10, knock: 8, level: 1 });
+        this.weapons.wave(f, 'water', { width: 4.2, dmg: 8, life: 0.9 }); return;
       }
       case 'water.column': {
         // rising kick: the water surges up under the opponent
@@ -326,6 +360,13 @@ export class Bending {
         // in flight: a palm blast of compressed air driven down at the opponent
         if (f.mob && f.mob.kind === 'fly') { const o = this.fire('gust', f, hand); o.dmg = 6; o.knock = 12; w.audio.gust(0.8); return; }
         // the air whip: fast lashes alternating with sweeping strikes
+        if (f.tech && /^fire_punch/.test(f.tech.clip)) {
+          // the air cannon: the cross punch drives a compressed blast of air straight out of the fist; it hits hard and
+          // throws the opponent back, and the air ring it leaves shows where it went
+          const o = this.fire('gust', f, hand, { scale: 1.4 }); o.dmg = 12; o.knock = 17; o.level = 2;
+          w.fx.ring(hand, 1.4, 0xdfe6ff, 0.3); for (let i = 0; i < 8; i++) w.fx.wind(hand, _v2.copy(o.vel).multiplyScalar(0.25).add(_v.set(rand(-2, 2), rand(-1, 1), rand(-2, 2))), 0.6, 0.3);
+          w.audio.gust(1.2); w.shake(0.12, hand); return;
+        }
         this.whipRelease(f, 'air');
         return;
       }
@@ -367,7 +408,7 @@ export class Bending {
     const mesh = new THREE.Mesh(this.pillarGeo, this.mat.stone);
     mesh.scale.set(0.75, 1.05, 0.75); mesh.position.set(x, gy - 1.6, z); mesh.castShadow = mesh.receiveShadow = true;
     w.scene.add(mesh);
-    const col = { kind: 'b', x, z, hx: 0.6, hz: 0.6, top: gy + 1.45, walk: true, mesh, pillar: true };
+    const col = { kind: 'b', x, z, hx: 0.6, hz: 0.6, top: gy + 0.07, walk: true, mesh, pillar: true };   // the top rises with the rock (updated every frame)
     w.arena.colliders.push(col); w.arena.cameraBlockers.push(mesh);
     const p = { owner: f, mesh, col, t: 0, life: 14, gy };
     this.pillars.push(p);
@@ -520,6 +561,19 @@ export class Bending {
     }
   }
 
+  // Earth: a punch or kick that lands on a loose rock in the arena shatters it and drives its pieces at the opponent
+  strikeStone(f, at) {
+    const w = this.world, st = w.arena.nearestLooseStone(at, 1.5); if (!st) return false;
+    const t = f.target && !f.target.dead ? f.target : null, p = st.mesh.position.clone(); p.y += 0.35;
+    st.taken = true; st.col.dead = true; st.mesh.visible = false; st.respawnT = 6;
+    for (let i = 0; i < 5; i++) {
+      const to = t ? t.chestPos(new THREE.Vector3()) : p.clone().add(f.forward(new THREE.Vector3()).multiplyScalar(8));
+      const dir = to.sub(p).normalize(); dir.x += rand(-0.12, 0.12); dir.y += rand(-0.02, 0.1); dir.normalize();
+      const o = this.fire('pebble', f, p.clone().addScaledVector(dir, 0.4), { dir }); o.dmg = 4; o.knock = 4;
+    }
+    w.fx.debrisBurst(p, 16, 5, 0.12, 0x7a7068); w.fx.dust(p, 6, 2); w.audio.impact(1); w.shake(0.15, p); w.popup(f, 'SHATTER', false);
+    return true;
+  }
   deflectInCone(f, from, dir, len, el) {
     for (const o of this.objs) {
       if (o.state !== 'flying' || o.owner === f) continue;
@@ -547,7 +601,13 @@ export class Bending {
     const w = this.world, el = f.el;
     const d = { el, owner: f, t: 0, hp: el === 'earth' ? 70 : el === 'fire' ? 55 : el === 'water' ? 60 : 50, rise: 0, sink: 0, dead: false, yaw: f.faceYaw, pos: new THREE.Vector3(), flash: 0 };
     if (el === 'earth') {
-      d.mesh = new THREE.Mesh(this.wallGeo, this.mat.stone); d.mesh.castShadow = d.mesh.receiveShadow = true; d.box = { hw: 0.95, hh: 2.0, hd: 0.3 };
+      // three jagged rocks thrust up in a shallow arc: they intercept what comes at the bender, and HAND punches
+      // them apart into flying shards (guardShatter)
+      d.mesh = new THREE.Group(); d.box = { hw: 1.3, hh: 1.9, hd: 0.45 };
+      const rng = mulberry32((Math.random() * 1e9) | 0);
+      d.rocks = [[-0.85, 0.25, 0.8], [0, 0, 1.0], [0.85, 0.25, 0.8]].map(([x, z, k]) => {
+        const m = new THREE.Mesh(jaggedRockGeometry(rng, 1, 0.34, 1.9), this.mat.stone); m.castShadow = m.receiveShadow = true;
+        m.position.set(x, 0.85 * k, -z); m.scale.set(0.55 * k, 1.0 * k, 0.45 * k); m.rotation.set(rand(-0.15, 0.15), rand(0, 6), rand(-0.12, 0.12)); d.mesh.add(m); return m; });
       this.placeDef(d, 1);
       w.fx.debrisBurst(d.pos.clone().setY(d.pos.y + 0.1), 14, 2.6, 0.1, 0x7a6a58, 0.9); w.fx.dust(d.pos, 8, 2.2); w.fx.crater(d.pos, 2); w.audio.rumble(0.8);
     } else if (el === 'fire') {
@@ -570,6 +630,23 @@ export class Bending {
     w.scene.add(d.mesh);
     this.defs.push(d);
     f.defense = d;
+  }
+  // Earth GUARD + HAND: the guard rocks are punched apart and their shards fly at the opponent
+  guardShatter(f) {
+    const d = f.defense, w = this.world; if (!d || d.el !== 'earth' || !d.rocks || d.rise < 0.5) return false;
+    const t = f.target && !f.target.dead ? f.target : null;
+    for (const r of d.rocks) {
+      const p = r.getWorldPosition(new THREE.Vector3()).setY(f.pos.y + 1.1);
+      for (let i = 0; i < 2; i++) {
+        const to = t ? t.chestPos(new THREE.Vector3()) : p.clone().add(f.forward(new THREE.Vector3()).multiplyScalar(8));
+        const dir = to.sub(p).normalize(); dir.x += rand(-0.08, 0.08); dir.y += rand(-0.03, 0.06); dir.normalize();
+        const o = this.fire('pebble', f, p.clone().addScaledVector(dir, 0.6), { dir }); o.dmg = 5; o.knock = 4;
+      }
+      w.fx.debrisBurst(p, 10, 4, 0.1, 0x7a6a58);
+    }
+    w.audio.impact(1.1); w.shake(0.2, f.pos); w.popup(f, 'SHATTER', true);
+    this.guardEnd(f); f.guarding = false; f.guardCd = 0.5;
+    return true;
   }
   guardEnd(f) {
     const d = f.defense; f.defense = null;
@@ -741,9 +818,10 @@ export class Bending {
 
   // ================================================================== environment
   burn(x, z, gy, owner) {
-    for (const b of this.burns) if (Math.hypot(b.x - x, b.z - z) < 0.9) { b.t = Math.max(b.t, 4); return; }
-    if (this.burns.length > 14) this.burns.shift();
-    this.burns.push({ x, z, y: gy, t: 4, r: 1.1, owner, tick: 0 });
+    // burning ground lasts under two seconds and at most six patches burn at once, so the fighters stay visible
+    for (const b of this.burns) if (Math.hypot(b.x - x, b.z - z) < 0.9) { b.t = Math.max(b.t, 1.8); return; }
+    if (this.burns.length > 5) this.burns.shift();
+    this.burns.push({ x, z, y: gy, t: 1.8, r: 1.1, owner, tick: 0 });
   }
   extinguishNear(p, r) {
     const before = this.burns.length;
@@ -755,6 +833,9 @@ export class Bending {
   clash(a, b) {
     const w = this.world;
     if (a.el === b.el) { this.kill(a); this.kill(b); return; }
+    // fire is a defence as well as an attack: a fireball or a kicked flame destroys whatever it meets and burns out
+    // doing it (water turns to steam, rock is shattered, wind is burnt through)
+    if (a.el === 'fire' || b.el === 'fire') { const o = a.el === 'fire' ? b : a; this.kill(o, o.el === 'water' ? 'steam' : undefined); this.kill(a.el === 'fire' ? a : b); if (o.el === 'earth') w.fx.debrisBurst(o.pos, 8, 3, 0.07, 0x7a7068); return; }
     const pair = (x, y) => (a.el === x && b.el === y) ? [a, b] : (a.el === y && b.el === x) ? [b, a] : null;
     let p;
     if ((p = pair('water', 'fire'))) { this.kill(p[1], 'steam'); p[0].dmgMul *= 0.7; return; }        // water douses fire
@@ -847,7 +928,8 @@ export class Bending {
         // other projectiles
         for (const p of this.objs) {
           if (p === o || p.state !== 'flying' || p.owner === o.owner) continue;
-          if (p.pos.distanceTo(o.pos) < p.r + o.r) { this.clash(o, p); if (o.state === 'dead') { done = true; break; } }
+          // fire reaches wider when it meets another attack: a fireball or kicked flame is a defence as well
+          if (p.pos.distanceTo(o.pos) < p.r + o.r + (o.el === 'fire' || p.el === 'fire' ? 0.55 : 0)) { this.clash(o, p); if (o.state === 'dead') { done = true; break; } }
         }
         if (done) break;
         // fighters
@@ -973,7 +1055,7 @@ export class Bending {
       d.t += dt;
       if (d.sink > 0) {
         d.sink += dt; d.rise = 1 - smooth01(d.sink / 0.3);
-        if (d.sink > 0.3) { d.dead = true; w.scene.remove(d.mesh); continue; }
+        if (d.sink > 0.3) { d.dead = true; w.scene.remove(d.mesh); if (d.tubes) { d.tubes.forEach(t => this.weapons.freeTube(t)); d.tubes = null; } continue; }
       } else {
         d.rise = smooth01(d.t / (d.el === 'earth' ? 0.16 : 0.12));
         if (!d.ice) this.placeDef(d, 1 - Math.exp(-10 * dt));
@@ -1002,6 +1084,10 @@ export class Bending {
         }
       } else {
         d.mesh.position.copy(d.pos); d.mesh.scale.setScalar(d.rise); d.mesh.rotation.y += dt * 9;
+        // a visible whirlwind: three bands of wind winding round the bender from the feet to above the head
+        if (!d.tubes) { d.tubes = [0, 1, 2].map(() => { const t = this.weapons.tube(); t.mesh.material = this.weapons.airTubeMat; return t; }); d.wpts = d.tubes.map(() => Array.from({ length: 20 }, () => new THREE.Vector3())); }
+        const of = d.owner, R = 1.25 * d.rise;
+        d.tubes.forEach((tb, i) => { const P = d.wpts[i]; for (let j = 0; j < P.length; j++) { const q = j / (P.length - 1), a = -d.t * 9 + q * 7 + i * 2.09; P[j].set(of.pos.x + Math.cos(a) * R * (0.85 + 0.25 * q), of.pos.y + 0.1 + q * 2.2, of.pos.z + Math.sin(a) * R * (0.85 + 0.25 * q)); } tb.set(P, (u) => 0.05 + 0.06 * Math.sin(Math.PI * u), d.t * 2); });
         for (let k = 0; k < 2; k++) { const a = Math.random() * 6.28; w.fx.wind(_v.set(d.pos.x + Math.cos(a) * d.sphere, d.pos.y + rand(-0.8, 0.8), d.pos.z + Math.sin(a) * d.sphere), _v2.set(-Math.sin(a) * 8, 0, Math.cos(a) * 8), 0.5, 0.3); }
       }
       if (!d.ice && !d.owner.guarding && d.sink === 0) d.sink = 0.001;
@@ -1014,7 +1100,7 @@ export class Bending {
     // burning ground: hurts anyone standing in it, spreads flame particles
     for (const b of this.burns) {
       b.t -= dt;
-      if (Math.random() < dt * 22) w.fx.fire(_v.set(b.x + rand(-b.r, b.r) * 0.7, b.y + 0.05, b.z + rand(-b.r, b.r) * 0.7), _v2.set(0, rand(1.5, 3), 0), 0.5, 0.5);
+      if (Math.random() < dt * 9) w.fx.fire(_v.set(b.x + rand(-b.r, b.r) * 0.7, b.y + 0.05, b.z + rand(-b.r, b.r) * 0.7), _v2.set(0, rand(1.5, 3), 0), 0.42, 0.4);
       b.tick -= dt;
       if (b.tick <= 0) {
         b.tick = 0.4;
@@ -1134,7 +1220,7 @@ export class Bending {
     this.weapons.clear(); this.specials.clear();
     // projectiles leave nothing behind: their mesh and, for water, the stream drawn behind them
     for (const o of this.objs) { this.world.scene.remove(o.mesh); if (o.tube) { this.world.scene.remove(o.tube.mesh); o.tube.mesh.geometry.dispose(); o.tube.mesh.material.dispose(); o.tube = null; } }
-    for (const d of this.defs) this.world.scene.remove(d.mesh);
+    for (const d of this.defs) { this.world.scene.remove(d.mesh); if (d.tubes) d.tubes.forEach(t => this.weapons.freeTube(t)); }
     this.world.arena.colliders = this.world.arena.colliders.filter(c => !c.ice);
     for (const r of this.rings) this.world.scene.remove(r.mesh);
     for (const s of this.spikes) if (s.mesh) this.world.scene.remove(s.mesh);

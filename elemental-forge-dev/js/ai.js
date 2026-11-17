@@ -23,7 +23,7 @@ export class AI {
 
   update(dt) {
     const f = this.f, foe = this.foe, P = this.P, inp = f.input, w = this.world;
-    inp.hand = inp.leg = inp.special = inp.jump = inp.dodge = false;
+    inp.hand = inp.leg = inp.special = inp.jump = inp.dodge = inp.roll = false;
     if (f.dead || foe.dead || !w.fighting) { inp.mx = inp.mz = 0; inp.handHeld = inp.legHeld = inp.guard = inp.jumpHeld = false; return; }
     this.jetT -= dt; inp.jumpHeld = this.jetT > 0;
     this.mobT = (this.mobT || 0) - dt; inp.dodgeHeld = this.mobT > 0;
@@ -142,12 +142,15 @@ export class AI {
     }
     if (this.reaction) {
       this.reactT -= dt;
-      if (this.reactT <= 0) {
+      // a decision to evade is kept until the fighter can act (a stagger would otherwise use it up)
+      if (this.reactT <= 0 && !(this.reaction === 'dodge' && !f.free('dodge') && (f.stunT > 0 || f.reacting()))) {
         if (this.reaction === 'dodge') {
           const s = Math.random() < 0.5 ? -1 : 1;
           inp.mx = -tz * s; inp.mz = tx * s; inp.dodge = true;
           // out of marked ground: dodge directly away from its centre
           if (this.dodgeFrom) { const ax = f.pos.x - this.dodgeFrom.x, az = f.pos.z - this.dodgeFrom.z, l = Math.hypot(ax, az) || 1; inp.mx = ax / l; inp.mz = az / l; this.dodgeFrom = null; }
+          // Earth's DODGE is the rock slide: an Earth fighter evades with the roll (GUARD + DODGE) instead
+          if (f.el === 'earth') { inp.dodge = false; inp.roll = true; }
           if (this.d !== 'training') this.punishT = 0.55;     // answer the evasion with a strike
         } else { this.guardT = dist < 4 ? rand(0.35, 0.6) : rand(0.6, 1.0); }
         this.reaction = null;
@@ -186,6 +189,10 @@ export class AI {
       // now and then reposition with the element's own mobility (surf / flight / flame run), launching off the
       // surf when the opponent is close
       if (this.mobT <= 0 && dist > 6 && f.en > 50 && Math.random() < dt * (this.d === 'master' ? 0.12 : 0.06)) this.mobT = rand(1.2, 2.4);
+      // Air takes off with JUMP; Earth starts its rock slide with a DODGE tap (and taps again to step off)
+      if (this.mobT > 0 && !f.mob && f.onGround && f.el === 'air') inp.jump = true;
+      if (this.mobT > 0 && !f.mob && f.onGround && f.el === 'earth' && !this.slid) { inp.dodge = true; this.slid = true; }
+      if (this.mobT <= 0) { if (this.slid && f.mob && f.el === 'earth') inp.dodge = true; this.slid = false; }
       if (this.mobT > 0 && f.mob && f.mob.kind === 'surf' && dist < 5 && Math.random() < dt * 2) inp.jump = true;
     }
     if (dist < 2.6 && this.meleeT <= 0) {

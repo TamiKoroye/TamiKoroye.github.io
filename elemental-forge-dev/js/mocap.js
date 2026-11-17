@@ -34,7 +34,7 @@ export function requiredClips(styles) {
   const need = new Set(['hit_a', 'hit_b', 'ko', 'getup', 'dodge_side', 'dodge_side_M', 'dodge_back', 'block_hit', 'strafe', 'strafe_M', 'water_redirect',
     'jump_high', 'air_loop', 'fall_loop', 'land_high', 'knockback', 'getup_back', 'surf_stance', 'water_flow', 'water_gather', 'turn_spin']);
   for (const L of Object.values(LOOPS)) for (const n of Object.values(L)) need.add(n);
-  for (const st of Object.values(styles)) { const t = st.tech; for (const T of [t.hand, ...(t.leg || []), t.legMove, t.charged, t.special, t.stomp, t.release]) if (T && T.clip) for (const n of (Array.isArray(T.clip) ? T.clip : [T.clip])) need.add(n); }
+  for (const st of Object.values(styles)) { const t = st.tech; for (const T of [t.hand, ...(t.leg || []), t.legMove, t.charged, t.special, t.stomp, t.release, t.airKick, t.flip, t.flipBack, t.roll]) if (T && T.clip) for (const n of (Array.isArray(T.clip) ? T.clip : [T.clip])) need.add(n); }
   return [...need].filter(n => !MOCAP[n]);
 }
 
@@ -47,6 +47,10 @@ export function unpack(j, fps) {
     for (let i = 0; i < n; i++) times[i] = i / fps;
     const k = t.k === 'q' ? 1 / 32767 : 1 / 1000;
     for (let i = 0; i < a.length; i++) vals[i] = a[i] * k;
+    // clips baked to their very end carry a bad last sample (the sampler wrapped to the first frame): a clip that
+    // plays once ends on its second-to-last frame instead, so a held final pose (lying after a knockdown, standing
+    // after the get-up) is the real one and not the first pose snapping back
+    if (!j.loop && n >= 3) for (let c = 0; c < st; c++) vals[(n - 1) * st + c] = vals[(n - 2) * st + c];
     if (st === 4) for (let i = 0; i < n; i++) { const o = i * 4, l = Math.hypot(vals[o], vals[o + 1], vals[o + 2], vals[o + 3]) || 1; for (let c = 0; c < 4; c++) vals[o + c] /= l; }
     return t.k === 'q' ? new THREE.QuaternionKeyframeTrack(t.n, times, vals) : new THREE.VectorKeyframeTrack(t.n, times, vals);
   });
@@ -62,17 +66,17 @@ export const LOOPS = {
   earth: { idle: 'earth_idle', guard: 'earth_guard', hold: 'earth_lift' },
   fire: { idle: 'fire_idle', guard: 'fire_guard', hold: 'fire_stream' },
   water: { idle: 'water_flow2', guard: 'water_guard', hold: 'water_flow' },   // sustained whips: Qi Gong cloud-hands arms
-  air: { idle: 'air_idle', guard: 'air_guard', hold: 'air_push' },
+  air: { idle: 'air_idle', guard: 'water_flow', hold: 'air_push' },   // guard: cloud hands, the arms keep circling inside the whirlwind
 };
 
 // playback speed relative to the capture, per style (earth heavy, fire and air quick, water measured);
 // individual clips can override it (the tai chi take is performed very slowly)
 const SPEED = { earth: 1.45, fire: 1.75, water: 1.45, air: 1.65 };
-const CLIP_SPEED = { earth_gather: 1.8, turn_spin: 0.8, water_redirect: 2.0, whip_h: 1.5, whip_v: 1.9, whip_d: 1.7, water_palm: 3.0, water_tidal: 2.0, water_sphere: 1.5, earth_stomp: 1.6, earth_pillar: 1.7, fire_orb: 1.5, air_vortex: 1.6, earth_sweep: 1.5, fire_spin: 1.5 };
+const CLIP_SPEED = { jump_kick: 2.4, flip_kick: 2.2, fire_jab: 1.6, earth_gather: 1.8, turn_spin: 0.8, water_redirect: 2.0, whip_h: 1.5, whip_v: 1.9, whip_d: 1.7, water_palm: 3.0, water_tidal: 2.0, water_sphere: 1.5, earth_stomp: 1.6, earth_pillar: 1.7, fire_orb: 1.5, air_vortex: 1.6, earth_sweep: 1.5, fire_spin: 1.5 };
 
 const names = (T) => (Array.isArray(T.clip) ? T.clip : [T.clip]);
 function techList(st) {
-  const t = st.tech; return [t.hand, ...(t.leg || []), t.legMove, t.charged, t.special, t.stomp, t.release].filter(Boolean);
+  const t = st.tech; return [t.hand, ...(t.leg || []), t.legMove, t.charged, t.special, t.stomp, t.release, t.airKick, t.flip, t.flipBack, t.roll].filter(Boolean);
 }
 
 // Rewrites dur / events / active window / jump / cancel of every technique that names a clip, keeping each
@@ -94,7 +98,7 @@ function timing(orig, name, sp) {
   const m = MOCAP[name];
   const dur = m.clip.duration / sp;
   const u0 = orig.events && orig.events.length ? orig.events[0][0] : (orig.active ? orig.active.from : 0.4);
-  const evU = m.impact / m.clip.duration;
+  const evU = (m.impact ?? m.clip.duration * 0.5) / m.clip.duration;   // evasions without a strike: timed from the middle
   const map = (u) => THREE.MathUtils.clamp(evU + (u - u0) * orig.dur / dur, 0, 0.98);
   const out = { clip: name, dur, impactT: evU * dur };
   if (orig.events) out.events = orig.events.map(([u, n]) => [map(u), n]);
@@ -116,6 +120,6 @@ export function clipFor(T, side) {
     const kind = m.limb[0], want = kind + (kind === 'p' ? (side > 0 ? 'R' : 'L') : (side > 0 ? 'L' : 'R'));
     if (m.limb !== want && MOCAP[base + '_M']) name = base + '_M';
   }
-  const ts = m.impact !== undefined && T.impactT ? THREE.MathUtils.clamp(m.impact / T.impactT, 0.6, 3) : 1;
+  const ts = m.impact !== undefined && T.impactT ? THREE.MathUtils.clamp(m.impact / T.impactT, 0.6, 3) : T.dur ? THREE.MathUtils.clamp(m.clip.duration / T.dur, 0.6, 4) : 1;
   return [name, ts];
 }

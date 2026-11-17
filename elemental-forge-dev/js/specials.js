@@ -73,9 +73,23 @@ export class Specials {
     this.add({ kind: 'dragon', f, t: 0, phase: 'gather', tube, inner, pts: Array.from({ length: 44 }, () => new THREE.Vector3()), tick: 0, caught: 0, stung: new Set(), head: null });
     this.w.fx.splash(_a.set(f.pos.x, f.groundY + 0.1, f.pos.z), 16); this.w.audio.splash(0.9);
   }
-  waterEstablish(f) { const S = this.find(f, 'dragon'); if (S && S.phase === 'gather') { S.phase = 'flow'; S.flowT = 0; } }
+  // the gathered water is thrown round the opponent: they are held inside a ball of water (drowning), it freezes
+  // into jagged ice, then shatters for the damage
+  waterEstablish(f) {
+    const S = this.find(f, 'dragon'); if (S) this.dropDragon(S, false);
+    const t = f.target && !f.target.dead && f.target.pos.distanceTo(f.pos) < 11 ? f.target : null;
+    if (!t) { this.w.fx.splash(f.chestPos(_a), 20); return; }
+    const mesh = new THREE.Mesh(this.ballGeo, this.B.weapons.tubeMat); mesh.renderOrder = 3; mesh.scale.setScalar(0.1); this.w.scene.add(mesh);
+    const shards = new THREE.Group(); this.w.scene.add(shards); shards.visible = false;
+    for (let i = 0; i < 16; i++) {
+      const m = new THREE.Mesh(this.B.iceShard, this.icy || (this.icy = this.B.weapons.iceTubeMat)); const u = new THREE.Vector3(rand(-1, 1), rand(-0.6, 1), rand(-1, 1)).normalize();
+      m.position.copy(u).multiplyScalar(0.95); m.quaternion.setFromUnitVectors(UP, u); m.scale.setScalar(rand(0.55, 0.95)); shards.add(m);
+    }
+    this.add({ kind: 'drown', f, t: 0, tg: t, mesh, shards, phase: 'engulf' });
+    this.w.audio.splash(1.2);
+  }
   // HAND during the circulation: the two-handed push that throws the stream
-  waterCanRelease(f) { const S = this.find(f, 'dragon'); return !!(S && (S.phase === 'flow' || S.phase === 'gather') && S.t > 0.5); }
+  waterCanRelease(f) { return false; }   // the stream is no longer held and thrown: the SPECIAL engulfs the opponent itself
   waterRelease(f) {
     const S = this.find(f, 'dragon'); if (!S || S.phase === 'thrown') return;
     const w = this.w, h = _a.addVectors(f.handPos('L', _b), f.handPos('R', _c)).multiplyScalar(0.5);
@@ -100,13 +114,14 @@ export class Specials {
   update(dt) {
     const w = this.w;
     for (const S of this.list) {
+      if (S.dead) continue;
       S.t += dt; const f = S.f;
       switch (S.kind) {
         case 'fireTrail': {
           // flames pour from both feet through the leap (they ride the bones, so they trace the kick)
           if (f.dead || f.reacting() || f.tech !== S.tech || S.t > 1.6) { S.dead = true; break; }
-          for (const s of ['L', 'R']) { const p = f.footPos(s, _a); w.fx.fire(p, _b.set(rand(-1, 1), rand(0.5, 2), rand(-1, 1)), s === 'L' ? 0.42 : 0.3, 0.3); }
-          if (Math.random() < 0.6) w.fx.fire(f.handPos(Math.random() < 0.5 ? 'L' : 'R', _a), _b.set(0, 1.5, 0), 0.22, 0.2);
+          // a thin trail from each foot only, so the kick itself stays readable through the flames
+          for (const s of ['L', 'R']) if (Math.random() < 0.6) { const p = f.footPos(s, _a); w.fx.fire(p, _b.set(rand(-0.5, 0.5), rand(0.3, 1), rand(-0.5, 0.5)), 0.22, 0.2); }
           break;
         }
         case 'fireBlast': {
@@ -160,6 +175,29 @@ export class Specials {
           break;
         }
         case 'dragon': this.updateDragon(S, dt); break;
+        case 'drown': {
+          const t = S.tg, c = t.chestPos(_a).setY(t.pos.y + 1.0);
+          if (S.phase === 'engulf') {
+            // the ball closes round the opponent and holds them, lifted a little off the floor
+            const k = smooth01(Math.min(1, S.t / 0.3)); S.mesh.position.copy(c); S.mesh.scale.setScalar(0.1 + 1.15 * k);
+            if (!t.dead) { t.restrainT = Math.max(t.restrainT, 0.2); t.vel.set(0, Math.max(0, (S.c0 ?? (S.c0 = t.pos.y + 0.4)) - t.pos.y) * 4, 0); t.onGround = false; }
+            if (Math.random() < 0.5) w.fx.splash(_b.copy(c).add(_d.set(rand(-1, 1), rand(-1, 1), rand(-1, 1)).setLength(1.1)), 1);
+            if (S.t > 1.05) { S.phase = 'freeze'; S.ft = 0; w.audio.splash(0.6); }
+          } else if (S.phase === 'freeze') {
+            // the water freezes outward into jagged ice
+            S.ft += dt; const k = smooth01(Math.min(1, S.ft / 0.25));
+            S.mesh.material = this.B.weapons.iceTubeMat; S.shards.visible = true; S.shards.position.copy(c); S.shards.scale.setScalar(0.4 + 0.8 * k); S.shards.rotation.y += dt * 0.5;
+            if (!t.dead) { t.restrainT = Math.max(t.restrainT, 0.2); t.vel.set(0, 0, 0); }
+            if (S.ft > 0.45) {
+              // shatter: the damage, ice flying outward, the ball gone
+              w.fx.debrisBurst(c, 36, 7, 0.1, 0xbfe8ff); w.fx.splash(c, 16); w.shake(0.35, c); w.audio.impact(1.2);
+              if (!t.dead) { t.restrainT = 0; w.combat.damage(t, 22, _b.set(t.pos.x - S.f.pos.x, 0, t.pos.z - S.f.pos.z).normalize().clone(), S.f, 'drown', c.clone(), 10, 2); }
+              S.dead = true; w.scene.remove(S.mesh); w.scene.remove(S.shards);
+            }
+          }
+          if (S.t > 3) { S.dead = true; w.scene.remove(S.mesh); w.scene.remove(S.shards); }
+          break;
+        }
         case 'tornado': this.updateTornado(S, dt); break;
       }
     }
@@ -291,6 +329,7 @@ export class Specials {
       if (S.kind === 'rupture') for (const sp of S.spikes) this.w.scene.remove(sp.m);
       if (S.kind === 'dragon' && S.tube) { this.w.scene.remove(S.tube.mesh); S.tube.mesh.geometry.dispose(); this.B.weapons.freeTube(S.inner); }
       if (S.kind === 'tornado') for (const tb of S.tubes) this.B.weapons.freeTube(tb);
+      if (S.kind === 'drown') { this.w.scene.remove(S.mesh); this.w.scene.remove(S.shards); if (S.tg) S.tg.restrainT = 0; }
     }
     this.list = [];
   }
