@@ -349,8 +349,9 @@ export class Hero {
       const c = Math.cos(f.yaw), s = Math.sin(f.yaw), lx = f.dodgeDir.x * c - f.dodgeDir.z * s, lz = f.dodgeDir.x * s + f.dodgeDir.z * c;
       // Air's two-second whirlwind glide: the airborne gliding pose (UAL2 NinjaJump idle, as in flight)
       if (f.dodgeKind === 'glide' && has('air_loop')) { clip = 'air_loop'; ts = 1; wU = wL = 0; fade = 0.2; }
-      // Fire's rocket dodge: a held, braced stance (the surfing stance, nearly frozen) while the jets carry the body
-      else if (f.dodgeKind === 'rocket' && has('surf_stance')) { clip = 'surf_stance'; ts = 0.15; wU = wL = 0; fade = 0.08; }
+      // Fire's rocket dodge: Fire's own fighting stance (fists up, knees bent), held nearly still while the jets carry
+      // the body sideways: no steps, no running legs (the body's lean comes from fighter.js)
+      else if (f.dodgeKind === 'rocket' && has('fire_idle')) { clip = 'fire_idle'; ts = 0.12; wU = wL = 0; fade = 0.06; }
       else {
       const n = f.dodgeKind !== 'roll' && Math.abs(lx) > 0.5 && has('dodge_side') ? (lx < 0 ? 'dodge_side' : 'dodge_side_M') : lz < -0.6 && f.el === 'air' && has('dodge_back') ? 'dodge_back' : 'Roll';
       if (n === 'Roll') { clip = 'Roll'; wU = wL = 0; ts = 1.46 / (f.dodgeDur * 1.7); fade = 0.06; if (this.curName !== 'Roll') restart = true; }

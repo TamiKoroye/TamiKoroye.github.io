@@ -194,10 +194,11 @@ export function retargetSkeleton(srcRoot, clip, target, opts = {}) {
     if (opts.aim && opts.aim.limb && opts.aim.time !== undefined) {
       mixer.setTime(opts.aim.time); holder.updateMatrixWorld(true);
       v = wp(limbBone(opts.aim.limb)).sub(wp(S[hipsN])).applyQuaternion(R);
-      if (opts.aim.limb[0] === 'p') v.sub(wp(S[RIGS[rig].spine[2]]).sub(wp(S[hipsN])).applyQuaternion(R));   // punches: from the chest
+      if (opts.aim.limb[0] === 'p') v.sub(wp(S[RIGS[rig].spine.filter(Boolean).at(-1)]).sub(wp(S[hipsN])).applyQuaternion(R));   // punches: from the chest (the topmost spine bone the rig has)
     } else {
       mixer.setTime(tStart); holder.updateMatrixWorld(true);
-      const q = R.clone().multiply(wq(S[opts.aim === 'hips' ? hipsN : headN])).multiply(restInv[opts.aim === 'hips' ? hipsN : headN]);
+      // the source's own rest forward is R^-1 (+Z) (a -Z-facing rig is turned round by R), so the motion is R * delta * R^-1
+      const q = R.clone().multiply(wq(S[opts.aim === 'hips' ? hipsN : headN])).multiply(restInv[opts.aim === 'hips' ? hipsN : headN]).multiply(R.clone().invert());
       v = new THREE.Vector3(0, 0, 1).applyQuaternion(q);
     }
     v.y = 0; if (v.lengthSq() < 1e-8) v.set(0, 0, 1);
@@ -227,7 +228,9 @@ export function retargetSkeleton(srcRoot, clip, target, opts = {}) {
       if (r) {
         const D = G.clone().multiply(wq(r.s)).multiply(restInv[r.sn]).multiply(Gi);
         if (mirror) { D.y = -D.y; D.z = -D.z; }        // reflect the motion across the body's mid-plane (x = 0)
-        const world = D.multiply(r.C).multiply(r.tRest);
+        // r.C aims the target's rest bone along the source's rest bone (in the turned-round frame R); the heading turns
+        // that rest direction to face the opponent before the motion D (taken relative to the heading) is applied
+        const world = D.multiply(heading).multiply(r.C).multiply(r.tRest);
         local = parentQ.clone().invert().multiply(world);
         const a = qv.get(b.name); a[i * 4] = local.x; a[i * 4 + 1] = local.y; a[i * 4 + 2] = local.z; a[i * 4 + 3] = local.w;
       } else local = restLocal.get(b);

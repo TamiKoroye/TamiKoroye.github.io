@@ -207,10 +207,11 @@ if (want('earthmoves')) {
 }
 if (want('watersurf')) {
   begin('water_surf_attacks'); await setup('water', 'earth', [0, -14], [0, 6]);
-  cam = ['P', 'body', 6, Math.PI / 2 + 0.3, 0.8]; note = 'DODGE (Shift) held with the stick forward: ice surfing; HAND (F) four taps and LEG (G) without leaving the ice';
-  await key('KeyW', true); await key('ShiftLeft', true); await run(24);
+  cam = ['P', 'body', 7.5, Math.PI / 2 + 0.3, 1.6]; note = 'DODGE (Shift) held briefly, then let go: the ice surf stays on (3 m up); HAND (F) four taps and LEG (G) while riding; DODGE tapped again steps off';
+  // (as on a phone: DODGE is released before attacking, the same thumb presses HAND and LEG)
+  await key('KeyW', true); await key('ShiftLeft', true); await run(14); await key('ShiftLeft', false); await run(10);
   for (let i = 0; i < 4; i++) { await tap('KeyF'); await run(12); }
-  await tap('KeyG'); await run(20); await key('ShiftLeft', false); await key('KeyW', false); await run(20); made.push(end());
+  await tap('KeyG'); await run(20); await tap('ShiftLeft'); await key('KeyW', false); await run(30); made.push(end());
 }
 if (want('whipgrab')) {
   begin('water_whip_grab_slam'); await setup('water', 'earth', [0, -1.8], [0, 1.8]);
@@ -238,6 +239,19 @@ if (want('tidal')) {
   begin('water_spin_wave'); await setup('water', 'earth', [0, -3], [0, 3.5]);
   cam = ['P', 'body', 7, Math.PI / 2 + 0.6, 0.8]; note = 'LEG (G) second tap: the turning kick whips water round and sends a smaller breaking wave';
   await tap('KeyG'); await run(18); await tap('KeyG'); await run(40); made.push(end());
+}
+if (want('waterflow')) {
+  begin('water_taichi_hand_chain'); await setup('water', 'earth', [0, -3.5], [0, 3.5]);
+  cam = ['P', 'body', 4.6, Math.PI / 2 + 0.55, 0.4]; note = 'HAND (F) six taps: Wild Horse whip, Brush Knee palm (water ball), overhead whip, Parry and Punch (ice), Single Whip, two-palm push (wave)  -  Tai Chi 24 Form captured from video';
+  for (let i = 0; i < 6; i++) { await tap('KeyF'); await run(20); }
+  await run(10); made.push(end());
+  begin('water_kick_chain'); await setup('water', 'earth', [0, -3], [0, 3]);
+  cam = ['P', 'body', 5, Math.PI / 2 + 0.6, 0.4]; note = 'LEG (G) five taps: crescent kick, turning wave kick, Golden Rooster rising knee (water column), Tai Chi heel kick, water sweep';
+  for (let i = 0; i < 5; i++) { await tap('KeyG'); await run(24); }
+  await run(10); made.push(end());
+  begin('water_cloud_hands_guard'); await setup('water', 'earth', [0, -3], [0, 3]);
+  cam = ['P', 'body', 4.2, Math.PI / 2 + 0.3, 0.5]; note = 'GUARD (Q) held: Cloud Hands, the arms keep circling behind the water wall';
+  await key('KeyQ', true); await run(70); await key('KeyQ', false); await run(12); made.push(end());
 }
 if (want('surf')) {
   begin('water_ice_surf'); await setup('water', 'earth', [0, -14], [0, 14]);

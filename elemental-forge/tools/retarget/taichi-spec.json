@@ -1,0 +1,80 @@
+[
+ {
+  "name": "whip_h_horse",
+  "bvh": "whip_h_horse.bvh",
+  "impact": 2.84,
+  "limb": "pL",
+  "start": 1.74,
+  "end": 3.54,
+  "src_note": "Tai Chi 24 Form front view (Drive, 17 Nov), captured with MediaPipe Pose by tools/vidcap"
+ },
+ {
+  "name": "tc_brush_palm",
+  "bvh": "tc_brush_palm.bvh",
+  "impact": 2.44,
+  "limb": "pR",
+  "start": 1.34,
+  "end": 3.14,
+  "src_note": "Tai Chi 24 Form front view (Drive, 17 Nov), captured with MediaPipe Pose by tools/vidcap"
+ },
+ {
+  "name": "tc_push",
+  "bvh": "tc_push.bvh",
+  "impact": 2.34,
+  "limb": "pR",
+  "start": 1.24,
+  "end": 3.04,
+  "src_note": "Tai Chi 24 Form front view (Drive, 17 Nov), captured with MediaPipe Pose by tools/vidcap"
+ },
+ {
+  "name": "whip_d_single",
+  "bvh": "whip_d_single.bvh",
+  "impact": 2.34,
+  "limb": "pL",
+  "start": 1.24,
+  "end": 3.04,
+  "src_note": "Tai Chi 24 Form front view (Drive, 17 Nov), captured with MediaPipe Pose by tools/vidcap"
+ },
+ {
+  "name": "tc_parry_punch",
+  "bvh": "tc_parry_punch.bvh",
+  "impact": 2.74,
+  "limb": "pL",
+  "start": 1.64,
+  "end": 3.44,
+  "src_note": "Tai Chi 24 Form front view (Drive, 17 Nov), captured with MediaPipe Pose by tools/vidcap"
+ },
+ {
+  "name": "tc_heel_kick",
+  "bvh": "tc_heel_kick.bvh",
+  "impact": 2.24,
+  "limb": "kR",
+  "start": 1.14,
+  "end": 2.94,
+  "src_note": "Tai Chi 24 Form front view (Drive, 17 Nov), captured with MediaPipe Pose by tools/vidcap"
+ },
+ {
+  "name": "tc_rooster",
+  "bvh": "tc_rooster.bvh",
+  "impact": 2.14,
+  "limb": "kR",
+  "start": 1.04,
+  "end": 2.84,
+  "src_note": "Tai Chi 24 Form front view (Drive, 17 Nov), captured with MediaPipe Pose by tools/vidcap"
+ },
+ {
+  "name": "tc_snake",
+  "bvh": "tc_snake.bvh",
+  "impact": 3.54,
+  "start": 1.94,
+  "end": 4.34,
+  "src_note": "Tai Chi 24 Form front view (Drive, 17 Nov), captured with MediaPipe Pose by tools/vidcap"
+ },
+ {
+  "name": "tc_cloud",
+  "bvh": "tc_cloud.bvh",
+  "loop": true,
+  "start": 0.08,
+  "src_note": "Tai Chi 24 Form front view (Drive, 17 Nov), captured with MediaPipe Pose by tools/vidcap"
+ }
+]

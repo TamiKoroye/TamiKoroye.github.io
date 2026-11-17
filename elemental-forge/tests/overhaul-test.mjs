@@ -138,7 +138,10 @@ await press('btn-jump', 2);
 let peak = 0, plat = 0; const launch = await run(40, async (i, r) => { peak = Math.max(peak, r.alt); if (i === 8) await shot('water-ice-launch'); plat = Math.max(plat, await S(() => window.__EF.world.bending.weapons.platforms.length)); });
 check('JUMP while surfing: a rising ice pillar launches the bender high', peak > 2.8 && plat > 0, `peak ${peak.toFixed(2)} m above the ground, ice platforms ${plat}`);
 check('the launch plays the high-jump animation', launch.some(r => /jump_high|air_loop|fall_loop/.test(r.clip || '')), [...new Set(launch.map(r => r.clip))].join(','));
-await stickUp(); await fUp(7); await run(30);
+await stickUp(); await fUp(7);
+// (18 Nov: the ice surf now stays on after DODGE is let go, so the thumb is free to attack on a phone; a DODGE tap
+//  steps off. Before, letting go of DODGE ended it. The surf is ended here the new way before the next trial)
+await press('btn-dodge', 2); await run(30);
 await setup({ el: 'water', locked: false, p: [-8, 0, -14], o: [20, 0, 20] }); await stepN(3);
 await press('btn-jump', 1); await hold('btn-jump'); let wPeak = 0, colSeen = false; await run(30, async (i, r) => { wPeak = Math.max(wPeak, r.alt); colSeen = colSeen || await S(() => !!window.__EF.player._col); if (i === 14) await shot('water-column-launch'); }); await fUp(6); await run(30);
 check('JUMP held: a water column under the feet carries the waterbender up', wPeak > 2.2 && colSeen, `peak ${wPeak.toFixed(2)} m, column visible ${colSeen}`);

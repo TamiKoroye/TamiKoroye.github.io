@@ -203,6 +203,8 @@ export class AI {
       if (this.mobT > 0 && !f.mob && f.onGround && f.el === 'air') inp.jump = true;
       if (this.mobT > 0 && !f.mob && f.onGround && f.el === 'earth' && !this.slid) { inp.dodge = true; this.slid = true; }
       if (this.mobT <= 0) { if (this.slid && f.mob && f.el === 'earth') inp.dodge = true; this.slid = false; }
+      // Water's ice surf stays on after DODGE is let go: a tap ends it when the AI's surf time is up
+      if (this.mobT <= 0 && f.el === 'water' && f.mob && f.mob.kind === 'surf' && f.mob.t > 0.4) inp.dodge = true;
       if (this.mobT > 0 && f.mob && f.mob.kind === 'surf' && dist < 5 && Math.random() < dt * 2) inp.jump = true;
     }
     if (dist < 2.6 && this.meleeT <= 0) {
