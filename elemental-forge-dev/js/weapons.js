@@ -284,7 +284,13 @@ export class Weapons {
           }
         }
       }
-      for (const o of B.objs) if (o.state === 'flying' && o.owner !== A.f && A.pts.some(p => p.distanceTo(o.pos) < o.r + 0.4)) B.kill(o, A.el === 'water' && o.el === 'fire' ? 'steam' : undefined);
+      // what the arc meets in the air is destroyed: tested along the path the projectile covered this frame (the two
+      // close at ~40 m/s, over a metre a frame), and wider for fire, which is meant as a defence
+      for (const o of B.objs) {
+        if (o.state !== 'flying' || o.owner === A.f) continue;
+        const p0 = _d.copy(o.pos).addScaledVector(o.vel, -dt), reach = o.r + (A.el === 'fire' ? 0.7 : 0.4);
+        if (A.pts.some(p => distPointSeg(p, p0, o.pos) < reach)) { B.kill(o, A.el === 'water' && o.el === 'fire' || A.el === 'fire' && o.el === 'water' ? 'steam' : undefined); if (o.el === 'earth') w.fx.debrisBurst(o.pos, 8, 3, 0.07, 0x7a7068); }
+      }
       if (A.el === 'water') B.extinguishNear(A.c, 1.4);
     }
     this.arcs = this.arcs.filter(A => { if (A.dead) { this.freeTube(A.tube); A.tube = null; if (A.ribbons) A.ribbons.forEach(r => r.release()); A.ribbons = null; } return !A.dead; });
