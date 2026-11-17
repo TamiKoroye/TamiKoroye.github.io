@@ -198,7 +198,8 @@ function computeAim() {
   }
   camera.getWorldDirection(_f);
   const origin = camera.position;
-  // aim assist: if the reticle is close to the rival, snap to them
+  // aim assist: if the reticle is near the rival, aim at them with the same lead the AI uses (the rival AI aims
+  // at the player with lead at every difficulty above training, so the player gets the same help)
   if (!target.dead) {
     target.chestPos(_t);
     _c.subVectors(_t, origin);
@@ -206,7 +207,11 @@ function computeAim() {
     if (along > camCtl.curDist) {
       const perp = _p.copy(origin).addScaledVector(_f, along).distanceTo(_t);
       const ang = Math.atan2(perp, along);
-      if (perp < 0.75 || ang < 0.07) { aimPoint.copy(_t); aimOnTarget = true; return; }
+      if (perp < 1.6 || ang < 0.18) {
+        aimPoint.copy(_t); aimPoint.y -= 0.1;
+        const d = aimPoint.distanceTo(player.pos); aimPoint.x += target.vel.x * d / 30 * 0.6; aimPoint.z += target.vel.z * d / 30 * 0.6;
+        aimOnTarget = true; return;
+      }
     }
   }
   raycaster.set(origin, _f); raycaster.near = camCtl.curDist + 0.6; raycaster.far = 80;
@@ -230,7 +235,10 @@ function playerInput(inp) {
   state.stickFullT = mag > 0.92 ? state.stickFullT + inp.dt : 0;
 
   if (pr.hand || pr.leg || pr.special || b.hand || b.leg || b.guard) state.aimHold = 1.4;
-  pi.strafe = state.locked || state.aimHold > 0;
+  // the rival AI always squares up to the player; the player does the same whenever the rival is close (within
+  // 7 m) and they are not sprinting away, so strikes and whips at close range go where the opponent is
+  const tgt = player.target || opp, near = tgt && !tgt.dead && Math.hypot(tgt.pos.x - player.pos.x, tgt.pos.z - player.pos.z) < 7;
+  pi.strafe = state.locked || state.aimHold > 0 || (near && state.stickFullT < 0.35);
   // auto-sprint only when not strafing (lock-on or aiming), so full-stick strafing stays locked to the target
   pi.sprint = (!pi.strafe && state.stickFullT > 0.35) || controls.keys.has('KeyC');
   if (player.sprinting) camCtl.fovKick = Math.max(camCtl.fovKick, 6);
@@ -238,6 +246,7 @@ function playerInput(inp) {
   pi.aimPoint.copy(aimPoint);
   pi.faceYaw = Math.atan2(aimPoint.x - player.pos.x, aimPoint.z - player.pos.z);
   if (Math.hypot(aimPoint.x - player.pos.x, aimPoint.z - player.pos.z) < 0.8) pi.faceYaw = yaw;
+  if (near && !aimOnTarget && !(state.aimHold > 0)) pi.faceYaw = Math.atan2(tgt.pos.x - player.pos.x, tgt.pos.z - player.pos.z);
 }
 
 // ------------------------------------------------------------------ HUD

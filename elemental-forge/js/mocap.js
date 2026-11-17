@@ -32,7 +32,7 @@ export async function loadMocap() {
 // every clip the game refers to (techniques, stances, guards, holds, reactions); used by the loading check
 export function requiredClips(styles) {
   const need = new Set(['hit_a', 'hit_b', 'ko', 'getup', 'dodge_side', 'dodge_side_M', 'dodge_back', 'block_hit', 'strafe', 'strafe_M', 'water_redirect',
-    'jump_high', 'air_loop', 'fall_loop', 'land_high', 'knockback', 'getup_back', 'surf_stance', 'water_flow', 'water_gather', 'turn_spin']);
+    'jump_high', 'air_loop', 'fall_loop', 'land_high', 'knockback', 'ko_b', 'ko_c', 'hit_big', 'hit_big_M', 'hit_body', 'run_loop', 'sprint_loop', 'walk_back', 'run_stop', 'fall_roll', 'wall_run', 'wall_run_M', 'wall_flip', 'surf_stance', 'water_flow', 'water_gather', 'turn_spin']);
   for (const L of Object.values(LOOPS)) for (const n of Object.values(L)) need.add(n);
   for (const st of Object.values(styles)) { const t = st.tech; for (const T of [t.hand, ...(t.leg || []), t.legMove, t.charged, t.special, t.stomp, t.release, t.airKick, t.flip, t.flipBack, t.roll]) if (T && T.clip) for (const n of (Array.isArray(T.clip) ? T.clip : [T.clip])) need.add(n); }
   return [...need].filter(n => !MOCAP[n]);
@@ -59,20 +59,20 @@ export function unpack(j, fps) {
 
 // per element: combat stance, guard hold and sustained-bending hold
 // loop playback speed (the Qi Gong takes are performed slowly; combat needs them quicker but still flowing)
-export const LOOP_SPEED = { water_flow: 1.9, water_flow2: 1.5, surf_stance: 1.2, air_loop: 1, fall_loop: 1 };
+export const LOOP_SPEED = { water_spell: 1.3, run_loop: 1, water_flow: 1.9, water_flow2: 1.5, surf_stance: 1.2, air_loop: 1, fall_loop: 1 };
 // stances whose authored legs are deeper than the style wants: the standing idle's legs are mixed in at this weight
 export const STANCE_MIX = { earth_idle: 0.75, earth_guard: 0.6 };
 export const LOOPS = {
   earth: { idle: 'earth_idle', guard: 'earth_guard', hold: 'earth_lift' },
   fire: { idle: 'fire_idle', guard: 'fire_guard', hold: 'fire_stream' },
-  water: { idle: 'water_flow2', guard: 'water_guard', hold: 'water_flow' },   // sustained whips: Qi Gong cloud-hands arms
+  water: { idle: 'water_flow2', guard: 'water_guard', hold: 'water_spell' },   // sustained whips: Mixamo Spell Casting, both palms working the water
   air: { idle: 'air_idle', guard: 'water_flow', hold: 'air_push' },   // guard: cloud hands, the arms keep circling inside the whirlwind
 };
 
 // playback speed relative to the capture, per style (earth heavy, fire and air quick, water measured);
 // individual clips can override it (the tai chi take is performed very slowly)
 const SPEED = { earth: 1.45, fire: 1.75, water: 1.45, air: 1.65 };
-const CLIP_SPEED = { jump_kick: 2.4, flip_kick: 2.2, fire_jab: 1.6, earth_gather: 1.8, turn_spin: 0.8, water_redirect: 2.0, whip_h: 1.5, whip_v: 1.9, whip_d: 1.7, water_palm: 3.0, water_tidal: 2.0, water_sphere: 1.5, earth_stomp: 1.6, earth_pillar: 1.7, fire_orb: 1.5, air_vortex: 1.6, earth_sweep: 1.5, fire_spin: 1.5 };
+const CLIP_SPEED = { water_cast: 2.2, mma_kick: 1.8, round_kick2: 1.75, sweep_spin: 1.6, jump_kick: 2.4, flip_kick: 2.2, fire_jab: 1.6, earth_gather: 1.8, turn_spin: 0.8, water_redirect: 2.0, whip_h: 1.5, whip_v: 1.9, whip_d: 1.7, water_palm: 3.0, water_tidal: 2.0, water_sphere: 1.5, earth_stomp: 1.6, earth_pillar: 1.7, fire_orb: 1.5, air_vortex: 1.6, earth_sweep: 1.5, fire_spin: 1.5 };
 
 const names = (T) => (Array.isArray(T.clip) ? T.clip : [T.clip]);
 function techList(st) {

@@ -105,7 +105,7 @@ function pairs(rig, opts) {
 export function retargetSkeleton(srcRoot, clip, target, opts = {}) {
   const fps = opts.fps || 30, inPlace = opts.inPlace !== false, mirror = !!opts.mirror;
   const holder = new THREE.Group(); holder.add(srcRoot);
-  const S = {}; srcRoot.traverse(o => { if (o.isBone || o.type === 'Bone' || o.isObject3D) { const n = o.name.replace(/^mixamorig[:_]?/, ''); if (n && !(n in S)) S[n] = o; } });
+  const S = {}; srcRoot.traverse(o => { if (o.isBone || o.type === 'Bone' || o.isObject3D) { const n = o.name.replace(/^(mixamorig|EEJANAIBot)[:_]?/, ''); if (n && !(n in S)) S[n] = o; } });
   const rig = opts.rig || detectRig(Object.keys(S));
   if (!rig) throw new Error('unknown skeleton: ' + Object.keys(S).slice(0, 12).join(','));
   const T = {}; target.traverse(o => { if (o.isBone) T[o.name] = o; });

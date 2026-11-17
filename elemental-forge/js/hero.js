@@ -85,6 +85,7 @@ const HANDS = {
   relax: { f: [0.45, 0.55, 0.35], pinky: 0.12, thumb: [0.2, 0.25, 0.2], spread: 0.02 },
 };
 const FINGERS = ['index', 'middle', 'ring', 'pinky'];
+const REACT = /^(hit_|Hit_|knockback|getup|block_hit|run_stop)/;
 
 function rigQuat(o, stop, out) { out.identity(); for (let x = o; x && x !== stop; x = x.parent) out.premultiply(x.quaternion); return out; }
 function rigPos(o, stop, out) { o.updateWorldMatrix(true, false); stop.updateWorldMatrix(true, false); return out.setFromMatrixPosition(o.matrixWorld).applyMatrix4(_m.copy(stop.matrixWorld).invert()); }
@@ -143,6 +144,21 @@ export class Hero {
       for (const fn of FINGERS) for (let j = 1; j <= 3; j++) { const b = this.bones[`DEF-f_${fn}0${j}${side}`]; if (b) this.fingers[side].push({ b, rest: b.quaternion.clone(), j, fn }); }
       for (let j = 1; j <= 3; j++) { const b = this.bones[`DEF-thumb0${j}${side}`]; if (b) this.fingers[side].push({ b, rest: b.quaternion.clone(), j, fn: 'thumb' }); }
     }
+    // which clips carry finger motion of their own (largest finger-joint rotation away from the clip's first frame,
+    // radians). Those keep their captured fingers; the hand-shape layer only fills in for clips whose fingers are
+    // frozen (many Mixamo strikes hold one fixed hand pose) or missing
+    this.fingerMotion = {};
+    const fq0 = new THREE.Quaternion(), fq1 = new THREE.Quaternion();
+    for (const [name, a] of Object.entries(this.actions)) {
+      let mx = 0;
+      for (const t of a.getClip().tracks) {
+        if (!/DEF-(f_|thumb)/.test(t.name) || !/quaternion$/.test(t.name)) continue;
+        const v = t.values, n = v.length / 4; fq0.fromArray(v, 0);
+        for (let i = 1; i < n; i += 2) mx = Math.max(mx, fq0.angleTo(fq1.fromArray(v, i * 4)));
+      }
+      this.fingerMotion[name] = mx;
+    }
+    this.handBlend = 0.85;
     const copy = (h) => ({ f: [...h.f], thumb: [...h.thumb], pinky: h.pinky, spread: h.spread });
     this.handW = { L: { cur: copy(HANDS.relax) }, R: { cur: copy(HANDS.relax) } };
     this.techN = -1; this.trace = []; this.clock = 0;
@@ -237,6 +253,8 @@ export class Hero {
       if (this.trace.length > 400) this.trace.shift();
     }
     if (this.cur === a) { a.reset(); a.setEffectiveWeight(1); a.play(); return; }
+    // leaving a reaction, fall or get-up: a longer blend, so the body settles into the stance instead of snapping
+    if (REACT.test(this.curName || '') && !REACT.test(name)) fade = Math.max(fade, 0.3);
     // switching between the full and the upper-body copy of the same clip keeps its place
     const same = this.curName && this.curName.split('|')[0] === name.split('|')[0] && !restart;
     const t0 = same ? this.cur.time : 0;
@@ -261,30 +279,48 @@ export class Hero {
     let wU = 1, wL = 1, clip = 'Idle_Loop', ts = 1, fade = 0.18, restart = false, layered = false, startAt = 0;
     const A = f.A, sp = Math.hypot(f.vel.x, f.vel.z), fwd = f.moveLocal.y, side = f.moveLocal.x, moving = sp > 0.6 && f.onGround;
     const L = LOOPS[f.el] || {}, has = (n) => n && this.actions[n];
+    // coming out of a run: the authored run-to-stop plays as the fighter halts
+    // (the run counts if it was playing within the last 0.25 s: the walk can take over for a frame or two as the speed drops)
+    if (this.curName === 'run_loop' || this.curName === 'sprint_loop') { this.runSp = this.runT > 0.5 ? sp : Math.max(this.runSp || 0, sp); this.runT = 0; } else this.runT = (this.runT ?? 9) + dt;
+    if (this.runT < 0.25 && (this.runSp || 0) > 4.5 && sp < 2.4 && f.onGround && !(this.stopT > 0)) { this.stopT = 0.55; this.runT = 9; }
+    else this.stopT = (this.stopT || 0) - dt;
     const free = (!A || A.soft) && !f.guarding && !f.holding && !f.charging && !(f.restrainT > 0) && f.dodgeT <= 0 && !f.dead;
     const once = (name, scale, fd = 0.08) => { clip = name; ts = scale; wU = wL = 0; fade = fd; if (this.curName !== name) restart = true; };
     // authored footwork for the current movement direction and speed
     const loco = () => {
-      if (fwd > 0.55) return sp < 2.4 ? ['Walk_Loop', THREE.MathUtils.clamp(sp / 1.5, 0.7, 1.6)] : sp < 7.6 ? ['Jog_Fwd_Loop', THREE.MathUtils.clamp(sp / 4.2, 0.8, 1.7)] : ['Sprint_Loop', THREE.MathUtils.clamp(sp / 7.4, 0.9, 1.5)];
-      if (fwd < -0.55) return ['Walk_Loop', -THREE.MathUtils.clamp(sp / 1.5, 0.7, 1.8)];
-      return [side > 0 ? 'strafe' : 'strafe_M', THREE.MathUtils.clamp(sp / 1.5, 0.7, 2.2)];
+      // captured speeds: Mixamo Run 3.6 m/s, Sprint 5.2 m/s, Jog Strafe 2.5 m/s, Jog Backward 2.0 m/s, Walking Backwards 0.47 m/s
+      const C = THREE.MathUtils.clamp;
+      if (fwd > 0.55) return sp < 2.4 ? ['Walk_Loop', C(sp / 1.5, 0.7, 1.6)] : sp < 7.0 && has('run_loop') ? ['run_loop', C(sp / 3.6, 0.8, 1.7)] : has('sprint_loop') ? ['sprint_loop', C(sp / 5.2, 0.9, 1.7)] : ['Sprint_Loop', C(sp / 7.4, 0.9, 1.5)];
+      if (fwd < -0.55) return sp < 1.2 && has('walk_back') ? ['walk_back', C(sp / 0.47, 0.8, 2.4)] : has('jog_back') ? [side > 0 ? 'jog_back_M' : 'jog_back', C(sp / 2.0, 0.8, 1.9)] : ['Walk_Loop', -C(sp / 1.5, 0.7, 1.8)];
+      return [side > 0 ? 'strafe' : 'strafe_M', C(sp / 2.5, 0.7, 1.9)];
     };
     // elemental mobility: the legs hold the surfing stance / the flying pose, techniques play over them
     const mk = f.mob && f.mob.kind, lowOv = mk === 'surf' && f.onGround && has('surf_stance') ? ['surf_stance', LOOP_SPEED.surf_stance] : mk === 'fly' && has('air_loop') ? ['air_loop', 1] : null;
-    if (f.dead && has('ko')) once('ko', 1.1, 0.12);
+    // the blow's direction relative to the body (lz < 0: driven backwards, |lx| large: from the side)
+    const hd = f.hitDir || f.koDir, hc = Math.cos(f.yaw), hs = Math.sin(f.yaw);
+    const hlx = hd ? hd.x * hc - hd.z * hs : 0, hlz = hd ? hd.x * hs + hd.z * hc : -1;
+    if (f.dead && has('ko')) {
+      // knocked out: a side blow spins the fighter face down (Standing Death Left), a straight one drops them on
+      // the back (Death) or twists them down (Knocked Out); the choice is made once, when the fall starts
+      if (!/^ko/.test(this.curName || '')) this.koClip = Math.abs(hlx) > 0.7 && has('ko_c') ? 'ko_c' : f.hitAlt && has('ko_b') ? 'ko_b' : 'ko';
+      once(this.koClip, 1.0, 0.18);
+    }
     else if (f.action === 'down' && f.floorHit && has('knockback')) {
       // struck while lying down: the lying pose held (the knockdown's last frame), no standing reaction
       clip = 'knockback'; ts = this.curName === 'knockback' ? 1.5 : 0; wU = wL = 0; fade = 0.12; if (this.curName !== 'knockback') { restart = true; startAt = this.actions.knockback.getClip().duration - 0.03; }   // still falling: the fall finishes
     }
-    else if (f.action === 'down' && has('knockback')) once('knockback', 1.5, 0.08);   // knocked off the feet
+    else if (f.action === 'down' && has('knockback')) once('knockback', 1.25, 0.12);   // knocked off the feet: Mixamo Knocked Down, onto the back
     else if (f.action === 'down' && has('ko')) once('ko', 1.6, 0.1);
     // recovery from the floor: the Mixamo get-up (on the back, roll to a crouch, stand). UAL2's LayToIdle starts
     // from a crumpled pose that does not match the knockdown, so it is no longer used
     else if (f.action === 'getup' && has('getup')) { once('getup', this.actions.getup.getClip().duration / Math.max(0.3, f.A.dur) * 0.75, 0.1); }
     else if (f.action === 'landHigh' && has('land_high')) once('land_high', 1.25 / 0.42 * 0.75, 0.06);
     else if (f.action === 'hit' || f.action === 'stagger') {
-      const n = f.hitAlt ? 'hit_b' : 'hit_a';
-      if (has(n)) { clip = n; ts = f.action === 'stagger' ? 1.1 : 1.5; wU = wL = 0; fade = 0.05; if (f.actionT < dt * 1.5 || this.curName !== n) restart = true; }
+      // a flinch alternates the two light reactions; a stagger is the heavy one: Big Side Hit (mirrored to the side
+      // the blow came from) or, for a blow straight on, Receive Stomach Uppercut
+      const heavy = f.action === 'stagger';
+      const n = heavy ? (Math.abs(hlx) > 0.45 && has('hit_big') ? (hlx > 0 ? 'hit_big_M' : 'hit_big') : has('hit_body') ? 'hit_body' : 'hit_b') : f.hitAlt ? 'hit_b' : 'hit_a';
+      if (has(n)) { clip = n; ts = heavy ? 1.15 : 1.35; wU = wL = 0; fade = 0.1; if (f.actionT < dt * 1.5 || this.curName !== n) restart = true; }
       else { clip = f.hitAlt ? 'Hit_Head' : 'Hit_Chest'; wU = wL = 0; if (this.curName !== clip || f.actionT < dt * 1.5) restart = true; ts = 1.2; fade = 0.05; }
     }
     else if (f.dodgeT > 0) {
@@ -294,6 +330,11 @@ export class Hero {
       const n = f.dodgeKind !== 'roll' && Math.abs(lx) > 0.5 && has('dodge_side') ? (lx < 0 ? 'dodge_side' : 'dodge_side_M') : lz < -0.6 && f.el === 'air' && has('dodge_back') ? 'dodge_back' : 'Roll';
       if (n === 'Roll') { clip = 'Roll'; wU = wL = 0; ts = 1.46 / (f.dodgeDur * 1.7); fade = 0.06; if (this.curName !== 'Roll') restart = true; }
       else once(n, this.actions[n].getClip().duration / Math.max(0.2, f.dodgeDur) * 0.8, 0.06);
+    }
+    // running along a wall (Mixamo Wall Run, mirrored for a wall on the right) or up it (Diagonal Wall Run)
+    if (clip === 'Idle_Loop' && f.wall && f.action !== 'tech') {
+      const n = f.wall.kind === 'run' ? (f.wall.side > 0 ? 'wall_run' : 'wall_run_M') : 'wall_flip';
+      if (has(n)) once(n, f.wall.kind === 'run' ? this.actions[n].getClip().duration / f.wall.dur : 1.3, 0.1);
     }
     if (clip === 'Idle_Loop' && f.action === 'tech' && f.tech.clip) {
       const [n, scale] = clipFor(f.tech, f.techSide);
@@ -337,6 +378,7 @@ export class Hero {
         wU = wL = 0; fade = 0.15;
       }
       else if (free && !f.onGround) { clip = f.vel.y > 1.5 && f.airTime < 0.3 ? 'Jump_Start' : 'Jump_Loop'; wU = wL = 0; ts = f.vel.y > 1.5 ? 1.6 : 1; }
+      else if (free && f.onGround && this.stopT > 0 && sp < 2.5 && has('run_stop')) { clip = 'run_stop'; ts = 1.5; wU = wL = 0; fade = 0.15; }
       else if (free && moving && fwd > 0.7) {
         [clip, ts] = loco(); wU = wL = 0; fade = 0.22;   // authored locomotion, matched to ground speed
       } else if (free && f.onGround && has(L.idle)) {
@@ -386,6 +428,12 @@ export class Hero {
   // hand-shape layer: blends every finger joint toward the chosen shape (over whatever the clip did)
   applyHands(dt) {
     if (!this.handShape) return;
+    // how strongly the shape replaces the clip's own fingers: captured finger motion is kept (reactions, falls and
+    // locomotion entirely, strikes mostly); frozen or missing fingers take the style's shape
+    const base = (this.curName || '').split('|')[0], moving = (this.fingerMotion[base] || 0) > 0.25;
+    const want = !moving ? 0.85 : REACT.test(base) || /^(ko|run_|sprint_|walk_back|jog_back|strafe|Walk_|Jog_|Sprint_|fall_|wall_|getup)/.test(base) ? 0 : 0.3;
+    this.handBlend += (want - this.handBlend) * (1 - Math.exp(-8 * dt));
+    if (this.handBlend < 0.01) return;
     const shapes = { L: this.handShape[0], R: this.handShape[1] };
     for (const side of ['L', 'R']) {
       const H = this.handW[side], want = HANDS[shapes[side]] || HANDS.relax, k = 1 - Math.exp(-14 * dt);
@@ -400,7 +448,7 @@ export class Hero {
           if (F.j === 1) { const sp = { index: -1, middle: -0.2, ring: 0.4, pinky: 1 }[F.fn] * C.spread * sgn; _q.multiply(_q2.setFromAxisAngle(_Z, sp)); }
         }
         // 85 % toward the shape: clips that carry their own finger motion still show through a little
-        F.b.quaternion.slerp(_q2.copy(F.rest).multiply(_q), 0.85);
+        F.b.quaternion.slerp(_q2.copy(F.rest).multiply(_q), this.handBlend);
       }
     }
   }

@@ -67,7 +67,7 @@ const earth = {
         [1.0, () => {}],
       ] }),
     leg: [
-      T({ name: 'Earth Kick', clip: ['earth_kick', 'fire_round', 'earth_backkick'], dur: 0.6, cost: 10, cancel: 0.72, move: 0.6, lunge: 4,
+      T({ name: 'Earth Kick', clip: ['earth_kick', 'fire_round', 'earth_backkick', 'mma_kick'], dur: 0.6, cost: 10, cancel: 0.72, move: 0.6, lunge: 4,
         active: { from: 0.4, to: 0.56, dmg: 9, range: 2.0, arc: 0.3, knock: 6, level: 1 },
         events: [[0.42, 'earth.leg']],
         keys: [
@@ -79,7 +79,7 @@ const earth = {
           [0.7, (p, c) => { stanceLegs(p, -0.3, 0.36, 0.3, -0.16, 0.3, c.s); S(p, 'spine', 0.22, 0, 0); arm(p, 1, -0.6, 0.3, 0, 0.4, 1.0); arm(p, -1, -0.6, 0.3, 0, 0.4, 1.0); }],
           [1.0, () => {}],
         ] }),
-      T({ name: 'Earth Sweep', clip: 'earth_sweep', dur: 0.62, cost: 12, cancel: 0.75, move: 0.5, spin: [0.08, 0.7, 1],
+      T({ name: 'Earth Sweep', clip: ['earth_sweep', 'sweep_spin'], dur: 0.62, cost: 12, cancel: 0.75, move: 0.5, spin: [0.08, 0.7, 1],
         active: { from: 0.35, to: 0.6, dmg: 7, range: 2.2, arc: -1.1, knock: 4, level: 1 },
         events: [[0.45, 'earth.sweep']],
         keys: [
@@ -139,7 +139,7 @@ const fire = {
         [1.0, () => {}],
       ] }),
     leg: [
-      T({ name: 'Flame Kick', clip: 'fire_round', dur: 0.46, cost: 9, cancel: 0.65, move: 1.0, lunge: 6,
+      T({ name: 'Flame Kick', clip: ['fire_round', 'round_kick2'], dur: 0.46, cost: 9, cancel: 0.65, move: 1.0, lunge: 6,
         active: { from: 0.38, to: 0.55, dmg: 8, range: 2.2, arc: 0.35, knock: 5, level: 1 },
         events: [[0.42, 'fire.leg']],
         keys: [
@@ -248,7 +248,7 @@ const water = {
       arm(p, 1, -1.15 + 0.15 * a, 0.75, 0.6, 1.0, 0.4); arm(p, -1, -1.15 - 0.15 * a, 0.75, 0.6, 1.0, 0.4); },
     // Drowning Sphere: water drawn up from the ground into both hands (onStart) is thrown round the opponent, holds
     // them inside a ball of water, freezes into jagged ice and shatters (js/specials.js)
-    special: T({ name: 'Drowning Sphere', clip: 'water_redirect', onStart: 'water.specialStart', dur: 0.6, cost: 26, cancel: 0.8, move: 1, upper: true,
+    special: T({ name: 'Drowning Sphere', clip: 'water_cast', onStart: 'water.specialStart', dur: 0.6, cost: 26, cancel: 0.8, move: 1, upper: true,
       events: [[0.52, 'water.special']],
       keys: [
         [0.0, () => {}],
@@ -362,6 +362,9 @@ STYLES.fire.tech.leg.push(T({ name: 'Flip Kick', clip: 'flip_kick', dur: 0.9, co
 // every element: LEG in the air is a jumping kick, right foot first, then the left (alternating while airborne)
 for (const k of ['earth', 'fire', 'water', 'air']) STYLES[k].tech.airKick = T({ name: 'Air Kick', clip: 'jump_kick', clipSpeed: 3.0, dur: 0.38, cost: 6, cancel: 0.55, move: 2.5, lunge: 4,
   active: { from: 0.5, to: 0.68, dmg: 7, range: 2.1, arc: 0.4, knock: 6, level: 1 }, events: [[0.55, k + '.airKick']], keys: K0 });
+// Air's kick in the air is the spinning hurricane kick (Mixamo Hurricane Kick), the leg extended through the turn
+STYLES.air.tech.airKick = T({ name: 'Hurricane Kick', clip: 'hurricane', clipSpeed: 2.0, dur: 0.8, cost: 7, cancel: 0.6, move: 3, lunge: 4,
+  active: { from: 0.5, to: 0.7, dmg: 8, range: 2.3, arc: 0.6, knock: 6, level: 1 }, events: [[0.55, 'air.airKick']], keys: K0 });
 // every element: somersaults (DODGE in the air) and a roll (GUARD + DODGE); no damage, they are evasions
 for (const k of ['earth', 'fire', 'water', 'air']) {
   STYLES[k].tech.flip = T({ name: 'Somersault', clip: 'flip_front', clipSpeed: 2.0, dur: 0.6, cost: 6, cancel: 0.8, move: 4, keys: K0 });

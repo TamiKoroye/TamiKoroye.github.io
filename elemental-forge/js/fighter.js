@@ -6,14 +6,15 @@ import { buildSkinnedFighter } from './character.js';
 import { JOINTS, JI, PN, POSE_LEN, PX, PY, PZ, LEG_START, S, add, arm, legRaw, legIK, hipDown, seg, stanceLegs, HIP_H } from './pose.js';
 import { STYLES } from './styles.js';
 import { Hero, heroReady } from './hero.js';
+import { HALF } from './arena.js';
 
 // Reactions and shared moves (element techniques live in styles.js)
 export const ACTIONS = {
   counter: { dur: 0.4,  upper: false, active: { from: 0.2, to: 0.55, dmg: 14, range: 2.1, arc: -1.1, knock: 9, level: 1 }, cancel: 0.65, lunge: 10 },
-  hit:     { dur: 0.3,  react: true },
-  stagger: { dur: 0.62, react: true },
-  down:    { dur: 0.85, react: true },
-  getup:   { dur: 0.85, react: true },   // long enough for the authored get-up to read (about 2.4x its captured speed)
+  hit:     { dur: 0.36, react: true },
+  stagger: { dur: 0.72, react: true },
+  down:    { dur: 1.0,  react: true },   // Mixamo Knocked Down (1.05 s at 1.25x) lands on the back, then is held
+  getup:   { dur: 1.1,  react: true },   // the authored get-up at about 1.8x its captured speed
   land:    { dur: 0.14, soft: true },
   landHigh:{ dur: 0.42, soft: true },
   ko:      { dur: 99,   react: true },
@@ -96,7 +97,7 @@ export class Fighter {
     this.yaw = this.faceYaw = this.prevFace = yaw; this.spinYaw = 0;
     this.hp = this.maxHp; this.en = this.maxEn; this.dead = false;
     this.action = null; this.tech = null; this.guarding = false; this.holding = false; this.charging = false; this.handHoldT = this.legHoldT = -1;
-    this.dodgeT = 0; this.stunT = 0; this.invuln = 0; this.flash = 0; this.counterT = 0; this.lungeT = 0; this.restrainT = 0; this.airJumps = 0;
+    this.dodgeT = 0; this.stunT = 0; this.invuln = 0; this.flash = 0; this.counterT = 0; this.lungeT = 0; this.restrainT = 0; this.airJumps = 0; this.wall = null;
     this.endMob(); this.highJump = false; this.jetFuel = 0; this.dodgeHoldT = -1;
     for (const k in this.buf) this.buf[k] = 0;
     this.tumble.quaternion.identity(); this.tumble.position.y = 0.6;
@@ -235,6 +236,14 @@ export class Fighter {
           if (this.mob && this.mob.kind === 'surf') { this.endMob(); this.mobCd = 0.3; }
           else if (this.en >= 12 && !this.reacting()) { this.endHold(); this.startMob(); if (this.mob) this.mob.tap = true; }
         } else if (this.en >= 10 && !(this.mob && this.mob.kind === 'surf' && this.el === 'earth')) { this.buf.dodge = 0; this.endHold(); this.doDodge(); }
+      }
+      // Fire, Earth and Air: JUMP next to a wall while moving runs along it (or, heading straight into it, up it
+      // and off in a back somersault). JUMP again during the run kicks off the wall.
+      this.wallCd = (this.wallCd || 0) - dt;
+      if (this.wall && this.buf.jump && this.wall.T > 0.15) { this.buf.jump = 0; this.wallOff(); }
+      if (this.buf.jump && !this.wall && this.el !== 'water' && this.wallCd <= 0 && this.free('jump') && !this.charging && !this.guarding && !(this.mob && this.mob.kind === 'fly') && this.en >= 8) {
+        const W = this.wallNear(0.9), hs = Math.hypot(this.vel.x, this.vel.z);
+        if (W && hs > 3) { this.buf.jump = 0; this.wallStart(W, hs); }
       }
       if (this.buf.jump && this.free('jump') && !this.charging && !this.guarding && this.onGround && !this.mob && this.el === 'air' && this.en > 12 && this.mobCd <= 0) {
         // Air: JUMP takes off into sustained, steerable flight (JUMP held climbs; it lands when the wind runs out)
@@ -377,10 +386,18 @@ export class Fighter {
       if (this.dodgeKind === 'back' && this.dodgeT > this.dodgeDur * 0.5 && this.onGround) { this.vel.y = 2.6; this.onGround = false; }
       if (this.dodgeKind === 'airdash' && this.dodgeT > this.dodgeDur * 0.6) this.vel.y = Math.max(this.vel.y, 1.2);
       this.dodgeTrail();
+    } else if (this.wall) {
+      this.wallTick(dt);
     } else if (this.lungeT > 0) {
       this.lungeT -= dt;
       this.vel.x = this.lungeDir.x; this.vel.z = this.lungeDir.z;
     } else {
+      // on foot, facing the opponent: backing away and side-stepping are slower than running forward, so the
+      // authored backpedal and strafe clips play near their captured pace instead of skating
+      if (this.onGround && !this.mob) {
+        const fc = mx * Math.sin(this.faceYaw) + mz * Math.cos(this.faceYaw), lc = mx * Math.cos(this.faceYaw) - mz * Math.sin(this.faceYaw);
+        maxSpeed *= (1 - 0.45 * clamp(-fc, 0, 1)) * (1 - 0.2 * clamp(Math.abs(lc), 0, 1));
+      }
       const tx = mx * maxSpeed, tz = mz * maxSpeed;
       const wantMove = tx * tx + tz * tz > 0.01;
       const accel = this.onGround ? (wantMove ? (this.sprinting ? L.accel * 0.6 : L.accel) : (this.reacting() ? 9 : L.accel * 0.8)) : (this.el === 'air' ? 16 : 10);
@@ -418,7 +435,7 @@ export class Fighter {
     // airbenders fall more slowly while holding JUMP after the peak (air-assisted glide)
     const glide = this.el === 'air' && !this.onGround && inp.jumpHeld && this.vel.y < 0;
     const flying = this.mob && this.mob.kind === 'fly';
-    if (!flying) this.vel.y -= (glide ? 7 : 21) * dt;
+    if (!flying && !this.wall) this.vel.y -= (glide ? 7 : 21) * dt;
     if (glide && Math.random() < dt * 20) w.fx.wind(this.pos.clone().setY(this.pos.y + 0.2), _v.set(rand(-1, 1), -2, rand(-1, 1)), 0.5, 0.4);
     this.pos.addScaledVector(this.vel, dt);
     if (this.ext.lengthSq() > 1e-4) { this.pos.addScaledVector(this.ext, dt); this.ext.multiplyScalar(Math.exp(-(this.onGround ? 4 : 1.5) * dt)); } else this.ext.set(0, 0, 0);
@@ -472,7 +489,15 @@ export class Fighter {
 
     this.animate(dt);
     this.root.position.copy(this.pos);
-    this.root.rotation.y = this.yaw;
+    this.root.rotation.set(0, this.yaw, 0);
+    // on a wall the whole body tips over so the feet meet the face: sideways for a run along it, backwards for a
+    // run up it (eased in and out)
+    const W = this.wall, wantRoll = W && W.kind === 'run' ? W.side * 0.95 * Math.min(1, W.T / 0.12) : 0, wantPitch = W && W.kind === 'up' ? -0.8 * Math.min(1, W.T / 0.12) : 0;
+    const kw = 1 - Math.exp(-14 * dt);
+    this.wallRoll = (this.wallRoll || 0) + (wantRoll - (this.wallRoll || 0)) * kw; this.wallPitch = (this.wallPitch || 0) + (wantPitch - (this.wallPitch || 0)) * kw;
+    if (Math.abs(this.wallRoll) > 1e-3 || Math.abs(this.wallPitch) > 1e-3) {
+      this.root.quaternion.setFromAxisAngle(_up, this.yaw).multiply(_qw.setFromAxisAngle(_zx.set(0, 0, 1), this.wallRoll)).multiply(_qw.setFromAxisAngle(_zx.set(1, 0, 0), this.wallPitch));
+    }
     if (this.hero) { this.root.updateMatrixWorld(true); this.hero.drive(this, dt); }
     this.recLimbs();
     const f = this.flash, ch = this.charging ? Math.min(1, this.chargeT / 0.55) * (0.15 + 0.1 * Math.sin(this.time * 30)) : 0;
@@ -498,6 +523,73 @@ export class Fighter {
     w.popup(this, el === 'water' ? 'ICE SURF' : 'ROCK SURF', false);
     if (el === 'water') { w.fx.splash(this.pos, 14); w.audio.splash(0.8); } else { w.fx.debrisBurst(this.pos.clone().setY(this.pos.y + 0.1), 14, 3, 0.1, 0x7a6a58); w.audio.rumble(0.8); }
   }
+  // ------------------------------------------------------------ wall running
+  // nearest wall face within reach: the arena's perimeter walls and any tall box or rock (top at least 1.8 m above
+  // the feet). Returns { n: outward normal, d: distance from the body's centre to the face }
+  wallNear(reach) {
+    const p = this.pos, r = this.radius, lim = HALF;
+    let best = null;
+    const take = (nx, nz, d) => { if (d - r < reach && (!best || d < best.d)) best = { n: new THREE.Vector3(nx, 0, nz), d }; };
+    take(-1, 0, lim - p.x); take(1, 0, p.x + lim); take(0, -1, lim - p.z); take(0, 1, p.z + lim);
+    for (const c of this.world.arena.colliders) {
+      if (c.dead || c.top - p.y < 1.8) continue;
+      if (c.kind === 'c') { const dx = p.x - c.x, dz = p.z - c.z, d = Math.hypot(dx, dz) || 1; take(dx / d, dz / d, d - c.r); }
+      else {
+        const cx = clamp(p.x, c.x - c.hx, c.x + c.hx), cz = clamp(p.z, c.z - c.hz, c.z + c.hz), dx = p.x - cx, dz = p.z - cz, d = Math.hypot(dx, dz);
+        if (d > 1e-4) take(dx / d, dz / d, d);
+      }
+    }
+    return best;
+  }
+  wallStart(W, hs) {
+    const n = W.n, vx = this.vel.x / hs, vz = this.vel.z / hs;
+    const into = -(vx * n.x + vz * n.z);
+    let t = new THREE.Vector3(-n.z, 0, n.x); if (t.x * vx + t.z * vz < 0) t.negate();
+    const along = t.x * vx + t.z * vz;
+    const kind = into > 0.75 || along < 0.45 ? 'up' : 'run';
+    // which side the wall is on, seen from the running direction (left: +1)
+    const side = Math.sign(t.x * n.z - t.z * n.x) || 1;
+    this.wall = { n: n.clone(), t, T: 0, kind, side, dur: kind === 'run' ? 0.9 : 0.5, speed: Math.max(hs, 6.5), step: 0 };
+    this.endHold(); this.endMob(); this.action = null; this.tech = null; this.onGround = false; this.airJumps = 0; this.en -= 8;
+    this.faceYaw = this.yaw = kind === 'run' ? Math.atan2(t.x, t.z) : Math.atan2(-n.x, -n.z);
+    this.world.popup(this, kind === 'run' ? 'WALL RUN' : 'WALL FLIP', false);
+    this.world.audio.whoosh(0.7);
+  }
+  wallTick(dt) {
+    const W = this.wall, w = this.world; W.T += dt;
+    const u = W.T / W.dur;
+    if (W.kind === 'run') {
+      // along the wall on a shallow arc (up, then easing down), held against the face
+      this.vel.set(W.t.x * W.speed, 4.4 * (1 - 1.7 * u), W.t.z * W.speed);
+      this.faceYaw = Math.atan2(W.t.x, W.t.z);
+    } else this.vel.set(-W.n.x * 0.6, 7.5 * (1 - 0.6 * u), -W.n.z * 0.6);
+    // keep contact: pull back to the face if the body has drifted off it
+    const near = this.wallNear(1.2);
+    if (near && near.n.dot(W.n) > 0.9) this.pos.addScaledVector(W.n, -(near.d - this.radius - 0.02) * Math.min(1, dt * 20));
+    else if (W.T > 0.12) { this.wallOff(true); return; }   // ran off the end of the wall
+    // footfalls on the wall: each element marks them its own way
+    W.step -= dt;
+    if (W.step <= 0) {
+      W.step = 0.14; W.foot = W.foot === 'L' ? 'R' : 'L';
+      const fp = this.footPos(W.foot, _v2), out = _v.copy(W.n);
+      if (this.el === 'fire') for (let i = 0; i < 4; i++) w.fx.fire(fp, out.clone().multiplyScalar(rand(2, 4)).add(_fwd.set(rand(-1, 1), rand(-1, 1), rand(-1, 1))), rand(0.3, 0.45), 0.25);
+      else if (this.el === 'earth') { w.fx.debrisBurst(fp.clone().addScaledVector(W.n, -0.05), 5, 3, 0.1, 0x7a746c, 0.5); w.audio.step(0.8); }
+      else w.fx.wind(fp, out.clone().multiplyScalar(3).add(_fwd.set(0, 1, 0)), 0.6, 0.35);
+    }
+    if (W.T >= W.dur) this.wallOff();
+  }
+  // leave the wall: a push off its face (a back somersault after running up it)
+  wallOff(quiet) {
+    const W = this.wall; if (!W) return; this.wall = null; this.wallCd = 0.35; this.highJump = true;
+    if (quiet) { this.vel.y = Math.max(this.vel.y, 1); return; }
+    if (W.kind === 'run') { this.vel.set(W.n.x * 6 + W.t.x * W.speed * 0.6, 7, W.n.z * 6 + W.t.z * W.speed * 0.6); }
+    else {
+      this.vel.set(W.n.x * 6.5, 6.5, W.n.z * 6.5);
+      const T = this.style.tech.flipBack; if (T) { this.startTech(T, 1, true); this.invuln = 0.3; }
+    }
+    this.jumpFx(true);
+  }
+
   endMob() { if (!this.mob) return; if (this.world.bending && this.world.bending.weapons) this.world.bending.weapons.surfEnd(this.mob); this.mob = null; }
   // sets the fighter's velocity while a mobility mode is active; returns false to fall back to normal movement
   mobMove(dt, mx, mz) {
@@ -602,7 +694,7 @@ export class Fighter {
     this.flash = 1;
     this.vel.x += dir.x * knock; this.vel.z += dir.z * knock;
     if (level >= 1) this.vel.y = Math.max(this.vel.y, level === 2 ? 4.5 : 2.5);
-    this.hitDir = dir.clone(); this.koDir = dir.clone(); this.hitAlt = !this.hitAlt;
+    this.hitDir = dir.clone(); this.koDir = dir.clone(); this.hitAlt = !this.hitAlt; this.wall = null;
     if (this.hp <= 0) { this.die(dir); return; }
     this.endHold(); this.charging = false; this.legHoldT = -1; this.lungeT = 0; this.dodgeT = 0;
     // already on the floor (knocked down or getting up): the blow keeps them down in the lying pose; they do not
@@ -856,4 +948,5 @@ export class Fighter {
     }
   }
 }
+const _up = new THREE.Vector3(0, 1, 0), _zx = new THREE.Vector3(), _qw = new THREE.Quaternion();
 const _axis = new THREE.Vector3(), _qi = new THREE.Quaternion(), _fwd = new THREE.Vector3(), _v = new THREE.Vector3(), _v2 = new THREE.Vector3();
