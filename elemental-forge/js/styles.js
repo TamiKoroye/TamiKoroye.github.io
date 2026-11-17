@@ -360,6 +360,11 @@ for (const k of Object.keys(THIRD)) STYLES[k].tech.leg.push(THIRD[k]);
 // Fire's fourth kick: a cartwheel flip whose feet pass overhead throwing flame along their path
 STYLES.fire.tech.leg.push(T({ name: 'Flip Kick', clip: 'flip_kick', dur: 0.9, cost: 12, cancel: 0.82, move: 2, lunge: 3,
   active: { from: 0.45, to: 0.6, dmg: 9, range: 2.0, arc: 0.3, knock: 7, level: 1 }, events: [[0.42, 'fire.flip'], [0.55, 'fire.flip2']], keys: K0 }));
+// Earth (M6): a push kick that drives a slab of rock out of the ground, and a rising uppercut that erupts a rock
+// column under the opponent (the third punch of the HAND chain, events chosen by clip in earth.hand)
+STYLES.earth.tech.leg.push(T({ name: 'Rock Push Kick', clip: 'earth_teep', dur: 0.6, cost: 11, cancel: 0.72, move: 0.5, lunge: 3, keys: K0,
+  active: { from: 0.45, to: 0.6, dmg: 9, range: 2.2, arc: 0.3, knock: 9, level: 1 }, events: [[0.48, 'earth.teep']] }));
+STYLES.earth.tech.hand.clip = ['earth_punch', 'earth_punch2', 'fire_punch2'];
 // Fire's kick chain (17 Nov, M6): kick-heavy and flowing, each kick its own authored clip, every kick throwing flame
 // from the kicking leg. LEG taps run through it in order; the chain restarts after a pause.
 {

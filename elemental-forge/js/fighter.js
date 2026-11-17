@@ -97,7 +97,7 @@ export class Fighter {
     this.yaw = this.faceYaw = this.prevFace = yaw; this.spinYaw = 0;
     this.hp = this.maxHp; this.en = this.maxEn; this.dead = false;
     this.action = null; this.tech = null; this.guarding = false; this.holding = false; this.charging = false; this.handHoldT = this.legHoldT = -1;
-    this.dodgeT = 0; this.stunT = 0; this.invuln = 0; this.flash = 0; this.counterT = 0; this.lungeT = 0; this.restrainT = 0; this.airJumps = 0; this.wall = null;
+    this.dodgeT = 0; this.stunT = 0; this.invuln = 0; this.flash = 0; this.counterT = 0; this.lungeT = 0; this.restrainT = 0; this.airJumps = 0; if (this.wall && this.wall.slab) this.world.scene.remove(this.wall.slab); this.wall = null;
     this.endMob(); this.highJump = false; this.jetFuel = 0; this.dodgeHoldT = -1;
     for (const k in this.buf) this.buf[k] = 0;
     this.tumble.quaternion.identity(); this.tumble.position.y = 0.6;
@@ -205,7 +205,8 @@ export class Fighter {
       if (!this.mob && !this.mobLock && this.mobCd <= 0 && this.dodgeHoldT > 0.28 && (this.el === 'water' || this.el === 'fire') && !this.guarding && !this.charging && !this.reacting() && this.en > 12) this.startMob();
       // tap-started mobility ends by itself: the rock slide after a few seconds, flight when its fuel is spent
       if (this.mob && this.mob.tap && this.mob.kind === 'surf' && (this.mob.t > (MOBILITY[this.mob.el].last || 4) || this.en < 2)) { this.endMob(); this.mobCd = 0.4; }
-      if (this.buf.jump && this.mob && (this.mob.kind === 'surf' || this.mob.kind === 'flame') && this.onGround) {
+      // (an Earth slab beside a wall goes onto the wall instead of launching: see the wall checks below)
+      if (this.buf.jump && this.mob && (this.mob.kind === 'surf' || this.mob.kind === 'flame') && this.onGround && !(this.el === 'earth' && this.mob.kind === 'surf' && this.wallNear(1.4))) {
         // the element launches the bender: a rising ice pillar / rock slab, or a burst of flame from the feet
         const M = MOBILITY[this.mob.kind === 'surf' ? this.mob.el : 'flame'];
         if (this.mob.kind === 'surf') B.weapons.surfLaunch(this, this.mob.el); else this.jumpFx(false);   // (the rising pillar would set its own lift)
@@ -242,9 +243,15 @@ export class Fighter {
       // Fire, Earth and Air: JUMP next to a wall while moving runs along it (or, heading straight into it, up it
       // and off in a back somersault). JUMP again during the run kicks off the wall.
       this.wallCd = (this.wallCd || 0) - dt;
+      // Earth's slab steered into a wall climbs onto it
+      if (!this.wall && this.el === 'earth' && this.mob && this.mob.kind === 'surf' && this.wallCd <= 0) {
+        const W = this.wallNear(0.55), hs = Math.hypot(this.vel.x, this.vel.z);
+        if (W && hs > 3 && -(this.vel.x * W.n.x + this.vel.z * W.n.z) / hs > 0.2) this.wallStart(W, hs);
+      }
+      if (this.wall && this.wall.kind === 'surf' && this.buf.dodge) { this.buf.dodge = 0; this.wallOff(true); }
       if (this.wall && this.buf.jump && this.wall.T > 0.15) { this.buf.jump = 0; this.wallOff(); }
       if (this.buf.jump && !this.wall && this.el !== 'water' && this.wallCd <= 0 && this.free('jump') && !this.charging && !this.guarding && !(this.mob && this.mob.kind === 'fly') && this.en >= 8) {
-        const W = this.wallNear(0.9), hs = Math.hypot(this.vel.x, this.vel.z);
+        const W = this.wallNear(this.el === 'earth' && this.mob && this.mob.kind === 'surf' ? 1.4 : 0.9), hs = Math.hypot(this.vel.x, this.vel.z);
         if (W && hs > 3) { this.buf.jump = 0; this.wallStart(W, hs); }
       }
       const gliding = this.dodgeKind === 'glide' && this.dodgeT > 0;
@@ -521,7 +528,7 @@ export class Fighter {
     this.root.rotation.set(0, this.yaw, 0);
     // on a wall the whole body tips over so the feet meet the face: sideways for a run along it, backwards for a
     // run up it (eased in and out)
-    const W = this.wall, wantRoll = W && W.kind === 'run' ? W.side * 0.95 * Math.min(1, W.T / 0.12) : 0, wantPitch = W && W.kind === 'up' ? -0.8 * Math.min(1, W.T / 0.12) : 0;
+    const W = this.wall, wantRoll = W && (W.kind === 'run' || W.kind === 'surf') ? W.side * (W.kind === 'surf' ? 1.35 : 0.95) * Math.min(1, W.T / 0.12) : 0, wantPitch = W && W.kind === 'up' ? -0.8 * Math.min(1, W.T / 0.12) : 0;
     const kw = 1 - Math.exp(-14 * dt);
     this.wallRoll = (this.wallRoll || 0) + (wantRoll - (this.wallRoll || 0)) * kw; this.wallPitch = (this.wallPitch || 0) + (wantPitch - (this.wallPitch || 0)) * kw;
     if (Math.abs(this.wallRoll) > 1e-3 || Math.abs(this.wallPitch) > 1e-3) {
@@ -575,19 +582,38 @@ export class Fighter {
     const into = -(vx * n.x + vz * n.z);
     let t = new THREE.Vector3(-n.z, 0, n.x); if (t.x * vx + t.z * vz < 0) t.negate();
     const along = t.x * vx + t.z * vz;
-    const kind = into > 0.75 || along < 0.45 ? 'up' : 'run';
+    // Earth riding its slab surfs along the wall on it; otherwise a run along it, or up it when heading straight in
+    const surf = this.el === 'earth' && this.mob && this.mob.kind === 'surf';
+    const kind = surf ? 'surf' : into > 0.75 || along < 0.45 ? 'up' : 'run';
     // which side the wall is on, seen from the running direction (left: +1)
     const side = Math.sign(t.x * n.z - t.z * n.x) || 1;
-    this.wall = { n: n.clone(), t, T: 0, kind, side, dur: kind === 'run' ? 0.9 : 0.5, speed: Math.max(hs, 6.5), step: 0 };
+    this.wall = { n: n.clone(), t, T: 0, kind, side, dur: kind === 'surf' ? 3.2 : kind === 'run' ? 0.9 : 0.5, speed: Math.max(hs, kind === 'surf' ? 7 : 6.5), step: 0 };
     this.endHold(); this.endMob(); this.action = null; this.tech = null; this.onGround = false; this.airJumps = 0; this.en -= 8;
-    this.faceYaw = this.yaw = kind === 'run' ? Math.atan2(t.x, t.z) : Math.atan2(-n.x, -n.z);
-    this.world.popup(this, kind === 'run' ? 'WALL RUN' : 'WALL FLIP', false);
+    this.faceYaw = this.yaw = kind !== 'up' ? Math.atan2(t.x, t.z) : Math.atan2(-n.x, -n.z);
+    if (surf) {
+      // the slab goes onto the wall: rock held flat against the face under the feet
+      const Wp = this.world.bending.weapons; this.wall.slab = new THREE.Mesh(Wp.slabGeo, Wp.rockMat); this.wall.slab.castShadow = true; this.world.scene.add(this.wall.slab);
+      this.world.fx.debrisBurst(this.pos.clone().setY(this.pos.y + 0.5), 12, 3, 0.1, 0x7a6a58); this.world.audio.rumble(0.8);
+    }
+    this.world.popup(this, kind === 'surf' ? 'WALL SURF' : kind === 'run' ? 'WALL RUN' : 'WALL FLIP', false);
     this.world.audio.whoosh(0.7);
   }
   wallTick(dt) {
     const W = this.wall, w = this.world; W.T += dt;
     const u = W.T / W.dur;
-    if (W.kind === 'run') {
+    if (W.kind === 'surf') {
+      // Earth on its slab, along the wall at about 1.4 m: the stick along the wall speeds it up or slows it
+      const inp = this.input, along = inp.mx * W.t.x + inp.mz * W.t.z;
+      W.speed = clamp(W.speed + along * 8 * dt - 1.2 * dt, 4, 11);
+      const alt = this.pos.y - this.groundY;
+      this.vel.set(W.t.x * W.speed, (1.4 - alt) * 4, W.t.z * W.speed);
+      this.faceYaw = Math.atan2(W.t.x, W.t.z);
+      if (W.slab) {
+        const n = W.n, t = W.t, x = _v.crossVectors(n, t);
+        W.slab.matrix.makeBasis(x, n, t); W.slab.quaternion.setFromRotationMatrix(W.slab.matrix);
+        W.slab.position.copy(this.pos).addScaledVector(n, -0.22).add(_v2.set(0, 0.05, 0));
+      }
+    } else if (W.kind === 'run') {
       // along the wall on a shallow arc (up, then easing down), held against the face
       this.vel.set(W.t.x * W.speed, 4.4 * (1 - 1.7 * u), W.t.z * W.speed);
       this.faceYaw = Math.atan2(W.t.x, W.t.z);
@@ -602,7 +628,7 @@ export class Fighter {
       W.step = 0.14; W.foot = W.foot === 'L' ? 'R' : 'L';
       const fp = this.footPos(W.foot, _v2), out = _v.copy(W.n);
       if (this.el === 'fire') for (let i = 0; i < 4; i++) w.fx.fire(fp, out.clone().multiplyScalar(rand(2, 4)).add(_fwd.set(rand(-1, 1), rand(-1, 1), rand(-1, 1))), rand(0.3, 0.45), 0.25);
-      else if (this.el === 'earth') { w.fx.debrisBurst(fp.clone().addScaledVector(W.n, -0.05), 5, 3, 0.1, 0x7a746c, 0.5); w.audio.step(0.8); }
+      else if (this.el === 'earth') { w.fx.debrisBurst(fp.clone().addScaledVector(W.n, -0.05), W.kind === 'surf' ? 3 : 5, 3, 0.1, 0x7a746c, 0.5); if (W.kind !== 'surf') w.audio.step(0.8); }
       else w.fx.wind(fp, out.clone().multiplyScalar(3).add(_fwd.set(0, 1, 0)), 0.6, 0.35);
     }
     if (W.T >= W.dur) this.wallOff();
@@ -610,6 +636,7 @@ export class Fighter {
   // leave the wall: a push off its face (a back somersault after running up it)
   wallOff(quiet) {
     const W = this.wall; if (!W) return; this.wall = null; this.wallCd = 0.35; this.highJump = true;
+    if (W.slab) { this.world.scene.remove(W.slab); W.slab = null; this.world.fx.debrisBurst(this.pos.clone(), 10, 3, 0.1, 0x7a6a58); }
     if (quiet) { this.vel.y = Math.max(this.vel.y, 1); return; }
     if (W.kind === 'run') { this.vel.set(W.n.x * 6 + W.t.x * W.speed * 0.6, 7, W.n.z * 6 + W.t.z * W.speed * 0.6); }
     else {
@@ -731,7 +758,7 @@ export class Fighter {
     this.flash = 1;
     this.vel.x += dir.x * knock; this.vel.z += dir.z * knock;
     if (level >= 1) this.vel.y = Math.max(this.vel.y, level === 2 ? 4.5 : 2.5);
-    this.hitDir = dir.clone(); this.koDir = dir.clone(); this.hitAlt = !this.hitAlt; this.wall = null;
+    this.hitDir = dir.clone(); this.koDir = dir.clone(); this.hitAlt = !this.hitAlt; if (this.wall) this.wallOff(true);
     if (this.hp <= 0) { this.die(dir); return; }
     this.endHold(); this.charging = false; this.legHoldT = -1; this.lungeT = 0; this.dodgeT = 0;
     // already on the floor (knocked down or getting up): the blow keeps them down in the lying pose; they do not

@@ -179,6 +179,25 @@ if (want('rocket')) {
   cam = ['P', 'body', 5.5, Math.PI + 0.25, 0.6]; note = 'DODGE (Shift) tap twice: the rocket dodge, flame jets from both feet, legs braced';
   await run(4); await tap('ShiftLeft'); await run(24); await tap('ShiftLeft'); await run(26); made.push(end());
 }
+if (want('earthwall')) {
+  begin('earth_wall_surf'); await setup('earth', 'water', [28.4, -10], [20, 8], 'P.yaw = P.faceYaw = 0; E.camCtl.yaw = 0; E.state.locked = false;');
+  cam = ['P', 'body', 7.5, -Math.PI / 2 - 0.3, 1.0]; note = 'DODGE (Shift) tap: the rock slab; slide along the arena wall and JUMP (Space): the slab goes onto the wall; JUMP again: off';
+  await page.evaluate(() => { window.__EF.state.locked = false; });
+  await key('KeyW', true); await run(6); await tap('ShiftLeft'); await run(30); await tap('Space'); await run(55); await tap('Space'); await key('KeyW', false); await run(35); made.push(end());
+}
+if (want('earthguard')) {
+  begin('earth_guard_rock_punch'); await setup('earth', 'fire', [0, -4], [0, 4]);
+  cam = ['P', 'body', 6.5, Math.PI / 2 + 0.5, 0.8]; note = 'GUARD (Q) held: three rocks; GUARD + HAND (F) three times: each punch drives one rock out of the guard';
+  await key('KeyQ', true); await run(22); for (let i = 0; i < 3; i++) { await page.evaluate(() => { const E = window.__EF; E.opp.hp = 100; E.opp.pos.set(0, 0, 4); E.opp.action = null; }); await tap('KeyF'); await run(20); } await key('KeyQ', false); await run(15); made.push(end());
+}
+if (want('earthmoves')) {
+  begin('earth_new_moves'); await setup('earth', 'fire', [0, -2.2], [0, 2.2]);
+  cam = ['P', 'body', 6.5, Math.PI / 2 + 0.5, 0.8]; note = 'HAND (F) three taps: the third is the rising uppercut (rock column under the rival); LEG (G) four taps: the fourth is the rock push kick';
+  for (let i = 0; i < 3; i++) { await page.evaluate(() => { const E = window.__EF; E.opp.hp = 100; E.opp.pos.set(0, 0, 2.2); E.opp.vel.set(0, 0, 0); E.opp.action = null; E.opp.stunT = 0; }); await tap('KeyF'); await run(18); }
+  await run(30);
+  for (let i = 0; i < 4; i++) { await page.evaluate(() => { const E = window.__EF; E.opp.hp = 100; E.opp.pos.set(0, 0, 3.0); E.opp.vel.set(0, 0, 0); E.opp.action = null; E.opp.stunT = 0; }); await tap('KeyG'); await run(22); }
+  await run(20); made.push(end());
+}
 if (want('water')) {
   begin('water_punches_and_whips'); await setup('water', 'earth', [0, -3.5], [0, 3.5]);
   cam = ['P', 'body', 4.2, Math.PI / 2 + 0.5, 0.2]; note = 'HAND (F) six taps: whip, jab (water ball), overhead whip, cross (ice ball), diagonal whip, hook (water ball)  -  no droplets';

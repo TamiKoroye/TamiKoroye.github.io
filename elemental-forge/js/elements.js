@@ -219,6 +219,13 @@ export class Bending {
     switch (name) {
       // ---------------- earth
       case 'earth.hand': {
+        if (this.launchGuardRock(f)) return;   // punching a rock out of the guard
+        // the rising uppercut: a column of rock erupts under the opponent and throws them up
+        if (f.tech && f.tech.clip === 'fire_punch2' && f.target && !f.target.dead && f.target.pos.distanceTo(f.pos) < 9) {
+          const t = f.target; this.raisePillar(f, t.pos.x, t.pos.z);
+          if (t.onGround && t.invuln <= 0) w.combat.damage(t, 10, _v.set(0, 0, 0).add(f.forward(_v2)).setY(0).normalize().clone(), f, 'pillar', t.chestPos(new THREE.Vector3()), 2, 2);
+          t.vel.y = Math.max(t.vel.y, 9); t.onGround = false; w.popup(f, 'RISING ROCK', true); return;
+        }
         const held = this.heldList(f, 'earth').filter(o => o.state === 'orbit');
         if (held.length) { const o = held[0]; this.launch(o, f, 1.05); w.fx.dust(o.pos, 3, 1); return; }
         if (this.strikeStone(f, hand)) return;
@@ -226,6 +233,13 @@ export class Bending {
         const p = this.forwardPoint(f, 1.1, 0); p.y = w.arena.groundAt(p.x, p.z, f.pos.y + 0.3) + 0.9;
         w.fx.debrisBurst(_v.set(p.x, p.y - 0.8, p.z), 8, 2, 0.08, 0x7a7068); w.fx.crater(_v.set(p.x, p.y - 0.9, p.z), 1);
         const o = this.fire('rock', f, p); o.dmg = 9; w.audio.rumble(0.4); return;
+      }
+      case 'earth.teep': {
+        // the push kick: a slab of rock bursts out of the ground in front of the planted foot and is driven out flat
+        const p = this.forwardPoint(f, 1.0, 0); p.y = w.arena.groundAt(p.x, p.z, f.pos.y + 0.3) + 0.6;
+        w.fx.debrisBurst(_v.set(p.x, p.y - 0.5, p.z), 14, 3, 0.1, 0x7a7068); w.fx.crater(_v.set(p.x, p.y - 0.6, p.z), 1.4); this.weapons.burst.spawn(p.x, p.y - 0.6, p.z, 0.28);
+        const o = this.fire('boulder', f, p, { dir: f.forward(new THREE.Vector3()).setY(0.05).normalize() }); o.dmg = 12; o.knock = 11; o.mesh.scale.set(o.mesh.scale.x * 1.5, o.mesh.scale.y * 0.8, o.mesh.scale.z * 1.2);
+        w.audio.rumble(0.9); w.shake(0.15, p); return;
       }
       case 'earth.leg': {
         const held = this.heldList(f, 'earth').filter(o => o.state === 'orbit');
@@ -709,21 +723,26 @@ export class Bending {
     this.defs.push(d);
     f.defense = d;
   }
-  // Earth GUARD + HAND: the guard rocks are punched apart and their shards fly at the opponent
+  // Earth GUARD + HAND: one rock of the guard is chosen for the punch (the one on the punching side first); the
+  // punch's impact frame (earth.hand) drives it out of the formation at the opponent. The other rocks stay up; the
+  // guard drops only when its last rock has been thrown.
   guardShatter(f) {
-    const d = f.defense, w = this.world; if (!d || d.el !== 'earth' || !d.rocks || d.rise < 0.5) return false;
+    const d = f.defense; if (!d || d.el !== 'earth' || !d.rocks || !d.rocks.length || d.rise < 0.5 || d.punchRock) return false;
+    const side = (f.handSide || 1) > 0 ? -1 : 1;   // the next punch's hand: prefer the rock on that side
+    d.punchRock = d.rocks.slice().sort((a, b) => side * (b.position.x - a.position.x))[0];
+    return true;
+  }
+  launchGuardRock(f) {
+    const d = f.defense, w = this.world, r = d && d.punchRock; if (!r) return false;
+    d.punchRock = null; d.rocks = d.rocks.filter(x => x !== r);
+    const p = r.getWorldPosition(new THREE.Vector3()); p.y = Math.max(p.y, f.pos.y + 1.0);
+    d.mesh.remove(r);
     const t = f.target && !f.target.dead ? f.target : null;
-    for (const r of d.rocks) {
-      const p = r.getWorldPosition(new THREE.Vector3()).setY(f.pos.y + 1.1);
-      for (let i = 0; i < 2; i++) {
-        const to = t ? t.chestPos(new THREE.Vector3()) : p.clone().add(f.forward(new THREE.Vector3()).multiplyScalar(8));
-        const dir = to.sub(p).normalize(); dir.x += rand(-0.08, 0.08); dir.y += rand(-0.03, 0.06); dir.normalize();
-        const o = this.fire('pebble', f, p.clone().addScaledVector(dir, 0.6), { dir }); o.dmg = 5; o.knock = 4;
-      }
-      w.fx.debrisBurst(p, 10, 4, 0.1, 0x7a6a58);
-    }
-    w.audio.impact(1.1); w.shake(0.2, f.pos); w.popup(f, 'SHATTER', true);
-    this.guardEnd(f); f.guarding = false; f.guardCd = 0.5;
+    const to = t ? t.chestPos(new THREE.Vector3()) : p.clone().add(f.forward(new THREE.Vector3()).multiplyScalar(10));
+    const o = this.fire('boulder', f, p, { dir: to.sub(p).normalize() }); o.dmg = 13; o.knock = 9;
+    o.mesh.scale.multiplyScalar(1.15);
+    w.fx.debrisBurst(p, 12, 3.5, 0.1, 0x7a6a58); w.fx.dust(p, 4, 1.2); w.audio.impact(1); w.shake(0.15, f.pos); w.popup(f, 'ROCK PUNCH', true);
+    if (!d.rocks.length) { this.guardEnd(f); f.guarding = false; f.guardCd = 0.4; }
     return true;
   }
   guardEnd(f) {

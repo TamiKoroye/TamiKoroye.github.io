@@ -354,8 +354,9 @@ export class Hero {
     }
     // running along a wall (Mixamo Wall Run, mirrored for a wall on the right) or up it (Diagonal Wall Run)
     if (clip === 'Idle_Loop' && f.wall && f.action !== 'tech') {
-      const n = f.wall.kind === 'run' ? (f.wall.side > 0 ? 'wall_run' : 'wall_run_M') : 'wall_flip';
-      if (has(n)) once(n, f.wall.kind === 'run' ? this.actions[n].getClip().duration / f.wall.dur : 1.3, 0.1);
+      // Earth surfing along the wall on its slab: the riding stance
+      const n = f.wall.kind === 'surf' ? 'surf_stance' : f.wall.kind === 'run' ? (f.wall.side > 0 ? 'wall_run' : 'wall_run_M') : 'wall_flip';
+      if (has(n)) { if (f.wall.kind === 'surf') { clip = n; ts = LOOP_SPEED.surf_stance || 1; wU = wL = 0; fade = 0.15; } else once(n, f.wall.kind === 'run' ? this.actions[n].getClip().duration / f.wall.dur : 1.3, 0.1); }
     }
     if (clip === 'Idle_Loop' && f.action === 'tech' && f.tech.clip) {
       const [n, scale] = clipFor(f.tech, f.techSide);
