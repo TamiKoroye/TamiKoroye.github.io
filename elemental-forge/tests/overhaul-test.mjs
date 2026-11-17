@@ -209,16 +209,16 @@ await stickUp(); await fUp(7); await run(30);
 
 // ================================================================== FIRE
 head('Fire: stomp');
-// (17 Nov brief: the stomp ignites on the foot plant and sends a fireball along the ground that spreads into a ring of
-//  fire round the opponent for one to two seconds, in place of a ring expanding from the stamping foot)
+// (17 Nov, M6 brief: the stomp is one wave of fire rolling out of the stamping foot in a full circle, in place of the
+//  fireball that ran to the rival and ringed them; the three checks below test the wave instead of the ring)
 await setup({ el: 'fire', p: [0, 0, -12], o: [0, 0, -6] }); await stepN(3);
 await hold('btn-leg'); await stepN(30); await fUp(6); await clearHits();
-let ringMax = 0, ringAt = null, ringT = 0, oAtRing = null; for (let j = 0; j < 100; j++) { await stepN(1); const r = await S(() => { const T = window.__EF.world.bending.weapons.traps[0], o = window.__EF.opp; return T && T.phase === 'ring' ? { R: 1.9 * Math.min(1, T.rt / 0.18), x: T.pos.x, z: T.pos.z, ox: o.pos.x, oz: o.pos.z } : null; }); if (r) { ringMax = Math.max(ringMax, r.R); ringAt = r; if (!oAtRing) oAtRing = r; ringT++; } if (j === 22) await shot('fire-stomp-ring'); }
-const oNow = await S(() => ({ x: window.__EF.opp.pos.x, z: window.__EF.opp.pos.z }));
-check('charged LEG: a fireball runs along the ground and spreads into a ring of fire round the rival', ringMax > 1.5 && oAtRing && Math.hypot(oAtRing.x - oAtRing.ox, oAtRing.z - oAtRing.oz) < 1.5, oAtRing ? `ring ${ringMax.toFixed(1)} m across at (${oAtRing.x.toFixed(1)}, ${oAtRing.z.toFixed(1)}); rival at (${oAtRing.ox.toFixed(1)}, ${oAtRing.oz.toFixed(1)}) when it formed` : 'no ring');
+let wave = null, fwMax = 0, waveT = 0;
+for (let j = 0; j < 60; j++) { await stepN(1); const r = await S(() => { const E = window.__EF, R = E.world.bending.rings.find(x => x.quiet && x.owner === E.player); return R ? { r: R.r, cx: R.center.x, cz: R.center.z, px: E.player.pos.x, pz: E.player.pos.z } : null; }); if (r) { if (!wave) { wave = r; await shot('fire-stomp-wave'); } fwMax = Math.max(fwMax, r.r); waveT++; } }
+check('charged LEG: the stomp sends one wave of fire out of the stamping foot in a full circle', wave && Math.hypot(wave.cx - wave.px, wave.cz - wave.pz) < 1.2 && fwMax > 7.5, wave ? `wave from ${Math.hypot(wave.cx - wave.px, wave.cz - wave.pz).toFixed(2)} m of the bender, out to ${fwMax.toFixed(1)} m` : 'no wave');
 const frHits = await hitsOn();
-check('the ring burns a rival 6 m away, several times', frHits.filter(h => h === 'fireTrap').length >= 3, `rival hit by: ${frHits.join(',') || 'nothing'}`);
-check('the ring of fire burns out within two seconds', ringT > 0 && ringT / 30 <= 2.0 && !(await S(() => window.__EF.world.bending.weapons.traps.length)), `burned ${(ringT / 30).toFixed(2)} s`);
+check('the wave reaches and hits a rival 6 m away', frHits.includes('fireRing'), `rival hit by: ${frHits.join(',') || 'nothing'}`);
+check('the wave has rolled past within 1.5 seconds', waveT > 0 && waveT / 30 <= 1.5, `rolled for ${(waveT / 30).toFixed(2)} s`);
 
 head('Fire: flame propulsion');
 await setup({ el: 'fire', locked: false, p: [-8, 0, -14], o: [20, 0, 20] }); await stepN(3);

@@ -125,7 +125,8 @@ check('locked strafe: faces the rival while moving sideways', strafe.faceErr < 0
 // jumping, double jump for air
 await setup({ locked: false, el: 'earth', p: [0, 0, -14], o: [20, 0, 20] });
 await press('btn-jump', 1); let h1 = 0; for (let i = 0; i < 20; i++) { await stepN(1); h1 = Math.max(h1, await S(() => window.__EF.player.pos.y)); }
-await stepN(20);
+// (M6: Earth's launch is higher, 15.5 m/s, so it needs longer to come back down before the Air take-off is tried)
+await stepN(45);
 await setup({ locked: false, el: 'air', p: [0, 0, -14], o: [20, 0, 20] });
 // (17 Nov brief: Air's JUMP takes off into sustained, steerable flight; Earth's JUMP is a launch from a rising rock)
 await press('btn-jump', 2); let h2 = 0, flying = 0; for (let i = 0; i < 40; i++) { await stepN(1); const r = await S(() => ({ y: window.__EF.player.pos.y, f: window.__EF.player.mob && window.__EF.player.mob.kind === 'fly' })); h2 = Math.max(h2, r.y); if (r.f) flying++; }
@@ -402,7 +403,9 @@ check('camera rises over a raised platform edge instead of being blocked', cam.l
 await S(() => { window.__EF.camCtl.autoCam = true; });
 await setup({ el: 'fire', locked: false, p: [0, 0, -12], o: [20, 0, 20] });
 const camSpin = await S(() => { const E = window.__EF, P = E.player; const y0 = E.camCtl.yaw; let maxD = 0, spinMax = 0;
-  E.controls.pressed.leg = true; for (let i = 0; i < 10; i++) E.step(1 / 30);
+  // (M6: in Fire's kick chain the spinning kick is now the third kick, after the flame kick and the high front kick)
+  E.controls.pressed.leg = true; for (let i = 0; i < 14; i++) E.step(1 / 30);
+  E.controls.pressed.leg = true; for (let i = 0; i < 14; i++) E.step(1 / 30);
   // body rotation: the procedural spin (spinYaw) or, with authored clips, the hips' turn relative to the fighter's facing
   const hipsYaw = () => { if (!P.hero) return 0; const hb = P.hero.bones['DEF-hips'], q = hb.getWorldQuaternion(hb.quaternion.clone()); const f = { x: 2 * (q.x * q.z + q.w * q.y), z: 1 - 2 * (q.x * q.x + q.y * q.y) }; let d = Math.atan2(f.x, f.z) - P.yaw; return Math.atan2(Math.sin(d), Math.cos(d)); };
   let turned = 0, prevH = hipsYaw();

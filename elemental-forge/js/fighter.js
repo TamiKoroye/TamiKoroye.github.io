@@ -144,7 +144,8 @@ export class Fighter {
   startTech(def, side, basic = false) {
     if (!def) return false;
     // alternating authored takes (e.g. hook / lunge punch) each carry their own timing
-    if (def.variants) { const n = this.altN || 0; this.altN = n + 1; def = def.variants[n % def.variants.length]; }
+    // (a chain of alternating takes starts again from its first after a pause of 1.2 s)
+    if (def.variants) { if (this.time - (this.lastAltT ?? -9) > 1.2) this.altN = 0; this.lastAltT = this.time; const n = this.altN || 0; this.altN = n + 1; def = def.variants[n % def.variants.length]; }
     if (this.dodgeKind === 'glide' && this.dodgeT > 0) { this.dodgeT = 0; this.vel.y = Math.min(this.vel.y, 0); }   // a strike ends the glide
     const powered = this.en >= (def.cost || 0);
     if (!powered) {
@@ -552,7 +553,8 @@ export class Fighter {
       w.fx.ring(this.pos, 2.2, 0xffffff, 0.4); for (let i = 0; i < 12; i++) w.fx.wind(this.pos.clone().setY(this.pos.y + 0.1), _v.set(rand(-4, 4), rand(1, 4), rand(-4, 4)), 0.6, 0.4);
       w.audio.gust(1.1); w.popup(this, 'FLIGHT', false); return;
     }
-    if (!this.onGround) return;
+    // (Fire may go straight from the rocket dodge, a little off the floor, into the flame run)
+    if (!this.onGround && !(el === 'fire' && this.dodgeKind === 'rocket' && this.dodgeT > 0)) return;
     const heading = sp > 1 ? Math.atan2(this.vel.x, this.vel.z) : this.faceYaw;
     if (el === 'fire') { this.mob = { kind: 'flame', el, t: 0, heading, speed: Math.max(sp, 6) }; this.dodgeT = 0; w.audio.fireWhoosh(1); return; }
     this.mob = { kind: 'surf', el, t: 0, speed: Math.max(sp, 4), heading }; this.dodgeT = 0; this.en -= 6;

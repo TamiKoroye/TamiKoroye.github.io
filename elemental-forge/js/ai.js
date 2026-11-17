@@ -121,6 +121,12 @@ export class AI {
         const gap = Math.hypot(f.pos.x - R.x, f.pos.z - R.z) - R.r;
         if (gap > 0.3 && gap < 1.9 && f.onGround && !this.seen.has(R)) { this.seen.add(R); if (Math.random() < P.react) inp.jump = true; }
       }
+      // Fire's stomp wave rolling out toward us: jump it as the front arrives
+      for (const R of w.bending.rings) {
+        if (!R.quiet || R.owner !== foe || R.done.has(f)) continue;
+        const gap = Math.hypot(f.pos.x - R.center.x, f.pos.z - R.center.z) - R.r;
+        if (gap > 0.2 && gap < 2.2 && f.onGround && !this.seen.has(R)) { this.seen.add(R); if (Math.random() < P.react) inp.jump = true; }
+      }
       // a wave advancing on us: guard against it
       for (const V of Wp.waves) {
         if (V.f !== foe || this.seen.has(V)) continue;

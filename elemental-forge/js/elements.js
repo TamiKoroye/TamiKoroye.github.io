@@ -1140,7 +1140,8 @@ export class Bending {
           if (r.quiet) { let blocked = false; for (let k = 1; k < 8 && !blocked; k++) { const q = k / 8; if (w.arena.solidAt(_v.set(r.center.x + (t.pos.x - r.center.x) * q, r.center.y + 0.6, r.center.z + (t.pos.z - r.center.z) * q))) blocked = true; } if (blocked) continue; }
           r.done.add(t);
           const dir = new THREE.Vector3(t.pos.x - r.center.x, 0, t.pos.z - r.center.z).normalize();
-          w.combat.damage(t, r.hit.dmg, dir, r.owner, r.el + 'Ring', t.chestPos(new THREE.Vector3()), r.hit.knock, r.hit.level);
+          // the stomp wave knocks down close to the foot and staggers further out
+          w.combat.damage(t, r.quiet && r.r > 3 ? Math.round(r.hit.dmg * 0.75) : r.hit.dmg, dir, r.owner, r.el + 'Ring', t.chestPos(new THREE.Vector3()), r.hit.knock, r.quiet && r.r > 3 ? 1 : r.hit.level);
           if (r.hit.lift) t.vel.y = Math.max(t.vel.y, r.hit.lift);
         }
       }
