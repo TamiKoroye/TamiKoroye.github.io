@@ -24,12 +24,12 @@
   {
    "name": "3 punch plays its authored clip in every element",
    "ok": true,
-   "detail": "earth: earth_punch_M; fire: earth_punch; water: water_palm_M; air: whip_d"
+   "detail": "earth: earth_punch2_M; fire: fire_jab_M; water: whip_h_M; air: whip_h_M"
   },
   {
    "name": "4 kick plays its authored clip in every element",
    "ok": true,
-   "detail": "earth: fire_round_M; fire: fire_round_M; water: water_kick; air: air_crescent_M"
+   "detail": "earth: fire_round_M; fire: round_kick2; water: water_kick; air: air_crescent_M"
   },
   {
    "name": "5 sustained bending (held HAND) plays the authored hold loop",
@@ -42,14 +42,14 @@
    "detail": "earth: earth_guard; fire: fire_guard; water: water_guard; air: water_flow"
   },
   {
-   "name": "7 attacks while moving: authored upper body over authored footwork",
+   "name": "7 attacks while moving: authored upper body over authored footwork, never running legs",
    "ok": true,
-   "detail": "earth: 9 frames, legs earth_punch_M; fire: 43 frames, legs earth_punch/fire_jab/fire_punch_M/round_kick2/fire_front; water: 18 frames, legs whip_v_M/water_kick; air: 18 frames, legs air_crescent_M/fire_punch"
+   "detail": "earth: 49 frames, legs earth_punch2_M/earth_punch/fire_punch2_M/mma_kick; fire: 61 frames, legs fire_punch/earth_punch/fire_jab/fire_round_M/fire_front/fire_fly; water: 52 frames, legs whip_h_M/water_kick/whip_h/fire_jab_M; air: 45 frames, legs whip_h_M/air_crescent_M/whip_h/whip_d"
   },
   {
    "name": "8 six quick attacks per element without refilling energy all play authored clips",
-   "ok": false,
-   "detail": "distinct strikes 1/5/3/4, energy at the end 100/93/100/100, strikes without bending 0 frames"
+   "ok": true,
+   "detail": "distinct strikes 4/4/5/3, energy at the end 94/100/100/100, strikes without bending 0 frames"
   },
   {
    "name": "9 switching through all four elements via the element buttons",
@@ -59,17 +59,17 @@
   {
    "name": "SPECIAL plays its authored clip in every element",
    "ok": true,
-   "detail": "earth: earth_gather; fire: fire_fly_M; water: water_cast_M; air: turn_spin"
+   "detail": "earth: earth_gather; fire: fire_fly; water: water_cast; air: turn_spin"
   },
   {
    "name": "NO procedural fallback: every technique/guard/hold frame shows a clip from the pack",
    "ok": true,
-   "detail": "848 frames checked, 0 procedural"
+   "detail": "994 frames checked, 0 procedural"
   },
   {
    "name": "NO procedural body in ANY frame of the session (stance, movement, reactions included)",
    "ok": true,
-   "detail": "1252 frames, 0 procedural"
+   "detail": "1219 frames, 0 procedural"
   },
   {
    "name": "10 all of the above through touch controls only, no page errors",

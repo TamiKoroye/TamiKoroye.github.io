@@ -16,7 +16,7 @@ export class AI {
     this.strafeDir = 1; this.strafeT = 0;
     this.throwT = 2.5; this.thinkT = 0; this.reactT = -1; this.reaction = null;
     this.guardT = 0; this.holdT = 0; this.meleeT = 0;
-    this.seen = new WeakSet();
+    this.seen = new WeakSet(); this.seen2 = new WeakSet();
     this.seenTech = -1; this.combo = []; this.comboT = 0; this.punishT = 0; this.jetT = 0;
   }
   setDifficulty(d) { this.d = d; this.P = PROFILES[d] || PROFILES.normal; }
@@ -114,6 +114,10 @@ export class AI {
         if (Math.hypot(f.pos.x - E.x, f.pos.z - E.z) > 2.4) continue;
         away(E.x, E.z);
         if (!this.seen.has(E)) { this.seen.add(E); if (Math.random() < P.react) { this.reaction = 'dodge'; this.reactT = P.reactDelay * rand(0.6, 1); this.dodgeFrom = E; } }
+        // a second look once free to act (the first came during a roll or a hit reaction and could not be acted on)
+        else if (!this.seen2.has(E) && !f.action && f.onGround && !this.reaction && Math.hypot(f.pos.x - E.x, f.pos.z - E.z) < 1.9) {
+          this.seen2.add(E); if (Math.random() < P.react) { this.reaction = 'dodge'; this.reactT = 0.05; this.dodgeFrom = E; }
+        }
       }
       // an expanding fire ring closing in: jump it
       for (const R of Wp.fireRings) {

@@ -144,8 +144,9 @@ export class Fighter {
   startTech(def, side, basic = false) {
     if (!def) return false;
     // alternating authored takes (e.g. hook / lunge punch) each carry their own timing
-    // (a chain of alternating takes starts again from its first after a pause of 1.2 s)
-    if (def.variants) { if (this.time - (this.lastAltT ?? -9) > 1.2) this.altN = 0; this.lastAltT = this.time; const n = this.altN || 0; this.altN = n + 1; def = def.variants[n % def.variants.length]; }
+    // (a chain of alternating takes starts again from its first once the bender has been back in stance for 0.9 s
+    //  after the previous take ended)
+    if (def.variants) { if (this.time - (this.lastAltEnd ?? -9) > 0.9) this.altN = 0; const n = this.altN || 0; this.altN = n + 1; def = def.variants[n % def.variants.length]; this.lastAltEnd = this.time + def.dur; }
     if (this.dodgeKind === 'glide' && this.dodgeT > 0) { this.dodgeT = 0; this.vel.y = Math.min(this.vel.y, 0); }   // a strike ends the glide
     const powered = this.en >= (def.cost || 0);
     if (!powered) {
@@ -350,7 +351,9 @@ export class Fighter {
         this.chargeT += dt;
         if (this.stunT > 0 || this.reacting() || this.dodgeT > 0) { this.charging = false; this.legHoldT = -1; }
         // on the ground a full charge stamps at once (Earth and Fire stomps), without waiting for LEG to be let go
-        else if (st.tech.stomp && this.onGround && this.chargeT >= 0.4 && this.legHoldT >= 0.7) { this.charging = false; this.legHoldT = -1; this.startTech(st.tech.stomp, 1); }
+        // (M6) Earth's eruption is marked under the rival: while LEG is held it waits until the rival is out of a hit
+        // reaction, so the marked ground can be read and left (letting go of LEG still stamps at once)
+        else if (st.tech.stomp && this.onGround && this.chargeT >= 0.4 && this.legHoldT >= 0.7 && !(this.el === 'earth' && this.target && !this.target.dead && this.target.reacting() && this.legHoldT < 2.5)) { this.charging = false; this.legHoldT = -1; this.startTech(st.tech.stomp, 1); }
         else if (Math.random() < dt * 16) this.chargeFx();
       }
       // GUARD: the element's defence

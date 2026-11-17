@@ -284,11 +284,25 @@ for (const el of els) {
   check(`${el}: perfect guard sends the ${ptype} back into the thrower`, fired && pg.perfect > 0 && pg.ohp < 100 && pg.php === 100, JSON.stringify(pg));
   // charged LEG technique
   await setup({ el, p: [0, 0, -12], o: [0, 0, -9.6] });
-  await hold('btn-leg', 9); await stepN(36);
-  // the opening kick knocks the rival away; bring them back in range of the charged technique
-  await S(() => { const { player: p, opp: o } = window.__EF; const fw = p.forward(); o.pos.set(p.pos.x + fw.x * 2.3, 0, p.pos.z + fw.z * 2.3); o.vel.set(0, 0, 0); o.action = null; o.stunT = 0; o.invuln = 0; o.hp = 100; });
+  await hold('btn-leg', 9);
+  // (M6: the charged technique can start while LEG is still held: Fire stomps after a 0.3 s hold, Earth after
+  //  0.7 s of charge, and Earth's stomp marks its eruption under the rival as it starts. The fixed 36-frame wait
+  //  put the rival back only after that, so the hold now runs (up to the same 1.5 s) until the charge begins or
+  //  the stomp / charged move starts, the rival is put back in range at that moment, and the hold continues)
+  const chargedName = await S(() => { const st = window.__EF.player.style.tech; return [st.stomp, st.charged].filter(Boolean).map(t => t.name); });
+  let startedEarly = false, placed = false;
+  const putBack = () => S(() => { const { player: p, opp: o } = window.__EF; const fw = p.forward(); o.pos.set(p.pos.x + fw.x * 2.3, 0, p.pos.z + fw.z * 2.3); o.vel.set(0, 0, 0); o.action = null; o.stunT = 0; o.invuln = 0; o.hp = 100; });
+  for (let i = 0; i < 45; i++) {
+    const st = await S(() => { const p = window.__EF.player; return { t: p.tech && p.tech.name, ch: p.charging }; });
+    // the opening kick knocks the rival away; bring them back in range of the charged technique
+    if (!placed && (st.ch || chargedName.includes(st.t))) { await putBack(); placed = true; }
+    if (chargedName.includes(st.t)) { startedEarly = true; break; }
+    await stepN(1);
+  }
+  if (!placed) await putBack();
   await fUp(9);
   const reacts = new Set(); let tech = null;
+  if (process.env.DBG) console.log(el, 'charged started while held:', startedEarly);
   for (let i = 0; i < 30; i++) { await stepN(1); const s = await S(() => ({ a: window.__EF.opp.action, t: window.__EF.player.tech && window.__EF.player.tech.name })); if (s.a) reacts.add(s.a); if (s.t) tech = s.t; if (i === 12) await shot(`15-${el}-charged`); }
   const ch = await S(() => window.__EF.opp.hp);
   check(`${el}: hold-and-release LEG performs the charged technique`, tech && ch < 100 && (reacts.has('down') || reacts.has('stagger')), `${tech}; rival hp ${ch}; reactions ${[...reacts].join(',')}`);
@@ -368,6 +382,7 @@ check('earth lifts an existing loose stone from the arena', lifted.taken && lift
 head('Combinations and animation continuity');
 for (const el of els) {
   await setup({ el, p: [0, 0, -12], o: [0, 0, -9.8] });
+  if (process.env.DBG) await S(() => { window.__DBG = true; });
   const seq = await S(() => {
     const E = window.__EF, P = E.player, C = E.controls; let maxJump = 0, idleGaps = 0, prev = Float32Array.from(P.cur), techs = [];
     const plan = { 0: 'hand', 9: 'leg', 24: 'hand', 33: 'dodge', 45: 'leg', 60: 'special' };
@@ -377,9 +392,11 @@ for (const el of els) {
       for (let i = 0; i < 51; i++) maxJump = Math.max(maxJump, Math.abs(P.cur[i] - prev[i]));
       prev = Float32Array.from(P.cur);
       if (P.action === 'tech' && techs[techs.length - 1] !== P.tech.name + P.techSide) techs.push(P.tech.name + P.techSide);
+      if (window.__DBG) (window.__trace = window.__trace || []).push(f + ' ' + P.action + ' ' + (P.tech && P.tech.name) + ' d' + P.dodgeKind + P.dodgeT.toFixed(2) + ' g' + P.onGround + ' mob ' + (P.mob && P.mob.kind) + ' st ' + P.stunT.toFixed(2) + ' en ' + P.en.toFixed(0) + ' buf ' + JSON.stringify(P.buf));
     }
     return { maxJump, techs: techs.length, names: techs.join(' > ') };
   });
+  if (process.env.DBG) console.log(el, (await S(() => { const t = window.__trace || []; window.__trace = []; return t; })).join('\n'));
   check(`${el}: HAND / LEG / dodge / SPECIAL chain flows without pose snapping`, seq.techs >= 4 && seq.maxJump < 0.75, `${seq.techs} techniques (${seq.names}), largest single-frame joint change ${seq.maxJump.toFixed(2)} rad`);
 }
 // the brief's earth combination: raise a rock, move sideways while controlling it, kick it

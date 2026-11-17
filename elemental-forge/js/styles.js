@@ -364,7 +364,8 @@ STYLES.fire.tech.leg.push(T({ name: 'Flip Kick', clip: 'flip_kick', dur: 0.9, co
 // column under the opponent (the third punch of the HAND chain, events chosen by clip in earth.hand)
 STYLES.earth.tech.leg.push(T({ name: 'Rock Push Kick', clip: 'earth_teep', dur: 0.6, cost: 11, cancel: 0.72, move: 0.5, lunge: 3, keys: K0,
   active: { from: 0.45, to: 0.6, dmg: 9, range: 2.2, arc: 0.3, knock: 9, level: 1 }, events: [[0.48, 'earth.teep']] }));
-STYLES.earth.tech.hand.clip = ['earth_punch', 'earth_punch2', 'fire_punch2'];
+// the chain opens with the quick jab (impact 0.21 s); the heavy lunge punch (impact 0.52 s) is the second strike
+STYLES.earth.tech.hand.clip = ['earth_punch2', 'earth_punch', 'fire_punch2'];
 // Water's whip slam (M6): the whip wraps the rival and the bender lifts them overhead and slams them down
 // (Mixamo Sword And Shield Casting: both arms raised, then driven down with the hips and legs; see weapons.grabSlam)
 STYLES.water.tech.hand.clip = ['whip_h', 'fire_jab', 'whip_v', 'fire_punch', 'whip_d', 'earth_punch', 'water_palm'];
@@ -404,7 +405,8 @@ STYLES.air.tech.airKick = T({ name: 'Hurricane Kick', clip: 'hurricane', clipSpe
 for (const k of ['earth', 'fire', 'water', 'air']) {
   STYLES[k].tech.flip = T({ name: 'Somersault', clip: 'flip_front', clipSpeed: 2.0, dur: 0.6, cost: 6, cancel: 0.8, move: 4, keys: K0 });
   STYLES[k].tech.flipBack = T({ name: 'Back Somersault', clip: 'dodge_back', clipSpeed: 2.2, dur: 0.6, cost: 6, cancel: 0.8, move: 3, keys: K0 });
-  STYLES[k].tech.roll = T({ name: 'Roll', clip: 'roll_dive', clipSpeed: 2.0, dur: 0.6, cost: 6, cancel: 0.8, move: 6, keys: K0 });
+  // (M6: the roll plays a little quicker, 0.62 s from 0.83, so an evasion does not leave the fighter committed for so long)
+  STYLES[k].tech.roll = T({ name: 'Roll', clip: 'roll_dive', clipSpeed: 2.7, dur: 0.6, cost: 6, cancel: 0.8, move: 6, keys: K0 });
 }
 for (const k of ['earth', 'fire']) STYLES[k].tech.stomp = T({ name: k === 'earth' ? 'Earth Stomp' : 'Fire Stomp', clip: 'stomp', dur: 0.95, cost: 22, cancel: 0.86, move: 0,
   onStart: k + '.stompMark', events: [[0.5, k + '.stomp']], keys: K0 });

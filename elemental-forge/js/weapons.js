@@ -236,7 +236,9 @@ export class Weapons {
           // a whip that catches a rival in the air drives them back down onto the floor with full force
           const airborne = !t.onGround && t.pos.y - t.groundY > 0.5;
           // Water's whip wraps the rival (airborne, or caught by the overhead lash on the ground): grab, lift, slam
-          if (W.el === 'water' && !W.frozen && (airborne || W.kind === 'v') && f.style.tech.whipSlam && !this.grabs.length && t.hp > 0) { W.hit.add(t); this.grabSlam(f, t, W.ls); break; }
+          // (a raised guard facing the whip stops the grab: the lash is then resolved against the guard like any blow)
+          const guarded = t.guarding && t.defense && w.bending.covers(t.defense, dir);
+          if (W.el === 'water' && !W.frozen && !guarded && (airborne || W.kind === 'v') && f.style.tech.whipSlam && !this.grabs.length && t.hp > 0) { W.hit.add(t); this.grabSlam(f, t, W.ls); break; }
           w.combat.damage(t, Math.round((W.frozen ? 1.4 : 1) * (airborne ? 1.5 : 1) * W.dmg), dir.clone(), f, W.tag, p.clone(), W.knock, W.frozen || airborne ? 2 : W.level);
           if (airborne && !t.dead) { t.vel.y = -18; t.vel.x *= 0.3; t.vel.z *= 0.3; w.shake(0.3, p); w.popup(f, 'SLAM', true); }
           if (W.frozen) { w.fx.debrisBurst(p, 10, 3, 0.07, 0xe0f4ff); }

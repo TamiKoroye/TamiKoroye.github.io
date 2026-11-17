@@ -95,6 +95,7 @@ const whenFree = async () => { for (let i = 0; i < 90; i++) { const ok = await p
 const seg = (a, b = log.length) => log.slice(a, b);
 const reachAuthored = (s, pred) => s.filter(pred).length > 0 && s.filter(pred).every(r => r.hero && r.authored && r.wU < 0.05 && r.wL < 0.05);
 const perEl = {};
+const isTechR = (r) => r.act === 'tech';
 // between rounds (after a knockout) the game ignores input until the next round starts, as it does for a player
 const waitFight = async () => { for (let i = 0; i < 400; i++) { const ph = await page.evaluate(() => { const E = window.__EF; E.step(1 / 30); return E.state.phase; }); if (ph === 'fight') return; } };
 for (const el of ['earth', 'fire', 'water', 'air']) {
@@ -108,10 +109,17 @@ for (const el of ['earth', 'fire', 'water', 'air']) {
   await run(12); await up('guard'); await whenFree(); await tap('hand', 3); await run(16);
   // (16 Nov) the rival's strikes now include whips that stagger: if the follow-up was knocked out by a hit, the player
   // presses again once they can act, as a player would
-  if (!seg(m).some(r => r.act === 'tech' || r.counter) && seg(m).some(r => r.act === 'stagger' || r.act === 'hit')) { await whenFree(); await tap('hand', 3); await run(16); }
+  // (M6: the rival's whip can also knock the player down or catch them in the whip slam; those count the same way)
+  if (!seg(m).some(r => r.act === 'tech' || r.counter) && seg(m).some(r => r.act === 'stagger' || r.act === 'hit' || r.act === 'down' || r.clip === 'struggle')) { await waitFight(); await whenFree(); await tap('hand', 3); await run(16); }
   R.guard = seg(m);
   await waitFight(); m = mark(); await stick(0, -78); await run(10); await tap('hand', 3); await tap('hand', 3); await run(6); await stickUp(); await run(6); R.moving = seg(m);
-  await waitFight(); m = mark(); for (let i = 0; i < 6; i++) { await tap(i % 2 ? 'leg' : 'hand', 3); await run(3); } await run(12); R.repeat = seg(m);
+  await waitFight(); m = mark(); for (let i = 0; i < 6; i++) { await tap(i % 2 ? 'leg' : 'hand', 3); await run(3); } await run(12);
+  // (M6) the live rival can knock the player down or catch them in the whip slam inside this window (seen: Air
+  // floored twice, Earth caught after one punch). As in check 6, when the presses were cut short by the rival
+  // (fewer than two strikes started and the player was hit or held), they are made again once the player can act
+  const cut = (sg) => new Set(sg.filter(isTechR).map(r => r.tech + r.clip)).size < 2 && sg.some(r => r.act === 'down' || r.act === 'stagger' || r.act === 'hit' || r.clip === 'struggle');
+  if (cut(seg(m))) { await waitFight(); await whenFree(); m = mark(); for (let i = 0; i < 6; i++) { await tap(i % 2 ? 'leg' : 'hand', 3); await run(3); } await run(12); }
+  R.repeat = seg(m);
   await waitFight(); await whenFree(); m = mark(); await tap('special', 3); await run(26); R.special = seg(m);
 }
 await page.screenshot({ path: path.join(OUT, 'acceptance-end.png') });
@@ -122,10 +130,15 @@ check('3 punch plays its authored clip in every element', all('punch', isTech), 
 check('4 kick plays its authored clip in every element', all('kick', isTech), els.map(el => `${el}: ${[...new Set(perEl[el].kick.filter(isTech).map(r => r.clip))].join('/')}`).join('; '));
 check('5 sustained bending (held HAND) plays the authored hold loop', all('hold', r => r.hold), els.map(el => `${el}: ${[...new Set(perEl[el].hold.filter(r => r.hold).map(r => r.clip))].join('/')}`).join('; '));
 check('6 guard plays the authored guard and the follow-up strike lands as a technique', els.every(el => reachAuthored(perEl[el].guard, r => r.guard) && perEl[el].guard.some(r => r.act === 'tech' || r.counter)), els.map(el => `${el}: ${[...new Set(perEl[el].guard.filter(r => r.guard).map(r => r.clip))].join('/')}`).join('; '));
-// attacks while moving, anywhere in the session (the rival's hits make any fixed window unreliable); every element
-// must have some, and every such frame must be authored for both halves of the body
+// attacks while moving, anywhere in the session (the rival's hits make any fixed window unreliable).
+// (M6 brief, item 1: strikes on the ground are planted, with no running legs under them, so an element may now
+//  have no strike frames above 1 m/s at all; the per-element "must have some" is dropped. What is checked instead
+//  is what the brief asks: every strike frame that does move is authored for both halves of the body, and its
+//  legs are never a locomotion loop (walk, jog, sprint, run). Some moving strikes must still occur in the session)
 const movingTech = (el) => log.filter(r => r.el === el && r.act === 'tech' && r.moving);
-check('7 attacks while moving: authored upper body over authored footwork', els.every(el => movingTech(el).length > 0 && movingTech(el).every(r => r.authored && r.wU < 0.05 && r.wL < 0.05)),
+const LOCO = /walk|jog|sprint|run_loop|run_/i;
+const allMoving = els.flatMap(el => movingTech(el));
+check('7 attacks while moving: authored upper body over authored footwork, never running legs', allMoving.length > 0 && allMoving.every(r => r.authored && r.wU < 0.05 && r.wL < 0.05 && !LOCO.test(r.layer || '')),
   els.map(el => `${el}: ${movingTech(el).length} frames, legs ${[...new Set(movingTech(el).map(r => r.layer || r.clip))].join('/')}`).join('; '));
 const repeatTechs = els.map(el => new Set(perEl[el].repeat.filter(isTech).map(r => r.tech + r.clip)).size);
 check('8 six quick attacks per element without refilling energy all play authored clips', els.every(el => reachAuthored(perEl[el].repeat, isTech)) && repeatTechs.every(n => n >= 2), `distinct strikes ${repeatTechs.join('/')}, energy at the end ${els.map(el => Math.round(perEl[el].repeat.at(-1).en)).join('/')}, strikes without bending ${log.filter(r => r.unp).length} frames`);
