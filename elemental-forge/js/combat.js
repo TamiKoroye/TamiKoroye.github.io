@@ -80,7 +80,7 @@ export class Combat {
     w.popup(t, String(Math.round(dmg)));
     const col = { fire: 0xffb060, water: 0xbfe4ff, air: 0xffffff }[from && from.el] || 0xfff2d0;
     w.fx.spark(at, col, level >= 1 ? 8 : 5);
-    w.audio.hit(level >= 1 ? 1 : 0.6);
+    w.audio.strike(t, from, kind, level, at);
     w.hitStop(level >= 1 ? 0.08 : 0.045);
     w.shake(level >= 1 ? 0.28 : 0.14, at);
     if (from) from.stats.hitsLanded++;

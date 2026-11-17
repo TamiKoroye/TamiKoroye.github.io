@@ -199,10 +199,10 @@ export class Bending {
     if (o.tube) { this.world.scene.remove(o.tube.mesh); o.tube.mesh.geometry.dispose(); o.tube.mesh.material.dispose(); o.tube = null; }
     const fx = this.world.fx, w = this.world;
     if (how === 'silent') return;
-    if (o.el === 'earth') { fx.debrisBurst(o.pos, 12, 3.5, 0.1, 0x6e665e); fx.dust(o.pos, 5, 2, 0x9f9282); w.audio.impact(0.6); }
-    if (o.el === 'fire') { for (let i = 0; i < 10; i++) fx.fire(o.pos, _v.set(rand(-3, 3), rand(-1, 3), rand(-3, 3)), 0.5, 0.35); fx.smoke(o.pos); w.audio.fireHit(0.6); }
+    if (o.el === 'earth') { fx.debrisBurst(o.pos, 12, 3.5, 0.1, 0x6e665e); fx.dust(o.pos, 5, 2, 0x9f9282); w.audio.rumble(0.8, o.pos); }
+    if (o.el === 'fire') { for (let i = 0; i < 10; i++) fx.fire(o.pos, _v.set(rand(-3, 3), rand(-1, 3), rand(-3, 3)), 0.5, 0.35); fx.smoke(o.pos); w.audio.fireHit(0.6, o.pos); }
     // water bursts in the KanaWorks splash flipbook; ice shatters into pale fragments
-    if (o.el === 'water') { if (SPEC[o.kind] && SPEC[o.kind].ice) fx.debrisBurst(o.pos, 14, 4, 0.08, 0xe0f4ff); w.audio.splash(0.7); this.extinguishNear(o.pos, 1.8); }
+    if (o.el === 'water') { if (SPEC[o.kind] && SPEC[o.kind].ice) { fx.debrisBurst(o.pos, 14, 4, 0.08, 0xe0f4ff); w.audio.ice('break', 0.8, o.pos); } else w.audio.splash(0.8, o.pos); this.extinguishNear(o.pos, 1.8); }
     if (o.el === 'air') { for (let i = 0; i < 6; i++) fx.wind(o.pos, _v.set(rand(-4, 4), rand(-1, 2), rand(-4, 4)), 0.6, 0.35); }
     if (how === 'steam') fx.steam(o.pos, 10);
     if (o.src) o.src.respawnT = 18; // loose stone comes back later
@@ -1222,7 +1222,7 @@ export class Bending {
       if (s.t >= 0 && !s.mesh) {
         // ice spikes: the downloaded ice cluster, each with its own height, width and lean (no row of identical cones)
         s.mesh = s.ice ? iceClusterMesh(rand(1.0, 1.9), rand(0.7, 1.25)) : new THREE.Mesh(this.pillarGeo, this.mat.stone);
-        if (s.ice) { s.mesh.rotation.set(rand(-0.35, 0.35), rand(0, 6.28), rand(-0.35, 0.35)); s.iceCluster = true; } else s.mesh.scale.set(0.35, 0.9, 0.35);
+        if (s.ice) { s.mesh.rotation.set(rand(-0.35, 0.35), rand(0, 6.28), rand(-0.35, 0.35)); s.iceCluster = true; this.world.audio.ice('form', 0.7, s.pos); } else s.mesh.scale.set(0.35, 0.9, 0.35);
         s.mesh.castShadow = true;
         s.mesh.position.copy(s.pos).setY(s.pos.y - 1); w.scene.add(s.mesh);
         if (s.ice) { w.fx.splash(s.pos.clone().setY(s.pos.y + 0.2), 6); w.audio.splash(0.4); } else { w.fx.debrisBurst(s.pos.clone().setY(s.pos.y + 0.1), 8, 3, 0.1, 0x7a6a58); w.audio.rumble(0.4); }

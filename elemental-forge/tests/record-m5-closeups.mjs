@@ -26,7 +26,13 @@ await page.evaluate(() => {
   const E = window.__EF; E.state.manual = true;
   E.ai.update = function () { const i = this.f.input; i.mx = i.mz = 0; i.hand = i.handHeld = i.leg = i.legHeld = i.special = i.guard = i.dodge = i.dodgeHeld = i.jump = i.jumpHeld = false; i.faceYaw = Math.atan2(this.foe.pos.x - this.f.pos.x, this.foe.pos.z - this.f.pos.z); i.strafe = true; };
   E.state.locked = true; E.player.target = E.opp;
+  // sound log: every sound the game plays (take, pitch, volume, pan) and every looping sound held, with its scenario
+  // and frame, so tools/sfx-mux.py can lay the same sounds under the video
+  window.__snd = []; window.__hold = []; window.__sfm = {};
+  E.world.audio.onPlay = (e) => window.__snd.push({ ...e, scen: window.__scen, f: window.__sf });
+  E.world.audio.onHold = (e) => window.__hold.push({ ...e, scen: window.__scen, f: window.__sf });
 });
+await page.waitForFunction(() => window.__EF.world.audio.recorded, null, { timeout: 30000 }).catch(() => console.log('sound bank not ready: captures are silent'));
 
 const trace = {};
 let scen = '', frameN = 0, dir = '';
@@ -55,6 +61,7 @@ const run = async (n) => {
     };
     for (let i = 0; i < n; i++) {
       if (!window.__noFloor) { P.hp = Math.max(P.hp, 30); O.hp = Math.max(O.hp, 30); }
+      window.__scen = scen; window.__sf = (window.__sfm[scen] = (window.__sfm[scen] || 0) + 1);
       E.step(1 / 30);
       const F = cam[0] === 'P' ? P : O, h = F.hero;
       const at = cam[1] === 'body' ? F.pos.clone().setY(F.pos.y + 1.0) : h.bones[cam[1]].getWorldPosition(new V());
@@ -246,6 +253,7 @@ if (want('caught')) {
   await tap('KeyE'); await run(100); made.push(end());
 }
 fs.writeFileSync(path.join(OUT, 'trace.json'), JSON.stringify(trace));
+fs.writeFileSync(path.join(OUT, 'sound-events.json'), JSON.stringify(await page.evaluate(() => ({ plays: window.__snd, holds: window.__hold }))));
 // a compact clip sequence per scenario (each change of the main clip, with the frame it started)
 const seq = {};
 for (const [k, fr] of Object.entries(trace)) for (const who of ['P', 'O']) {

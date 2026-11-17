@@ -158,6 +158,9 @@ export class Fighter {
     this.techSide = side || 1; this.techN = (this.techN || 0) + 1;
     if (!this.mob) this.world.combat.lunge(this, def);
     if (def.onStart && powered) this.world.bending.event(this, def.onStart, def);
+    // the limb's swing, timed just before the strike lands (kicks heavier than punches)
+    { const u = def.events && def.events.length ? def.events[0][0] : (def.active ? def.active.from : 0.4), leg = /kick|sweep|hurricane|teep|front|heel|body|round|axe|crescent|whirl|flip/i.test(def.clip || '');
+      this.world.audio.play(leg ? 'swingHeavy' : 'swing', { vol: leg ? 0.8 : 0.6, pos: this.pos, delay: Math.max(0, u * def.dur - 0.1) }); }
     const n = def.name || 'tech'; this.stats.techniques[n] = (this.stats.techniques[n] || 0) + 1;
     return true;
   }
@@ -169,6 +172,7 @@ export class Fighter {
     this.time += dt;
     this.dodgeCd -= dt; this.guardCd -= dt; this.noEnPopT = (this.noEnPopT || 0) - dt; this.perfectT = (this.perfectT || 0) - dt; this.blockPopT = (this.blockPopT || 0) - dt; this.invuln -= dt; this.comboTimer -= dt; this.stunT -= dt; this.counterT -= dt;
     this.flash = Math.max(0, this.flash - dt * 5);
+    this.soundLoops();
     for (const k in this.buf) this.buf[k] = Math.max(0, this.buf[k] - dt);
     // input buffer: long enough to queue the next technique during an authored recovery
     if (inp.hand) this.buf.hand = 0.45;
@@ -192,7 +196,8 @@ export class Fighter {
       if (A.jumpAt && !this.jumped && u >= A.jumpAt[0]) { this.jumped = true; if (this.onGround) { this.vel.y = A.jumpAt[1]; this.onGround = false; } }
       if (u >= 1 && this.action !== 'ko') {
         const was = this.action; this.action = null; this.tech = null; this.spinYaw = 0;
-        if (was === 'down') { this.floorHit = false; this.startAction('getup'); }
+        // getting up is protected for most of the rise, so a fighter cannot be kept on the floor by blows timed to it
+        if (was === 'down') { this.floorHit = false; this.startAction('getup'); this.invuln = Math.max(this.invuln, this.A.dur * 0.8); }
       }
     }
 
@@ -308,7 +313,7 @@ export class Fighter {
         this.buf.special = 0; this.en -= 15; B.freeze(this.defense);
       }
       // SPECIAL while sustaining twin water whips freezes them into ice blades (heavier, knock down, shatter)
-      if (this.buf.special && this.holding && this.el === 'water' && this.en >= 10) { const h = B.holds.get(this); if (h && !h.frozen) { this.buf.special = 0; this.en -= 10; h.frozen = true; w.popup(this, 'ICE BLADES', true); w.audio.splash(0.8); } }
+      if (this.buf.special && this.holding && this.el === 'water' && this.en >= 10) { const h = B.holds.get(this); if (h && !h.frozen) { this.buf.special = 0; this.en -= 10; h.frozen = true; w.audio.ice("form", 0.9, this.pos); w.popup(this, 'ICE BLADES', true); w.audio.splash(0.8); } }
       if (this.buf.special && !this.charging && canStrike) { this.buf.special = 0; this.startTech(st.tech.special, this.handSide); }
 
       // HAND held -> sustained technique (stream / lift / draw / push)
@@ -485,7 +490,7 @@ export class Fighter {
     const lift = this.mob && this.mob.kind === 'surf' ? (MOBILITY[this.mob.el].lift || 0) * Math.min(1, this.mob.t / 0.2) : 0;
     const gy = w.arena.groundAt(this.pos.x, this.pos.z, this.pos.y - lift) + lift;
     if (this.pos.y <= gy + 0.001) {
-      if (!this.onGround && this.airTime > 0.28 && (!this.A || this.A.soft) && this.dodgeT <= 0 && !flying) { this.startAction(this.highJump && this.airTime > 0.5 ? 'landHigh' : 'land'); w.fx.dust(this.pos, this.highJump ? 12 : 6, 1.4); w.audio.step(1); }
+      if (!this.onGround && this.airTime > 0.28 && (!this.A || this.A.soft) && this.dodgeT <= 0 && !flying) { this.startAction(this.highJump && this.airTime > 0.5 ? 'landHigh' : 'land'); w.fx.dust(this.pos, this.highJump ? 12 : 6, 1.4); w.audio.land(this.highJump ? 1 : 0.6, this.pos); }
       if (!this.onGround && this.highJump && this.el === 'earth' && this.airTime > 0.5 && !this.dead) { B.weapons.burst.spawn(this.pos.x, gy, this.pos.z, 0.3); w.shake(0.2, this.pos); w.audio.rumble(0.7); }   // heavy earth landing cracks the ground
       if (!this.onGround) { this.highJump = false; this.jetFuel = 0.8; }
       if (!this.onGround && this.jetUsed && this.el === 'fire' && !this.dead) {
@@ -525,7 +530,7 @@ export class Fighter {
     const stride = (1.5 + 1.1 * Math.min(this.speedNorm, 1.4)) * L.stride;
     const prevPh = this.runPhase;
     this.runPhase += sp * dt * (Math.PI * 2 / stride);
-    if (this.onGround && sp > 1.2 && Math.floor(prevPh / Math.PI) !== Math.floor(this.runPhase / Math.PI)) w.audio.step(Math.min(1, sp / 7) * L.heavy);
+    if (this.onGround && !this.mob && sp > 1.2 && Math.floor(prevPh / Math.PI) !== Math.floor(this.runPhase / Math.PI)) w.audio.step(Math.min(1, sp / 7) * L.heavy, this.pos);
 
     this.animate(dt);
     this.root.position.copy(this.pos);
@@ -702,11 +707,21 @@ export class Fighter {
     return true;
   }
 
+  // looping sounds that last as long as the move: the fire wall, the flame run and fire stream, the water surf and
+  // sustained whips, the wind of a glide, flight or sustained air
+  soundLoops() {
+    const A = this.world.audio, key = this === this.world.fighters[0] ? 'p' : 'o', m = this.mob, el = this.el;
+    if (this.dead) return;
+    if ((this.guarding && el === 'fire') || (m && m.kind === 'flame') || (this.holding && el === 'fire')) A.hold(key + 'fire', 'fireLoop', this.guarding ? 1 : 0.8, this.pos);
+    if ((m && m.kind === 'surf' && el === 'water') || (this.holding && el === 'water')) A.hold(key + 'water', 'waterLoop', 0.85, this.pos);
+    if ((this.dodgeKind === 'glide' && this.dodgeT > 0) || (m && m.kind === 'fly') || (this.holding && el === 'air')) A.hold(key + 'wind', 'windLoop', 1, this.pos);
+  }
   jumpFx(air) {
     const w = this.world;
     if (this.el === 'fire') { this.vel.y += air ? 0 : 0.6; for (let i = 0; i < 10; i++) w.fx.fire(this.pos.clone().setY(this.pos.y + 0.1), _v.set(rand(-1.5, 1.5), rand(-2, 0.5), rand(-1.5, 1.5)), 0.5, 0.35); }
     if (this.el === 'air' || air) { w.fx.ring(this.pos, 1.6, 0xffffff, 0.35); for (let i = 0; i < 8; i++) w.fx.wind(this.pos.clone().setY(this.pos.y + 0.2), _v.set(rand(-3, 3), -1, rand(-3, 3)), 0.6, 0.4); w.audio.gust(air ? 0.7 : 0.4); }
-    else w.audio.whoosh(0.4);
+    else w.audio.whoosh(0.4, this.pos);
+    w.audio.jump(air ? 0.5 : 0.7, this.pos);
   }
   chargeFx() {
     const w = this.world, h = this.handPos(Math.random() < 0.5 ? 'L' : 'R', _v), full = this.chargeT >= 0.3 && this.legHoldT >= 0.85;
@@ -752,7 +767,7 @@ export class Fighter {
     this.dodgeT = this.dodgeDur; this.dodgeCd = this.dodgeKind === 'glide' ? 0.6 : 0.42; this.invuln = this.dodgeKind === 'glide' ? 0.6 : this.dodgeDur * (D.iframes || 0.75); this.en -= this.dodgeKind === 'glide' ? 16 : 10;
     this.action = null; this.tech = null; this.spinYaw = 0;
     this.world.fx.dust(this.pos, 5, 1.2);
-    if (this.el === 'air') this.world.audio.gust(0.6); else if (this.el === 'fire') this.world.audio.fireWhoosh(0.6); else this.world.audio.whoosh(0.6);
+    if (this.el === 'air') this.world.audio.gust(0.6, this.pos); else if (this.el === 'fire') this.world.audio.fireWhoosh(0.6, this.pos); else this.world.audio.dodge(0.7, this.pos);
   }
 
   // level: -1 damage only, 0 flinch, 1 stagger, 2 knockdown

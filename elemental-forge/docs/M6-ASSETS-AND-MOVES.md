@@ -124,3 +124,31 @@ Seen in the video and not yet fixed:
   - The fireball at the stomping foot uses the same treatment, without smoke.
   - Every fire effect (stomp wave, guard wall, kick arcs, fist streams, rocket jets, sweep) uses these two sheets, so all of them changed together.
 - **The KanaWorks water splash sprites are removed** (ball hits, Tai Chi push, water sweep, whip slam). The sheet files stay in `assets/fx/` but nothing plays them.
+
+## 10. Sound (17 Nov)
+
+Every sound in the game was synthesised noise. It is now recorded sound from free CC0 (public-domain) packs on OpenGameArt; the sources and authors are in `assets/sfx/CREDITS.md` and the in-game Credits. Kenney.nl refuses automated downloads, so Kenney's footsteps came from the copy of his RPG pack on OpenGameArt.
+
+- **Bank:** `tools/sfx-build.py` cuts the chosen takes, fades them, levels each category and packs them into `assets/sfx/bank.ogg` (99 takes in 27 sounds, 471 KB) with an index, `bank.json`.
+- **Engine** (`js/audio.js`):
+  - picks a different take each time with a slight pitch change;
+  - pans left and right and fades with distance from the camera;
+  - caps the number of sounds playing at once at 24;
+  - keeps loops running while a move lasts;
+  - limits peaks so stacked hits do not clip;
+  - paces everything on the game clock.
+  
+  The old method names are kept, so every existing call plays recorded sound. If the bank fails to load, the synthesised sounds play instead.
+- **Combat:**
+  - **Strike swings** play just before each strike lands; kicks get a heavier swing than punches.
+  - **Hits:** a punch or kick thud by the blow's weight, plus the sound of the element the blow carried (rock crash, fire burst, water, ice, gust). A guarded blow plays a block.
+  - **Knockdowns** play the body hitting the floor a moment after the blow.
+- **Elements:**
+  - **Fire:** casts and arcs, blasts (stomp, rocket dodge), fire hits, and a fire loop for the guard wall, flame run and fire stream.
+  - **Water:** whips, casts, big waves, and a water loop for the surf and sustained whips.
+  - **Ice:** forming (spikes, frozen whips), shattering (ice balls) and ice hits.
+  - **Earth:** rock lift, rock crash and quake rumble.
+  - **Air:** gusts, and a wind loop for the glide, flight and sustained wind.
+- **Movement:** footsteps, a jump cloth rustle, landings and dodges.
+
+Capture videos now carry sound: `tests/record-m5-closeups.mjs` logs every sound played, and `tools/sfx-mux.py` lays the same takes under each clip.

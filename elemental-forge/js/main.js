@@ -366,6 +366,7 @@ function step(dt) {
   }
   world.bending.update(dt);
   world.fx.update(dt, (x, z, y) => world.arena.groundAt(x, z, y));
+  world.audio.update(dt);
   if (active) {
     const look = { x: inp.lookX, y: inp.lookY };
     { const tg = player.target || opp; camCtl.update(dt, player, tg, state.locked && !tg.dead, look); }
@@ -412,6 +413,7 @@ function showGame() {
   $('hud').classList.remove('hidden'); $('rotate').classList.add('armed'); layoutStar();
   controls.enabled = true; state.paused = false;
 }
+world.audio.setListener(camera);
 $('btn-start').addEventListener('click', async () => { if (!LOAD.ok) return; world.audio.unlock(); goFullscreen(); await state.venueReady; showGame(); startMatch(); });
 $('btn-again').addEventListener('click', () => { showGame(); startMatch(); });
 const toMenu = () => {

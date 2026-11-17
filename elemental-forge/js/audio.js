@@ -1,15 +1,119 @@
-// Small synthesized sound set (no external files): whooshes, impacts, rumbles, hits.
+// Game sound. Recorded CC0 sounds (assets/sfx/bank.ogg + bank.json, built by tools/sfx-build.py from OpenGameArt
+// packs; credits in assets/sfx/CREDITS.md) played through Web Audio:
+//   - each sound has several takes; a different take is picked each time, with a slight pitch change, so repeats
+//     never sound identical
+//   - sounds placed in the arena are panned left/right and quietened with distance from the camera
+//   - looping sounds (fire wall, water surf, wind glide) run while something keeps them alive with hold() each frame
+//     and fade out a moment after it stops
+//   - a cap on simultaneous sounds keeps phones from stuttering
+// The older synthesised noises remain as a fallback if the bank cannot be loaded.
+// The public method names (whoosh, impact, rumble, step, fireWhoosh, fireHit, splash, gust, hit) are kept, so
+// every existing call in the game now plays recorded sound.
+const MAX_VOICES = 24;
+
 export class Audio {
-  constructor() { this.ctx = null; this.master = null; this.noiseBuf = null; this.muted = false; }
+  constructor() {
+    this.ctx = null; this.master = null; this.noiseBuf = null; this.muted = false;
+    this.bank = null; this.buf = null; this.raw = null; this.lastTake = {}; this.lastT = {};
+    this.loops = new Map(); this.listener = null;
+    // pacing (the same sound twice in a row, the voice cap, loop release) runs on the game clock, advanced by update(dt),
+    // so it follows the game exactly, including slow motion and test runs stepped faster than real time
+    this.t = 0; this.ends = [];
+    // fetch the bank at once (decoding needs the audio context, created on the first tap)
+    this.ready = Promise.all([
+      fetch('assets/sfx/bank.json').then(r => r.json()),
+      fetch('assets/sfx/bank.ogg').then(r => r.arrayBuffer()),
+    ]).then(([j, b]) => { this.bank = j.sounds; this.raw = b; if (this.ctx) return this.decode(); })
+      .catch(e => console.warn('sound bank not loaded; synthesised sound is used', e));
+  }
   unlock() {
     if (this.ctx) { if (this.ctx.state === 'suspended') this.ctx.resume(); return; }
     const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
-    this.ctx = new AC();
-    this.master = this.ctx.createGain(); this.master.gain.value = 0.55; this.master.connect(this.ctx.destination);
+    this.ctx = new AC({ latencyHint: 'interactive' });
+    this.master = this.ctx.createGain(); this.master.gain.value = 0.9;
+    // a gentle limiter, so stacked hits and blasts never clip
+    const comp = this.ctx.createDynamicsCompressor(); comp.threshold.value = -10; comp.knee.value = 8; comp.ratio.value = 6; comp.attack.value = 0.003; comp.release.value = 0.15;
+    this.master.connect(comp); comp.connect(this.ctx.destination);
     const len = this.ctx.sampleRate * 1.5, b = this.ctx.createBuffer(1, len, this.ctx.sampleRate), d = b.getChannelData(0);
     for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
     this.noiseBuf = b;
+    if (this.raw) this.decode();
   }
+  decode() {
+    if (this.buf || this.decoding || !this.raw) return this.decoding;
+    this.decoding = this.ctx.decodeAudioData(this.raw.slice(0)).then(b => { this.buf = b; }).catch(e => console.warn('sound bank decode failed', e));
+    return this.decoding;
+  }
+  // the camera, for panning and distance
+  setListener(cam) { this.listener = cam; }
+
+  // pan (-1..1) and gain for a world position
+  place(pos) {
+    const L = this.listener; if (!pos || !L) return [0, 1];
+    const dx = pos.x - L.position.x, dz = pos.z - L.position.z, dy = (pos.y || 0) - L.position.y;
+    const d = Math.hypot(dx, dy, dz);
+    // the camera's right vector from its world matrix
+    const e = L.matrixWorld.elements, rx = e[0], rz = e[2];
+    const pan = Math.max(-1, Math.min(1, (dx * rx + dz * rz) / Math.max(1, d) * 0.85));
+    return [pan, 1 / (1 + Math.max(0, d - 4) / 14)];
+  }
+
+  // play one take of a sound. o: { vol, rate, pos, delay, minGap }
+  play(name, o = {}) {
+    const c = this.ctx; if (!c || this.muted) return null;
+    const S = this.bank && this.bank[name];
+    if (!S || !this.buf) return null;
+    const now = c.currentTime, gt = this.t;
+    if (gt - (this.lastT[name] ?? -9) < (o.minGap ?? 0.035)) return null;   // the same sound twice within a few ms only gets louder
+    this.ends = this.ends.filter(e => e > gt); if (this.ends.length >= MAX_VOICES) return null;
+    this.lastT[name] = gt;
+    const n = S.takes.length; let i = (Math.random() * n) | 0; if (n > 1 && i === this.lastTake[name]) i = (i + 1) % n; this.lastTake[name] = i;
+    const [t0, dur] = S.takes[i];
+    const [pan, att] = this.place(o.pos);
+    const src = c.createBufferSource(); src.buffer = this.buf;
+    src.playbackRate.value = (o.rate || 1) * (0.94 + Math.random() * 0.12);
+    const g = c.createGain(); g.gain.value = Math.max(0, (o.vol ?? 1) * att);
+    let node = src.connect(g);
+    if (c.createStereoPanner && pan) { const p = c.createStereoPanner(); p.pan.value = pan; g.connect(p); node = p; }
+    node === g ? g.connect(this.master) : node.connect(this.master);
+    const at = now + (o.delay || 0);
+    src.start(at, t0, dur); this.ends.push(gt + (o.delay || 0) + dur / src.playbackRate.value);
+    if (this.onPlay) this.onPlay({ name, take: i, rate: src.playbackRate.value, vol: g.gain.value, pan, delay: o.delay || 0 });   // test captures log what played
+    return src;
+  }
+
+  // keep a looping sound going (call every frame while the effect lasts). key: one loop per key
+  hold(key, name, vol = 1, pos = null) {
+    const c = this.ctx; if (!c || this.muted || !this.buf || !this.bank || !this.bank[name]) return;
+    let L = this.loops.get(key);
+    const [pan, att] = this.place(pos), target = vol * att;
+    if (!L || L.name !== name) {
+      if (L) this.stopLoop(key);
+      const [t0, dur] = this.bank[name].takes[0];
+      const src = c.createBufferSource(); src.buffer = this.buf; src.loop = true; src.loopStart = t0; src.loopEnd = t0 + dur;
+      const g = c.createGain(); g.gain.value = 0.0001; src.connect(g);
+      let p = null; if (c.createStereoPanner) { p = c.createStereoPanner(); g.connect(p); p.connect(this.master); } else g.connect(this.master);
+      src.start(c.currentTime, t0 + Math.random() * dur * 0.5);
+      L = { name, src, g, p }; this.loops.set(key, L);
+    }
+    if (this.onHold) this.onHold({ key, name, vol: target, pan });
+    L.seen = this.t;
+    L.g.gain.setTargetAtTime(Math.max(0.0001, target), c.currentTime, 0.08);
+    if (L.p) L.p.pan.setTargetAtTime(pan, c.currentTime, 0.05);
+  }
+  stopLoop(key) {
+    const L = this.loops.get(key); if (!L) return; this.loops.delete(key);
+    const c = this.ctx; L.g.gain.setTargetAtTime(0.0001, c.currentTime, 0.12); L.src.stop(c.currentTime + 0.6);
+  }
+  // fades out loops that were not held this frame (called once per frame by the game)
+  update(dt = 1 / 60) {
+    this.t += dt;
+    if (!this.ctx) return;
+    for (const [k, L] of this.loops) if (this.t - L.seen > 0.15) this.stopLoop(k);
+  }
+  stopAll() { for (const k of [...this.loops.keys()]) this.stopLoop(k); }
+
+  // ---------------------------------------------------------------- synthesised fallback
   noise(dur, type, f0, f1, vol, q = 1) {
     const c = this.ctx; if (!c || this.muted) return;
     const t = c.currentTime;
@@ -27,13 +131,68 @@ export class Audio {
     g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
     o.connect(g); g.connect(this.master); o.start(t); o.stop(t + dur + 0.02);
   }
-  whoosh(k = 0.5) { this.noise(0.22 + k * 0.1, 'bandpass', 600 + k * 900, 2400, 0.25 * k + 0.05, 1.2); }
-  impact(k = 1) { this.noise(0.35, 'lowpass', 1400, 120, 0.6 * k, 0.8); this.tone(0.25, 120, 45, 0.5 * k); }
-  rumble(k = 0.6) { this.noise(0.5, 'lowpass', 300, 60, 0.6 * k, 0.7); this.tone(0.4, 70, 40, 0.35 * k, 'triangle'); }
-  step(k = 0.5) { if (!this.ctx) return; const t = this.ctx.currentTime; if (t - (this._lastStep || 0) < 0.12) return; this._lastStep = t; this.noise(0.07, 'lowpass', 900, 200, 0.12 * k + 0.02, 0.7); }
-  fireWhoosh(k = 0.6) { if (!this.ctx) return; const t = this.ctx.currentTime; if (t - (this._lf || 0) < 0.06) return; this._lf = t; this.noise(0.35 * (0.6 + k * 0.4), 'bandpass', 380, 1600, 0.3 * k + 0.05, 0.6); this.noise(0.25, 'highpass', 2500, 4000, 0.06 * k); }
-  fireHit(k = 0.6) { this.noise(0.4, 'lowpass', 2200, 300, 0.45 * k, 0.6); this.noise(0.3, 'highpass', 3000, 5000, 0.1 * k); }
-  splash(k = 0.6) { if (!this.ctx) return; const t = this.ctx.currentTime; if (t - (this._ls || 0) < 0.06) return; this._ls = t; this.noise(0.3, 'bandpass', 1200, 500, 0.35 * k, 2.5); this.tone(0.12, 900, 300, 0.08 * k); }
-  gust(k = 0.6) { if (!this.ctx) return; const t = this.ctx.currentTime; if (t - (this._lg || 0) < 0.06) return; this._lg = t; this.noise(0.45, 'bandpass', 300, 2400, 0.3 * k + 0.04, 0.8); }
-  hit(k = 0.6) { this.noise(0.12, 'highpass', 1800, 800, 0.35 * k); this.tone(0.14, 220, 80, 0.4 * k, 'square'); }
+  get recorded() { return !!(this.buf && this.bank); }
+
+  // ---------------------------------------------------------------- the game's sound calls
+  // (each takes a strength k and, where known, a world position)
+  whoosh(k = 0.5, pos) { if (this.recorded) return void this.play(k > 0.65 ? 'swingHeavy' : 'swing', { vol: 0.55 + 0.45 * k, pos }); this.noise(0.22 + k * 0.1, 'bandpass', 600 + k * 900, 2400, 0.25 * k + 0.05, 1.2); }
+  impact(k = 1, pos) {
+    if (this.recorded) { if (k >= 1) { this.play('bodyfall', { vol: Math.min(1.2, 0.6 + 0.4 * k), pos }); if (k >= 1.3) this.play('quake', { vol: 0.6, pos }); } else this.play('block', { vol: 0.6 + 0.5 * k, pos }); return; }
+    this.noise(0.35, 'lowpass', 1400, 120, 0.6 * k, 0.8); this.tone(0.25, 120, 45, 0.5 * k);
+  }
+  rumble(k = 0.6, pos) {
+    if (this.recorded) { this.play(k >= 0.75 ? 'rockCrash' : 'rockLift', { vol: 0.6 + 0.4 * k, pos }); if (k >= 1) this.play('quake', { vol: 0.7, pos }); return; }
+    this.noise(0.5, 'lowpass', 300, 60, 0.6 * k, 0.7); this.tone(0.4, 70, 40, 0.35 * k, 'triangle');
+  }
+  step(k = 0.5, pos) {
+    if (!this.ctx) return; const t = this.t; if (t - (this._lastStep ?? -9) < 0.12) return; this._lastStep = t;
+    if (this.recorded) return void this.play('step', { vol: 0.35 + 0.6 * k, pos, minGap: 0.1 });
+    this.noise(0.07, 'lowpass', 900, 200, 0.12 * k + 0.02, 0.7);
+  }
+  fireWhoosh(k = 0.6, pos) {
+    if (!this.ctx) return; const t = this.t; if (t - (this._lf ?? -9) < 0.06) return; this._lf = t;
+    if (this.recorded) return void this.play(k >= 0.9 ? 'fireBlast' : 'fireCast', { vol: 0.55 + 0.45 * k, pos });
+    this.noise(0.35 * (0.6 + k * 0.4), 'bandpass', 380, 1600, 0.3 * k + 0.05, 0.6); this.noise(0.25, 'highpass', 2500, 4000, 0.06 * k);
+  }
+  fireHit(k = 0.6, pos) { if (this.recorded) return void this.play('fireHit', { vol: 0.6 + 0.4 * k, pos }); this.noise(0.4, 'lowpass', 2200, 300, 0.45 * k, 0.6); this.noise(0.3, 'highpass', 3000, 5000, 0.1 * k); }
+  splash(k = 0.6, pos) {
+    if (!this.ctx) return; const t = this.t; if (t - (this._ls ?? -9) < 0.06) return; this._ls = t;
+    if (this.recorded) return void this.play(k >= 1 ? 'waterBig' : k >= 0.75 ? 'waterCast' : 'waterWhip', { vol: 0.6 + 0.4 * k, pos });
+    this.noise(0.3, 'bandpass', 1200, 500, 0.35 * k, 2.5); this.tone(0.12, 900, 300, 0.08 * k);
+  }
+  gust(k = 0.6, pos) {
+    if (!this.ctx) return; const t = this.t; if (t - (this._lg ?? -9) < 0.06) return; this._lg = t;
+    if (this.recorded) return void this.play(k >= 1 ? 'gustBig' : 'gust', { vol: 0.6 + 0.4 * k, pos });
+    this.noise(0.45, 'bandpass', 300, 2400, 0.3 * k + 0.04, 0.8);
+  }
+  hit(k = 0.6, pos) { if (this.recorded) return void this.play(k >= 1 ? 'kick' : 'punch', { vol: 0.7 + 0.3 * k, pos }); this.noise(0.12, 'highpass', 1800, 800, 0.35 * k); this.tone(0.14, 220, 80, 0.4 * k, 'square'); }
+  ice(kind = 'break', k = 0.8, pos) { if (this.recorded) return void this.play(kind === 'form' ? 'iceForm' : kind === 'hit' ? 'iceHit' : 'iceBreak', { vol: 0.6 + 0.4 * k, pos }); this.noise(0.25, 'highpass', 4000, 6000, 0.2 * k); }
+  jump(k = 0.6, pos) { if (this.recorded) this.play('jump', { vol: 0.5 + 0.4 * k, pos }); }
+  land(k = 0.6, pos) { if (this.recorded) return void this.play('land', { vol: 0.5 + 0.5 * k, pos }); this.step(1, pos); }
+  dodge(k = 0.6, pos) { if (this.recorded) return void this.play('dodge', { vol: 0.6 + 0.4 * k, pos }); this.whoosh(k, pos); }
+  bodyfall(k = 1, pos, delay = 0) { if (this.recorded) this.play('bodyfall', { vol: 0.7 + 0.3 * k, pos, delay }); }
+
+  // a blow landing: the body impact (punch or kick weight) plus the element it carried
+  strike(t, from, kind, level, pos) {
+    if (!this.recorded) return this.hit(level >= 1 ? 1 : 0.6, pos);
+    const melee = kind === 'melee' || kind === 'counter';
+    const leg = from && from.tech && /kick|sweep|hurricane|teep|front|heel|body|round|axe|crescent|whirl|flip|stomp/i.test(from.tech.clip || '');
+    const el = from && from.el;
+    if (melee) this.play(leg || level >= 2 ? 'kick' : 'punch', { vol: level >= 1 ? 1 : 0.8, pos });
+    // the element's own sound on the hit (projectiles and arcs: the element is the whole hit)
+    const k = /rock|boulder|pebble|pillar|spike|rupture|eruption|slab/i.test(kind) ? 'earth'
+      : /ice|frozen/i.test(kind) ? 'ice'
+      : /fire|flame|burn|blast|jet|ring/i.test(kind) ? 'fire'
+      : /water|whip|wave|tidal|drown|slam/i.test(kind) ? 'water'
+      : /gust|wind|air|tornado|vortex|blade/i.test(kind) ? 'air' : (melee ? null : el);
+    const v = melee ? 0.55 : 0.9;
+    if (k === 'earth') this.play('rockCrash', { vol: v, pos });
+    else if (k === 'ice') this.play('iceHit', { vol: v, pos });
+    else if (k === 'fire') this.play('fireHit', { vol: v, pos });
+    else if (k === 'water') this.play(melee ? 'waterWhip' : 'waterCast', { vol: v, pos });
+    else if (k === 'air') this.play('gust', { vol: v, pos });
+    else if (!melee) this.play('punch', { vol: 0.8, pos });
+    // knocked down: the body hits the floor a moment later
+    if (level >= 2) this.bodyfall(1, pos, 0.45);
+  }
 }
