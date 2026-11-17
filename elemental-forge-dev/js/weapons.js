@@ -36,7 +36,8 @@ export class Weapons {
     this.burst = new GroundBurst(this.w);   // earth's ground reaction (baked fracture simulation)
     this.iceTubeMat = iceMat;
     this.slabGeo = (() => { const g = new THREE.BoxGeometry(1.5, 0.35, 2.1, 3, 1, 3); const p = g.attributes.position; for (let i = 0; i < p.count; i++) p.setXYZ(i, p.getX(i) + rand(-0.06, 0.06), p.getY(i) + rand(-0.05, 0.05), p.getZ(i) + rand(-0.06, 0.06)); g.computeVertexNormals(); return g; })();
-    this.iceSheetGeo = (() => { const g = new THREE.CircleGeometry(0.9, 9); g.rotateX(-Math.PI / 2); return g; })();
+    // the ice the water bender rides: a thick, faceted floe (flat on top), not a flat disc
+    this.iceSheetGeo = (() => { const g = new THREE.CylinderGeometry(0.85, 0.7, 0.22, 9, 1); g.translate(0, -0.11, 0); const p = g.attributes.position; for (let i = 0; i < p.count; i++) if (p.getY(i) < -0.01) p.setXYZ(i, p.getX(i) * rand(0.85, 1.1), p.getY(i) - rand(0, 0.08), p.getZ(i) * rand(0.85, 1.1)); g.computeVertexNormals(); return g; })();
     this.rampGeo = (() => { const g = new THREE.CylinderGeometry(0.75, 1.1, 2.4, 7, 1); g.translate(0, 1.2, 0); return g; })();   // ice pillar with a flat top
     this.ringGeo = (() => { const g = new THREE.TorusGeometry(1, 0.16, 6, 64); g.rotateX(Math.PI / 2); return g; })();
     this.markGeo = (() => { const g = new THREE.RingGeometry(0.6, 1.0, 32); g.rotateX(-Math.PI / 2); return g; })();
@@ -183,7 +184,7 @@ export class Weapons {
           const airborne = !t.onGround && t.pos.y - t.groundY > 0.5;
           w.combat.damage(t, Math.round((W.frozen ? 1.4 : 1) * (airborne ? 1.5 : 1) * W.dmg), dir.clone(), f, W.tag, p.clone(), W.knock, W.frozen || airborne ? 2 : W.level);
           if (airborne && !t.dead) { t.vel.y = -18; t.vel.x *= 0.3; t.vel.z *= 0.3; w.shake(0.3, p); w.popup(f, 'SLAM', true); }
-          if (W.frozen) { w.fx.debrisBurst(p, 10, 3, 0.07, 0xbfe8ff); }
+          if (W.frozen) { w.fx.debrisBurst(p, 10, 3, 0.07, 0xe0f4ff); }
           else if (W.el === 'water') w.fx.splash(p, 14);
           if (W.el === 'fire' && Math.random() < 0.5) B.burn(t.pos.x, t.pos.z, t.groundY, f);
           break;
@@ -541,7 +542,9 @@ export class Weapons {
   }
   updateWhirls(dt) {
     for (const W of this.whirls) {
-      W.t += dt; const f = W.f, k = Math.min(1, W.t / 0.08) * (1 - smooth01((W.t - W.dur + 0.12) / 0.12));
+      W.t += dt;
+      if (W.dur > 1 && W.t > 0.3 && W.f.dodgeT <= 0 && W.dur > W.t + 0.12) W.dur = W.t + 0.12;   // the glide was cut short (a hit, a landing strike): the whirlwind fades out
+      const f = W.f, k = Math.min(1, W.t / 0.08) * (1 - smooth01((W.t - W.dur + 0.12) / 0.12));
       W.tubes.forEach((tb, i) => {
         const P = W.pts[i];
         for (let j = 0; j < P.length; j++) { const s = j / (P.length - 1), a = -W.t * 22 + s * 9 + i * Math.PI, r = (0.55 + 0.35 * s) * k; P[j].set(f.pos.x + Math.cos(a) * r, f.pos.y + 0.1 + s * 1.9, f.pos.z + Math.sin(a) * r); }
@@ -564,14 +567,15 @@ export class Weapons {
     const gy = f.groundY, top = f.pos.y + (mob.el === 'water' ? -0.02 : -0.17);
     mob.board.position.set(f.pos.x, top, f.pos.z);
     mob.board.rotation.y = mob.heading;
-    mob.post.position.set(f.pos.x, top - (mob.el === 'water' ? 0.02 : 0.15), f.pos.z); mob.post.scale.set(mob.el === 'water' ? 0.55 : 1, Math.max(0.05, top - gy), mob.el === 'water' ? 0.55 : 1); mob.post.rotation.y = mob.heading;
+    // the support: for water a ridge of ice rising from the floor, long along the direction of travel; for earth a
+    // column of rock
+    mob.post.position.set(f.pos.x, top - (mob.el === 'water' ? 0.18 : 0.15), f.pos.z); mob.post.scale.set(mob.el === 'water' ? 0.75 : 1, Math.max(0.05, top - 0.18 - gy), mob.el === 'water' ? 1.5 : 1); mob.post.rotation.y = mob.heading;
     mob.trailT -= dt;
     if (mob.trailT <= 0 && mob.speed > 2) {
       mob.trailT = 0.07;
-      if (mob.el === 'water') { const m = new THREE.Mesh(this.iceSheetGeo, iceMat); m.position.set(f.pos.x, f.pos.y + 0.02, f.pos.z); m.rotation.y = mob.heading; m.scale.set(0.8, 1, 1.1); w.scene.add(m); this.trails.push({ m, t: 0, life: 2.6 }); }
+      if (mob.el === 'water') { const m = new THREE.Mesh(this.iceSheetGeo, iceMat); m.position.set(f.pos.x, f.groundY + 0.1, f.pos.z); m.rotation.y = mob.heading; m.scale.set(0.8, 1, 1.1); w.scene.add(m); this.trails.push({ m, t: 0, life: 2.6 }); }
       else w.fx.debrisBurst(_a.set(f.pos.x, f.pos.y, f.pos.z), 2, 1.5, 0.08, 0x7a6a58, 0.7);
     }
-    if (mob.el === 'water' && Math.random() < 0.6) w.fx.splash(_a.set(f.pos.x, f.pos.y + 0.05, f.pos.z), 1);
     if (mob.el === 'earth' && Math.random() < 0.5) w.fx.dust(f.pos, 1, 1.2);
   }
   surfEnd(mob) { if (mob && mob.board) { this.w.scene.remove(mob.board); mob.board = null; } if (mob && mob.post) { this.w.scene.remove(mob.post); mob.post = null; } }
@@ -584,7 +588,7 @@ export class Weapons {
       const col = { kind: 'c', x: f.pos.x, z: f.pos.z, r: 0.7, top: f.pos.y + 1.6, walk: true, ice: true, mesh: m };
       w.arena.colliders.push(col);
       this.platforms.push({ m, col, t: 0, life: 5, y0: f.pos.y - 2.4, rise: 2.35, el });
-      w.fx.debrisBurst(_a.set(f.pos.x, f.pos.y + 0.3, f.pos.z), 16, 4, 0.08, 0xbfe8ff); w.fx.splash(f.pos, 12); w.audio.splash(1);
+      w.fx.debrisBurst(_a.set(f.pos.x, f.pos.y + 0.3, f.pos.z), 16, 4, 0.08, 0xe0f4ff); w.fx.splash(f.pos, 12); w.audio.splash(1);
     } else this.launchSpire(f);
   }
   // Earth's launch: a mountain of rock drives up out of the ground under the feet and throws the bender upward: a

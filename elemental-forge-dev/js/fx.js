@@ -95,7 +95,9 @@ export class FX {
   smoke(pos, size = 0.5) { return this.puff(pos, new THREE.Vector3(rand(-0.3, 0.3), 1.2, rand(-0.3, 0.3)), size, 0.9, 0x55504c, 0.35, 2.2); }
   steam(pos, n = 8) { for (let i = 0; i < n; i++) this.puff(pos.clone().add(new THREE.Vector3(rand(-0.3, 0.3), rand(0, 0.3), rand(-0.3, 0.3))), new THREE.Vector3(rand(-1, 1), rand(1.5, 3), rand(-1, 1)), 0.5, 0.9, 0xe8eef2, 0.55, 2.5); }
   // water: faceted light-blue chunks with gravity
-  splash(pos, n = 10, color = 0x7cc4f4) { for (let i = 0; i < n; i++) { const v = new THREE.Vector3(rand(-1, 1), rand(0.6, 2), rand(-1, 1)).normalize().multiplyScalar(rand(2, 5)); this.water.spawn(pos, v, 0.09, 0.6, 9, color); } }
+  // Water throws no droplets (whips, balls and streams are the water); kept as a no-op so callers need no change
+  splash() {}
+  splashDrops(pos, n = 10, color = 0x7cc4f4) { for (let i = 0; i < n; i++) { const v = new THREE.Vector3(rand(-1, 1), rand(0.6, 2), rand(-1, 1)).normalize().multiplyScalar(rand(2, 5)); this.water.spawn(pos, v, 0.09, 0.6, 9, color); } }
   // air: curving white / lavender ribbon streaks
   wind(pos, vel, size = 0.5, life = 0.4) { this.ribbons.streak(pos, vel.lengthSq() > 0.01 ? vel : new THREE.Vector3(0, 1, 0), { radius: size * 0.45, life, width: 0.035 + size * 0.04, color: Math.random() < 0.3 ? 0xd8ccff : 0xffffff, alpha: 0.75 }); return { alpha: 1 }; }
   dust(pos, n = 8, spread = 2, color = 0xb5a48e) {
