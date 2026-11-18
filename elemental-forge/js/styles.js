@@ -393,7 +393,7 @@ STYLES.water.tech.glideBlast = T({ name: 'Ice Volley', clip: 'water_palm', dur: 
 // Fire, GUARD + SPECIAL: Dragon's Breath (Mixamo Zombie Scream: draws in, leans forward and roars): a ball of fire
 // breathed out of the mouth that engulfs whoever it hits, burning them for a few seconds (fire.breath, elements.js)
 STYLES.fire.tech.breath = T({ name: "Dragon's Breath", clip: 'fire_breath', clipSpeed: 1.6, dur: 1.4, cost: 16, cancel: 0.85, move: 0, keys: K0, events: [[0.5, 'fire.breath']] });
-STYLES.water.tech.whipSlam = T({ name: 'Whip Slam', clip: 'water_grabslam', clipSpeed: 1.8, dur: 1.3, cost: 0, cancel: 0.85, move: 0, keys: K0, events: [] });
+STYLES.water.tech.whipSlam = T({ name: 'Whip Slam', clip: 'water_grabslam', clipSpeed: 2.0, dur: 1.2, cost: 0, cancel: 0.85, move: 0, keys: K0, events: [] });
 // Fire's kick chain (17 Nov, M6): kick-heavy and flowing, each kick its own authored clip, every kick throwing flame
 // from the kicking leg. LEG taps run through it in order; the chain restarts after a pause.
 {
