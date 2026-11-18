@@ -369,7 +369,7 @@ function step(dt) {
   world.audio.update(dt);
   // Fire holding GUARD: the SPECIAL button reads DRAGON BREATH (GUARD + SPECIAL breathes fire) and glows
   { const br = player.el === 'fire' && player.guarding, b = $('btn-special');
-    if (br !== b._breath) { b._breath = br; const sm = b.querySelector('small'); if (sm) sm.textContent = br ? "DRAGON'S BREATH" : player.style.labels.special; b.classList.toggle('breath', br); } }
+    if (b && br !== b._breath) { b._breath = br; const sm = b.querySelector('small'); if (sm) sm.textContent = br ? "DRAGON'S BREATH" : player.style.labels.special; b.classList.toggle('breath', br); } }
   if (active) {
     const look = { x: inp.lookX, y: inp.lookY };
     { const tg = player.target || opp; camCtl.update(dt, player, tg, state.locked && !tg.dead, look); }

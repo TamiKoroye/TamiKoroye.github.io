@@ -311,11 +311,22 @@ export class Bending {
         // the somersault's leg comes over: a wave of the element leaves the foot and crashes down on the rival below,
         // driving them into the floor (slammed: a heavy knockdown onto the back), and spreads along the ground
         const el = name.split('.')[0], t = f.target && !f.target.dead ? f.target : null;
-        this.weapons.limbArc(f, el, 'foot', 'R', { span: 0.32, speed: 18, grow: 2.0, dmg: 9, knock: 8, level: 2 });
         const at = t && t.pos.distanceTo(f.pos) < 9 ? t.pos.clone() : this.forwardPoint(f, 3, 0);
         at.y = w.arena.groundAt(at.x, at.z, at.y + 1);
-        if (el === 'water') { this.weapons.ringBurst(at, 1.6, 2.6, 12); this.weapons.eruption(f, at, f.forward(new THREE.Vector3()), 4, 2.6); w.audio.splash(1.3, at); }
-        else { this.fireWave(f, at, 6, 11); w.audio.fireWhoosh(1.3); }
+        if (el === 'water') {
+          // (18 Nov, after review: a real wave, not a whip) the leg comes over and a breaking wave of water rises out of
+          // the floor under the bender and rolls at the rival, as tall as the bender, knocking them down
+          this.weapons.wave(f, 'water', { width: 5.5, h: 3.0, life: 1.05, speed: 11, dmg: 11, knock: 10, level: 2 });
+          w.audio.splash(1.3, at); w.shake(0.3, at); f.vel.y = Math.min(f.vel.y, -4); return;
+        }
+        // Fire: a huge flame thrown down from the leg to the floor, which bursts and spreads out over the ground as a
+        // ring of fire, leaving the floor burning
+        const foot = this.footPoint(f, 1, new THREE.Vector3()), F = w.fx.flip, down = at.clone().sub(foot);
+        for (let i = 0; i <= 8; i++) { const p = foot.clone().addScaledVector(down, i / 8); F.spawn('fire_flames', { pos: p, vel: _v.copy(down).normalize().multiplyScalar(6), size: [1.6 + i * 0.25, 2.0 + i * 0.3], grow: 1.6, life: 0.45, f0: 4, f1: 30, fadeIn: 0, rot: rand(-0.4, 0.4) }); }
+        F.spawn('fire_explosion', { pos: at.clone(), size: [6.5, 6.5], life: 1.4, pivot: 1, f0: 1, f1: 26, grow: 0.3, fadeIn: 0.02 });
+        this.fireWave(f, at, 9, 12);
+        for (let i = 0; i < 5; i++) { const a = i / 5 * Math.PI * 2; this.burn(at.x + Math.cos(a) * 1.6, at.z + Math.sin(a) * 1.6, at.y, f); }
+        w.audio.fireWhoosh(1.5);
         if (t && t.invuln <= 0 && Math.hypot(t.pos.x - at.x, t.pos.z - at.z) < 2.2) {
           w.combat.damage(t, 12, f.forward(new THREE.Vector3()).setY(0).normalize(), f, el + 'Smash', t.chestPos(new THREE.Vector3()), 4, 2);
           if (!t.onGround) { t.slamFall = true; t.vel.y = Math.min(t.vel.y, -18); }

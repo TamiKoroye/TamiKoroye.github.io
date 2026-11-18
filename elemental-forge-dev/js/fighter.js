@@ -216,7 +216,7 @@ export class Fighter {
           this.floorHit = false; this.startAction('getup');
           // Air gets up with the corkscrew kip-up (longer, so time is added in front); the others with the plain get-up
           this.getupClip = this.el === 'air' ? 'getup_cork' : 'getup';   // (18 Nov, after review: the flip get-up is Air's only; Fire's double-kick kip-up took too long)
-          this.actionT = -({ getup_cork: 0.4 }[this.getupClip] || 0);
+          this.actionT = 0;   // (18 Nov, after review: Air's get-up took too long; the corkscrew starts at the flip now and fits the plain get-up's time)
           this.invuln = Math.max(this.invuln, (this.A.dur - this.actionT) * 0.8);
         }
       }
@@ -837,14 +837,14 @@ export class Fighter {
     if ((m && m.kind === 'surf' && el === 'water') || (this.holding && el === 'water')) A.hold(key + 'water', 'waterLoop', 0.85, this.pos);
     if ((this.dodgeKind === 'glide' && this.dodgeT > 0) || (m && m.kind === 'fly') || (this.holding && el === 'air')) A.hold(key + 'wind', 'windLoop', 1, this.pos);
   }
-  // Fire: the fists burn. A small flame licks up off each fist in the stance; on a punch the striking fist flares and
-  // trails flame along the strike (the fireball itself leaves the fist on the impact frame, elements.js fire.hand)
+  // Fire: on a punch the striking fist flares and trails flame along the strike (at rest the hands are bare)
+  // (the fireball itself leaves the fist on the impact frame, elements.js fire.hand)
   fistFlames(dt) {
     if (this.el !== 'fire' || this.dead || !this.hero || !this.world.fighting) return;
     const F = this.world.fx.flip, punching = this.action === 'tech' && this.tech && this.tech.upper;
     for (const sd of ['L', 'R']) {
       const strike = punching && (this.techSide > 0 ? 'R' : 'L') === sd;
-      if (Math.random() > (strike ? 1 : 0.45)) continue;
+      if (!strike) continue;   // (18 Nov, after review: no flames on the fists at rest; they flare only on the strike)
       const h = this.handPos(sd, _v2);
       F.spawn('fire_flames', { pos: h, vel: _v.set(rand(-0.3, 0.3), rand(0.8, 1.6), rand(-0.3, 0.3)), size: strike ? [0.32, 0.42] : [0.16, 0.22], grow: 1.6, life: strike ? 0.22 : 0.18, f0: 8, f1: 30, fadeIn: 0.02, rot: rand(-0.4, 0.4) });
     }
@@ -901,6 +901,7 @@ export class Fighter {
       if (Math.hypot(inp.mx, inp.mz) > 0.3) this.dodgeDir.set(inp.mx, 0, inp.mz).normalize();
       else this.dodgeDir.set(tx * c + tz * s, 0, -tx * s + tz * c).normalize();
       this.dodgeKind = 'flip'; this.flipClip = pick; this.flipSpeed = Math.max(len, 2.2) * 1.6 / 0.95;
+      this.world.bending.weapons.whirlwind(this, 0.95);   // the corkscrew / cartwheel spins inside a whirl of wind
     } else if (this.el === 'air') {
       if (Math.hypot(inp.mx, inp.mz) < 0.2) { this.whirlSide = -(this.whirlSide || 1); const sx = Math.cos(this.faceYaw) * this.whirlSide, sz = -Math.sin(this.faceYaw) * this.whirlSide, bx = -Math.sin(this.faceYaw), bz = -Math.cos(this.faceYaw); this.dodgeDir.set(sx * 0.7 + bx * 0.7, 0, sz * 0.7 + bz * 0.7).normalize(); }
       this.dodgeKind = 'glide'; this.world.bending.weapons.whirlwind(this, 2.0);
