@@ -376,7 +376,7 @@ STYLES.earth.tech.hand.clip = ['earth_punch2', 'earth_punch', 'fire_punch2'];
 // 18 Nov (M9): the flowing moves from the Drive dances join Water: the arm wave (Wave Hip Hop Dance) is a whip thrown
 // on a ripple that runs through both arms; on LEG, the Butterfly Twirl kick and the tucked Spinning jump that throws a
 // ring of water. These are studio motion capture (Mixamo), smooth at combat speed, and pass the gameplay jitter gate.
-STYLES.water.tech.hand.clip = ['whip_h', 'fire_jab', 'whip_v', 'water_ripple', 'fire_punch', 'whip_d', 'earth_punch', 'water_palm'];
+STYLES.water.tech.hand.clip = ['whip_h', 'fire_jab', 'whip_v', 'fire_punch', 'water_ripple', 'whip_d', 'earth_punch', 'water_palm'];   // (the arm wave fifth: whip, ball, whip, ball first, as before)
 STYLES.water.tech.leg.push(T({ name: 'Butterfly Twirl Kick', clip: 'water_twirl', dur: 0.9, cost: 11, cancel: 0.8, move: 2.5, lunge: 4, keys: K0,
   active: { from: 0.45, to: 0.65, dmg: 9, range: 2.3, arc: -1.2, knock: 7, level: 1 }, events: [[0.5, 'water.leg2']] }));
 STYLES.water.tech.leg.push(T({ name: 'Spinning Water Ring', clip: 'water_spin', dur: 0.75, cost: 12, cancel: 0.8, move: 0.5, keys: K0,

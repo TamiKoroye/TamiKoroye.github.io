@@ -447,8 +447,8 @@ export class Fighter {
         this.vel.x = this.dodgeDir.x * gsp; this.vel.z = this.dodgeDir.z * gsp;
         this.vel.y = (0.7 - (this.pos.y - this.groundY)) * 6 + 21 * dt; this.onGround = false;
       } else if (this.dodgeKind === 'flip') {
-        // Air's corkscrew / cartwheel: along the clip's path, fast in the middle of the flip, a small hop
-        const u = 1 - this.dodgeT / this.dodgeDur, fsp = this.flipSpeed * 1.5 * Math.sin(Math.PI * u);
+        // Air's corkscrew / cartwheel: along the stick (or the clip's path), fastest at the start, a small hop
+        const u = 1 - this.dodgeT / this.dodgeDur, fsp = this.flipSpeed * 2 * (1 - u);   // fastest at the start: a dodge gets away first
         this.vel.x = this.dodgeDir.x * fsp; this.vel.z = this.dodgeDir.z * fsp;
         if (u < 0.15 && this.onGround) { this.vel.y = 3.2; this.onGround = false; }
       } else if (this.dodgeKind === 'arch') {
