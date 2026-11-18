@@ -25,6 +25,9 @@ const BASELINE = !WRITE && fs.existsSync(BASEF) ? JSON.parse(fs.readFileSync(BAS
 const browser = await chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 const page = await (await browser.newContext({ viewport: { width: 640, height: 360 } })).newPage();
 const errors = []; page.on('pageerror', e => errors.push(e.message));
+// the game uses Math.random (variants, effects, AI); seeded here so two runs of the same build measure the same, and a
+// difference against the baseline is the build's, not chance (unseeded, the same build varied by up to 0.25 reversals/s)
+await page.addInitScript(() => { let a = 12345; Math.random = () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; });
 await page.goto(BASE + (BASE.includes('?') ? '&' : '?') + 'rec=1');
 await page.waitForFunction(() => window.__EF && window.__EF.LOAD && (window.__EF.LOAD.ok || window.__EF.LOAD.errors.length), null, { timeout: 60000 });
 await page.locator('#btn-start').click(); await page.waitForFunction(() => window.__EF.state.phase === 'fight', null, { timeout: 120000 });
@@ -36,12 +39,16 @@ await page.evaluate(() => {
   window.__BONES = ['DEF-handL', 'DEF-handR', 'DEF-forearmL', 'DEF-forearmR', 'DEF-footL', 'DEF-footR', 'DEF-head', 'DEF-chest'];
   window.__rec = [];
 });
-const step = (n) => page.evaluate((n) => {
+// JSHOT=element:sequence:dir saves every frame of that sequence (camera beside the fighter) for frame-by-frame review
+const JSHOT = process.env.JSHOT ? process.env.JSHOT.split(':') : null; let shotOn = false, shotN = 0;
+const step = (n) => shotOn ? (async () => { for (let i = 0; i < n; i++) { await stepRaw(1); const d = await page.evaluate(() => { const E = window.__EF, P = E.player, a = P.yaw + Math.PI / 2; E.camera.position.set(P.pos.x + Math.sin(a) * 3.6, P.pos.y + 1.3, P.pos.z + Math.cos(a) * 3.6); E.camera.lookAt(P.pos.x, P.pos.y + 1.0, P.pos.z); E.camera.updateMatrixWorld(); E.renderer.render(E.scene, E.camera); return E.renderer.domElement.toDataURL('image/jpeg', 0.8) + '|' + P.hero.curName; }); const [img, cn] = d.split('|'); fs.writeFileSync(`${JSHOT[2]}/f${String(shotN).padStart(4, '0')}.jpg`, Buffer.from(img.split(',')[1], 'base64')); fs.appendFileSync(`${JSHOT[2]}/clips.txt`, `${shotN} ${cn}\n`); shotN++; } })() : stepRaw(n);
+const stepRaw = (n) => page.evaluate((n) => {
   const E = window.__EF, P = E.player, V = E.camera.position.constructor, v = new V();
   for (let i = 0; i < n; i++) {
     P.hp = Math.max(P.hp, 50); E.opp.hp = Math.max(E.opp.hp, 50);
     E.step(1 / 60);
     const c = Math.cos(P.yaw), s = Math.sin(P.yaw);
+    (window.__clips = window.__clips || []).push(P.hero.curName + (P.hero.lowName ? '+' + P.hero.lowName : '') + ' ' + (P.action || '') + (P.dodgeT > 0 ? ' dodge:' + P.dodgeKind : ''));
     window.__rec.push(window.__BONES.map(b => { const bo = P.hero.bones[b]; if (!bo) return [0, 0, 0]; bo.getWorldPosition(v); const x = v.x - P.pos.x, z = v.z - P.pos.z; return [x * c - z * s, v.y - P.pos.y, x * s + z * c]; }));
   }
 }, n);
@@ -57,12 +64,14 @@ const results = []; let failed = false;
 for (const el of ELS) for (const [name, fn] of Object.entries(SEQ)) {
   await page.evaluate((el) => {
     const E = window.__EF, P = E.player, O = E.opp; P.setElement(el, true); O.setElement('earth', true);
-    P.reset(0, 0, 0); O.reset(0, 2.6, Math.PI); E.world.bending.clear && E.world.bending.clear(); window.__rec = [];
+    P.reset(0, 0, 0); O.reset(0, 2.6, Math.PI); E.world.bending.clear && E.world.bending.clear(); window.__rec = []; window.__clips = [];
   }, el);
-  await step(40); await page.evaluate(() => { window.__rec = []; });
-  await fn(); await step(30);
+  await step(40); await page.evaluate(() => { window.__rec = []; window.__clips = []; });
+  shotOn = !!(JSHOT && JSHOT[0] === el && JSHOT[1] === name); if (shotOn) fs.mkdirSync(JSHOT[2], { recursive: true });
+  await fn(); await step(30); shotOn = false;
   const rec = await page.evaluate(() => window.__rec);
-  const nb = rec[0].length, per = new Array(nb).fill(0), snaps = new Array(nb).fill(0);
+  const nb = rec[0].length, per = new Array(nb).fill(0), snaps = new Array(nb).fill(0), snapAt = {};
+  const clips = await page.evaluate(() => window.__clips);
   for (let b = 0; b < nb; b++) {
     for (let i = 1; i < rec.length - 1; i++) {
       const p0 = rec[i - 1][b], p1 = rec[i][b], p2 = rec[i + 1][b];
@@ -70,8 +79,16 @@ for (const el of ELS) for (const [name, fn] of Object.entries(SEQ)) {
       const ma = Math.hypot(...a), mc = Math.hypot(...c);
       if (ma > 1 && mc > 1 && (a[0] * c[0] + a[1] * c[1] + a[2] * c[2]) / (ma * mc) < -0.5) per[b]++;
       // a snap: the part jumps (acceleration above 400 m/s^2, i.e. a 7 m/s change of speed in one frame)
-      if (Math.hypot(c[0] - a[0], c[1] - a[1], c[2] - a[2]) * 60 > 400) snaps[b]++;
+      if (Math.hypot(c[0] - a[0], c[1] - a[1], c[2] - a[2]) * 60 > 400) { snaps[b]++; (snapAt[i] = snapAt[i] || []).push(b); }
     }
+  }
+  // JDEBUG=1: snaps and reversals per clip (the clip playing at that frame, or "a -> b" across a change of clip)
+  if (process.env.JDEBUG) {
+    const by = {}, key = (i) => clips[i - 1] === clips[i] ? clips[i] : clips[i - 1] + ' -> ' + clips[i];
+    for (const [i, bs] of Object.entries(snapAt)) { const k = key(+i); by[k] = by[k] || [0, 0]; by[k][0] += bs.length; }
+    for (let b = 0; b < nb; b++) for (let i = 1; i < rec.length - 1; i++) { const p0 = rec[i - 1][b], p1 = rec[i][b], p2 = rec[i + 1][b]; const a = [0, 1, 2].map(k => (p1[k] - p0[k]) * 60), c = [0, 1, 2].map(k => (p2[k] - p1[k]) * 60), ma = Math.hypot(...a), mc = Math.hypot(...c); if (ma > 1 && mc > 1 && (a[0] * c[0] + a[1] * c[1] + a[2] * c[2]) / (ma * mc) < -0.5) { const k = key(i); by[k] = by[k] || [0, 0]; by[k][1]++; } }
+    const frames = {}; for (let i = 1; i < clips.length; i++) frames[key(i)] = (frames[key(i)] || 0) + 1;
+    for (const [k, [sn, rv]] of Object.entries(by).sort((x, y) => y[1][0] + y[1][1] - x[1][0] - x[1][1]).slice(0, 8)) console.log(`   ${el} ${name}: ${k}  snaps ${sn}  reversals ${rv}  (${frames[k] || 0} frames)`);
   }
   const secs = rec.length / 60, rates = per.map(n => n / secs), mean = rates.reduce((s, r) => s + r, 0) / nb;
   const worst = rates.indexOf(Math.max(...rates)), bones = await page.evaluate(() => window.__BONES);

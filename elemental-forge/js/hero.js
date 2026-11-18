@@ -271,6 +271,12 @@ export class Hero {
     this.low = a; this.lowName = name;
   }
 
+  // the knockdown clip for this fall (fighter.takeHit sets f.downClip), mirrored to the side the blow came from
+  downName(f, hlx) {
+    const n = f.downClip || 'knockback';
+    if (!this.actions[n]) return 'knockback';
+    return hlx > 0.3 && this.actions[n + '_M'] ? n + '_M' : n;
+  }
   // Choose the authored clip(s) from the fighter's state. Priority: knockdown / KO, hit reactions, dodges,
   // techniques, charge, guard, sustained bending, airborne, locomotion, then the element's combat stance.
   // When the fighter is moving under an upper-body action (a punch, guard, hold or the stance), the action's
@@ -306,9 +312,17 @@ export class Hero {
       if (!/^ko/.test(this.curName || '')) this.koClip = Math.abs(hlx) > 0.7 && has('ko_c') ? 'ko_c' : f.hitAlt && has('ko_b') ? 'ko_b' : 'ko';
       once(this.koClip, 1.0, 0.18);
     }
-    else if (f.action === 'down' && f.floorHit && has('knockback')) {
+    else if (f.action === 'down' && f.floorHit && has(this.downName(f, hlx))) {
       // struck while lying down: the lying pose held (the knockdown's last frame), no standing reaction
-      clip = 'knockback'; ts = this.curName === 'knockback' ? 1.5 : 0; wU = wL = 0; fade = 0.3; if (this.curName !== 'knockback') { restart = true; startAt = this.actions.knockback.getClip().duration - 0.03; }   // still falling: the fall finishes
+      const dn = this.downName(f, hlx);
+      clip = dn; ts = this.curName === dn ? 1.5 : 0; wU = wL = 0; fade = 0.3; if (this.curName !== dn) { restart = true; startAt = this.actions[dn].getClip().duration - 0.03; }   // still falling: the fall finishes
+    }
+    else if (f.action === 'down' && !f.slamFall && this.downName(f, hlx) !== 'knockback' && has(this.downName(f, hlx))) {
+      // the falls chosen from the blow (fighter.takeHit): Soccer Trip, Hit To The Legs, Hit To Head, Fall Flat,
+      // Falling Flat Impact, each spread over the time on the floor
+      const dn = this.downName(f, hlx), d = this.actions[dn].getClip().duration;
+      once(dn, 1, 0.1); if (restart) this.downT0 = Math.min(0, f.actionT);   // (the fall starts with the time added in front)
+      ts = THREE.MathUtils.clamp(d * 0.92 / Math.max(0.6, f.A.dur - (this.downT0 ?? 0)), 0.6, 2.4);
     }
     else if (f.action === 'down' && has('knockback')) {
       // knocked off the feet: Mixamo Knocked Down, onto the back. Thrown high (a tornado, a rupture, a slam), the
@@ -330,7 +344,12 @@ export class Hero {
     // lifted by wind (the tornado, a wind column): Mixamo Floating, limbs adrift, instead of a standing reaction
     else if (f.floatT > 0 && !f.onGround && !f.dead && has('air_float')) { clip = 'air_float'; ts = 1.4; wU = wL = 0; fade = 0.15; }
     // Air gets up with a spinning kip-up (Corkscrew Kip Up)
-    else if (f.action === 'getup' && f.el === 'air' && has('getup_cork')) { once('getup_cork', this.actions.getup_cork.getClip().duration / Math.max(0.3, f.A.dur) * 0.75, 0.1); }
+    // the element's get-up (fighter.js picks it: Fire kip-up with a double kick, Water kip-up, Air corkscrew kip-up,
+    // Earth the heavy Getting Up); the time added before it (negative actionT) slows it to near its captured pace
+    else if (f.action === 'getup' && f.getupClip && f.getupClip !== 'getup' && has(f.getupClip)) {
+      if (this.curName !== f.getupClip) this.getupT0 = f.actionT;
+      once(f.getupClip, this.actions[f.getupClip].getClip().duration / Math.max(0.3, f.A.dur - (this.getupT0 ?? 0)) * 0.8, 0.25);
+    }
     // recovery from the floor: the Mixamo get-up (on the back, roll to a crouch, stand). UAL2's LayToIdle starts
     // from a crumpled pose that does not match the knockdown, so it is no longer used
     else if (f.action === 'getup' && has('getup')) { once('getup', this.actions.getup.getClip().duration / Math.max(0.3, f.A.dur) * 0.75, 0.1); }
@@ -339,12 +358,12 @@ export class Hero {
       // a flinch alternates the two light reactions; a stagger is the heavy one: Big Side Hit (mirrored to the side
       // the blow came from) or, for a blow straight on, Receive Stomach Uppercut
       const heavy = f.action === 'stagger';
-      const n = heavy ? (Math.abs(hlx) > 0.45 && has('hit_big') ? (hlx > 0 ? 'hit_big_M' : 'hit_big') : has('hit_body') ? 'hit_body' : 'hit_b') : f.hitAlt ? 'hit_b' : 'hit_a';
+      const n = heavy ? (Math.abs(hlx) > 0.45 && has('hit_big') ? (hlx > 0 ? 'hit_big_M' : 'hit_big') : has('hit_body') ? 'hit_body' : 'hit_b') : f.headHit && has('hit_head') ? (hlx > 0 ? 'hit_head_M' : 'hit_head') : f.hitAlt ? 'hit_b' : 'hit_a';   // a punch snaps the head back (Head Hit)
       // several hits landing together (a punch and its fireball, a whip's two lashes) are one reaction: within
       // 0.3 s of a reaction starting, the clip already playing continues instead of switching or restarting
       const recent = /^hit_/.test(this.curName || '') && this.clock - (this.reactAt || -9) < 0.3 && !(heavy && !/^hit_(big|body)/.test(this.curName));
       if (recent) { clip = this.curName; ts = this.cur.timeScale; wU = wL = 0; fade = 0.1; }
-      else if (has(n)) { clip = n; ts = heavy ? 1.15 : 1.35; wU = wL = 0; fade = 0.1; if (f.actionT < dt * 1.5 || this.curName !== n) { restart = true; this.reactAt = this.clock; } }
+      else if (has(n)) { clip = n; ts = heavy ? 1.15 : /^hit_head/.test(n) ? 2.0 : 1.35; wU = wL = 0; fade = 0.1; if (f.actionT < dt * 1.5 || this.curName !== n) { restart = true; this.reactAt = this.clock; } }
       else { clip = f.hitAlt ? 'Hit_Head' : 'Hit_Chest'; wU = wL = 0; if (this.curName !== clip || f.actionT < dt * 1.5) restart = true; ts = 1.2; fade = 0.05; }
     }
     else if (f.dodgeT > 0) {
@@ -386,7 +405,7 @@ export class Hero {
     if (clip === 'Idle_Loop' && f.action === 'tech' && f.tech.clip) {
       const [n, scale] = clipFor(f.tech, f.techSide);
       if (has(n)) {
-        clip = n; ts = scale; wU = wL = 0; fade = 0.14;
+        clip = n; ts = scale; wU = wL = 0; fade = f.tech.fadeIn || 0.14;
         if (f.techN !== this.techN) { this.techN = f.techN; restart = true; }
         // a strike on the ground is the whole authored clip, feet planted; only on the ice, the rock slab or in flight
         // do the arms strike over the riding pose
@@ -421,6 +440,10 @@ export class Hero {
       }
       else if (f.holding && has(L.hold)) { clip = L.hold; ts = LOOP_SPEED[L.hold] || 1; wU = wL = 0; fade = 0.2; layered = moving || !!lowOv; }
       else if (lowOv) { [clip, ts] = lowOv; wU = wL = 0; fade = 0.2; }
+      // take-off from a run (every element): the Running Jump's spring, before the element's own airborne pose
+      else if (free && !f.onGround && !f.mob && f.airTime < 0.3 && f.vel.y > 1 && (f.lastGroundSp || 0) > 4.5 && has('run_jump')) once('run_jump', 1.0, 0.08);
+      // take-off from standing (an ordinary jump): the Standing Jump's spring from its take-off frame
+      else if (free && !f.onGround && !f.mob && !f.highJump && f.el !== 'air' && f.airTime < 0.25 && f.vel.y > 1 && has('stand_jump')) { once('stand_jump', 0.95, 0.1); if (restart) startAt = 0.4; }
       // Fire in the air (a jump, the flame jets): Male Dynamic Pose, the leap with arms out and a knee drawn up
       else if (free && !f.onGround && f.el === 'fire' && f.airTime > 0.12 && f.vel.y > -7 && has('fire_air_pose')) { clip = 'fire_air_pose'; ts = 1; wU = wL = 0; fade = 0.2; }
       else if (free && !f.onGround && f.highJump && has('jump_high')) {
@@ -432,7 +455,14 @@ export class Hero {
         else clip = 'air_loop';
         wU = wL = 0; fade = 0.15;
       }
+      // a jump: Running Jump off a run, Standing Jump (from its take-off frame) off the spot
+      else if (free && !f.onGround && (f.lastGroundSp || 0) > 4.5 && f.airTime < 0.9 && has('run_jump')) once('run_jump', 1.0, 0.08);
+      else if (free && !f.onGround && f.airTime < 1.1 && has('stand_jump')) { once('stand_jump', 0.95, 0.1); if (restart) startAt = 0.4; }
       else if (free && !f.onGround) { clip = f.vel.y > 1.5 && f.airTime < 0.3 ? 'Jump_Start' : 'Jump_Loop'; wU = wL = 0; ts = f.vel.y > 1.5 ? 1.6 : 1; }
+      // reversing at a run: Change Direction's braking plant, mirrored to the side of the turn
+      else if (free && f.onGround && f.turnT > 0 && has('turn_back')) { const n = f.turnSide > 0 ? 'turn_back_M' : 'turn_back'; once(n, 1.6, 0.1); if (restart) startAt = 0.55; }
+      // the first stride of a run from standing: the Male Locomotion Pose lunge
+      else if (free && moving && fwd > 0.55 && f.burstT > 0 && has('loco_pose')) { clip = 'loco_pose'; ts = 1; wU = wL = 0; fade = 0.1; }
       else if (free && f.onGround && this.stopT > 0 && sp < 2.5 && has('run_stop')) { clip = 'run_stop'; ts = 1.5; wU = wL = 0; fade = 0.15; }
       else if (free && moving && fwd > 0.7) {
         [clip, ts] = loco(); wU = wL = 0; fade = 0.22;   // authored locomotion, matched to ground speed
@@ -443,6 +473,9 @@ export class Hero {
     }
     // nothing else matched (any state not listed above): the element's authored stance, never the procedural body
     if (clip === 'Idle_Loop' && wU === 1 && has(L.idle)) { clip = L.idle; wU = wL = 0; fade = 0.2; layered = moving; }
+    // leaving a move that ends far from standing (the Flair, on the hands): a slower blend, so the body rolls back up
+    if (this.curName && clip !== this.curName.split('|')[0] && this.prevFadeOut) fade = Math.max(fade, this.prevFadeOut);
+    this.prevFadeOut = f.action === 'tech' && f.tech && f.tech.fadeOut && clip === (clipFor(f.tech, f.techSide)[0]) ? f.tech.fadeOut : 0;
     if (layered) {
       const [ln, lts] = glideLegs || lowOv || loco();
       this.play(clip + '|U', fade, ts, restart);

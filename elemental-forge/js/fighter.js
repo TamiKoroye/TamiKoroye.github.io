@@ -135,7 +135,7 @@ export class Fighter {
     if (this.dead || this.stunT > 0 || this.restrainT > 0 || this.reacting()) return false;
     // Air's glide can be broken off into a strike once it has carried the bender clear (0.3 s)
     // Fire's jet glide: punches and blasts are thrown while gliding (the glide carries on under them)
-    if (this.dodgeT > 0) return kind === 'attack' ? (this.dodgeKind === 'glide' ? this.dodgeDur - this.dodgeT > 0.3 : (this.dodgeKind === 'rocket' || this.dodgeKind === 'arch') ? this.dodgeDur - this.dodgeT > 0.06 : this.dodgeT < this.dodgeDur * 0.3) : false;
+    if (this.dodgeT > 0) return kind === 'attack' ? (this.dodgeKind === 'glide' ? this.dodgeDur - this.dodgeT > 0.3 : (this.dodgeKind === 'rocket' || this.dodgeKind === 'arch') ? this.dodgeDur - this.dodgeT > 0.06 : this.dodgeKind === 'flip' ? this.dodgeT < 0.1 : this.dodgeT < this.dodgeDur * 0.3) : false;   // (Air's flips: only once back on the feet)
     const A = this.A;
     if (!A || A.soft) return true;
     return A.cancel !== undefined && this.actionU >= A.cancel;
@@ -186,6 +186,15 @@ export class Fighter {
     if (inp.jump) this.buf.jump = 0.15;
     if (this.guarding) this.guardT += dt;
     if (this.floatT > 0) this.floatT -= dt;   // lifted by wind: the Floating clip (hero.js)
+    // footwork cues for hero.js (M9): the ground speed at take-off picks Running Jump / Standing Jump; the first stride
+    // of a run from standing is the Male Locomotion Pose lunge; reversing the stick at a run plants and turns
+    // (Change Direction's braking steps)
+    { const hs = Math.hypot(this.vel.x, this.vel.z);
+      if (this.onGround) { if (hs < 0.6) { this.stillAt = this.time; this.burstDone = false; } else if (hs > 1.2 && !this.burstDone && this.time - (this.stillAt ?? -9) < 0.3 && !this.action && this.dodgeT <= 0) { this.burstT = 0.22; this.burstDone = true; } this.lastGroundSp = hs; }
+      this.burstT = (this.burstT || 0) - dt; this.turnT = (this.turnT || 0) - dt;
+      const ml = Math.hypot(inp.mx, inp.mz);
+      if (this.onGround && !this.action && this.dodgeT <= 0 && !this.mob && hs > 4.5 && ml > 0.6 && (inp.mx * this.vel.x + inp.mz * this.vel.z) / (ml * hs) < -0.5 && this.turnT < -0.3) { this.turnT = 0.42; this.turnSide = Math.sign(inp.mx * this.vel.z - inp.mz * this.vel.x) || 1; }
+    }
 
     // ---- action / technique timeline
     if (this.action) {
@@ -202,7 +211,13 @@ export class Fighter {
       if (u >= 1 && this.action !== 'ko') {
         const was = this.action; this.action = null; this.tech = null; this.spinYaw = 0;
         // getting up is protected for most of the rise, so a fighter cannot be kept on the floor by blows timed to it
-        if (was === 'down') { this.floorHit = false; this.startAction('getup'); this.invuln = Math.max(this.invuln, this.A.dur * 0.8); }
+        if (was === 'down') {
+          this.floorHit = false; this.startAction('getup');
+          // the acrobatic get-ups are longer: Fire's kip-up with a double kick, Water's kip-up, Air's corkscrew kip-up
+          this.getupClip = this.el === 'fire' ? 'kip_kick' : this.el === 'water' ? 'kip_up' : this.el === 'air' ? 'getup_cork' : 'getup';
+          this.actionT = -({ kip_kick: 0.6, kip_up: 0.2, getup_cork: 0.4 }[this.getupClip] || 0);
+          this.invuln = Math.max(this.invuln, (this.A.dur - this.actionT) * 0.8);
+        }
       }
     }
 
@@ -246,9 +261,9 @@ export class Fighter {
           // GUARD + DODGE: a roll in the stick direction (every element)
           this.buf.dodge = 0; this.endHold(); this.guarding = false; B.guardEnd(this); this.rollDir();
           this.startTech(T.roll, 1, true); this.invuln = 0.45; this.dodgeCd = 0.4; this.guardCd = 0.7;   // the roll is not cut short by the still-held GUARD
-        } else if (!this.onGround && T.flip && this.en >= 6 && !(this.el === 'water' && this.pos.y - this.groundY > 1.2 && this.en >= 10)) {
-          // DODGE in the air: a somersault, forward if the stick points ahead, otherwise backward (Water up high on its
-          // column slides down on an ice arch instead: doDodge)
+        } else if (!this.onGround && T.flip && this.en >= 6 && !(this.el === 'water' && this.en >= 10) && !(this.el === 'fire' && this.pos.y - this.groundY < 1.2 && this.en >= 10)) {   // (Fire just off the floor, e.g. at the end of a glide, glides again)
+          // DODGE in the air: a somersault, forward if the stick points ahead, otherwise backward (Water instead slides
+          // down on an ice arch, from any height; Fire just off the floor glides again: doDodge)
           this.buf.dodge = 0; this.startTech(this.input.mz * Math.cos(this.faceYaw) + this.input.mx * Math.sin(this.faceYaw) > 0.3 ? T.flip : T.flipBack, 1, true);
           this.vel.y = Math.max(this.vel.y, 4.5); this.invuln = 0.35; this.dodgeCd = 0.35;
         } else if (this.el === 'earth' && this.onGround && this.mobCd <= 0) {
@@ -505,7 +520,7 @@ export class Fighter {
     // (M9: the water wraps round the body as well as under the feet, and lifts the bender higher: up to about 6.5 m;
     //  from up there DODGE slides down on an ice arch and strikes go on over it)
     if (this.el === 'water' && live && !restrained && !this.onGround && inp.jumpHeld && this.jetFuel > 0 && this.en > 1 && this.dodgeT <= 0 && !this.mob && !(this.A && this.A.react) && alt < 6.5) {
-      this.jetting = true; this.highJump = true; this.jetFuel -= dt * 0.7; this.en -= 20 * dt;
+      this.jetting = true; this.waterJetT = (this.waterJetT || 0) + dt; if (this.waterJetT > 0.12) this.highJump = true; this.jetFuel -= dt * 0.7; this.en -= 20 * dt;   // (a quick tap of JUMP stays an ordinary jump)
       this.vel.y = Math.min(this.vel.y + 34 * (1 - alt / 7) * dt, 6.5);
       this.vel.x += mx * 10 * dt; this.vel.z += mz * 10 * dt;
       B.weapons.selfColumn(this, alt);
@@ -544,7 +559,7 @@ export class Fighter {
         // a jet landing: the flames hit the ground and burst outward
         this.jetUsed = false; B.ring(this, 'fire', 2.4, 9, { dmg: 6, knock: 6, level: 1 }); w.shake(0.12, this.pos); w.audio.fireWhoosh(0.9);
       }
-      this.pos.y = gy; if (this.vel.y < 0) this.vel.y = 0; this.onGround = true; this.airTime = 0; this.airJumps = 0; this.airKickN = 0;
+      this.pos.y = gy; if (this.vel.y < 0) this.vel.y = 0; this.onGround = true; this.airTime = 0; this.airJumps = 0; this.airKickN = 0; this.waterJetT = 0;
     } else if (this.pos.y > gy + 0.03) {
       if (this.onGround && this.vel.y <= 0 && this.pos.y - gy < 0.5) { this.pos.y = gy; this.vel.y = 0; }
       else { this.onGround = false; this.airTime += dt; }
@@ -866,14 +881,29 @@ export class Fighter {
     if (level >= 1) this.vel.y = Math.max(this.vel.y, level === 2 ? 4.5 : 2.5);
     this.hitDir = dir.clone(); this.koDir = dir.clone(); this.hitAlt = !this.hitAlt; if (this.wall) this.wallOff(true);
     if (this.hp <= 0) { this.die(dir); return; }
+    const wasDodging = this.dodgeT > 0;
     this.endHold(); this.charging = false; this.legHoldT = -1; this.lungeT = 0; this.dodgeT = 0;
+    // the reaction depends on the blow (M9): hit while dodging, the legs are taken and the fighter pitches forward
+    // (Soccer Trip); a sweep takes the legs (Hit To The Legs); a punch snaps the head (Head Hit, or Hit To Head when it
+    // knocks down); struck in the air the fighter drops flat (Falling Flat Impact); other knockdowns alternate the
+    // Mixamo Knocked Down and Fall Flat
+    const src = this.lastHitFrom, T = src && src !== this && src.action === 'tech' ? src.tech : null;
+    const legBlow = !!(T && !T.upper && /sweep|flair/i.test(T.name || '')), headBlow = !!(T && T.upper);
+    const alt = this.pos.y - this.groundY;
+    this.headHit = level === 0 && headBlow;
+    if (wasDodging && level >= 0 && this.action !== 'down' && this.action !== 'getup') { level = 2; this.downClip = 'trip'; }
+    else if (level === 2) this.downClip = alt > 1.2 ? 'fall_impact' : legBlow ? 'hit_legs' : headBlow ? 'hit_head_down' : (this.downN = (this.downN || 0) + 1) % 2 ? 'knockback' : 'fall_flat';
     // already on the floor (knocked down or getting up): the blow keeps them down in the lying pose; they do not
     // spring up into a standing hit reaction or replay the fall from standing
     if (this.action === 'down' || this.action === 'getup') {
       this.vel.y = Math.min(this.vel.y, 0); this.startAction('down'); this.floorHit = true; this.actionT = this.A.dur * 0.5; this.invuln = 0.5; return;
     }
     if (level >= 1) this.endMob();
-    if (level === 2) { this.startAction('down'); this.stunT = 0; this.invuln = 0.9; this.onGround = false; }
+    if (level === 2) {
+      this.startAction('down'); this.stunT = 0; this.invuln = 0.9; this.onGround = false;
+      // the longer falls get longer on the floor (time added before the get-up), so they play near their captured pace
+      this.actionT = -({ fall_flat: 0.6, hit_head_down: 0.6, hit_legs: 0.8, trip: 0.2 }[this.downClip] || 0);
+    }
     else if (level === 1) { this.startAction('stagger'); this.stunT = 0.5; }
     else { this.startAction('hit'); this.stunT = 0.2; }
   }

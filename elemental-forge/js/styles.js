@@ -363,7 +363,7 @@ STYLES.fire.tech.leg.push(T({ name: 'Flip Kick', clip: 'flip_kick', dur: 0.9, co
 // Earth (M6): a push kick that drives a slab of rock out of the ground, and a rising uppercut that erupts a rock
 // column under the opponent (the third punch of the HAND chain, events chosen by clip in earth.hand)
 // Earth, LEG chain (M9): the Flair: down on the hands, the legs sweep round twice and a ring of rock bursts out (earth.flair)
-STYLES.earth.tech.leg.push(T({ name: 'Flair Sweep', clip: 'earth_flair', clipSpeed: 1.0, dur: 1.0, cost: 12, cancel: 0.85, move: 0.5, keys: K0,
+STYLES.earth.tech.leg.push(T({ name: 'Flair Sweep', clip: 'earth_flair', clipSpeed: 1.0, dur: 1.0, cost: 12, cancel: 0.85, full: true, fadeIn: 0.28, fadeOut: 0.32, move: 0.5, keys: K0,
   active: { from: 0.4, to: 0.7, dmg: 9, range: 2.3, arc: -1.6, knock: 7, level: 2 }, events: [[0.5, 'earth.flair']] }));
 STYLES.earth.tech.leg.push(T({ name: 'Rock Push Kick', clip: 'earth_teep', dur: 0.6, cost: 11, cancel: 0.72, move: 0.5, lunge: 3, keys: K0,
   active: { from: 0.45, to: 0.6, dmg: 9, range: 2.2, arc: 0.3, knock: 9, level: 1 }, events: [[0.48, 'earth.teep']] }));

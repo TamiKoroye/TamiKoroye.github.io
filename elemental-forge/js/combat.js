@@ -75,6 +75,7 @@ export class Combat {
         if (r.mul < 0.5) level = -1;   // a blow taken on the guard does not stagger; one that breaks through still does
       }
     }
+    t.lastHitFrom = from; t.lastHitKind = kind;   // the reaction clip is chosen from the blow (fighter.takeHit)
     t.takeHit(dmg, dir, knock, level);
     if (level < 0) return;
     w.popup(t, String(Math.round(dmg)));

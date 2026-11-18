@@ -87,7 +87,7 @@ export function adoptTiming(styles) {
   for (const st of Object.values(styles)) for (const T of techList(st)) {
     if (!T.clip) continue;
     const list = names(T).filter(n => MOCAP[n]); if (!list.length) continue;
-    const orig = { dur: T.dur, events: T.events, active: T.active, jumpAt: T.jumpAt, cancel: T.cancel };
+    const orig = { dur: T.dur, events: T.events, active: T.active, jumpAt: T.jumpAt, cancel: T.cancel, full: T.full };
     // every alternative take gets its own timing, so each plays at its proper speed with its impact on the hit
     const timings = list.map(n => timing(orig, n, T.clipSpeed || CLIP_SPEED[n] || SPEED[st.key] || 1.5));
     Object.assign(T, timings[0]); T.clip = list[0];
@@ -108,6 +108,8 @@ function timing(orig, name, sp) {
   // the next technique can start 0.22 s after the impact: the strike's follow-through shows, the next one
   // crossfades over the rest of the recovery
   if (orig.cancel !== undefined) out.cancel = THREE.MathUtils.clamp(Math.min(map(orig.cancel), evU + 0.22 / dur), evU + 0.05, 0.95);
+  // a move that ends far from standing (the Flair ends on the hands, legs up) plays to its end before the next one
+  if (orig.full) out.cancel = 0.97;
   return out;
 }
 

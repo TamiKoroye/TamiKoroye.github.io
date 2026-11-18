@@ -725,6 +725,17 @@ export class Weapons {
     if (!f._arch) f._arch = { el: 'water', heading: f.faceYaw, speed: 8 };
     const A = f._arch; A.heading = Math.atan2(f.dodgeDir.x, f.dodgeDir.z); A.speed = Math.hypot(f.vel.x, f.vel.z);
     this.surfTick(f, A, dt);
+    // the arch itself: a ribbon of ice laid along the path under the feet, each piece tilted to the slope being ridden,
+    // so the track rises and falls as an arch behind the bender; it stands a moment, then melts away (trails)
+    const p = new THREE.Vector3(f.pos.x, f.pos.y - 0.08, f.pos.z);
+    if (A.last && A.last.distanceTo(p) > 0.32) {
+      const d = p.clone().sub(A.last), len = d.length();
+      const m = new THREE.Mesh(this.archGeo || (this.archGeo = new THREE.BoxGeometry(1.0, 0.16, 1)), iceMat);
+      m.position.copy(A.last).add(p).multiplyScalar(0.5); m.scale.set(1, 1, len * 1.15);
+      m.rotation.order = 'YXZ'; m.rotation.y = Math.atan2(d.x, d.z); m.rotation.x = -Math.atan2(d.y, Math.hypot(d.x, d.z));
+      m.castShadow = true; this.w.scene.add(m); this.trails.push({ m, t: 0, life: 1.6 });
+      A.last = p;
+    } else if (!A.last) A.last = p;
   }
   surfEnd(mob) { if (mob && mob.board) { this.w.scene.remove(mob.board); mob.board = null; } if (mob && mob.post) { this.w.scene.remove(mob.post); mob.post = null; } if (mob && mob.crystals) { for (const c of mob.crystals) this.w.scene.remove(c); mob.crystals = null; } }
   // JUMP while surfing: the element itself launches the bender. Water raises an ice ramp under the feet and leaves

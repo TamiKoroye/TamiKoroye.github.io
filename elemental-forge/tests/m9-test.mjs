@@ -31,6 +31,51 @@ const tap = async (code, hold = 2) => { await page.keyboard.down(code); await st
 let fails = 0;
 const check = (name, ok, info) => { console.log(`${ok ? 'PASS' : 'FAIL'} ${name}  ${info}`); if (!ok) fails++; };
 const CHECKS = {
+  async turn() {
+    await page.evaluate(() => { window.__EF.state.locked = false; window.__EF.player.target = null; });
+    await setup('fire', 'earth', 14); await step(20);
+    await page.keyboard.down('KeyW'); await step(60); await page.keyboard.up('KeyW'); await page.keyboard.down('KeyS');
+    const r = await step(40, 'P.hero.curName'); await page.keyboard.up('KeyS');
+    await page.evaluate(() => { window.__EF.state.locked = true; window.__EF.player.target = window.__EF.opp; });
+    check('Footwork: reversing at a run plants and turns (Change Direction)', r.some(c => /turn_back/.test(c)), `clips ${[...new Set(r)].join(', ')}`);
+  },
+  async reactions() {
+    // scripted blows (labelled): the attacker is put in the named technique so the reaction is chosen from it
+    const blow = (techExpr, lvl) => page.evaluate(([techExpr, lvl]) => {
+      const E = window.__EF, P = E.player, O = E.opp, T = (new Function('O', 'return ' + techExpr))(O);
+      O.action = T ? 'tech' : null; O.tech = T; P.invuln = 0;
+      E.world.combat.damage(P, 8, new P.pos.constructor(0, 0, 1), O, 'melee', P.chestPos(new P.pos.constructor()), 5, lvl);
+      O.action = null; O.tech = null;
+    }, [techExpr, lvl]);
+    const out = {};
+    for (const [name, el, expr, lvl, pre] of [
+      ['sweep', 'earth', "O.style.tech.leg.find(t => /Sweep/.test(t.name))", 2],
+      ['punch knockdown', 'earth', 'O.style.tech.hand', 2],
+      ['plain knockdown', 'earth', 'null', 2],
+      ['plain knockdown 2', 'earth', 'null', 2],
+      ['light punch', 'earth', 'O.style.tech.hand', 0],
+      ['hit while dodging', 'water', 'null', 0, 'dodge'],
+    ]) {
+      await setup(el, 'earth', 2); await step(20);
+      if (pre === 'dodge') { await page.keyboard.down('KeyD'); await page.keyboard.down('ShiftLeft'); await step(2); await page.keyboard.up('ShiftLeft'); await step(22); await page.keyboard.up('KeyD'); }
+      await blow(expr, lvl);
+      const r = await step(200, "P.hero.curName + ':' + P.action");
+      out[name] = [...new Set(r.map(x => x.split(':')[0].replace(/\|.*/, '')))].filter(c => /hit|fall|trip|knock|getup|kip/.test(c)).join(' > ');
+    }
+    const ok = /hit_legs/.test(out.sweep) && /hit_head_down/.test(out['punch knockdown']) && /fall_flat/.test(out['plain knockdown'] + out['plain knockdown 2']) && /hit_head/.test(out['light punch']) && /trip/.test(out['hit while dodging']) && /kip_up/.test(out['hit while dodging']);
+    check('Reactions chosen from the blow: sweep, punch, knockdowns, head snap, tripped mid-dodge; element get-ups', ok, Object.entries(out).map(([k, v]) => `${k}: ${v}`).join(' | '));
+  },
+  async footwork() {
+    await setup('water', 'earth', 12); await step(20);
+    const seen = new Set();
+    await page.keyboard.down('KeyW'); for (const c of await step(50, 'P.hero.curName')) seen.add(c);
+    await tap('Space'); for (const c of await step(40, 'P.hero.curName')) seen.add(c);
+    await page.keyboard.up('KeyW'); await step(10); await page.keyboard.down('KeyS'); for (const c of await step(30, 'P.hero.curName')) seen.add(c); await page.keyboard.up('KeyS'); await step(60);
+    const j2 = await step(1, "P.onGround + ' ' + P.action + ' ' + P.lastGroundSp"); await tap('Space', 2); const j3 = await step(50, "P.hero.curName + ' ' + (P.pos.y - P.groundY).toFixed(2)"); for (const c of j3) seen.add(c.split(' ')[0]); if (process.env.DEBUG) console.log(j3.join(' / '));
+    if (process.env.DEBUG) console.log('before 2nd jump', j2);
+    const want = ['loco_pose', 'run_jump', 'stand_jump'];
+    check('Footwork: the first stride lunges (Male Locomotion Pose), Running Jump off a run, Standing Jump off the spot', want.every(n => [...seen].some(c => c.startsWith(n))), `clips ${[...seen].filter(c => /loco|jump|turn|Jog|sprint|Walk/.test(c)).join(', ')}`);
+  },
   async airDodges() {
     await setup('air', 'earth', 5); await step(30);
     const kinds = [], clips = new Set(); let slide = 0;
