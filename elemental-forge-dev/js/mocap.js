@@ -32,9 +32,10 @@ export async function loadMocap() {
 // every clip the game refers to (techniques, stances, guards, holds, reactions); used by the loading check
 export function requiredClips(styles) {
   const need = new Set(['hit_a', 'hit_b', 'ko', 'getup', 'dodge_side', 'dodge_side_M', 'dodge_back', 'block_hit', 'strafe', 'strafe_M', 'water_redirect',
-    'jump_high', 'air_loop', 'fall_loop', 'land_high', 'knockback', 'ko_b', 'ko_c', 'hit_big', 'hit_big_M', 'hit_body', 'run_loop', 'sprint_loop', 'walk_back', 'run_stop', 'fall_roll', 'wall_run', 'wall_run_M', 'wall_flip', 'struggle', 'surf_stance', 'water_flow', 'water_gather', 'turn_spin']);
+    'jump_high', 'air_loop', 'fall_loop', 'land_high', 'knockback', 'ko_b', 'ko_c', 'hit_big', 'hit_big_M', 'hit_body', 'run_loop', 'sprint_loop', 'walk_back', 'run_stop', 'fall_roll', 'wall_run', 'wall_run_M', 'wall_flip', 'struggle', 'surf_stance', 'water_flow', 'water_gather', 'turn_spin',
+    'skate_ride', 'fire_action', 'fire_air_pose', 'surf_stance', 'water_pool', 'air_cork', 'air_cork_M', 'cartwheel', 'cartwheel_M', 'air_fly', 'air_float', 'getup_cork']);
   for (const L of Object.values(LOOPS)) for (const n of Object.values(L)) need.add(n);
-  for (const st of Object.values(styles)) { const t = st.tech; for (const T of [t.hand, ...(t.leg || []), t.legMove, t.charged, t.special, t.stomp, t.release, t.airKick, t.flip, t.flipBack, t.roll, t.whipSlam]) if (T && T.clip) for (const n of (Array.isArray(T.clip) ? T.clip : [T.clip])) need.add(n); }
+  for (const st of Object.values(styles)) { const t = st.tech; for (const T of [t.hand, ...(t.leg || []), t.legMove, t.charged, t.special, t.stomp, t.release, t.airKick, t.flip, t.flipBack, t.roll, t.whipSlam, t.icePunch, t.glideBlast, t.breath]) if (T && T.clip) for (const n of (Array.isArray(T.clip) ? T.clip : [T.clip])) need.add(n); }
   return [...need].filter(n => !MOCAP[n]);
 }
 
@@ -72,11 +73,11 @@ export const LOOPS = {
 // playback speed relative to the capture, per style (earth heavy, fire and air quick, water measured);
 // individual clips can override it (the tai chi take is performed very slowly)
 const SPEED = { earth: 1.45, fire: 1.75, water: 1.45, air: 1.65 };
-const CLIP_SPEED = { whip_h_horse: 2.8, tc_brush_palm: 2.8, tc_parry_punch: 2.8, whip_d_single: 2.8, tc_push: 2.6, tc_heel_kick: 2.3, tc_rooster: 2.3, tc_snake: 2.4, water_cast: 2.2, mma_kick: 1.8, round_kick2: 1.75, sweep_spin: 1.6, jump_kick: 2.4, flip_kick: 2.2, fire_jab: 1.6, earth_gather: 1.8, turn_spin: 0.8, water_redirect: 2.0, whip_h: 1.5, whip_v: 1.9, whip_d: 1.7, water_palm: 3.0, water_tidal: 2.0, water_sphere: 1.5, earth_stomp: 1.6, earth_pillar: 1.7, fire_orb: 1.5, air_vortex: 1.6, earth_sweep: 1.5, fire_spin: 1.5 };
+const CLIP_SPEED = { water_ripple: 1.5, water_twirl: 1.6, water_spin: 1.5, whip_h_horse: 2.8, tc_brush_palm: 2.8, tc_parry_punch: 2.8, whip_d_single: 2.8, tc_push: 2.6, tc_heel_kick: 2.3, tc_rooster: 2.3, tc_snake: 2.4, water_cast: 2.2, mma_kick: 1.8, round_kick2: 1.75, sweep_spin: 1.6, jump_kick: 2.4, flip_kick: 2.2, fire_jab: 1.6, earth_gather: 1.8, turn_spin: 0.8, water_redirect: 2.0, whip_h: 1.5, whip_v: 1.9, whip_d: 1.7, water_palm: 3.0, water_tidal: 2.0, water_sphere: 1.5, earth_stomp: 1.6, earth_pillar: 1.7, fire_orb: 1.5, air_vortex: 1.6, earth_sweep: 1.5, fire_spin: 1.5 };
 
 const names = (T) => (Array.isArray(T.clip) ? T.clip : [T.clip]);
 function techList(st) {
-  const t = st.tech; return [t.hand, ...(t.leg || []), t.legMove, t.charged, t.special, t.stomp, t.release, t.airKick, t.flip, t.flipBack, t.roll, t.whipSlam].filter(Boolean);
+  const t = st.tech; return [t.hand, ...(t.leg || []), t.legMove, t.charged, t.special, t.stomp, t.release, t.airKick, t.flip, t.flipBack, t.roll, t.whipSlam, t.icePunch, t.glideBlast, t.breath].filter(Boolean);
 }
 
 // Rewrites dur / events / active window / jump / cancel of every technique that names a clip, keeping each
@@ -86,7 +87,7 @@ export function adoptTiming(styles) {
   for (const st of Object.values(styles)) for (const T of techList(st)) {
     if (!T.clip) continue;
     const list = names(T).filter(n => MOCAP[n]); if (!list.length) continue;
-    const orig = { dur: T.dur, events: T.events, active: T.active, jumpAt: T.jumpAt, cancel: T.cancel };
+    const orig = { dur: T.dur, events: T.events, active: T.active, jumpAt: T.jumpAt, cancel: T.cancel, full: T.full };
     // every alternative take gets its own timing, so each plays at its proper speed with its impact on the hit
     const timings = list.map(n => timing(orig, n, T.clipSpeed || CLIP_SPEED[n] || SPEED[st.key] || 1.5));
     Object.assign(T, timings[0]); T.clip = list[0];
@@ -107,6 +108,8 @@ function timing(orig, name, sp) {
   // the next technique can start 0.22 s after the impact: the strike's follow-through shows, the next one
   // crossfades over the rest of the recovery
   if (orig.cancel !== undefined) out.cancel = THREE.MathUtils.clamp(Math.min(map(orig.cancel), evU + 0.22 / dur), evU + 0.05, 0.95);
+  // a move that ends far from standing (the Flair ends on the hands, legs up) plays to its end before the next one
+  if (orig.full) out.cancel = 0.97;
   return out;
 }
 

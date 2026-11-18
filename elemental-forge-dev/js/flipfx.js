@@ -35,7 +35,7 @@ const VERT = `
     gl_Position = projectionMatrix * viewMatrix * vec4(wp, 1.0);
   }`;
 const FRAG = `
-  uniform sampler2D uMap; uniform float uBright; uniform float uToon; varying vec2 vUv; varying float vAlpha;
+  uniform sampler2D uMap; uniform float uBright; uniform float uToon; uniform vec3 uTint; varying vec2 vUv; varying float vAlpha;
   void main() {
     vec4 t = texture2D(uMap, vUv);
     float a = t.a * vAlpha;
@@ -46,7 +46,7 @@ const FRAG = `
       a = smoothstep(cut, cut + 0.035, t.a);
     }
     if (a < 0.01) discard;
-    gl_FragColor = vec4(t.rgb * uBright, a);
+    gl_FragColor = vec4(t.rgb * uTint * uBright, a);
     #include <colorspace_fragment>
   }`;
 
@@ -63,7 +63,9 @@ class Sheet {
     const tex = new THREE.TextureLoader().load('assets/fx/' + def.file);
     tex.colorSpace = THREE.SRGBColorSpace; tex.generateMipmaps = true; tex.minFilter = THREE.LinearMipmapLinearFilter;
     this.mat = new THREE.ShaderMaterial({
-      uniforms: { uMap: { value: tex }, uGrid: { value: new THREE.Vector2(...def.grid) }, uBright: { value: 1.0 }, uToon: { value: def.blend === 'fire' ? 1 : 0 } },
+      uniforms: { uMap: { value: tex }, uGrid: { value: new THREE.Vector2(...def.grid) }, uBright: { value: 1.0 }, uToon: { value: def.blend === 'fire' ? 1 : 0 },
+        // fire a little redder (M9, after review: more natural): green and blue pulled down, red kept
+        uTint: { value: def.blend === 'fire' ? new THREE.Vector3(1.0, 0.8, 0.68) : new THREE.Vector3(1, 1, 1) } },
       vertexShader: VERT, fragmentShader: FRAG, transparent: true, depthWrite: false,
       blending: def.blend === 'fire' ? THREE.CustomBlending : THREE.NormalBlending,
     });
