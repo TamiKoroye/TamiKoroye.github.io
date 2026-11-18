@@ -74,3 +74,18 @@ soles. HAND punches and LEG throws a Jet Blast without ending the glide. DODGE a
   about 0.7 s in; Water's arm-wave whip is fifth in the HAND chain.
 - Live dev URL (r20): pack decodes 207/207; fire glide, ice arch, ice shield spikes and Dragon's Breath checks pass.
 - `tests/m9-test.mjs`: 20 checks, played through the keyboard controls.
+
+## r21 (18 Nov, after the user's phone recordings of r20)
+- Air flight: the reclined Mixamo Flying pose did not face the rival; flight is back on the upright airborne pose.
+  `air_fly` stays in the pack for a later unlockable character or stage.
+- Fire glide: held DODGE no longer starts the flame run (that put the legs back to running after a moment). The glide
+  lasts as long as DODGE is held (energy 9/s), rides about 1.2 m up, and the stick steers it. JUMP from the glide is the
+  flame jump.
+- Get-ups: the flip get-ups are Air's only (Corkscrew Kip Up). Fire's double-kick kip-up took about 6 s on the phone;
+  Fire, Water and Earth now get up with the plain get-up (about 1.1 s).
+- Dragon's Breath (Fire, GUARD + SPECIAL): read as nothing on the phone. Now a 0.7 s torrent of flame from the mouth
+  that burns everything in a 7 m cone, plus the fireball aimed at the rival; anyone caught is engulfed.
+- Earth stance: Mixamo Bouncing Fight Idle (guard up, weight shifting), slowed to 0.8 so it reads heavy. Compared on the
+  rig with Ninja Idle (turns and steps too much for a stance), Standing Block Idle and the Action Adventure idles.
+- Tests: all suites pass (play 86, overhaul 52, milestone 22, effects 49, acceptance 15, m9). Jitter gate: four
+  sequences above r19, all with the moves reviewed frame by frame (Water kicks and arch, Earth Flair).
