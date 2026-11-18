@@ -376,7 +376,9 @@ STYLES.earth.tech.hand.clip = ['earth_punch2', 'earth_punch', 'fire_punch2'];
 // 18 Nov (M9): the flowing moves from the Drive dances join Water: the arm wave (Wave Hip Hop Dance) is a whip thrown
 // on a ripple that runs through both arms; on LEG, the Butterfly Twirl kick and the tucked Spinning jump that throws a
 // ring of water. These are studio motion capture (Mixamo), smooth at combat speed, and pass the gameplay jitter gate.
-STYLES.water.tech.hand.clip = ['whip_h', 'fire_jab', 'whip_v', 'fire_punch', 'water_ripple', 'whip_d', 'earth_punch', 'water_palm'];   // (the arm wave fifth: whip, ball, whip, ball first, as before)
+// (18 Nov, after the second review: the arm wave from Wave Hip Hop Dance is out: mid-combo it bent the body over
+//  with the arms crossed and the hips twisted, the contortion in the recording)
+STYLES.water.tech.hand.clip = ['whip_h', 'fire_jab', 'whip_v', 'fire_punch', 'whip_d', 'earth_punch', 'water_palm'];
 STYLES.water.tech.leg.push(T({ name: 'Butterfly Twirl Kick', clip: 'water_twirl', dur: 0.9, cost: 11, cancel: 0.8, move: 2.5, lunge: 4, keys: K0,
   active: { from: 0.45, to: 0.65, dmg: 9, range: 2.3, arc: -1.2, knock: 7, level: 1 }, events: [[0.5, 'water.leg2']] }));
 STYLES.water.tech.leg.push(T({ name: 'Spinning Water Ring', clip: 'water_spin', dur: 0.75, cost: 12, cancel: 0.8, move: 0.5, keys: K0,
@@ -393,7 +395,13 @@ STYLES.water.tech.glideBlast = T({ name: 'Ice Volley', clip: 'water_palm', dur: 
 // Fire, GUARD + SPECIAL: Dragon's Breath (Mixamo Zombie Scream: draws in, leans forward and roars): a ball of fire
 // breathed out of the mouth that engulfs whoever it hits, burning them for a few seconds (fire.breath, elements.js)
 STYLES.fire.tech.breath = T({ name: "Dragon's Breath", clip: 'fire_breath', clipSpeed: 1.6, dur: 1.4, cost: 16, cancel: 0.85, move: 0, keys: K0, events: [[0.5, 'fire.breath']] });
-STYLES.water.tech.whipSlam = T({ name: 'Whip Slam', clip: 'water_grabslam', clipSpeed: 1.7, dur: 1.0, cost: 0, cancel: 0.85, move: 0, keys: K0, events: [] });
+// HAND while riding the ice (the arch dodge or the ice surf): punches only, each throwing a ball of water or ice
+// (18 Nov, after review: no whips while riding)
+STYLES.water.tech.surfPunch = T({ name: 'Water Punch', clip: ['fire_jab', 'fire_punch'], dur: 0.3, cost: 4, cancel: 0.55, move: 1, upper: true, keys: K0, events: [[0.52, 'water.hand']] });
+// in the air (water lifted on its column, Fire high on its jets): LEG is a somersault kick; the leg comes over and a
+// wave of water / fire leaves it and smashes down on the rival (water.airFlip / fire.airFlip)
+for (const k of ['water', 'fire']) STYLES[k].tech.airFlip = T({ name: 'Somersault Smash', clip: 'flip_kick', clipSpeed: 1.7, dur: 0.7, cost: 10, cancel: 0.8, move: 2, lunge: 2, keys: K0, events: [[0.5, k + '.airFlip']] });
+STYLES.water.tech.whipSlam = T({ name: 'Whip Slam', clip: 'water_grabslam', clipSpeed: 1.6, dur: 1.1, cost: 0, cancel: 0.85, move: 0, keys: K0, events: [] });
 // Fire's kick chain (17 Nov, M6): kick-heavy and flowing, each kick its own authored clip, every kick throwing flame
 // from the kicking leg. LEG taps run through it in order; the chain restarts after a pause.
 {
