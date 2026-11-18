@@ -296,7 +296,7 @@ export class Hero {
       return [side > 0 ? 'strafe' : 'strafe_M', C(sp / 2.5, 0.7, 1.9)];
     };
     // elemental mobility: the legs hold the surfing stance / the flying pose, techniques play over them
-    const mk = f.mob && f.mob.kind, lowOv = mk === 'surf' && f.onGround && has('surf_stance') ? ['surf_stance', LOOP_SPEED.surf_stance] : mk === 'fly' && has('air_loop') ? ['air_loop', 1] : null;
+    const mk = f.mob && f.mob.kind, lowOv = mk === 'surf' && f.onGround && has('surf_stance') ? ['surf_stance', LOOP_SPEED.surf_stance] : mk === 'fly' && has('air_loop') ? (Math.hypot(f.vel.x, f.vel.z) > 4 && has('air_fly') ? ['air_fly', 1] : ['air_loop', 1]) : null;   // flying fast: Mixamo Flying, body level
     // the blow's direction relative to the body (lz < 0: driven backwards, |lx| large: from the side)
     const hd = f.hitDir || f.koDir, hc = Math.cos(f.yaw), hs = Math.sin(f.yaw);
     const hlx = hd ? hd.x * hc - hd.z * hs : 0, hlz = hd ? hd.x * hs + hd.z * hc : -1;
@@ -327,6 +327,10 @@ export class Hero {
       }
     }
     else if (f.action === 'down' && has('ko')) once('ko', 1.6, 0.1);
+    // lifted by wind (the tornado, a wind column): Mixamo Floating, limbs adrift, instead of a standing reaction
+    else if (f.floatT > 0 && !f.onGround && !f.dead && has('air_float')) { clip = 'air_float'; ts = 1.4; wU = wL = 0; fade = 0.15; }
+    // Air gets up with a spinning kip-up (Corkscrew Kip Up)
+    else if (f.action === 'getup' && f.el === 'air' && has('getup_cork')) { once('getup_cork', this.actions.getup_cork.getClip().duration / Math.max(0.3, f.A.dur) * 0.75, 0.1); }
     // recovery from the floor: the Mixamo get-up (on the back, roll to a crouch, stand). UAL2's LayToIdle starts
     // from a crumpled pose that does not match the knockdown, so it is no longer used
     else if (f.action === 'getup' && has('getup')) { once('getup', this.actions.getup.getClip().duration / Math.max(0.3, f.A.dur) * 0.75, 0.1); }
@@ -349,6 +353,8 @@ export class Hero {
       const c = Math.cos(f.yaw), s = Math.sin(f.yaw), lx = f.dodgeDir.x * c - f.dodgeDir.z * s, lz = f.dodgeDir.x * s + f.dodgeDir.z * c;
       // Air's two-second whirlwind glide: the airborne gliding pose (UAL2 NinjaJump idle, as in flight)
       if (f.dodgeKind === 'glide' && has('air_loop')) { clip = 'air_loop'; ts = 1; wU = wL = 0; fade = 0.2; }
+      // Air's flips: Corkscrew Evade / Cartwheel, spread over the dodge
+      else if (f.dodgeKind === 'flip' && has(f.flipClip)) once(f.flipClip, this.actions[f.flipClip].getClip().duration / f.dodgeDur, 0.08);
       // Fire's rocket dodge: Fire's own fighting stance (fists up, knees bent), held nearly still while the jets carry
       // the body sideways: no steps, no running legs (the body's lean comes from fighter.js)
       // Fire's jet glide: the legs ride the jets in the skateboard crouch (Mixamo Skateboarding, the riding frames:
@@ -415,6 +421,8 @@ export class Hero {
       }
       else if (f.holding && has(L.hold)) { clip = L.hold; ts = LOOP_SPEED[L.hold] || 1; wU = wL = 0; fade = 0.2; layered = moving || !!lowOv; }
       else if (lowOv) { [clip, ts] = lowOv; wU = wL = 0; fade = 0.2; }
+      // Fire in the air (a jump, the flame jets): Male Dynamic Pose, the leap with arms out and a knee drawn up
+      else if (free && !f.onGround && f.el === 'fire' && f.airTime > 0.12 && f.vel.y > -7 && has('fire_air_pose')) { clip = 'fire_air_pose'; ts = 1; wU = wL = 0; fade = 0.2; }
       else if (free && !f.onGround && f.highJump && has('jump_high')) {
         // propelled high jumps (ice ramp, rising slab, flame jets, water column): take-off, airborne, falling
         // Water on its column: Falling Into Pool's airborne frames (arms out, legs drawn up), held while the water lifts

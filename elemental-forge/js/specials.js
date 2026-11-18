@@ -313,7 +313,7 @@ export class Specials {
       const a = S.t * 7, r = 0.9;
       t.ext.x += ((S.c.x + Math.cos(a) * r - t.pos.x) * 6 - t.ext.x) * Math.min(1, dt * 6); t.ext.z += ((S.c.z + Math.sin(a) * r - t.pos.z) * 6 - t.ext.z) * Math.min(1, dt * 6);
       t.vel.y = Math.max(t.vel.y, (S.c.y + 2.6 - t.pos.y) * 3); t.onGround = false;
-      t.restrainT = Math.max(t.restrainT, 0.15);   // caught in the funnel: the body thrashes (struggle clip), it does not hang in a pose
+      t.restrainT = Math.max(t.restrainT, 0.15); t.floatT = 0.3;   // caught in the funnel: Mixamo Floating, limbs adrift (hero.js)
       if (nt > 1.4 || end) {
         S.held.delete(t);
         const out = _a.set(t.pos.x - S.c.x, 0, t.pos.z - S.c.z); if (out.lengthSq() < 1e-3) out.copy(S.v || f.forward(_b)); out.normalize();

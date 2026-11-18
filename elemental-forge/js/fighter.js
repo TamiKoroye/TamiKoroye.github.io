@@ -6,6 +6,7 @@ import { buildSkinnedFighter } from './character.js';
 import { JOINTS, JI, PN, POSE_LEN, PX, PY, PZ, LEG_START, S, add, arm, legRaw, legIK, hipDown, seg, stanceLegs, HIP_H } from './pose.js';
 import { STYLES } from './styles.js';
 import { Hero, heroReady } from './hero.js';
+import { MOCAP } from './mocap.js';
 import { HALF } from './arena.js';
 
 // Reactions and shared moves (element techniques live in styles.js)
@@ -175,7 +176,7 @@ export class Fighter {
     this.time += dt;
     this.dodgeCd -= dt; this.guardCd -= dt; this.noEnPopT = (this.noEnPopT || 0) - dt; this.perfectT = (this.perfectT || 0) - dt; this.blockPopT = (this.blockPopT || 0) - dt; this.invuln -= dt; this.comboTimer -= dt; this.stunT -= dt; this.counterT -= dt;
     this.flash = Math.max(0, this.flash - dt * 5);
-    this.soundLoops();
+    this.soundLoops(); this.fistFlames(dt);
     for (const k in this.buf) this.buf[k] = Math.max(0, this.buf[k] - dt);
     // input buffer: long enough to queue the next technique during an authored recovery
     if (inp.hand) this.buf.hand = 0.45;
@@ -184,6 +185,7 @@ export class Fighter {
     if (inp.dodge) this.buf.dodge = 0.18;
     if (inp.jump) this.buf.jump = 0.15;
     if (this.guarding) this.guardT += dt;
+    if (this.floatT > 0) this.floatT -= dt;   // lifted by wind: the Floating clip (hero.js)
 
     // ---- action / technique timeline
     if (this.action) {
@@ -331,6 +333,10 @@ export class Fighter {
       }
       // SPECIAL while sustaining twin water whips freezes them into ice blades (heavier, knock down, shatter)
       if (this.buf.special && this.holding && this.el === 'water' && this.en >= 10) { const h = B.holds.get(this); if (h && !h.frozen) { this.buf.special = 0; this.en -= 10; h.frozen = true; w.audio.ice("form", 0.9, this.pos); w.popup(this, 'ICE BLADES', true); w.audio.splash(0.8); } }
+      // Fire: SPECIAL with GUARD held breathes Dragon's Breath out of the wall (the wall drops)
+      if (this.buf.special && this.guarding && inp.guard && this.el === 'fire' && st.tech.breath && this.en >= st.tech.breath.cost && !this.charging) {
+        this.buf.special = 0; this.guarding = false; B.guardEnd(this, true); this.guardCd = 0.6; this.startTech(st.tech.breath, 1);
+      }
       if (this.buf.special && !this.charging && canStrike) { this.buf.special = 0; this.startTech(st.tech.special, this.handSide); }
 
       // HAND held -> sustained technique (stream / lift / draw / push)
@@ -425,6 +431,11 @@ export class Fighter {
         const gsp = 4 + 9 * k;
         this.vel.x = this.dodgeDir.x * gsp; this.vel.z = this.dodgeDir.z * gsp;
         this.vel.y = (0.7 - (this.pos.y - this.groundY)) * 6 + 21 * dt; this.onGround = false;
+      } else if (this.dodgeKind === 'flip') {
+        // Air's corkscrew / cartwheel: along the clip's path, fast in the middle of the flip, a small hop
+        const u = 1 - this.dodgeT / this.dodgeDur, fsp = this.flipSpeed * 1.5 * Math.sin(Math.PI * u);
+        this.vel.x = this.dodgeDir.x * fsp; this.vel.z = this.dodgeDir.z * fsp;
+        if (u < 0.15 && this.onGround) { this.vel.y = 3.2; this.onGround = false; }
       } else if (this.dodgeKind === 'arch') {
         // Water's ice arch: ice shoots up under the feet and the bender surfs along it, up and to the side, then down
         // (from high on the water column, down and across to the floor); the stick steers; strikes go on over it
@@ -759,6 +770,18 @@ export class Fighter {
     if ((m && m.kind === 'surf' && el === 'water') || (this.holding && el === 'water')) A.hold(key + 'water', 'waterLoop', 0.85, this.pos);
     if ((this.dodgeKind === 'glide' && this.dodgeT > 0) || (m && m.kind === 'fly') || (this.holding && el === 'air')) A.hold(key + 'wind', 'windLoop', 1, this.pos);
   }
+  // Fire: the fists burn. A small flame licks up off each fist in the stance; on a punch the striking fist flares and
+  // trails flame along the strike (the fireball itself leaves the fist on the impact frame, elements.js fire.hand)
+  fistFlames(dt) {
+    if (this.el !== 'fire' || this.dead || !this.hero || !this.world.fighting) return;
+    const F = this.world.fx.flip, punching = this.action === 'tech' && this.tech && this.tech.upper;
+    for (const sd of ['L', 'R']) {
+      const strike = punching && (this.techSide > 0 ? 'R' : 'L') === sd;
+      if (Math.random() > (strike ? 1 : 0.45)) continue;
+      const h = this.handPos(sd, _v2);
+      F.spawn('fire_flames', { pos: h, vel: _v.set(rand(-0.3, 0.3), rand(0.8, 1.6), rand(-0.3, 0.3)), size: strike ? [0.32, 0.42] : [0.16, 0.22], grow: 1.6, life: strike ? 0.22 : 0.18, f0: 8, f1: 30, fadeIn: 0.02, rot: rand(-0.4, 0.4) });
+    }
+  }
   jumpFx(air) {
     const w = this.world;
     if (this.el === 'fire') { this.vel.y += air ? 0 : 0.6; for (let i = 0; i < 10; i++) w.fx.fire(this.pos.clone().setY(this.pos.y + 0.1), _v.set(rand(-1.5, 1.5), rand(-2, 0.5), rand(-1.5, 1.5)), 0.5, 0.35); }
@@ -796,7 +819,20 @@ export class Fighter {
     else this.dodgeKind = D.kind;
     // Air: a whirlwind wraps round the bender and carries them away in a two-second glide: in the stick's
     // direction, or without it back and to the side, away from the attack
-    if (this.el === 'air') {
+    // (M9: every second Air dodge on the ground is a flip instead: the Corkscrew Evade, then the Cartwheel, in turn; the
+    //  body travels along the clip's own captured path, so the feet do not slide)
+    this.airDodgeN = this.el === 'air' ? (this.airDodgeN || 0) + 1 : 0;
+    if (this.el === 'air' && this.onGround && this.airDodgeN % 2 === 0 && MOCAP.air_cork && MOCAP.cartwheel) {
+      const base = this.airDodgeN % 4 === 2 ? 'air_cork' : 'cartwheel';
+      // which side: the stick's, else alternating; the mirrored take travels to the other side
+      const c = Math.cos(this.faceYaw), s = Math.sin(this.faceYaw), lx = inp.mx * c - inp.mz * s;
+      const want = Math.abs(lx) > 0.3 ? Math.sign(lx) : (this.whirlSide = -(this.whirlSide || 1));
+      const pick = [base, base + '_M'].find(n => { const t = MOCAP[n].travel; return Math.sign(t[t.length - 2]) === want; }) || base;
+      const t = MOCAP[pick].travel, tx = t[t.length - 2], tz = t[t.length - 1], len = Math.hypot(tx, tz) || 1;
+      // the clip's local path (x to the left, z forward) turned into the world
+      this.dodgeDir.set(tx * c + tz * s, 0, -tx * s + tz * c).normalize();
+      this.dodgeKind = 'flip'; this.flipClip = pick; this.flipSpeed = len * 1.6 / 0.85;
+    } else if (this.el === 'air') {
       if (Math.hypot(inp.mx, inp.mz) < 0.2) { this.whirlSide = -(this.whirlSide || 1); const sx = Math.cos(this.faceYaw) * this.whirlSide, sz = -Math.sin(this.faceYaw) * this.whirlSide, bx = -Math.sin(this.faceYaw), bz = -Math.cos(this.faceYaw); this.dodgeDir.set(sx * 0.7 + bx * 0.7, 0, sz * 0.7 + bz * 0.7).normalize(); }
       this.dodgeKind = 'glide'; this.world.bending.weapons.whirlwind(this, 2.0);
     }
@@ -813,7 +849,7 @@ export class Fighter {
       this.dodgeKind = 'arch'; this.archH0 = Math.max(0, this.pos.y - this.groundY); this.vel.y = Math.max(this.vel.y, 0);
       this.world.audio.ice('form', 0.8, this.pos);
     }
-    this.dodgeDur = this.dodgeKind === 'glide' ? 2.0 : this.dodgeKind === 'rocket' ? 0.95 : this.dodgeKind === 'arch' ? 1.0 : this.dodgeKind === 'side' ? 0.26 : this.dodgeKind === 'back' ? 0.3 : this.dodgeKind === 'circle' ? 0.42 : D.dur;
+    this.dodgeDur = this.dodgeKind === 'glide' ? 2.0 : this.dodgeKind === 'rocket' ? 0.95 : this.dodgeKind === 'arch' ? 1.0 : this.dodgeKind === 'flip' ? 0.85 : this.dodgeKind === 'side' ? 0.26 : this.dodgeKind === 'back' ? 0.3 : this.dodgeKind === 'circle' ? 0.42 : D.dur;
     this.dodgeT = this.dodgeDur; this.dodgeCd = this.dodgeKind === 'glide' ? 0.6 : 0.42; this.invuln = this.dodgeKind === 'glide' ? 0.6 : (this.dodgeKind === 'rocket' || this.dodgeKind === 'arch') ? 0.35 : this.dodgeDur * (D.iframes || 0.75); this.en -= this.dodgeKind === 'glide' ? 16 : 10;
     this.action = null; this.tech = null; this.spinYaw = 0;
     this.world.fx.dust(this.pos, 5, 1.2);

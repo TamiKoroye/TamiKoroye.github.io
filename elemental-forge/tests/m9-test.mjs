@@ -31,6 +31,39 @@ const tap = async (code, hold = 2) => { await page.keyboard.down(code); await st
 let fails = 0;
 const check = (name, ok, info) => { console.log(`${ok ? 'PASS' : 'FAIL'} ${name}  ${info}`); if (!ok) fails++; };
 const CHECKS = {
+  async airDodges() {
+    await setup('air', 'earth', 5); await step(30);
+    const kinds = [], clips = new Set(); let slide = 0;
+    for (let i = 0; i < 4; i++) {
+      await page.keyboard.down('ShiftLeft'); await step(2); await page.keyboard.up('ShiftLeft');
+      const r = await step(140, "({ k: P.dodgeT > 0 ? P.dodgeKind : null, c: P.hero.curName, g: P.onGround })");
+      kinds.push(r.find(x => x.k) ? r.find(x => x.k).k : 'none'); for (const x of r) if (x.k === 'flip') clips.add(x.c);
+    }
+    check('Air: the whirlwind glide stays, and every second dodge is a Corkscrew Evade or a Cartwheel', kinds[0] === 'glide' && kinds[1] === 'flip' && kinds[2] === 'glide' && kinds[3] === 'flip' && [...clips].some(c => /air_cork/.test(c)) && [...clips].some(c => /cartwheel/.test(c)), `dodges ${kinds.join(', ')}; flip clips ${[...clips].join(', ')}`);
+  },
+  async airFloat() {
+    await setup('earth', 'air', 3); await step(20);
+    await page.evaluate(() => { const E = window.__EF; E.world.bending.weapons.column(E.opp, 'air', E.player.pos.clone(), { warn: 0.05, dmg: 4, lift: 10 }); });
+    const r = await step(70, 'P.hero.curName');
+    check('Air: a fighter thrown up by a wind column floats (Floating clip)', r.includes('air_float'), `clips ${[...new Set(r)].join(', ')}`);
+  },
+  async fireBreath() {
+    await setup('fire', 'earth', 6); await step(30);
+    await page.keyboard.down('KeyQ'); await step(20); await page.keyboard.down('KeyE'); await step(2); await page.keyboard.up('KeyE'); await page.keyboard.up('KeyQ');
+    const r = await step(150, "({ c: P.hero.curName, t: P.tech && P.tech.name, eng: +(O.engulfT || 0).toFixed(2), hp: O.hp })");
+    const engulfed = Math.max(...r.map(x => x.eng));
+    check("Fire: GUARD + SPECIAL breathes Dragon's Breath (Zombie Scream) and the fireball engulfs the rival", r.some(x => x.t === "Dragon's Breath") && r.some(x => /fire_breath/.test(x.c)) && engulfed > 1.5, `tech seen ${r.some(x => x.t === "Dragon's Breath")}, engulfed for up to ${engulfed} s, rival hp ${r[0].hp} -> ${r.at(-1).hp}`);
+  },
+  async fireAir() {
+    await setup('fire', 'earth', 6); await step(30);
+    await tap('Space'); const r = await step(50, 'P.hero.curName');
+    check('Fire: in the air the Male Dynamic Pose', r.includes('fire_air_pose'), `clips ${[...new Set(r)].join(', ')}`);
+  },
+  async earthFlair() {
+    await setup('earth', 'fire', 2.2); await step(30);
+    const seen = new Set(); for (let i = 0; i < 7; i++) { await tap('KeyG'); for (const c of await step(40, 'P.hero.curName')) seen.add(c); }
+    check('Earth: the Flair is in the LEG chain', [...seen].some(c => /earth_flair/.test(c)), `clips ${[...seen].filter(c => /earth|flair|kick|sweep|teep/.test(c)).join(', ')}`);
+  },
   async waterArch() {
     await setup('water', 'earth', 5); await step(30);
     const probe = "({ d: P.dodgeT > 0 && P.dodgeKind === 'arch', h: +(P.pos.y - P.groundY).toFixed(2), x: +P.pos.x.toFixed(2), tech: P.tech && P.tech.name, lo: P.hero.lowName, ice: !!(P._arch && P._arch.post), spears: E.world.bending.objs.filter(o => o.owner === P && o.kind === 'iceSpear' && o.state !== 'dead').length })";

@@ -487,7 +487,7 @@ export class Weapons {
           if (t === C.f || t.dead || t.invuln > 0 || C.hit.has(t)) continue;
           if (Math.hypot(t.pos.x - C.x, t.pos.z - C.z) < C.r + t.radius * 0.5 && t.pos.y - C.gy < 1.2) {
             C.hit.add(t); w.combat.damage(t, C.dmg, _a.set(0, 0, 0).set(t.pos.x - C.f.pos.x, 0, t.pos.z - C.f.pos.z).normalize().clone(), C.f, C.el + 'Column', t.chestPos(new THREE.Vector3()), 2, 1);
-            if (!t.dead) { t.vel.y = C.lift; t.onGround = false; }
+            if (!t.dead) { t.vel.y = C.lift; t.onGround = false; if (C.el === 'air') t.floatT = 1.2; }   // thrown up by wind: floats (hero.js)
           }
         }
       }

@@ -262,6 +262,11 @@ export class Bending {
         }
         w.fx.dust(f.pos, 10, 3); w.audio.rumble(0.6); return;
       }
+      case 'earth.flair': {
+        // the legs sweep the floor all the way round: stones burst out in every direction and a ring of rock rolls out
+        for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2, dir = new THREE.Vector3(Math.sin(a), 0.05, Math.cos(a)); this.fire('pebble', f, new THREE.Vector3(f.pos.x + dir.x * 0.9, f.pos.y + 0.3, f.pos.z + dir.z * 0.9), { dir }); }
+        this.ring(f, 'earth', 3.0, 9, { dmg: 7, knock: 7, level: 1 }).mesh.visible = false;   // the ring is the rolling debris w.fx.dust(f.pos, 14, 3); w.fx.crater(f.pos, 1.6); w.audio.rumble(0.9); return;
+      }
       case 'earth.seismic': {
         w.combat.slam(f);
         const fw = f.forward(_v2);
@@ -290,6 +295,14 @@ export class Bending {
         const o = this.fire('fireOrb', f, mid, { scale: 1.2 }); o.dmg = 10;
         for (const h of [hl, hr]) this.flameJet(h, o.vel.clone().normalize(), 1.3);
         w.audio.fireWhoosh(1); return;
+      }
+      case 'fire.breath': {
+        // Dragon's Breath: a big slow ball of fire from the mouth, with a roaring jet; it engulfs what it hits
+        const head = f.hero && f.hero.bones['DEF-head'] ? f.hero.bones['DEF-head'].getWorldPosition(new THREE.Vector3()) : f.chestPos(new THREE.Vector3()).setY(f.pos.y + 1.6);
+        const mouth = head.addScaledVector(f.forward(_v2), 0.25); mouth.y -= 0.05;
+        const o = this.fire('fireOrb', f, mouth, { scale: 1.9, speedMul: 0.6 }); o.dmg = 12; o.engulf = true; o.knock = 6;
+        this.flameJet(mouth, o.vel.clone().normalize(), 2.2); this.flameJet(mouth, o.vel.clone().normalize(), 1.6);
+        w.audio.fireWhoosh(1.4); w.shake(0.1, f.pos); w.popup(f, "DRAGON'S BREATH", true); return;
       }
       case 'fire.knee': { this.ring(f, 'fire', 2.4, 10, { dmg: 6, knock: 7, level: 1 }); for (let i = 0; i < 10; i++) w.fx.fire(foot, _v.set(rand(-3, 3), rand(0, 3), rand(-3, 3)), 0.5, 0.3); w.audio.fireWhoosh(1); return; }
       case 'fire.stompMark': return;   // no flame before the foot comes down: the stomp ignites on the plant
@@ -1024,7 +1037,7 @@ export class Bending {
     this.lightBoost = 0;
     this.waterSurf.uniforms.uTime.value += dt;
     this.updateDefences(dt);   // first, so a defence raised this frame is already in place for projectiles
-    this.updateObjects(dt);
+    this.updateObjects(dt); this.updateEngulf(dt);
     this.updateRings(dt);
     this.updateSpirals(dt);
     this.specials.update(dt);
@@ -1038,6 +1051,17 @@ export class Bending {
     this.light.intensity += (want - this.light.intensity) * Math.min(1, dt * 12);
   }
 
+  // engulfed by Dragon's Breath: flames climb over the body for a few seconds, a little damage each 0.35 s; water
+  // benders put it out three times as fast
+  updateEngulf(dt) {
+    const w = this.world;
+    for (const t of w.fighters) {
+      if (!(t.engulfT > 0)) continue;
+      t.engulfT -= dt * (t.el === 'water' ? 3 : 1); if (t.dead) { t.engulfT = 0; continue; }
+      for (let i = 0; i < 2; i++) w.fx.flip.spawn('fire_flames', { pos: _v.set(t.pos.x + rand(-0.3, 0.3), t.pos.y + rand(0.2, 1.6), t.pos.z + rand(-0.3, 0.3)), vel: _v2.set(rand(-0.4, 0.4), rand(1.2, 2.4), rand(-0.4, 0.4)), size: [0.45, 0.6], grow: 1.3, life: 0.35, f0: 6, f1: 26, fadeIn: 0.05, rot: rand(-0.4, 0.4) });
+      if ((t.engulfTick = (t.engulfTick || 0) - dt) <= 0) { t.engulfTick = 0.35; w.combat.damage(t, 2, _v3.set(0, 0, 0), t.engulfBy || t, 'burn', t.chestPos(new THREE.Vector3()), 0, -1); }
+    }
+  }
   updateObjects(dt) {
     const w = this.world;
     for (const o of this.objs) {
@@ -1112,6 +1136,7 @@ export class Bending {
             o.hitSet.add(t);
             const dir = new THREE.Vector3(o.vel.x, 0, o.vel.z).normalize();
             w.combat.damage(t, Math.round(o.dmg * o.dmgMul), dir, o.owner, 'proj', o.pos.clone(), o.knock, o.level);
+            if (o.engulf && !t.dead) { t.engulfT = 2.6; t.engulfBy = o.owner; w.popup(o.owner, 'ENGULFED', true); }
             if (S.restrain && !t.dead) this.restrain(t, S.restrain);
             if (o.el === 'fire' && Math.random() < 0.6) this.burn(t.pos.x, t.pos.z, t.groundY, o.owner);
             if (!S.wide && o.kind !== 'vortex') { this.kill(o); done = true; break; }
@@ -1192,6 +1217,7 @@ export class Bending {
         const a = Math.random() * Math.PI * 2, p = _v.set(r.center.x + Math.cos(a) * r.r, r.center.y + 0.3 + Math.random() * 0.6, r.center.z + Math.sin(a) * r.r);
         if (r.el === 'fire') w.fx.fire(p, _v2.set(Math.cos(a) * 2, 1.5, Math.sin(a) * 2), 0.6, 0.3);
         else if (r.el === 'water') w.fx.splash(p, 1);
+        else if (r.el === 'earth') { if (i < 3) w.fx.debrisBurst(p.setY(r.center.y + 0.1), 1, 2.2, 0.08, 0x7a6a58, 0.7); }
         else w.fx.wind(p, _v2.set(-Math.sin(a) * 9, 2, Math.cos(a) * 9), 0.6, 0.3);
       }
       for (const t of w.fighters) {

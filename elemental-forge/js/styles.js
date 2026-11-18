@@ -362,6 +362,9 @@ STYLES.fire.tech.leg.push(T({ name: 'Flip Kick', clip: 'flip_kick', dur: 0.9, co
   active: { from: 0.45, to: 0.6, dmg: 9, range: 2.0, arc: 0.3, knock: 7, level: 1 }, events: [[0.42, 'fire.flip'], [0.55, 'fire.flip2']], keys: K0 }));
 // Earth (M6): a push kick that drives a slab of rock out of the ground, and a rising uppercut that erupts a rock
 // column under the opponent (the third punch of the HAND chain, events chosen by clip in earth.hand)
+// Earth, LEG chain (M9): the Flair: down on the hands, the legs sweep round twice and a ring of rock bursts out (earth.flair)
+STYLES.earth.tech.leg.push(T({ name: 'Flair Sweep', clip: 'earth_flair', clipSpeed: 1.0, dur: 1.0, cost: 12, cancel: 0.85, move: 0.5, keys: K0,
+  active: { from: 0.4, to: 0.7, dmg: 9, range: 2.3, arc: -1.6, knock: 7, level: 2 }, events: [[0.5, 'earth.flair']] }));
 STYLES.earth.tech.leg.push(T({ name: 'Rock Push Kick', clip: 'earth_teep', dur: 0.6, cost: 11, cancel: 0.72, move: 0.5, lunge: 3, keys: K0,
   active: { from: 0.45, to: 0.6, dmg: 9, range: 2.2, arc: 0.3, knock: 9, level: 1 }, events: [[0.48, 'earth.teep']] }));
 // the chain opens with the quick jab (impact 0.21 s); the heavy lunge punch (impact 0.52 s) is the second strike
@@ -387,6 +390,9 @@ STYLES.water.tech.icePunch = T({ name: 'Ice Shard Punch', clip: ['fire_jab', 'fi
 STYLES.fire.tech.glideBlast = T({ name: 'Jet Blast', clip: 'water_palm', dur: 0.42, cost: 6, cancel: 0.6, move: 0, upper: true, keys: K0, events: [[0.5, 'fire.glideBlast']] });
 // LEG while riding the ice arch: both palms push a volley of three ice spikes (water.archShot)
 STYLES.water.tech.glideBlast = T({ name: 'Ice Volley', clip: 'water_palm', dur: 0.42, cost: 6, cancel: 0.6, move: 0, upper: true, keys: K0, events: [[0.5, 'water.archShot']] });
+// Fire, GUARD + SPECIAL: Dragon's Breath (Mixamo Zombie Scream: draws in, leans forward and roars): a ball of fire
+// breathed out of the mouth that engulfs whoever it hits, burning them for a few seconds (fire.breath, elements.js)
+STYLES.fire.tech.breath = T({ name: "Dragon's Breath", clip: 'fire_breath', clipSpeed: 1.6, dur: 1.4, cost: 16, cancel: 0.85, move: 0, keys: K0, events: [[0.5, 'fire.breath']] });
 STYLES.water.tech.whipSlam = T({ name: 'Whip Slam', clip: 'water_grabslam', clipSpeed: 1.8, dur: 1.3, cost: 0, cancel: 0.85, move: 0, keys: K0, events: [] });
 // Fire's kick chain (17 Nov, M6): kick-heavy and flowing, each kick its own authored clip, every kick throwing flame
 // from the kicking leg. LEG taps run through it in order; the chain restarts after a pause.
