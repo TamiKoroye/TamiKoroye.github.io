@@ -846,8 +846,10 @@ export class Fighter {
       const pick = [base, base + '_M'].find(n => { const t = MOCAP[n].travel; return Math.sign(t[t.length - 2]) === want; }) || base;
       const t = MOCAP[pick].travel, tx = t[t.length - 2], tz = t[t.length - 1], len = Math.hypot(tx, tz) || 1;
       // the clip's local path (x to the left, z forward) turned into the world
-      this.dodgeDir.set(tx * c + tz * s, 0, -tx * s + tz * c).normalize();
-      this.dodgeKind = 'flip'; this.flipClip = pick; this.flipSpeed = len * 1.6 / 0.85;
+      // with the stick held the flip goes the stick's way (the dodge always follows the stick); without it, the clip's path
+      if (Math.hypot(inp.mx, inp.mz) > 0.3) this.dodgeDir.set(inp.mx, 0, inp.mz).normalize();
+      else this.dodgeDir.set(tx * c + tz * s, 0, -tx * s + tz * c).normalize();
+      this.dodgeKind = 'flip'; this.flipClip = pick; this.flipSpeed = Math.max(len, 2.2) * 1.6 / 0.85;
     } else if (this.el === 'air') {
       if (Math.hypot(inp.mx, inp.mz) < 0.2) { this.whirlSide = -(this.whirlSide || 1); const sx = Math.cos(this.faceYaw) * this.whirlSide, sz = -Math.sin(this.faceYaw) * this.whirlSide, bx = -Math.sin(this.faceYaw), bz = -Math.cos(this.faceYaw); this.dodgeDir.set(sx * 0.7 + bx * 0.7, 0, sz * 0.7 + bz * 0.7).normalize(); }
       this.dodgeKind = 'glide'; this.world.bending.weapons.whirlwind(this, 2.0);
