@@ -65,7 +65,7 @@ export const STANCE_MIX = { earth_idle: 0.75, earth_guard: 0.6 };
 export const LOOPS = {
   earth: { idle: 'earth_stance', guard: 'earth_guard', hold: 'earth_lift' },   // idle: Mixamo Idle (1), low and rooted
   fire: { idle: 'fire_idle', guard: 'fire_guard', hold: 'fire_stream' },
-  water: { idle: 'water_stance', guard: 'tc_cloud', hold: 'water_spell' },   // guard: Tai Chi Cloud Hands, the arms circling   // sustained whips: Mixamo Spell Casting, both palms working the water
+  water: { idle: 'water_stance', guard: 'water_guard', hold: 'water_spell' },   // sustained whips: Mixamo Spell Casting, both palms working the water
   air: { idle: 'air_stance', guard: 'water_flow', hold: 'air_push' },   // guard: cloud hands, the arms keep circling inside the whirlwind
 };
 

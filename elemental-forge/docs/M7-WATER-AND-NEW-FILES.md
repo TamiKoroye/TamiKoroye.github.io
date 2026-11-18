@@ -52,3 +52,9 @@
   - **Guard:** Cloud Hands, looping.
 - **Limits:** video capture estimates depth, so some poses lean more than the performer; hands and head are the roughest parts. Clips are sped up 2 to 2.8 times for combat.
 - **Baguazhang video:** downloaded for Air, not yet used.
+
+## 18 Nov: Tai Chi clips taken out (r19)
+
+The owner's phone recording of r18 showed the bender twitching through the new Water moves. Played at combat speed (about 2.8 times the video) and chained, the captured clips carry the performer's whole-body turns and the capture's noise, and the body flips between poses within a fifth of a second. My review had used frames sampled a quarter-second or more apart, which hid it. The previous Water moves are restored (HAND chain, kicks, Tidal Wave clip, guard loop). Kept from r18: the ice surf that stays on after DODGE is let go and rides 3 m up, the rocket dodge in the fighting stance, rides ending on an element switch, and the retargeting fix. The Tai Chi clips stay in the pack, unused.
+
+Review from now on: moves are checked frame by frame at full rate, and clips are tested for joints reversing direction from frame to frame, before they go into the game.
