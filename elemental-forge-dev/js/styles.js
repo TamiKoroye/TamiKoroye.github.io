@@ -368,13 +368,10 @@ STYLES.earth.tech.leg.push(T({ name: 'Rock Push Kick', clip: 'earth_teep', dur: 
 STYLES.earth.tech.hand.clip = ['earth_punch2', 'earth_punch', 'fire_punch2'];
 // Water's whip slam (M6): the whip wraps the rival and the bender lifts them overhead and slams them down
 // (Mixamo Sword And Shield Casting: both arms raised, then driven down with the hips and legs; see weapons.grabSlam)
-// Water's HAND chain (18 Nov): Tai Chi 24 Form moves captured from the video supplied on Drive (tools/vidcap): Parting
-// the Wild Horse's Mane (a sweeping whip), Brush Knee (a palm throwing a ball of water), the overhead whip (kept: it
-// grabs for the whip slam), Deflect, Parry and Punch (ice), Single Whip (a diagonal whip), Grasp the Bird's Tail push
-// (both palms drive a wave)
-STYLES.water.tech.hand.clip = ['whip_h_horse', 'tc_brush_palm', 'whip_v', 'tc_parry_punch', 'whip_d_single', 'tc_push'];
+// (18 Nov: the Tai Chi 24 Form clips captured from video were tried here and taken out the same day: chained at
+//  combat speed the captured body turns and capture noise made the bender twitch. The previous chain is restored)
+STYLES.water.tech.hand.clip = ['whip_h', 'fire_jab', 'whip_v', 'fire_punch', 'whip_d', 'earth_punch', 'water_palm'];
 // the Tidal Wave: Snake Creeps Down, sinking low and surging forward as the wave goes out
-STYLES.water.tech.charged.clip = 'tc_snake';
 STYLES.water.tech.leg.push(T({ name: 'Water Sweep', clip: 'earth_sweep', dur: 0.62, cost: 11, cancel: 0.75, move: 0.5, lunge: 3, keys: K0,
   active: { from: 0.45, to: 0.68, dmg: 8, range: 2.4, arc: -1.4, knock: 4, level: 2 }, events: [[0.5, 'water.sweep']] }));
 STYLES.water.tech.whipSlam = T({ name: 'Whip Slam', clip: 'earth_stomp', clipSpeed: 1.5, dur: 1.1, cost: 0, cancel: 0.85, move: 0, keys: K0, events: [] });
@@ -424,8 +421,3 @@ STYLES.water.tech.handHold.name = 'Twin Water Whips';
 STYLES.air.tech.handHold.name = 'Twin Air Streams';
 STYLES.water.labels.hand = 'WATER WHIP'; STYLES.air.labels.hand = 'AIR WHIP';
 STYLES.air.tech.charged.events = [[0.55, 'air.charged']];   // one compressed release
-// LEG (18 Nov): the Tai Chi heel kick joins the chain (before the sweep); the Rising Water Kick now plays Golden Rooster
-// Stands on One Leg, the rising knee that raises the water column
-STYLES.water.tech.leg.splice(STYLES.water.tech.leg.findIndex(L => L.name === 'Water Sweep'), 0, T({ name: 'Heel Kick', clip: 'tc_heel_kick', dur: 0.62, cost: 9, cancel: 0.75, move: 0.8, lunge: 2.5, keys: K0,
-  active: { from: 0.42, to: 0.6, dmg: 8, range: 2.2, arc: 0.1, knock: 7, level: 1 }, events: [[0.5, 'water.leg']] }));
-for (const L of STYLES.water.tech.leg) if (L.name === 'Rising Water Kick') L.clip = 'tc_rooster';   // the Golden Rooster's rising knee
