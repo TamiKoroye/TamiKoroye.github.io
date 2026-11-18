@@ -31,6 +31,43 @@ const tap = async (code, hold = 2) => { await page.keyboard.down(code); await st
 let fails = 0;
 const check = (name, ok, info) => { console.log(`${ok ? 'PASS' : 'FAIL'} ${name}  ${info}`); if (!ok) fails++; };
 const CHECKS = {
+  async review18b() {
+    // 18 Nov, second review (phone recording r21)
+    // 1. Water lifted on its column stands in the water stance (no Falling Into Pool flailing)
+    await setup('water', 'earth', 6); await step(20); await page.keyboard.down('Space'); const lift = await step(70, 'P.hero.curName'); await page.keyboard.up('Space'); await step(90);
+    check('Water lift: stands on the column in the water stance (no flailing pose)', !lift.some(c => /water_pool/.test(c)) && lift.slice(30).filter(c => /water_stance/.test(c)).length > 25, `clips ${[...new Set(lift)].join(', ')}`);
+    // 2. riding the ice: HAND punches throw water / ice balls, no whips
+    await setup('water', 'earth', 5); await step(20);
+    // (DODGE held: the arch runs on into the ice surf, so all three punches are thrown while riding)
+    await page.keyboard.down('KeyD'); await page.keyboard.down('ShiftLeft'); await step(30);
+    const techs = new Set(); for (let i = 0; i < 3; i++) { await tap('KeyF'); for (const r of await step(30, "(P.tech ? P.tech.name : '') + '|' + E.world.bending.objs.filter(o => o.owner === P && (o.kind === 'water' || o.kind === 'iceBall') && o.state !== 'dead').length + '|' + (E.world.bending.weapons.whips || []).filter(W => W.f === P).length")) techs.add(r); }
+    await page.keyboard.up('ShiftLeft'); await page.keyboard.up('KeyD'); await step(40);
+    const rows = [...techs], balls = Math.max(...rows.map(r => +r.split('|')[1])), whips = Math.max(...rows.map(r => +r.split('|')[2]));
+    check('Riding the ice: HAND throws water and ice punches, no whips', rows.some(r => r.startsWith('Water Punch')) && !rows.some(r => r.startsWith('Water Whip')) && balls > 0 && whips === 0, `techs ${[...new Set(rows.map(r => r.split('|')[0]).filter(Boolean))].join(', ')}, balls ${balls}, whips ${whips}`);
+    // 3. the whip grabs a rival standing on the ground, lifts over the head and slams
+    await setup('water', 'earth', 3.2); await step(70);   // (the HAND chain starts again from the whip after 0.9 s back in stance)
+    let peak = 0, grabbed = false, landedDown = false;
+    await tap('KeyF'); for (const r of await step(110, "({ g: (E.world.bending.weapons.grabs || []).length, oy: O.pos.y - O.groundY, oa: O.action, dz: (O.pos.x - P.pos.x) * Math.sin(P.yaw) + (O.pos.z - P.pos.z) * Math.cos(P.yaw) })")) { if (r.g) grabbed = true; if (r.g) peak = Math.max(peak, r.oy); if (r.oa === 'down') landedDown = true; }
+    check('Water whip grabs a rival on the ground, lifts them over the head and slams them down', grabbed && peak > 2.4 && landedDown, `grabbed ${grabbed}, lifted to ${peak.toFixed(2)} m, knocked down ${landedDown}`);
+    // 4. somersault smash from the air, Water and Fire
+    for (const el of ['water', 'fire']) {
+      await setup(el, 'earth', 3.5); await step(20);
+      await page.keyboard.down('Space'); await step(el === 'water' ? 40 : 24); await page.keyboard.up('Space'); await tap('KeyG');
+      const r = await step(80, "({ t: P.tech && P.tech.name, oa: O.action, hp: O.hp })");
+      check(`${el}: in the air LEG is a somersault kick that smashes a wave down on the rival`, r.some(x => x.t === 'Somersault Smash') && r.at(-1).hp < r[0].hp, `techs ${[...new Set(r.map(x => x.t).filter(Boolean))].join(', ')}, rival hp ${r[0].hp} -> ${r.at(-1).hp}, rival ${[...new Set(r.map(x => x.oa).filter(Boolean))].join(',')}`);
+    }
+    // 5. nothing sinks into the floor: every knockdown, measured on the lowest joint (not the feet)
+    let worst = 9, which = '';
+    for (const [expr, lvl] of [['null', 2], ['O.style.tech.hand', 2], ["O.style.tech.leg.find(t => /Sweep/.test(t.name))", 2], ['null', 2]]) {
+      await setup('earth', 'earth', 2); await step(10);
+      await page.evaluate(([expr, lvl]) => { const E = window.__EF, P = E.player, O = E.opp, T = (new Function('O', 'return ' + expr))(O); O.action = T ? 'tech' : null; O.tech = T; P.invuln = 0; E.world.combat.damage(P, 8, new P.pos.constructor(0, 0, -1), O, 'melee', P.chestPos(new P.pos.constructor()), 5, lvl); O.action = null; O.tech = null; }, [expr, lvl]);
+      for (const r of await step(140, "(() => { let mn = 9; for (const k in P.hero.bones) { if (/foot|toe|heel/i.test(k)) continue; mn = Math.min(mn, P.hero.bones[k].getWorldPosition(new P.pos.constructor()).y - P.groundY); } return mn + ':' + P.hero.curName; })()")) { const v = +r.split(':')[0]; if (v < worst) { worst = v; which = r.split(':')[1]; } }
+    }
+    check('Knockdowns stay on the floor (lowest joint at or above the floor)', worst > 0.0, `lowest joint ${worst.toFixed(3)} m (${which})`);
+    // 6. standing stances are not lifted
+    const lifts = []; for (const el of ['fire', 'water', 'earth', 'air']) { await setup(el, 'earth', 6); await step(40); lifts.push(el + ' ' + (await ev('P.floorLift || 0')).toFixed(3)); }
+    check('Standing stances are not lifted by the floor guard', lifts.every(x => +x.split(' ')[1] < 0.01), lifts.join(', '));
+  },
   async review18() {
     // 18 Nov review: Earth's stance, Fire's plain get-up, Air flight upright (no reclined Flying), Dragon's Breath torrent
     await setup('earth', 'fire', 5); const st = await step(40, 'P.hero.curName');

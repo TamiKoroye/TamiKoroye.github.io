@@ -307,6 +307,21 @@ export class Bending {
         (this.breaths = this.breaths || []).push({ f, t: 0, dur: 0.7, hit: new Map() });
         w.audio.fireWhoosh(1.4); w.shake(0.1, f.pos); w.popup(f, "DRAGON'S BREATH", true); return;
       }
+      case 'water.airFlip': case 'fire.airFlip': {
+        // the somersault's leg comes over: a wave of the element leaves the foot and crashes down on the rival below,
+        // driving them into the floor (slammed: a heavy knockdown onto the back), and spreads along the ground
+        const el = name.split('.')[0], t = f.target && !f.target.dead ? f.target : null;
+        this.weapons.limbArc(f, el, 'foot', 'R', { span: 0.32, speed: 18, grow: 2.0, dmg: 9, knock: 8, level: 2 });
+        const at = t && t.pos.distanceTo(f.pos) < 9 ? t.pos.clone() : this.forwardPoint(f, 3, 0);
+        at.y = w.arena.groundAt(at.x, at.z, at.y + 1);
+        if (el === 'water') { this.weapons.ringBurst(at, 1.6, 2.6, 12); this.weapons.eruption(f, at, f.forward(new THREE.Vector3()), 4, 2.6); w.audio.splash(1.3, at); }
+        else { this.fireWave(f, at, 6, 11); w.audio.fireWhoosh(1.3); }
+        if (t && t.invuln <= 0 && Math.hypot(t.pos.x - at.x, t.pos.z - at.z) < 2.2) {
+          w.combat.damage(t, 12, f.forward(new THREE.Vector3()).setY(0).normalize(), f, el + 'Smash', t.chestPos(new THREE.Vector3()), 4, 2);
+          if (!t.onGround) { t.slamFall = true; t.vel.y = Math.min(t.vel.y, -18); }
+        }
+        f.vel.y = Math.min(f.vel.y, -4); w.shake(0.3, at); return;
+      }
       case 'fire.knee': { this.ring(f, 'fire', 2.4, 10, { dmg: 6, knock: 7, level: 1 }); for (let i = 0; i < 10; i++) w.fx.fire(foot, _v.set(rand(-3, 3), rand(0, 3), rand(-3, 3)), 0.5, 0.3); w.audio.fireWhoosh(1); return; }
       case 'fire.stompMark': return;   // no flame before the foot comes down: the stomp ignites on the plant
       case 'fire.stomp': {

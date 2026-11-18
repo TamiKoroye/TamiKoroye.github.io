@@ -102,9 +102,11 @@ export class Weapons {
       const fw = f.forward(_a).setY(0).normalize(), gy = t.groundY;
       if (!G.slammed) {
         const u = Math.min(1, G.T / G.slamAt), e = smooth01(u);
-        // up and over: from where the rival was caught to above a point 1.7 m in front of the bender
-        const tx = G.start.x + (f.pos.x + fw.x * 1.7 - G.start.x) * e, tz = G.start.z + (f.pos.z + fw.z * 1.7 - G.start.z) * e;
-        const ty = gy + 2.6 * Math.sin(Math.min(1, u * 1.25) * Math.PI / 2) + (G.start.y - gy) * (1 - e);
+        // (18 Nov, after review) up and over the bender's head: the whip hauls the rival in and up, over the top of the
+        // bender (about 3 m up), then down towards the floor 1.8 m in front, where the slam drives them in (a curve through
+        // those three points)
+        const a0 = G.start, a1x = f.pos.x - fw.x * 0.2, a1z = f.pos.z - fw.z * 0.2, a1y = gy + 4.4, a2x = f.pos.x + fw.x * 1.8, a2z = f.pos.z + fw.z * 1.8, a2y = gy + 1.6;
+        const q = 1 - e, tx = q * q * a0.x + 2 * q * e * a1x + e * e * a2x, tz = q * q * a0.z + 2 * q * e * a1z + e * e * a2z, ty = q * q * a0.y + 2 * q * e * a1y + e * e * a2y;
         t.pos.x += (tx - t.pos.x) * Math.min(1, dt * 10); t.pos.y += (ty - t.pos.y) * Math.min(1, dt * 10); t.pos.z += (tz - t.pos.z) * Math.min(1, dt * 10);
         t.vel.set(0, 0, 0); t.onGround = false; t.restrainT = Math.max(t.restrainT, 0.2);
         if (G.T >= G.slamAt) {
@@ -266,7 +268,8 @@ export class Weapons {
           // Water's whip wraps the rival (airborne, or caught by the overhead lash on the ground): grab, lift, slam
           // (a raised guard facing the whip stops the grab: the lash is then resolved against the guard like any blow)
           const guarded = t.guarding && t.defense && w.bending.covers(t.defense, dir);
-          if (W.el === 'water' && !W.frozen && !guarded && (airborne || W.kind === 'v') && f.style.tech.whipSlam && !this.grabs.length && t.hp > 0) { W.hit.add(t); this.grabSlam(f, t, W.ls); break; }
+          // (18 Nov, after review: the grab must work on the ground and in the air) any water whip that lands grabs, once every 3 s
+          if (W.el === 'water' && !W.frozen && !guarded && f.style.tech.whipSlam && !this.grabs.length && t.hp > 0 && (f.grabCd || 0) <= f.time) { f.grabCd = f.time + 3; W.hit.add(t); this.grabSlam(f, t, W.ls); break; }
           w.combat.damage(t, Math.round((W.frozen ? 1.4 : 1) * (airborne ? 1.5 : 1) * W.dmg), dir.clone(), f, W.tag, p.clone(), W.knock, W.frozen || airborne ? 2 : W.level);
           if (airborne && !t.dead) { t.vel.y = -18; t.vel.x *= 0.3; t.vel.z *= 0.3; w.shake(0.3, p); w.popup(f, 'SLAM', true); }
           if (W.frozen) { w.fx.debrisBurst(p, 10, 3, 0.07, 0xe0f4ff); }

@@ -435,8 +435,11 @@ export class Hero {
       else if (f.holding && f.el === 'earth' && f.gatherT > 0 && has('Fixing_Kneeling')) {
         // Earth's rock lift: sinking to one knee with the hands on the ground (UAL Fixing_Kneeling, from 0.3 s to its
         // lowest point at 1.15 s, reached 0.28 s into each gathering of 0.42 s), once per rock drawn up
-        clip = 'Fixing_Kneeling'; ts = 3.0; wU = wL = 0; fade = 0.15;
-        if (this.gatherN !== f.gatherN) { this.gatherN = f.gatherN; restart = true; startAt = 0.3; }
+        // (18 Nov, after review: restarting the kneel for every rock jerked the body up and down) the bender sinks to the
+        // knee once, then works the ground there: the clip rocks gently back and forth around its lowest point
+        clip = 'Fixing_Kneeling'; wU = wL = 0; fade = 0.2;
+        if (this.curName !== 'Fixing_Kneeling') { restart = true; startAt = 0.3; this.kneelDir = 1; ts = 2.2; }
+        else { const t = this.cur.time; if (t > 1.2) this.kneelDir = -1; else if (t < 0.95) this.kneelDir = 1; ts = this.kneelDir * (t > 0.9 ? 0.45 : 2.2); }
       }
       else if (f.holding && has(L.hold)) { clip = L.hold; ts = LOOP_SPEED[L.hold] || 1; wU = wL = 0; fade = 0.2; layered = moving || !!lowOv; }
       else if (lowOv) { [clip, ts] = lowOv; wU = wL = 0; fade = 0.2; }
@@ -449,7 +452,9 @@ export class Hero {
       else if (free && !f.onGround && f.highJump && has('jump_high')) {
         // propelled high jumps (ice ramp, rising slab, flame jets, water column): take-off, airborne, falling
         // Water on its column: Falling Into Pool's airborne frames (arms out, legs drawn up), held while the water lifts
-        if (f.el === 'water' && has('water_pool') && (f.jetting || f.vel.y > -3)) { clip = 'water_pool'; ts = 0.35; }
+        // (18 Nov, after review: the Falling Into Pool frames flailed and splayed the legs mid-air; standing on the column
+        //  in the water stance instead, arms working the water)
+        if (f.el === 'water' && has(L.idle) && (f.jetting || f.vel.y > -3)) { clip = L.idle; ts = LOOP_SPEED[L.idle] || 1; }
         else if (f.vel.y > 2 && f.airTime < 0.4) { clip = 'jump_high'; ts = 1.4; if (this.curName !== clip) restart = true; }
         else if (f.vel.y < -4 && has('fall_loop')) clip = 'fall_loop';
         else clip = 'air_loop';

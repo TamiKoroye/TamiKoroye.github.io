@@ -134,3 +134,5 @@ input[type=range] { width: 50%; }
 #err { position: fixed; left: 8px; bottom: 8px; right: 8px; background: #6b1d1d; color: #fff; padding: 8px; font: 12px monospace; z-index: 50; white-space: pre-wrap; }
 
 
+/* Fire holding GUARD: SPECIAL becomes Dragon's Breath and glows (js/main.js) */
+.act.breath { box-shadow: 0 0 14px 4px rgba(255, 110, 30, 0.85); border-color: #ff7a2a; }

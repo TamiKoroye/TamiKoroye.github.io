@@ -185,6 +185,7 @@ export class Fighter {
     if (inp.dodge) this.buf.dodge = 0.18;
     if (inp.jump) this.buf.jump = 0.15;
     if (this.guarding) this.guardT += dt;
+    if (this.slamFall && this.onGround && this.action !== 'down' && !(this.restrainT > 0)) this.slamFall = false;   // a slam's fall ends on landing
     if (this.floatT > 0) this.floatT -= dt;   // lifted by wind: the Floating clip (hero.js)
     // footwork cues for hero.js (M9): the ground speed at take-off picks Running Jump / Standing Jump; the first stride
     // of a run from standing is the Male Locomotion Pose lunge; reversing the stick at a run plants and turns
@@ -322,7 +323,7 @@ export class Fighter {
         this.buf.hand = 0; if (this.dodgeKind !== 'rocket' && this.dodgeKind !== 'arch') this.dodgeT = 0;
         if (this.counterT > 0) { this.counterT = 0; this.startAction('counter'); w.combat.lunge(this, ACTIONS.counter); w.popup(this, 'COUNTER', true); w.audio.whoosh(0.9); }
         else if (B.spiralRelease && B.spiralRelease(this)) { w.popup(this, 'RELEASE', true); }
-        else { this.handSide = -this.handSide; this.startTech(st.tech.hand, this.handSide, true); }
+        else { this.handSide = -this.handSide; const riding = this.el === 'water' && st.tech.surfPunch && ((this.dodgeKind === 'arch' && this.dodgeT > 0) || (this.mob && this.mob.kind === 'surf')); this.startTech(riding ? st.tech.surfPunch : st.tech.hand, this.handSide, true); }
         this.handHoldT = 0;
       }
       if (this.buf.leg && !struck && !this.charging && canStrike) {
@@ -332,6 +333,8 @@ export class Fighter {
         // LEG while jet-gliding (Fire) or riding the ice arch (Water): the legs stay on the jets / the ice, both palms
         // drive a blast (Jet Blast; Ice Volley)
         if (jetGlide) this.startTech(st.tech.glideBlast, this.handSide = -this.handSide, true);
+        // high in the air, Water and Fire somersault and smash a wave down on the rival (once per jump)
+        else if (!this.onGround && st.tech.airFlip && this.pos.y - this.groundY > 1.0 && !this.airFlipped && !(this.mob && this.mob.kind === 'surf')) { this.airFlipped = true; this.startTech(st.tech.airFlip, 1, true); this.vel.y = Math.max(this.vel.y, 2.5); }
         else if (!this.onGround && (this.pos.y - this.groundY > 0.4 || this.airTime > 0.12) && this.vel.y > -12 && st.tech.airKick && !(this.mob && this.mob.kind === 'surf')) {
           // in the air: a jumping kick, the right foot first, then the left, then the right again
           this.airKickN = (this.airKickN || 0) + 1; this.startTech(st.tech.airKick, this.airKickN % 2 ? -1 : 1, true);
@@ -567,7 +570,7 @@ export class Fighter {
         // a jet landing: the flames hit the ground and burst outward
         this.jetUsed = false; B.ring(this, 'fire', 2.4, 9, { dmg: 6, knock: 6, level: 1 }); w.shake(0.12, this.pos); w.audio.fireWhoosh(0.9);
       }
-      this.pos.y = gy; if (this.vel.y < 0) this.vel.y = 0; this.onGround = true; this.airTime = 0; this.airJumps = 0; this.airKickN = 0; this.waterJetT = 0;
+      this.pos.y = gy; if (this.vel.y < 0) this.vel.y = 0; this.onGround = true; this.airTime = 0; this.airJumps = 0; this.airKickN = 0; this.waterJetT = 0; this.airFlipped = false;
     } else if (this.pos.y > gy + 0.03) {
       if (this.onGround && this.vel.y <= 0 && this.pos.y - gy < 0.5) { this.pos.y = gy; this.vel.y = 0; }
       else { this.onGround = false; this.airTime += dt; }
@@ -620,13 +623,28 @@ export class Fighter {
     if (Math.abs(this.wallRoll) > 1e-3 || Math.abs(this.wallPitch) > 1e-3) {
       this.root.quaternion.setFromAxisAngle(_up, this.yaw).multiply(_qw.setFromAxisAngle(_zx.set(0, 0, 1), this.wallRoll)).multiply(_qw.setFromAxisAngle(_zx.set(1, 0, 0), this.wallPitch));
     }
-    if (this.hero) { this.root.updateMatrixWorld(true); this.hero.drive(this, dt); }
+    if (this.hero) { this.root.updateMatrixWorld(true); this.hero.drive(this, dt); this.floorGuard(dt); }
     this.recLimbs();
     const f = this.flash, ch = this.charging ? Math.min(1, this.chargeT / 0.55) * (0.15 + 0.1 * Math.sin(this.time * 30)) : 0;
     const ec = new THREE.Color(this.style.color);
     this.material.emissive.setRGB(f * 0.9 + ch * ec.r, f * 0.25 + ch * ec.g, f * 0.15 + ch * ec.b);
   }
 
+  // Nothing sinks into the floor: the captured falls, get-ups and floor moves were recorded on other bodies, and on ours
+  // their lowest points went up to half a metre below the floor (measured joint by joint). Each frame, if any joint
+  // of the body is lower than the floor plus the thickness of a limb, the whole body is raised by the difference
+  // (quickly up, slowly back down, so the correction itself never jumps).
+  floorGuard(dt) {
+    const h = this.hero, sc = h && h.scene; if (!sc) return;
+    sc.position.y = this.floorLift || 0; sc.updateMatrixWorld(true);
+    const floor = this.groundY + 0.06; let mn = Infinity;   // a joint is about a limb's half-thickness inside the skin
+    if (!h._guardBones) h._guardBones = Object.keys(h.bones).filter(k => /^DEF-/.test(k) && !/foot|toe|heel/i.test(k)).map(k => h.bones[k]);   // body joints only (the rig's root sits on the floor; feet stand on it)
+    for (const b of h._guardBones) { const e = b.matrixWorld.elements; if (e[13] < mn) mn = e[13]; }
+    const need = (this.pos.y - this.groundY < 0.6) ? Math.max(0, (this.floorLift || 0) + floor - mn) : 0;
+    const cur = this.floorLift || 0, k = need > cur ? 1 : 1 - Math.exp(-6 * dt);   // up at once, back down gently
+    this.floorLift = cur + (need - cur) * k;
+    sc.position.y = this.floorLift; sc.updateMatrixWorld(true);
+  }
   endHold() { if (this.holding) { this.holding = false; this.world.bending.holdEnd(this); } }
 
   // ------------------------------------------------------------ elemental mobility
