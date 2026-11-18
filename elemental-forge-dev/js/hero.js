@@ -302,7 +302,7 @@ export class Hero {
       return [side > 0 ? 'strafe' : 'strafe_M', C(sp / 2.5, 0.7, 1.9)];
     };
     // elemental mobility: the legs hold the surfing stance / the flying pose, techniques play over them
-    const mk = f.mob && f.mob.kind, lowOv = mk === 'surf' && f.onGround && has('surf_stance') ? ['surf_stance', LOOP_SPEED.surf_stance] : mk === 'fly' && has('air_loop') ? (Math.hypot(f.vel.x, f.vel.z) > 4 && has('air_fly') ? ['air_fly', 1] : ['air_loop', 1]) : null;   // flying fast: Mixamo Flying, body level
+    const mk = f.mob && f.mob.kind, lowOv = mk === 'surf' && f.onGround && has('surf_stance') ? ['surf_stance', LOOP_SPEED.surf_stance] : mk === 'fly' && has('air_loop') ? ['air_loop', 1] : null;   // (the reclined Mixamo Flying pose, air_fly, is kept in the pack for a later unlock: lying level it does not face the rival)
     // the blow's direction relative to the body (lz < 0: driven backwards, |lx| large: from the side)
     const hd = f.hitDir || f.koDir, hc = Math.cos(f.yaw), hs = Math.sin(f.yaw);
     const hlx = hd ? hd.x * hc - hd.z * hs : 0, hlz = hd ? hd.x * hs + hd.z * hc : -1;
