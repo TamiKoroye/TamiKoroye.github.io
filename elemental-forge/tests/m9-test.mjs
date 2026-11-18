@@ -197,7 +197,7 @@ const CHECKS = {
     await page.keyboard.down('KeyA'); await page.keyboard.down('ShiftLeft'); const b = await step(2, probe); await page.keyboard.up('ShiftLeft'); await page.keyboard.up('Space');
     const c = await step(12, probe); await tap('KeyF'); const dd = await step(60, probe); await page.keyboard.up('KeyA');
     const peak = Math.max(...a.map(r => r.h)), lifted = a.filter(r => r.jet);
-    check('Water lift: water round the body and under the feet raises the bender high, Falling Into Pool pose', peak > 4.5 && lifted.length > 20 && lifted.slice(10).every(r => r.wrap) && lifted.slice(15).every(r => r.cur === 'water_pool'), `peak ${peak} m, lifted ${lifted.length} frames, wrap ${lifted.slice(10).every(r => r.wrap)}, pose ${[...new Set(lifted.map(r => r.cur))].join(',')}`);
+    check('Water lift: water round the body and under the feet raises the bender high, standing in the water stance', peak > 4.5 && lifted.length > 20 && lifted.slice(10).every(r => r.wrap) && lifted.slice(15).every(r => r.cur === 'water_stance')   /* (18 Nov, second review: Falling Into Pool flailed; the water stance on the column) */, `peak ${peak} m, lifted ${lifted.length} frames, wrap ${lifted.slice(10).every(r => r.wrap)}, pose ${[...new Set(lifted.map(r => r.cur))].join(',')}`);
     const arch = [...b, ...c, ...dd].filter(r => r.d);
     check('Water lift: DODGE up there slides down on an ice arch, striking on the way', arch.length > 30 && arch[0].h > 3 && arch.some(r => r.tech) && [...c, ...dd].at(-1).h < 0.3, `arch from ${arch.length ? arch[0].h : '-'} m over ${arch.length} frames, strike ${[...new Set(arch.map(r => r.tech).filter(Boolean))]}, end height ${[...c, ...dd].at(-1).h}`);
   },
@@ -206,8 +206,9 @@ const CHECKS = {
     const seen = new Set();
     for (let i = 0; i < 8; i++) { await tap('KeyF'); for (const r of await step(40, 'P.hero.curName')) seen.add(r); }
     for (let i = 0; i < 6; i++) { await tap('KeyG'); for (const r of await step(30, 'P.hero.curName')) seen.add(r); }
-    const want = ['water_ripple', 'water_twirl', 'water_spin'], got = want.filter(n => [...seen].some(c => c.split('|')[0].replace(/_M$/, '') === n));
-    check('Water: the dance moves are in the HAND and LEG chains', got.length === 3, `played ${got.join(', ')}`);
+    // (18 Nov, second review: the arm wave, water_ripple, is out of the HAND chain: it contorted the body mid-combo)
+    const want = ['water_twirl', 'water_spin'], got = want.filter(n => [...seen].some(c => c.split('|')[0].replace(/_M$/, '') === n));
+    check('Water: the twirl and spin kicks are in the LEG chain (the arm wave is out)', got.length === 2 && ![...seen].some(c => /water_ripple/.test(c)), `played ${got.join(', ')}`);
   },
   async fireGlide() {
     await setup('fire', 'earth', 5); await step(30);
