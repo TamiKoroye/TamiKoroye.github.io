@@ -96,11 +96,11 @@
  {
   "name": "getup_cork",
   "src": ".anim-src/drive7/Corkscrew Kip Up.fbx",
-  "start": 0.0,
-  "end": 2.77,
+  "start": 0.55,
+  "end": 2.45,
   "mirror": false,
   "aim": "hips",
-  "note": "Air get-up: spinning kip-up from the back"
+  "note": "Air get-up: spinning kip-up from the back (from where the legs start to swing, so it is quick)"
  },
  {
   "name": "air_fly",
@@ -262,5 +262,14 @@
   "loop": true,
   "mirror": false,
   "note": "Earth fighting stance (18 Nov, after review: replaces Mixamo Idle (1)): guard up, weight shifting, played slower so it reads heavy; lined up by the head (the boxer stands side-on: lined up by the hips, the head looked off to the left)"
+ },
+ {
+  "name": "water_ready",
+  "src": ".anim-src/mixamo/Ninja Idle.fbx",
+  "start": 0,
+  "end": 0.75,
+  "loop": true,
+  "mirror": false,
+  "note": "Water's fighting stance (18 Nov, after review: the old one stood upright, hands at the belly): crouched, lead hand forward, ready to flow; the opening 0.75 s of Ninja Idle, before it turns away"
  }
 ]

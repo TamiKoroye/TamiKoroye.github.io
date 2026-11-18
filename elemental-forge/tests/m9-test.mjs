@@ -31,6 +31,26 @@ const tap = async (code, hold = 2) => { await page.keyboard.down(code); await st
 let fails = 0;
 const check = (name, ok, info) => { console.log(`${ok ? 'PASS' : 'FAIL'} ${name}  ${info}`); if (!ok) fails++; };
 const CHECKS = {
+  async review18c() {
+    // 18 Nov, third review
+    await setup('water', 'fire', 6); const ws = (await step(50, 'P.hero.curName')).slice(20);
+    check("Water's fighting stance is the crouched ready stance (water_ready)", ws.every(c => c === 'water_ready'), `clips ${[...new Set(ws)].join(', ')}`);
+    await setup('fire', 'earth', 6); await step(10);
+    const fl = await step(60, "E.world.fx.flip.sheets ? Object.values(E.world.fx.flip.sheets).reduce((s, sh) => s + (sh.n || 0), 0) : -1");
+    check('Fire at rest: no flames on the hands', Math.max(...fl) === 0, `flame sprites alive at rest: up to ${Math.max(...fl)}`);
+    await setup('water', 'earth', 4); await step(20); await page.keyboard.down('Space'); await step(40); await page.keyboard.up('Space'); await tap('KeyG');
+    const waves = Math.max(...await step(60, "E.world.bending.weapons.waves.filter(W => W.f === P).length"));
+    check('Water somersault throws a real wave (the breaking wave), not a whip arc', waves > 0, `waves seen ${waves}`);
+    await setup('air', 'earth', 2.5); await step(20);
+    await page.evaluate(() => { const E = window.__EF, P = E.player, O = E.opp; P.invuln = 0; E.world.combat.damage(P, 8, new P.pos.constructor(0, 0, -1), O, 'melee', P.chestPos(new P.pos.constructor()), 5, 2); });
+    const gu = await step(240, "P.action"), downT = gu.filter(a => a === 'down').length / 60, upT = gu.filter(a => a === 'getup').length / 60;
+    check('Air gets up quickly (corkscrew kip-up, about 1.1 s)', upT > 0.5 && upT < 1.3, `down ${downT.toFixed(2)} s, getting up ${upT.toFixed(2)} s`);
+    await setup('air', 'earth', 6); await step(20);
+    await page.keyboard.down('ShiftLeft'); await step(2); await page.keyboard.up('ShiftLeft'); await step(150);   // first dodge: the glide
+    await page.keyboard.down('ShiftLeft'); await step(2); await page.keyboard.up('ShiftLeft');
+    const cw = await step(40, "(P.dodgeKind === 'flip' && P.dodgeT > 0 ? 'flip' : '-') + ':' + E.world.bending.weapons.whirls.filter(W => W.f === P).length");
+    check('Air corkscrew / cartwheel spins inside a whirl of wind', cw.some(x => x === 'flip:1'), `${[...new Set(cw)].join(' ')}`);
+  },
   async fireWallStays() {
     // 18 Nov: Fire's wall stays where it was raised while the bender moves (it is only punched forward)
     await setup('fire', 'earth', 6); await step(20);
@@ -62,7 +82,7 @@ const CHECKS = {
     // 18 Nov, second review (phone recording r21)
     // 1. Water lifted on its column stands in the water stance (no Falling Into Pool flailing)
     await setup('water', 'earth', 6); await step(20); await page.keyboard.down('Space'); const lift = await step(70, 'P.hero.curName'); await page.keyboard.up('Space'); await step(90);
-    check('Water lift: stands on the column in the water stance (no flailing pose)', !lift.some(c => /water_pool/.test(c)) && lift.slice(30).filter(c => /water_stance/.test(c)).length > 25, `clips ${[...new Set(lift)].join(', ')}`);
+    check('Water lift: stands on the column in the water stance (no flailing pose)', !lift.some(c => /water_pool/.test(c)) && lift.slice(30).filter(c => /water_ready/.test(c)).length > 25, `clips ${[...new Set(lift)].join(', ')}`);
     // 2. riding the ice: HAND punches throw water / ice balls, no whips
     await setup('water', 'earth', 5); await step(20);
     // (DODGE held: the arch runs on into the ice surf, so all three punches are thrown while riding)
@@ -208,7 +228,7 @@ const CHECKS = {
     await page.keyboard.down('KeyA'); await page.keyboard.down('ShiftLeft'); const b = await step(2, probe); await page.keyboard.up('ShiftLeft'); await page.keyboard.up('Space');
     const c = await step(12, probe); await tap('KeyF'); const dd = await step(60, probe); await page.keyboard.up('KeyA');
     const peak = Math.max(...a.map(r => r.h)), lifted = a.filter(r => r.jet);
-    check('Water lift: water round the body and under the feet raises the bender high, standing in the water stance', peak > 4.5 && lifted.length > 20 && lifted.slice(10).every(r => r.wrap) && lifted.slice(15).every(r => r.cur === 'water_stance')   /* (18 Nov, second review: Falling Into Pool flailed; the water stance on the column) */, `peak ${peak} m, lifted ${lifted.length} frames, wrap ${lifted.slice(10).every(r => r.wrap)}, pose ${[...new Set(lifted.map(r => r.cur))].join(',')}`);
+    check('Water lift: water round the body and under the feet raises the bender high, standing in the water stance', peak > 4.5 && lifted.length > 20 && lifted.slice(10).every(r => r.wrap) && lifted.slice(15).every(r => r.cur === 'water_ready')   /* (18 Nov, second review: Falling Into Pool flailed; the water stance on the column; third review: that stance is now water_ready) */, `peak ${peak} m, lifted ${lifted.length} frames, wrap ${lifted.slice(10).every(r => r.wrap)}, pose ${[...new Set(lifted.map(r => r.cur))].join(',')}`);
     const arch = [...b, ...c, ...dd].filter(r => r.d);
     check('Water lift: DODGE up there slides down on an ice arch, striking on the way', arch.length > 30 && arch[0].h > 3 && arch.some(r => r.tech) && [...c, ...dd].at(-1).h < 0.3, `arch from ${arch.length ? arch[0].h : '-'} m over ${arch.length} frames, strike ${[...new Set(arch.map(r => r.tech).filter(Boolean))]}, end height ${[...c, ...dd].at(-1).h}`);
   },
