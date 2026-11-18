@@ -123,6 +123,7 @@ for (const el of ['earth', 'fire', 'water', 'air']) {
   await waitFight(); await whenFree(); m = mark(); await tap('special', 3); await run(26); R.special = seg(m);
 }
 await page.screenshot({ path: path.join(OUT, 'acceptance-end.png') });
+if (process.env.DEBUG) for (const el of Object.keys(perEl)) for (const k of ['kick', 'hold', 'guard', 'special']) console.log(el, k, perEl[el][k].map(r => `${r.act || '-'}:${r.clip}:${r.el}:${Math.round(r.hp)}`).filter((x, i, a) => x !== a[i - 1]).join(' '));
 const els = Object.keys(perEl);
 const all = (k, pred) => els.every(el => reachAuthored(perEl[el][k], pred));
 const isTech = (r) => r.act === 'tech';
