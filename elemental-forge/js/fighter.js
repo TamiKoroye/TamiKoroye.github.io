@@ -849,7 +849,7 @@ export class Fighter {
       // with the stick held the flip goes the stick's way (the dodge always follows the stick); without it, the clip's path
       if (Math.hypot(inp.mx, inp.mz) > 0.3) this.dodgeDir.set(inp.mx, 0, inp.mz).normalize();
       else this.dodgeDir.set(tx * c + tz * s, 0, -tx * s + tz * c).normalize();
-      this.dodgeKind = 'flip'; this.flipClip = pick; this.flipSpeed = Math.max(len, 2.2) * 1.6 / 0.85;
+      this.dodgeKind = 'flip'; this.flipClip = pick; this.flipSpeed = Math.max(len, 2.2) * 1.6 / 0.95;
     } else if (this.el === 'air') {
       if (Math.hypot(inp.mx, inp.mz) < 0.2) { this.whirlSide = -(this.whirlSide || 1); const sx = Math.cos(this.faceYaw) * this.whirlSide, sz = -Math.sin(this.faceYaw) * this.whirlSide, bx = -Math.sin(this.faceYaw), bz = -Math.cos(this.faceYaw); this.dodgeDir.set(sx * 0.7 + bx * 0.7, 0, sz * 0.7 + bz * 0.7).normalize(); }
       this.dodgeKind = 'glide'; this.world.bending.weapons.whirlwind(this, 2.0);
@@ -867,7 +867,7 @@ export class Fighter {
       this.dodgeKind = 'arch'; this.archH0 = Math.max(0, this.pos.y - this.groundY); this.vel.y = Math.max(this.vel.y, 0);
       this.world.audio.ice('form', 0.8, this.pos);
     }
-    this.dodgeDur = this.dodgeKind === 'glide' ? 2.0 : this.dodgeKind === 'rocket' ? 0.95 : this.dodgeKind === 'arch' ? 1.0 : this.dodgeKind === 'flip' ? 0.85 : this.dodgeKind === 'side' ? 0.26 : this.dodgeKind === 'back' ? 0.3 : this.dodgeKind === 'circle' ? 0.42 : D.dur;
+    this.dodgeDur = this.dodgeKind === 'glide' ? 2.0 : this.dodgeKind === 'rocket' ? 0.95 : this.dodgeKind === 'arch' ? 1.0 : this.dodgeKind === 'flip' ? 0.95 : this.dodgeKind === 'side' ? 0.26 : this.dodgeKind === 'back' ? 0.3 : this.dodgeKind === 'circle' ? 0.42 : D.dur;
     this.dodgeT = this.dodgeDur; this.dodgeCd = this.dodgeKind === 'glide' ? 0.6 : 0.42; this.invuln = this.dodgeKind === 'glide' ? 0.6 : (this.dodgeKind === 'rocket' || this.dodgeKind === 'arch') ? 0.35 : this.dodgeDur * (D.iframes || 0.75); this.en -= this.dodgeKind === 'glide' ? 16 : 10;
     this.action = null; this.tech = null; this.spinYaw = 0;
     this.world.fx.dust(this.pos, 5, 1.2);
