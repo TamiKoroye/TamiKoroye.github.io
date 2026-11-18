@@ -253,5 +253,15 @@
   "mirror": false,
   "aim": "hips",
   "note": "two-hand charged push"
+ },
+ {
+  "name": "earth_fight",
+  "src": ".anim-src/mixamo/Bouncing Fight Idle.fbx",
+  "start": 0,
+  "end": 2.97,
+  "loop": true,
+  "mirror": false,
+  "aim": "hips",
+  "note": "Earth fighting stance (18 Nov, after review: replaces Mixamo Idle (1)): guard up, weight shifting, played slower so it reads heavy"
  }
 ]

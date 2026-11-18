@@ -300,8 +300,11 @@ export class Bending {
         // Dragon's Breath: a big slow ball of fire from the mouth, with a roaring jet; it engulfs what it hits
         const head = f.hero && f.hero.bones['DEF-head'] ? f.hero.bones['DEF-head'].getWorldPosition(new THREE.Vector3()) : f.chestPos(new THREE.Vector3()).setY(f.pos.y + 1.6);
         const mouth = head.addScaledVector(f.forward(_v2), 0.25); mouth.y -= 0.05;
-        const o = this.fire('fireOrb', f, mouth, { scale: 1.9, speedMul: 0.6 }); o.dmg = 12; o.engulf = true; o.knock = 6;
-        this.flameJet(mouth, o.vel.clone().normalize(), 2.2); this.flameJet(mouth, o.vel.clone().normalize(), 1.6);
+        // (18 Nov, after review: it read as nothing) a roaring torrent of flame pours out of the mouth for 0.7 s,
+        // burning everything in a cone 7 m long (updateBreaths), and a big fireball, aimed at the rival, engulfs them
+        const t = f.target && !f.target.dead ? f.target : null;
+        const o = this.fire('fireOrb', f, mouth, { scale: 1.9, speedMul: 0.9, target: t ? t.chestPos(new THREE.Vector3()) : undefined }); o.dmg = 12; o.engulf = true; o.knock = 6;
+        (this.breaths = this.breaths || []).push({ f, t: 0, dur: 0.7, hit: new Map() });
         w.audio.fireWhoosh(1.4); w.shake(0.1, f.pos); w.popup(f, "DRAGON'S BREATH", true); return;
       }
       case 'fire.knee': { this.ring(f, 'fire', 2.4, 10, { dmg: 6, knock: 7, level: 1 }); for (let i = 0; i < 10; i++) w.fx.fire(foot, _v.set(rand(-3, 3), rand(0, 3), rand(-3, 3)), 0.5, 0.3); w.audio.fireWhoosh(1); return; }
@@ -1037,7 +1040,7 @@ export class Bending {
     this.lightBoost = 0;
     this.waterSurf.uniforms.uTime.value += dt;
     this.updateDefences(dt);   // first, so a defence raised this frame is already in place for projectiles
-    this.updateObjects(dt); this.updateEngulf(dt);
+    this.updateObjects(dt); this.updateEngulf(dt); this.updateBreaths(dt);
     this.updateRings(dt);
     this.updateSpirals(dt);
     this.specials.update(dt);
@@ -1053,6 +1056,24 @@ export class Bending {
 
   // engulfed by Dragon's Breath: flames climb over the body for a few seconds, a little damage each 0.35 s; water
   // benders put it out three times as fast
+  updateBreaths(dt) {
+    const w = this.world, F = w.fx.flip;
+    for (const B of this.breaths || []) {
+      B.t += dt; const f = B.f; if (f.dead || B.t > B.dur) { B.done = true; continue; }
+      const head = f.hero && f.hero.bones['DEF-head'] ? f.hero.bones['DEF-head'].getWorldPosition(new THREE.Vector3()) : f.chestPos(new THREE.Vector3()).setY(f.pos.y + 1.6);
+      const t = f.target && !f.target.dead ? f.target : null, dir = f.forward(new THREE.Vector3());
+      if (t) dir.subVectors(t.chestPos(new THREE.Vector3()), head).normalize();
+      const mouth = head.addScaledVector(dir, 0.25);
+      for (let i = 0; i < 5; i++) { const sp = rand(14, 20), sd = _v.copy(dir).add(_v2.set(rand(-0.18, 0.18), rand(-0.1, 0.12), rand(-0.18, 0.18))).normalize();
+        F.spawn('fire_flames', { pos: mouth, vel: sd.multiplyScalar(sp), size: [0.45, 0.55], grow: 5, life: 0.38, f0: 4, f1: 30, drag: 1.6, fadeIn: 0, rot: rand(-0.6, 0.6) }); }
+      for (const v of w.fighters) {
+        if (v === f || v.dead) continue;
+        const c = v.chestPos(_v3), rel = _v.subVectors(c, mouth), d = rel.length();
+        if (d < 7 && rel.dot(dir) / (d || 1) > 0.88 && (B.hit.get(v) || 0) <= B.t) { B.hit.set(v, B.t + 0.18); w.combat.damage(v, 3, dir.clone().setY(0).normalize(), f, 'fireStream', c.clone(), 2, 0); v.engulfT = Math.max(v.engulfT || 0, 1.8); v.engulfBy = f; }
+      }
+    }
+    this.breaths = (this.breaths || []).filter(B => !B.done);
+  }
   updateEngulf(dt) {
     const w = this.world;
     for (const t of w.fighters) {

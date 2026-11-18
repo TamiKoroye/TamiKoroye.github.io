@@ -31,6 +31,22 @@ const tap = async (code, hold = 2) => { await page.keyboard.down(code); await st
 let fails = 0;
 const check = (name, ok, info) => { console.log(`${ok ? 'PASS' : 'FAIL'} ${name}  ${info}`); if (!ok) fails++; };
 const CHECKS = {
+  async review18() {
+    // 18 Nov review: Earth's stance, Fire's plain get-up, Air flight upright (no reclined Flying), Dragon's Breath torrent
+    await setup('earth', 'fire', 5); const st = await step(40, 'P.hero.curName');
+    await setup('fire', 'earth', 2); await step(10);
+    await page.evaluate(() => { const E = window.__EF, P = E.player, O = E.opp; P.invuln = 0; E.world.combat.damage(P, 8, new P.pos.constructor(0, 0, -1), O, 'melee', P.chestPos(new P.pos.constructor()), 5, 2); });
+    const gu = await step(200, "P.hero.curName + ':' + P.action"), getupFrames = gu.filter(x => x.endsWith(':getup')).length;
+    // (Air takes flight with JUMP held)
+    await setup('air', 'earth', 8); await step(10); await page.keyboard.down('Space'); await step(30); await page.keyboard.down('KeyW'); const fl = await step(90, "(P.mob ? P.mob.kind : '-') + ':' + P.hero.lowName + ':' + P.hero.curName"); await page.keyboard.up('KeyW'); await page.keyboard.up('Space'); await step(30);
+    await setup('fire', 'earth', 5); await step(30);
+    await page.keyboard.down('KeyQ'); await step(20); await page.keyboard.down('KeyE'); await step(2); await page.keyboard.up('KeyE'); await page.keyboard.up('KeyQ');
+    const br = await step(120, "({ n: (E.world.bending.breaths || []).length, hp: O.hp, eng: O.engulfT || 0 })");
+    check('Earth stance is the fighting idle (Bouncing Fight Idle)', st.slice(-10).every(c => c === 'earth_fight'), `clips ${[...new Set(st)].join(', ')}`);
+    check('Fire gets up with the plain get-up (no flip), in about 1.1 s', gu.some(x => x.startsWith('getup:')) && !gu.some(x => /kip/.test(x)) && getupFrames < 80, `clips ${[...new Set(gu.map(x => x.split(':')[0]))].join(', ')}, ${getupFrames} frames getting up`);
+    check('Air flight stays upright (no reclined Flying pose)', fl.some(x => x.startsWith('fly')) && !fl.some(x => /air_fly/.test(x)), `${[...new Set(fl)].slice(0, 4).join(' | ')}`);
+    check("Dragon's Breath: a torrent from the mouth that burns the rival, then engulfs", br.some(r => r.n > 0) && br.at(-1).hp <= br[0].hp - 15 && Math.max(...br.map(r => r.eng)) > 1.5, `torrent frames ${br.filter(r => r.n > 0).length}, rival hp ${br[0].hp} -> ${br.at(-1).hp}, engulfed up to ${Math.max(...br.map(r => r.eng)).toFixed(1)} s`);
+  },
   async turn() {
     await page.evaluate(() => { window.__EF.state.locked = false; window.__EF.player.target = null; });
     await setup('fire', 'earth', 14); await step(20);
@@ -62,8 +78,8 @@ const CHECKS = {
       const r = await step(200, "P.hero.curName + ':' + P.action");
       out[name] = [...new Set(r.map(x => x.split(':')[0].replace(/\|.*/, '')))].filter(c => /hit|fall|trip|knock|getup|kip/.test(c)).join(' > ');
     }
-    const ok = /hit_legs/.test(out.sweep) && /hit_head_down/.test(out['punch knockdown']) && /fall_flat/.test(out['plain knockdown'] + out['plain knockdown 2']) && /hit_head/.test(out['light punch']) && /trip/.test(out['hit while dodging']) && /kip_up/.test(out['hit while dodging']);
-    check('Reactions chosen from the blow: sweep, punch, knockdowns, head snap, tripped mid-dodge; element get-ups', ok, Object.entries(out).map(([k, v]) => `${k}: ${v}`).join(' | '));
+    const ok = /hit_legs/.test(out.sweep) && /hit_head_down/.test(out['punch knockdown']) && /fall_flat/.test(out['plain knockdown'] + out['plain knockdown 2']) && /hit_head/.test(out['light punch']) && /trip/.test(out['hit while dodging']) && /getup/.test(out['hit while dodging']) && !/kip/.test(Object.values(out).join(' '));   // (18 Nov, after review: the flip get-ups are Air's only; Water and Earth get up plainly)
+    check('Reactions chosen from the blow: sweep, punch, knockdowns, head snap, tripped mid-dodge; plain get-ups (not Air)', ok, Object.entries(out).map(([k, v]) => `${k}: ${v}`).join(' | '));
   },
   async footwork() {
     await setup('water', 'earth', 12); await step(20);
@@ -111,7 +127,7 @@ const CHECKS = {
   },
   async waterArch() {
     await setup('water', 'earth', 5); await step(30);
-    const probe = "({ d: P.dodgeT > 0 && P.dodgeKind === 'arch', h: +(P.pos.y - P.groundY).toFixed(2), x: +P.pos.x.toFixed(2), tech: P.tech && P.tech.name, lo: P.hero.lowName, ice: !!(P._arch && P._arch.post), spears: E.world.bending.objs.filter(o => o.owner === P && o.kind === 'iceSpear' && o.state !== 'dead').length })";
+    const probe = "({ d: P.dodgeT > 0 && P.dodgeKind === 'arch', h: +(P.pos.y - P.groundY).toFixed(2), x: +P.pos.x.toFixed(2), z: +P.pos.z.toFixed(2), tech: P.tech && P.tech.name, lo: P.hero.lowName, ice: !!(P._arch && P._arch.post), spears: E.world.bending.objs.filter(o => o.owner === P && o.kind === 'iceSpear' && o.state !== 'dead').length })";
     await page.keyboard.down('KeyD'); await page.keyboard.down('ShiftLeft'); const a = await step(2, probe); await page.keyboard.up('ShiftLeft');
     const b = await step(20, probe); await tap('KeyF'); const c = await step(14, probe); await tap('KeyG'); const d = await step(40, probe); await page.keyboard.up('KeyD');
     const all = [...a, ...b, ...c, ...d], arch = all.filter(r => r.d);
@@ -141,10 +157,13 @@ const CHECKS = {
   async fireGlide() {
     await setup('fire', 'earth', 5); await step(30);
     const probe = "({ d: P.dodgeT > 0 ? 1 : 0, kind: P.dodgeKind, h: +(P.pos.y - P.groundY).toFixed(3), py: +P.pos.y.toFixed(3), gy: +P.groundY.toFixed(3), vy: +P.vel.y.toFixed(2), fl: +(P.footPos('L', new P.pos.constructor()).y - P.groundY).toFixed(3), fr: +(P.footPos('R', new P.pos.constructor()).y - P.groundY).toFixed(3), x: +P.pos.x.toFixed(2), tech: P.tech && P.tech.name, lo: P.hero.lowName, cur: P.hero.curName, orbs: E.world.bending.objs.filter(o => o.owner === P && /fire/.test(o.kind) && o.state !== 'dead').length, ll: (() => { const h = P.hero.bones['DEF-hips'].getWorldPosition(new P.pos.constructor()); const a = P.footPos('L', new P.pos.constructor()), b = P.footPos('R', new P.pos.constructor()); const c = Math.cos(P.yaw), s = Math.sin(P.yaw), L = (p) => [(p.x - h.x) * c - (p.z - h.z) * s, (p.x - h.x) * s + (p.z - h.z) * c]; return [...L(a), ...L(b)].map(v => +v.toFixed(2)); })() })";
-    await page.keyboard.down('KeyD'); await page.keyboard.down('ShiftLeft'); const a = await step(2, probe); await page.keyboard.up('ShiftLeft');
-    const b = await step(16, probe);
-    await tap('KeyF'); const c = await step(10, probe); await tap('KeyF'); const c2 = await step(10, probe);
-    await tap('KeyG'); const d = await step(30, probe); await page.keyboard.up('KeyD');
+    // (18 Nov, after review: the glide lasts while DODGE is held and rides higher, about 1.2 m; held for 2 s here, with
+    //  punches and a blast thrown during it, then let go; the old check was a 1 s tap glide at half a metre)
+    await page.keyboard.down('KeyD'); await page.keyboard.down('ShiftLeft'); const a = await step(2, probe);
+    const b = await step(30, probe);
+    await tap('KeyF'); const c = await step(20, probe); await tap('KeyF'); const c2 = await step(20, probe);
+    await tap('KeyG'); const d0 = await step(46, probe); await page.keyboard.up('ShiftLeft'); const d = [...d0, ...await step(40, probe)]; await page.keyboard.up('KeyD');
+    const mobs = await ev('P.mob ? P.mob.kind : null');
     const all = [...a, ...b, ...c, ...c2, ...d], glide = all.filter(r => r.d && r.kind === 'rocket');
     const mid = glide.slice(8, -9);
     const minFoot = Math.min(...mid.map(r => Math.min(r.fl, r.fr))), maxH = Math.max(...glide.map(r => r.h));
@@ -153,8 +172,8 @@ const CHECKS = {
     const punchedInGlide = glide.some(r => r.tech === 'Fire Fist'), blastInGlide = glide.some(r => r.tech === 'Jet Blast');
     const legs = [...new Set(glide.map(r => r.lo))], uppers = [...new Set(glide.map(r => r.cur))];
     if (process.env.DEBUG) console.log(all.map(r => r.py + '/' + r.gy + '/' + r.vy + (r.d ? '' : '*') + (r.tech ? '!' : '')).join(' '));
-    const dur = glide.length / 60, travel = Math.abs(glide[glide.length - 1].x - glide[0].x);
-    check('Fire glide: about 1 s, half a metre up, feet off the floor', dur > 0.85 && maxH > 0.4 && maxH < 0.65 && minFoot > 0.15, `glide ${dur.toFixed(2)} s, height up to ${maxH.toFixed(2)} m, lowest foot mid-glide ${minFoot.toFixed(2)} m, travel ${travel.toFixed(1)} m`);
+    const dur = glide.length / 60; let travel = 0; for (let i = 1; i < glide.length; i++) travel += Math.hypot(glide[i].x - glide[i - 1].x, (glide[i].z ?? 0) - (glide[i - 1].z ?? 0));   // path length (with lock-on a sideways glide arcs round the rival)
+    check('Fire glide: lasts while DODGE is held (2 s here), about 1.2 m up, feet off the floor, no flame run', dur > 1.9 && dur < 2.6 && maxH > 1.0 && maxH < 1.5 && minFoot > 0.5 && travel > 12 && !mobs, `glide ${dur.toFixed(2)} s, mob after ${mobs}, height up to ${maxH.toFixed(2)} m, lowest foot mid-glide ${minFoot.toFixed(2)} m, travel ${travel.toFixed(1)} m`);
     check('Fire glide: legs locked in the board crouch (no steps)', legs.every(n => n === 'skate_ride|L') && Math.max(...sw) < 0.12, `leg clips ${legs.join(',')}, foot swing relative to hips (fighter's frame) ${sw.map(v => v.toFixed(2)).join('/')} m`);
     check('Fire glide: punches and a blast thrown while it carries on', punchedInGlide && blastInGlide, `upper clips ${uppers.join(', ')}, flame shots in flight ${Math.max(...all.map(r => r.orbs))}`);
   },

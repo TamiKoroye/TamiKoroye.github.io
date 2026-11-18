@@ -58,7 +58,7 @@ const setup = (o) => ev((o) => {
 const oppFire = (kind, from) => ev(([kind, from]) => { const { world, opp, player } = window.__EF; return world.bending.fire(kind, opp, new world.scene.position.constructor(...from), { target: player.chestPos() }).kind; }, [kind, from]);
 
 const stubAI = () => ev(() => { const E = window.__EF; E.ai.update = function () { const i = this.f.input; i.mx = i.mz = 0; i.hand = i.handHeld = i.leg = i.legHeld = i.special = i.guard = i.dodge = i.dodgeHeld = i.jump = i.jumpHeld = false; i.faceYaw = Math.atan2(this.foe.pos.x - this.f.pos.x, this.foe.pos.z - this.f.pos.z); }; });
-const P = () => S(() => { const { player: p, opp: o, world } = window.__EF; return { x: p.pos.x, y: p.pos.y, z: p.pos.z, alt: p.pos.y - p.groundY, sp: Math.hypot(p.vel.x, p.vel.z), mob: p.mob && p.mob.kind, heading: p.mob && p.mob.heading, act: p.action, tech: p.tech && p.tech.name, en: p.en, ohp: o.hp, oact: o.action, oy: o.pos.y - o.groundY, ox: o.pos.x, oz: o.pos.z, clip: p.hero && p.hero.curName, low: p.hero && p.hero.lowName, onG: p.onGround }; });
+const P = () => S(() => { const { player: p, opp: o, world } = window.__EF; return { dk: p.dodgeT > 0 ? p.dodgeKind : null, x: p.pos.x, y: p.pos.y, z: p.pos.z, alt: p.pos.y - p.groundY, sp: Math.hypot(p.vel.x, p.vel.z), mob: p.mob && p.mob.kind, heading: p.mob && p.mob.heading, act: p.action, tech: p.tech && p.tech.name, en: p.en, ohp: o.hp, oact: o.action, oy: o.pos.y - o.groundY, ox: o.pos.x, oz: o.pos.z, clip: p.hero && p.hero.curName, low: p.hero && p.hero.lowName, onG: p.onGround }; });
 const run = async (n, fn) => { const out = []; for (let i = 0; i < n; i++) { await stepN(1); const r = await P(); out.push(r); if (fn) await fn(i, r); } return out; };
 
 // every damage event the rival takes, with the attack that caused it (so a stomp is not credited with a kick's hit)
@@ -227,10 +227,12 @@ head('Fire: flame propulsion');
 await setup({ el: 'fire', locked: false, p: [-8, 0, -14], o: [20, 0, 20] }); await stepN(3);
 await hold('btn-dodge', 7); await stick(0, -80);
 const fl2 = await run(30); await shot('fire-flame-run');
-check('DODGE held: flames from the feet drive a fast run', fl2.filter(r => r.mob === 'flame').length > 20 && Math.max(...fl2.map(r => r.sp)) > 11, `${Math.max(...fl2.map(r => r.sp)).toFixed(1)} m/s`);
+// (18 Nov, after review: held DODGE no longer starts the flame run, which put the legs back to running; it keeps
+//  the jet glide going, legs off the floor, for as long as it is held. JUMP from the glide is the flame jump)
+check('DODGE held: the flames from the feet keep the glide going, off the floor', fl2.filter(r => r.dk === 'rocket' && r.alt > 0.6).length > 20 && !fl2.some(r => r.mob === 'flame') && Math.max(...fl2.map(r => r.sp)) > 8, `${fl2.filter(r => r.dk === 'rocket').length} frames gliding, top ${Math.max(...fl2.map(r => r.sp)).toFixed(1)} m/s, up to ${Math.max(...fl2.map(r => r.alt)).toFixed(2)} m`);
 await press('btn-jump', 1); await hold('btn-jump', 8);
 let fPk = 0; await run(40, (i, r) => { fPk = Math.max(fPk, r.alt); });
-check('JUMP from the flame run: a flame-powered high jump', fPk > 3, `peak ${fPk.toFixed(2)} m`);
+check('JUMP from the glide: a flame-powered high jump', fPk > 3, `peak ${fPk.toFixed(2)} m`);
 await fUp(8); await stickUp(); await fUp(7); await run(30);
 
 // ================================================================== OPPONENT

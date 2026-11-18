@@ -213,9 +213,9 @@ export class Fighter {
         // getting up is protected for most of the rise, so a fighter cannot be kept on the floor by blows timed to it
         if (was === 'down') {
           this.floorHit = false; this.startAction('getup');
-          // the acrobatic get-ups are longer: Fire's kip-up with a double kick, Water's kip-up, Air's corkscrew kip-up
-          this.getupClip = this.el === 'fire' ? 'kip_kick' : this.el === 'water' ? 'kip_up' : this.el === 'air' ? 'getup_cork' : 'getup';
-          this.actionT = -({ kip_kick: 0.6, kip_up: 0.2, getup_cork: 0.4 }[this.getupClip] || 0);
+          // Air gets up with the corkscrew kip-up (longer, so time is added in front); the others with the plain get-up
+          this.getupClip = this.el === 'air' ? 'getup_cork' : 'getup';   // (18 Nov, after review: the flip get-up is Air's only; Fire's double-kick kip-up took too long)
+          this.actionT = -({ getup_cork: 0.4 }[this.getupClip] || 0);
           this.invuln = Math.max(this.invuln, (this.A.dur - this.actionT) * 0.8);
         }
       }
@@ -229,7 +229,7 @@ export class Fighter {
       this.mobCd = (this.mobCd || 0) - dt;
       // a spent mobility needs DODGE released (and, for flight, a recovery time) before it can start again
       // DODGE held: Water's ice surfing and Fire's flame run (Earth's rock slide and Air's flight start on a tap)
-      if (!this.mob && !this.mobLock && this.mobCd <= 0 && this.dodgeHoldT > 0.28 && (this.el === 'water' || this.el === 'fire') && !this.guarding && !this.charging && !this.reacting() && this.en > 12) { this.startMob(); if (this.mob && this.el === 'water') { this.mob.tap = true; this.mobLock = true; } }
+      if (!this.mob && !this.mobLock && this.mobCd <= 0 && this.dodgeHoldT > 0.28 && this.el === 'water' && !this.guarding && !this.charging && !this.reacting() && this.en > 12) { this.startMob(); if (this.mob && this.el === 'water') { this.mob.tap = true; this.mobLock = true; } }
       // tap-started mobility ends by itself: the rock slide after a few seconds, flight when its fuel is spent
       if (this.mob && this.mob.tap && this.mob.kind === 'surf' && (this.mob.t > (MOBILITY[this.mob.el].last || 4) || this.en < 2)) { this.endMob(); this.mobCd = 0.4; }
       // (an Earth slab beside a wall goes onto the wall instead of launching: see the wall checks below)
@@ -300,6 +300,10 @@ export class Fighter {
       if (this.buf.jump && this.free('jump') && !this.charging && !this.guarding && this.onGround && !this.mob && this.el === 'earth') {
         // Earth: the ground thrusts up under the feet and launches the bender straight up (the column stays as a platform)
         this.buf.jump = 0; this.action = null; B.weapons.surfLaunch(this, 'earth'); this.vel.y = 15.5; this.onGround = false; this.highJump = true; this.airJumps = 0; w.audio.rumble(0.8);
+      }
+      // JUMP while jet-gliding: the jets throw the bender up out of the glide (hold JUMP to keep the flame jets going)
+      if (this.buf.jump && this.dodgeKind === 'rocket' && this.dodgeT > 0 && !this.charging) {
+        this.buf.jump = 0; this.dodgeT = 0; this.action = null; this.vel.y = st.jump.v; this.onGround = false; this.highJump = true; this.jetFuel = 0.8; this.jetUsed = false; this.jumpFx(true);
       }
       if (this.buf.jump && this.free('jump') && !this.charging && !this.guarding) {
         if (this.onGround) { this.buf.jump = 0; this.action = null; this.vel.y = st.jump.v; this.onGround = false; this.airJumps = 0; this.jetFuel = 0.8; this.jetUsed = false; this.highJump = false; this.jumpFx(false); }
@@ -465,9 +469,13 @@ export class Fighter {
         // locked in the riding stance (hero.js), driven fast at first and easing; the stick steers it like a board
         // carving, and punches / blasts go on over it
         if (Math.hypot(mx, mz) > 0.3) { const l = Math.hypot(mx, mz), kk = 1 - Math.exp(-4 * dt); this.dodgeDir.x += (mx / l - this.dodgeDir.x) * kk; this.dodgeDir.z += (mz / l - this.dodgeDir.z) * kk; const n = Math.hypot(this.dodgeDir.x, this.dodgeDir.z) || 1; this.dodgeDir.x /= n; this.dodgeDir.z /= n; }
-        const rsp = 6 + 12 * k, el = this.dodgeDur - this.dodgeT;
+        // (18 Nov, after review) held DODGE keeps the glide going, steered by the stick, for as long as it is held and
+        // there is energy; the flames carry the bender higher (about 1.2 m); let go, it eases down over 0.3 s
+        const el = this.dodgeDur - this.dodgeT, held = this.input.dodgeHeld && this.en > 1 && el > 0.2;
+        if (held) { this.dodgeT = Math.max(this.dodgeT, 0.3); this.en -= 9 * dt; this.glideHeld = true; }
+        const rsp = held || this.glideHeld ? Math.max(9, 6 + 12 * k) : 6 + 12 * k;
         this.vel.x = this.dodgeDir.x * rsp; this.vel.z = this.dodgeDir.z * rsp;
-        const hov = 0.5 * Math.min(1, el / 0.12) * Math.min(1, this.dodgeT / 0.15);
+        const hov = 1.2 * Math.min(1, el / 0.2) * Math.min(1, this.dodgeT / 0.3);
         this.vel.y = (hov - (this.pos.y - this.groundY)) * 8 + 21 * dt; this.onGround = false;
         // the jets: tight streams of flame driven out of both feet against the direction of travel, small and bright at
         // the sole and widening behind (two per foot per frame, fast and short-lived, so they read as thrust)
@@ -858,7 +866,7 @@ export class Fighter {
     // drive the bender fast to the side (or the stick's direction); no steps
     if (this.el === 'fire') {
       if (Math.hypot(inp.mx, inp.mz) < 0.2) { this.whirlSide = -(this.whirlSide || 1); this.dodgeDir.set(Math.cos(this.faceYaw) * this.whirlSide, 0, -Math.sin(this.faceYaw) * this.whirlSide); }
-      this.dodgeKind = 'rocket';
+      this.dodgeKind = 'rocket'; this.glideHeld = false;
     }
     // Water: an arch of ice forms under the feet and slides the bender up and to the side (or the stick's way), from the
     // floor or from high on the water column
