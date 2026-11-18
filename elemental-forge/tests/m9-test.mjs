@@ -97,7 +97,7 @@ const CHECKS = {
     const blow = (techExpr, lvl) => page.evaluate(([techExpr, lvl]) => {
       const E = window.__EF, P = E.player, O = E.opp, T = (new Function('O', 'return ' + techExpr))(O);
       O.action = T ? 'tech' : null; O.tech = T; P.invuln = 0;
-      E.world.combat.damage(P, 8, new P.pos.constructor(0, 0, 1), O, 'melee', P.chestPos(new P.pos.constructor()), 5, lvl);
+      E.world.combat.damage(P, 8, new P.pos.constructor(0, 0, -1), O, 'melee', P.chestPos(new P.pos.constructor()), 5, lvl);   // (the blow travels from the rival, in front at +z, towards the player)
       O.action = null; O.tech = null;
     }, [techExpr, lvl]);
     const out = {};
@@ -115,7 +115,9 @@ const CHECKS = {
       const r = await step(200, "P.hero.curName + ':' + P.action");
       out[name] = [...new Set(r.map(x => x.split(':')[0].replace(/\|.*/, '')))].filter(c => /hit|fall|trip|knock|getup|kip/.test(c)).join(' > ');
     }
-    const ok = /hit_legs/.test(out.sweep) && /hit_head_down/.test(out['punch knockdown']) && /fall_flat/.test(out['plain knockdown'] + out['plain knockdown 2']) && /hit_head/.test(out['light punch']) && /trip/.test(out['hit while dodging']) && /getup/.test(out['hit while dodging']) && !/kip/.test(Object.values(out).join(' '));   // (18 Nov, after review: the flip get-ups are Air's only; Water and Earth get up plainly)
+    // (18 Nov, second review: blows from the front knock the fighter backwards; Fall Flat only from behind, so the
+    //  scripted frontal blows here all show the backward knockdown)
+    const ok = /hit_legs/.test(out.sweep) && /knockback/.test(out['punch knockdown']) && /knockback/.test(out['plain knockdown'] + out['plain knockdown 2']) && !/fall_flat|hit_head_down/.test(out['punch knockdown'] + out['plain knockdown']) && /hit_head/.test(out['light punch']) && /trip/.test(out['hit while dodging']) && /getup/.test(out['hit while dodging']) && !/kip/.test(Object.values(out).join(' '));   // (18 Nov, after review: the flip get-ups are Air's only; Water and Earth get up plainly)
     check('Reactions chosen from the blow: sweep, punch, knockdowns, head snap, tripped mid-dodge; plain get-ups (not Air)', ok, Object.entries(out).map(([k, v]) => `${k}: ${v}`).join(' | '));
   },
   async footwork() {

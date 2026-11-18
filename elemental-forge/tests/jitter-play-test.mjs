@@ -39,9 +39,9 @@ await page.evaluate(() => {
   window.__BONES = ['DEF-handL', 'DEF-handR', 'DEF-forearmL', 'DEF-forearmR', 'DEF-footL', 'DEF-footR', 'DEF-head', 'DEF-chest'];
   window.__rec = [];
 });
-// JSHOT=element:sequence:dir saves every frame of that sequence (camera beside the fighter) for frame-by-frame review
-const JSHOT = process.env.JSHOT ? process.env.JSHOT.split(':') : null; let shotOn = false, shotN = 0;
-const step = (n) => shotOn ? (async () => { for (let i = 0; i < n; i++) { await stepRaw(1); const d = await page.evaluate(() => { const E = window.__EF, P = E.player, a = P.yaw + Math.PI / 2; E.camera.position.set(P.pos.x + Math.sin(a) * 3.6, P.pos.y + 1.3, P.pos.z + Math.cos(a) * 3.6); E.camera.lookAt(P.pos.x, P.pos.y + 1.0, P.pos.z); E.camera.updateMatrixWorld(); E.renderer.render(E.scene, E.camera); return E.renderer.domElement.toDataURL('image/jpeg', 0.8) + '|' + P.hero.curName; }); const [img, cn] = d.split('|'); fs.writeFileSync(`${JSHOT[2]}/f${String(shotN).padStart(4, '0')}.jpg`, Buffer.from(img.split(',')[1], 'base64')); fs.appendFileSync(`${JSHOT[2]}/clips.txt`, `${shotN} ${cn}\n`); shotN++; } })() : stepRaw(n);
+// JSHOT=element:sequence:dir (or element:all:dir) saves every frame of that sequence (camera beside the fighter) for frame-by-frame review
+const JSHOT = process.env.JSHOT ? process.env.JSHOT.split(':') : null; let shotOn = false, shotN = 0, shotDir = null;
+const step = (n) => shotOn ? (async () => { for (let i = 0; i < n; i++) { await stepRaw(1); const d = await page.evaluate(() => { const E = window.__EF, P = E.player, a = P.yaw + Math.PI / 2; E.camera.position.set(P.pos.x + Math.sin(a) * 3.6, P.pos.y + 1.3, P.pos.z + Math.cos(a) * 3.6); E.camera.lookAt(P.pos.x, P.pos.y + 1.0, P.pos.z); E.camera.updateMatrixWorld(); E.renderer.render(E.scene, E.camera); return E.renderer.domElement.toDataURL('image/jpeg', 0.8) + '|' + P.hero.curName; }); const [img, cn] = d.split('|'); fs.writeFileSync(`${shotDir}/f${String(shotN).padStart(4, '0')}.jpg`, Buffer.from(img.split(',')[1], 'base64')); fs.appendFileSync(`${shotDir}/clips.txt`, `${shotN} ${cn}\n`); shotN++; } })() : stepRaw(n);
 const stepRaw = (n) => page.evaluate((n) => {
   const E = window.__EF, P = E.player, V = E.camera.position.constructor, v = new V();
   for (let i = 0; i < n; i++) {
@@ -67,7 +67,8 @@ for (const el of ELS) for (const [name, fn] of Object.entries(SEQ)) {
     P.reset(0, 0, 0); O.reset(0, 2.6, Math.PI); E.world.bending.clear && E.world.bending.clear(); window.__rec = []; window.__clips = [];
   }, el);
   await step(40); await page.evaluate(() => { window.__rec = []; window.__clips = []; });
-  shotOn = !!(JSHOT && JSHOT[0] === el && JSHOT[1] === name); if (shotOn) fs.mkdirSync(JSHOT[2], { recursive: true });
+  // (JSHOT=element:all:dir records every sequence of that element, each into dir/<sequence>)
+  shotOn = !!(JSHOT && JSHOT[0] === el && (JSHOT[1] === name || JSHOT[1] === 'all')); shotDir = JSHOT && JSHOT[1] === 'all' ? `${JSHOT[2]}/${name.replace(/[^a-z]+/g, '_')}` : JSHOT && JSHOT[2]; shotN = 0; if (shotOn) fs.mkdirSync(shotDir, { recursive: true });
   await fn(); await step(30); shotOn = false;
   const rec = await page.evaluate(() => window.__rec);
   const nb = rec[0].length, per = new Array(nb).fill(0), snaps = new Array(nb).fill(0), snapAt = {};

@@ -921,7 +921,10 @@ export class Fighter {
     const alt = this.pos.y - this.groundY;
     this.headHit = level === 0 && headBlow;
     if (wasDodging && level >= 0 && this.action !== 'down' && this.action !== 'getup') { level = 2; this.downClip = 'trip'; }
-    else if (level === 2) this.downClip = alt > 1.2 ? 'fall_impact' : legBlow ? 'hit_legs' : headBlow ? 'hit_head_down' : (this.downN = (this.downN || 0) + 1) % 2 ? 'knockback' : 'fall_flat';
+    // (18 Nov, second review: Fall Flat and Hit To Head pitch the body forward, onto the face; struck from the front
+    //  that read as a leap into the blow. A blow from the front now knocks the fighter backwards (Knocked Down); Fall
+    //  Flat only when struck from behind)
+    else if (level === 2) { const fromBehind = (dir.x * Math.sin(this.yaw) + dir.z * Math.cos(this.yaw)) > 0.3; this.downClip = alt > 1.2 ? 'fall_impact' : legBlow ? 'hit_legs' : fromBehind ? 'fall_flat' : 'knockback'; }
     // already on the floor (knocked down or getting up): the blow keeps them down in the lying pose; they do not
     // spring up into a standing hit reaction or replay the fall from standing
     if (this.action === 'down' || this.action === 'getup') {
