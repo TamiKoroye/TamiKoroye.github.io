@@ -136,7 +136,9 @@ for (const el of (process.env.WHIPS ? [process.env.WHIPS] : process.env.ONLY ? [
     await stepN(12);
   }
   check(`${el}: strikes use different arm paths (whip kinds)`, Object.keys(per).length >= 2, JSON.stringify(per));
-  const hl = await hitsOn(), hits = hl.filter(t => /Whip/.test(t)).length + hl.filter(t => t === 'proj').length; check(`${el}: strikes land on the rival at 4 m (at least 3 of 4; Air's third is the air cannon, Water's second and fourth throw balls)`, hits >= 3, `${hits} hits: ${hl.join(',')}`); await clearHits();
+  // (18 Nov, second review: a water whip that lands now grips the rival and slams them, so its hit is logged as
+  //  whipSlam; that is the whip landing and counts)
+  const hl = await hitsOn(), hits = hl.filter(t => /Whip|whipSlam/.test(t)).length + hl.filter(t => t === 'proj').length; check(`${el}: strikes land on the rival at 4 m (at least 3 of 4; Air's third is the air cannon, Water's second and fourth throw balls)`, hits >= 3, `${hits} hits: ${hl.join(',')}`); await clearHits();
 }
 
 // ------------------------------------------------------------------ kicks throw the element along the foot's path

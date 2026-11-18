@@ -751,16 +751,19 @@ export class Bending {
       // (EmberGen flame sheet: two rows of looping flame columns; drawn by a flipbook controller while it stands)
       d.mesh = new THREE.Group(); d.box = { hw: 2.0, hh: 2.6, hd: 0.4 };
       this.placeDef(d, 1); w.audio.fireWhoosh(1.2);
+      // (18 Nov, after review) the wall stands where it was raised: it does not follow the bender about; it can only be
+      // punched forward (fire.hand / fireWallBurst)
+      d.fixed = true; d.anchor = f.pos.clone();
       const cols = Array.from({ length: 22 }, (_, i) => ({ x: (i % 11) / 10 * 2 - 1, back: i >= 11, f: rand(0, 17), sp: rand(18, 26), h: rand(0.85, 1.12), rot: rand(-0.08, 0.08) }));
       w.fx.flip.control((dt, put, t) => {
         if (d.dead && !(d.sink > 0)) return false;
         const fade = d.sink > 0 ? Math.max(0, 1 - d.sink * 1.6) : 1; if (fade <= 0 || d.dead) return false;
-        const f0 = d.owner, c = Math.cos(d.yaw), s = Math.sin(d.yaw);
+        const f0 = d.anchor, c = Math.cos(d.yaw), s = Math.sin(d.yaw);
         const grow = Math.min(1, d.t / 0.32), spread = Math.min(1, Math.max(0, (d.t - 0.06) / 0.3));
         for (const k of cols) {
           // each column starts at the feet and moves out to its place in the wall
           const lx = k.x * 2.0 * spread, fwd = (k.back ? 0.95 : 1.2) * spread;
-          const bx = f0.pos.x + Math.sin(d.yaw) * fwd + lx * c, bz = f0.pos.z + Math.cos(d.yaw) * fwd - lx * s;
+          const bx = f0.x + Math.sin(d.yaw) * fwd + lx * c, bz = f0.z + Math.cos(d.yaw) * fwd - lx * s;
           const hgt = (k.back ? 4.6 : 3.6) * k.h * (0.25 + 0.75 * grow) * (1 - 0.25 * Math.abs(k.x)), wdt = k.back ? 1.25 : 1.05;
           put('fire_flames', _v.set(bx, d.pos.y - 0.15, bz), wdt, hgt, 14 + ((k.f + t * k.sp) % 21), fade * (k.back ? 0.9 : 1), 1, k.rot);
         }
@@ -1294,7 +1297,7 @@ export class Bending {
         if (d.sink > 0.3) { d.dead = true; w.scene.remove(d.mesh); if (d.tubes) { d.tubes.forEach(t => this.weapons.freeTube(t)); d.tubes = null; } continue; }
       } else {
         d.rise = smooth01(d.t / (d.el === 'earth' ? 0.16 : 0.12));
-        if (!d.ice) this.placeDef(d, 1 - Math.exp(-10 * dt));
+        if (!d.ice && !d.fixed) this.placeDef(d, 1 - Math.exp(-10 * dt));
         if (d.el === 'earth' && d.t < 0.2 && Math.random() < 0.5) w.fx.debrisBurst(d.pos.clone().setY(d.pos.y + 0.05), 1, 1.5, 0.07, 0x7a6a58, 0.6);
       }
       let shk = 0; if (d.shake > 0) { d.shake -= dt; shk = (Math.random() - 0.5) * 0.08; }

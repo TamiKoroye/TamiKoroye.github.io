@@ -31,6 +31,17 @@ const tap = async (code, hold = 2) => { await page.keyboard.down(code); await st
 let fails = 0;
 const check = (name, ok, info) => { console.log(`${ok ? 'PASS' : 'FAIL'} ${name}  ${info}`); if (!ok) fails++; };
 const CHECKS = {
+  async fireWallStays() {
+    // 18 Nov: Fire's wall stays where it was raised while the bender moves (it is only punched forward)
+    await setup('fire', 'earth', 6); await step(20);
+    await page.keyboard.down('KeyQ'); await step(20);
+    const a = await ev('({ x: P.defense.pos.x, z: P.defense.pos.z, px: P.pos.x, pz: P.pos.z })');
+    await page.keyboard.down('KeyA'); await step(60); await page.keyboard.up('KeyA');
+    const b = await ev('({ x: P.defense ? P.defense.pos.x : NaN, z: P.defense ? P.defense.pos.z : NaN, px: P.pos.x, pz: P.pos.z })');
+    await page.keyboard.up('KeyQ'); await step(150);
+    const wallMoved = Math.hypot(b.x - a.x, b.z - a.z), walked = Math.hypot(b.px - a.px, b.pz - a.pz);
+    check('Fire wall stays where it was raised while the bender walks', walked > 1 && wallMoved < 0.05, `bender walked ${walked.toFixed(2)} m, wall moved ${wallMoved.toFixed(2)} m`);
+  },
   async headOnRival() {
     // where the head points against the direction to the rival (horizontal angle, degrees), in the stance and through a
     // HAND / LEG combo, for every element; measured with the head turn on and, for comparison, off (window.__noLook)
