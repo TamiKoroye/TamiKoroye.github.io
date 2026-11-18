@@ -367,10 +367,17 @@ STYLES.earth.tech.leg.push(T({ name: 'Rock Push Kick', clip: 'earth_teep', dur: 
 // the chain opens with the quick jab (impact 0.21 s); the heavy lunge punch (impact 0.52 s) is the second strike
 STYLES.earth.tech.hand.clip = ['earth_punch2', 'earth_punch', 'fire_punch2'];
 // Water's whip slam (M6): the whip wraps the rival and the bender lifts them overhead and slams them down
-// (Mixamo Sword And Shield Casting: both arms raised, then driven down with the hips and legs; see weapons.grabSlam)
+// (Mixamo Grab And Slam from the pull: the arms haul the whip back, lift it overhead, slam down to one knee; see weapons.grabSlam)
 // (18 Nov: the Tai Chi 24 Form clips captured from video were tried here and taken out the same day: chained at
 //  combat speed the captured body turns and capture noise made the bender twitch. The previous chain is restored)
-STYLES.water.tech.hand.clip = ['whip_h', 'fire_jab', 'whip_v', 'fire_punch', 'whip_d', 'earth_punch', 'water_palm'];
+// 18 Nov (M9): the flowing moves from the Drive dances join Water: the arm wave (Wave Hip Hop Dance) is a whip thrown
+// on a ripple that runs through both arms; on LEG, the Butterfly Twirl kick and the tucked Spinning jump that throws a
+// ring of water. These are studio motion capture (Mixamo), smooth at combat speed, and pass the gameplay jitter gate.
+STYLES.water.tech.hand.clip = ['whip_h', 'fire_jab', 'whip_v', 'water_ripple', 'fire_punch', 'whip_d', 'earth_punch', 'water_palm'];
+STYLES.water.tech.leg.push(T({ name: 'Butterfly Twirl Kick', clip: 'water_twirl', dur: 0.9, cost: 11, cancel: 0.8, move: 2.5, lunge: 4, keys: K0,
+  active: { from: 0.45, to: 0.65, dmg: 9, range: 2.3, arc: -1.2, knock: 7, level: 1 }, events: [[0.5, 'water.leg2']] }));
+STYLES.water.tech.leg.push(T({ name: 'Spinning Water Ring', clip: 'water_spin', dur: 0.75, cost: 12, cancel: 0.8, move: 0.5, keys: K0,
+  active: { from: 0.45, to: 0.62, dmg: 7, range: 2.2, arc: -1.4, knock: 6, level: 1 }, events: [[0.5, 'water.spin']] }));
 // the Tidal Wave: Snake Creeps Down, sinking low and surging forward as the wave goes out
 STYLES.water.tech.leg.push(T({ name: 'Water Sweep', clip: 'earth_sweep', dur: 0.62, cost: 11, cancel: 0.75, move: 0.5, lunge: 3, keys: K0,
   active: { from: 0.45, to: 0.68, dmg: 8, range: 2.4, arc: -1.4, knock: 4, level: 2 }, events: [[0.5, 'water.sweep']] }));
@@ -378,7 +385,9 @@ STYLES.water.tech.leg.push(T({ name: 'Water Sweep', clip: 'earth_sweep', dur: 0.
 STYLES.water.tech.icePunch = T({ name: 'Ice Shard Punch', clip: ['fire_jab', 'fire_punch'], dur: 0.3, cost: 3, cancel: 0.55, move: 1, upper: true, keys: K0, events: [[0.45, 'water.iceShot']] });
 // LEG while Fire jet-glides: both palms drive a blast of flame forward; the legs stay on the jets (fire.glideBlast)
 STYLES.fire.tech.glideBlast = T({ name: 'Jet Blast', clip: 'water_palm', dur: 0.42, cost: 6, cancel: 0.6, move: 0, upper: true, keys: K0, events: [[0.5, 'fire.glideBlast']] });
-STYLES.water.tech.whipSlam = T({ name: 'Whip Slam', clip: 'earth_stomp', clipSpeed: 1.5, dur: 1.1, cost: 0, cancel: 0.85, move: 0, keys: K0, events: [] });
+// LEG while riding the ice arch: both palms push a volley of three ice spikes (water.archShot)
+STYLES.water.tech.glideBlast = T({ name: 'Ice Volley', clip: 'water_palm', dur: 0.42, cost: 6, cancel: 0.6, move: 0, upper: true, keys: K0, events: [[0.5, 'water.archShot']] });
+STYLES.water.tech.whipSlam = T({ name: 'Whip Slam', clip: 'water_grabslam', clipSpeed: 1.8, dur: 1.3, cost: 0, cancel: 0.85, move: 0, keys: K0, events: [] });
 // Fire's kick chain (17 Nov, M6): kick-heavy and flowing, each kick its own authored clip, every kick throwing flame
 // from the kicking leg. LEG taps run through it in order; the chain restarts after a pause.
 {

@@ -31,6 +31,35 @@ const tap = async (code, hold = 2) => { await page.keyboard.down(code); await st
 let fails = 0;
 const check = (name, ok, info) => { console.log(`${ok ? 'PASS' : 'FAIL'} ${name}  ${info}`); if (!ok) fails++; };
 const CHECKS = {
+  async waterArch() {
+    await setup('water', 'earth', 5); await step(30);
+    const probe = "({ d: P.dodgeT > 0 && P.dodgeKind === 'arch', h: +(P.pos.y - P.groundY).toFixed(2), x: +P.pos.x.toFixed(2), tech: P.tech && P.tech.name, lo: P.hero.lowName, ice: !!(P._arch && P._arch.post), spears: E.world.bending.objs.filter(o => o.owner === P && o.kind === 'iceSpear' && o.state !== 'dead').length })";
+    await page.keyboard.down('KeyD'); await page.keyboard.down('ShiftLeft'); const a = await step(2, probe); await page.keyboard.up('ShiftLeft');
+    const b = await step(20, probe); await tap('KeyF'); const c = await step(14, probe); await tap('KeyG'); const d = await step(40, probe); await page.keyboard.up('KeyD');
+    const all = [...a, ...b, ...c, ...d], arch = all.filter(r => r.d);
+    const peak = Math.max(...arch.map(r => r.h)), side = Math.abs(arch[arch.length - 1].x - arch[0].x);
+    check('Water ice arch: ice under the feet lifts the bender up and to the side, surfing stance', peak > 1.2 && side > 4 && arch.every(r => r.lo === 'surf_stance|L') && arch.slice(3).every(r => r.ice), `peak ${peak} m, sideways ${side.toFixed(1)} m, legs ${[...new Set(arch.map(r => r.lo))]}, ice under feet ${arch.slice(3).every(r => r.ice)}`);
+    check('Water ice arch: strikes while riding (a whip, then the Ice Volley)', arch.some(r => r.tech && r.tech !== 'Ice Volley') && arch.some(r => r.tech === 'Ice Volley') && Math.max(...all.map(r => r.spears)) >= 3, `strikes ${[...new Set(arch.map(r => r.tech).filter(Boolean))].join(', ')}, ice spikes in flight ${Math.max(...all.map(r => r.spears))}`);
+  },
+  async waterLift() {
+    await setup('water', 'earth', 6); await step(30);
+    const probe = "({ h: +(P.pos.y - P.groundY).toFixed(2), cur: P.hero.curName, wrap: !!P._wrap, jet: P.jetting, d: P.dodgeT > 0 && P.dodgeKind === 'arch', tech: P.tech && P.tech.name })";
+    await page.keyboard.down('Space'); const a = await step(90, probe);
+    await page.keyboard.down('KeyA'); await page.keyboard.down('ShiftLeft'); const b = await step(2, probe); await page.keyboard.up('ShiftLeft'); await page.keyboard.up('Space');
+    const c = await step(12, probe); await tap('KeyF'); const dd = await step(60, probe); await page.keyboard.up('KeyA');
+    const peak = Math.max(...a.map(r => r.h)), lifted = a.filter(r => r.jet);
+    check('Water lift: water round the body and under the feet raises the bender high, Falling Into Pool pose', peak > 4.5 && lifted.length > 20 && lifted.slice(10).every(r => r.wrap) && lifted.slice(15).every(r => r.cur === 'water_pool'), `peak ${peak} m, lifted ${lifted.length} frames, wrap ${lifted.slice(10).every(r => r.wrap)}, pose ${[...new Set(lifted.map(r => r.cur))].join(',')}`);
+    const arch = [...b, ...c, ...dd].filter(r => r.d);
+    check('Water lift: DODGE up there slides down on an ice arch, striking on the way', arch.length > 30 && arch[0].h > 3 && arch.some(r => r.tech) && [...c, ...dd].at(-1).h < 0.3, `arch from ${arch.length ? arch[0].h : '-'} m over ${arch.length} frames, strike ${[...new Set(arch.map(r => r.tech).filter(Boolean))]}, end height ${[...c, ...dd].at(-1).h}`);
+  },
+  async waterMoves() {
+    await setup('water', 'earth', 2.2); await step(30);
+    const seen = new Set();
+    for (let i = 0; i < 8; i++) { await tap('KeyF'); for (const r of await step(40, 'P.hero.curName')) seen.add(r); }
+    for (let i = 0; i < 6; i++) { await tap('KeyG'); for (const r of await step(30, 'P.hero.curName')) seen.add(r); }
+    const want = ['water_ripple', 'water_twirl', 'water_spin'], got = want.filter(n => [...seen].some(c => c.split('|')[0].replace(/_M$/, '') === n));
+    check('Water: the dance moves are in the HAND and LEG chains', got.length === 3, `played ${got.join(', ')}`);
+  },
   async fireGlide() {
     await setup('fire', 'earth', 5); await step(30);
     const probe = "({ d: P.dodgeT > 0 ? 1 : 0, kind: P.dodgeKind, h: +(P.pos.y - P.groundY).toFixed(3), py: +P.pos.y.toFixed(3), gy: +P.groundY.toFixed(3), vy: +P.vel.y.toFixed(2), fl: +(P.footPos('L', new P.pos.constructor()).y - P.groundY).toFixed(3), fr: +(P.footPos('R', new P.pos.constructor()).y - P.groundY).toFixed(3), x: +P.pos.x.toFixed(2), tech: P.tech && P.tech.name, lo: P.hero.lowName, cur: P.hero.curName, orbs: E.world.bending.objs.filter(o => o.owner === P && /fire/.test(o.kind) && o.state !== 'dead').length, ll: (() => { const h = P.hero.bones['DEF-hips'].getWorldPosition(new P.pos.constructor()); const a = P.footPos('L', new P.pos.constructor()), b = P.footPos('R', new P.pos.constructor()); const c = Math.cos(P.yaw), s = Math.sin(P.yaw), L = (p) => [(p.x - h.x) * c - (p.z - h.z) * s, (p.x - h.x) * s + (p.z - h.z) * c]; return [...L(a), ...L(b)].map(v => +v.toFixed(2)); })() })";

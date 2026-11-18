@@ -82,7 +82,8 @@ export class Weapons {
   // ============================================================ water whip: grab, lift and slam
   // The whip stays wrapped round the rival: a rope of water from the bender's hand to the rival's chest (redrawn every
   // frame, taut while lifting, sagging a little as it swings). The bender plays the two-handed raise-and-slam clip
-  // (Mixamo Sword And Shield Casting); the rival, held (thrashing, the struggle clip), is lifted to about 2.6 m and
+  // (Mixamo Grab And Slam from its pull: the arms haul the whip back, lift it overhead and drive it down to one knee;
+  // the grabbing is done by the whip, never the fists); the rival, held (thrashing, the struggle clip), is lifted to about 2.6 m and
   // carried over to the bender's front, then on the clip's slam frame driven down into the floor: a heavy knockdown.
   grabSlam(f, t, hand) {
     const T = f.style.tech.whipSlam;
@@ -718,6 +719,13 @@ export class Weapons {
     }
     if (mob.el === 'earth' && Math.random() < 0.5) w.fx.dust(f.pos, 1, 1.2);
   }
+  // Water's ice arch dodge: the ice-surf board under the feet and the crest of ice from the floor up to it, with a frozen
+  // path left behind; removed when the dodge ends (update)
+  archTick(f, h, dt) {
+    if (!f._arch) f._arch = { el: 'water', heading: f.faceYaw, speed: 8 };
+    const A = f._arch; A.heading = Math.atan2(f.dodgeDir.x, f.dodgeDir.z); A.speed = Math.hypot(f.vel.x, f.vel.z);
+    this.surfTick(f, A, dt);
+  }
   surfEnd(mob) { if (mob && mob.board) { this.w.scene.remove(mob.board); mob.board = null; } if (mob && mob.post) { this.w.scene.remove(mob.post); mob.post = null; } if (mob && mob.crystals) { for (const c of mob.crystals) this.w.scene.remove(c); mob.crystals = null; } }
   // JUMP while surfing: the element itself launches the bender. Water raises an ice ramp under the feet and leaves
   // an ice platform; earth thrusts a slab up on a pillar that stays as a platform.
@@ -779,8 +787,13 @@ export class Weapons {
   }
   // a water-launched bender rides a column of water rising from the ground to the feet (alt < 0 hides it)
   selfColumn(f, alt) {
-    if (alt < 0) { if (f._col) { this.freeTube(f._col); f._col = null; } return; }
+    if (alt < 0) { if (f._col) { this.freeTube(f._col); f._col = null; } if (f._wrap) { this.freeTube(f._wrap); f._wrap = null; } return; }
     if (!f._col) f._col = this.tube();
+    // the water also winds round the body as it lifts (Falling Into Pool pose, hero.js): a stream spiralling from the
+    // column at the feet up round the hips and chest, turning
+    if (!f._wrap) f._wrap = this.tube();
+    const wp = []; for (let k = 0; k <= 22; k++) { const s = k / 22, a = s * 11 - f.time * 9, r = 0.62 - 0.18 * Math.sin(s * Math.PI); wp.push(new THREE.Vector3(f.pos.x + Math.sin(a) * r, f.pos.y - 0.1 + s * 1.65, f.pos.z + Math.cos(a) * r)); }
+    f._wrap.set(wp, (s) => 0.07 + 0.09 * Math.sin(Math.PI * s), f.time);
     const gy = f.groundY, pts = []; for (let k = 0; k <= 8; k++) { const s = k / 8; pts.push(new THREE.Vector3(f.pos.x + Math.sin(s * 5 + f.time * 12) * 0.12 * s, f.pos.y - 0.05 - (f.pos.y - gy) * s, f.pos.z + Math.cos(s * 5 + f.time * 12) * 0.12 * s)); }
     f._col.set(pts, (s) => 0.22 + 0.3 * s, f.time);
     if (Math.random() < 0.5) this.w.fx.splash(_a.set(f.pos.x, gy + 0.05, f.pos.z), 2);
@@ -802,6 +815,7 @@ export class Weapons {
   update(dt) {
     this.tubeMat.uniforms.uTime.value += dt;
     this.burst.update(dt);
+    for (const f of this.w.fighters) if (f._arch && !(f.dodgeKind === 'arch' && f.dodgeT > 0)) { this.surfEnd(f._arch); f._arch = null; }
     this.updateWhips(dt); this.updateGrabs(dt); this.updateArcs(dt); this.updateTraps(dt); this.updateWhirls(dt); this.updateSpires(dt); this.updateWaves(dt); this.updateSurges(dt); this.updateColumns(dt); this.updateErupts(dt); this.updateFireRings(dt); this.updateCaptures(dt); this.updateTrails(dt);
   }
   clear() {

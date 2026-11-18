@@ -354,6 +354,12 @@ export class Hero {
       // Fire's jet glide: the legs ride the jets in the skateboard crouch (Mixamo Skateboarding, the riding frames:
       // feet staggered, knees bent, never a step), the upper body in Male Action Pose (crouched, fists up); a punch or
       // blast thrown while gliding replaces only the upper body
+      // Water's ice arch: the legs in the ice-surfing stance, the upper body in the water stance or the strike thrown
+      else if (f.dodgeKind === 'arch' && has('surf_stance')) {
+        clip = L.idle; ts = LOOP_SPEED[L.idle] || 1; fade = 0.1;
+        if (f.action === 'tech' && f.tech && f.tech.clip) { const [n, scale] = clipFor(f.tech, f.techSide); if (has(n)) { clip = n; ts = scale; fade = 0.06; if (f.techN !== this.techN) { this.techN = f.techN; restart = true; } } }
+        wU = wL = 0; layered = true; glideLegs = ['surf_stance', LOOP_SPEED.surf_stance || 1];
+      }
       else if (f.dodgeKind === 'rocket' && has('skate_ride')) {
         clip = has('fire_action') ? 'fire_action' : 'fire_idle'; ts = 1; fade = 0.08;
         if (f.action === 'tech' && f.tech && f.tech.clip) { const [n, scale] = clipFor(f.tech, f.techSide); if (has(n)) { clip = n; ts = scale; fade = 0.06; if (f.techN !== this.techN) { this.techN = f.techN; restart = true; } } }
@@ -411,7 +417,9 @@ export class Hero {
       else if (lowOv) { [clip, ts] = lowOv; wU = wL = 0; fade = 0.2; }
       else if (free && !f.onGround && f.highJump && has('jump_high')) {
         // propelled high jumps (ice ramp, rising slab, flame jets, water column): take-off, airborne, falling
-        if (f.vel.y > 2 && f.airTime < 0.4) { clip = 'jump_high'; ts = 1.4; if (this.curName !== clip) restart = true; }
+        // Water on its column: Falling Into Pool's airborne frames (arms out, legs drawn up), held while the water lifts
+        if (f.el === 'water' && has('water_pool') && (f.jetting || f.vel.y > -3)) { clip = 'water_pool'; ts = 0.35; }
+        else if (f.vel.y > 2 && f.airTime < 0.4) { clip = 'jump_high'; ts = 1.4; if (this.curName !== clip) restart = true; }
         else if (f.vel.y < -4 && has('fall_loop')) clip = 'fall_loop';
         else clip = 'air_loop';
         wU = wL = 0; fade = 0.15;

@@ -134,7 +134,7 @@ export class Fighter {
     if (this.dead || this.stunT > 0 || this.restrainT > 0 || this.reacting()) return false;
     // Air's glide can be broken off into a strike once it has carried the bender clear (0.3 s)
     // Fire's jet glide: punches and blasts are thrown while gliding (the glide carries on under them)
-    if (this.dodgeT > 0) return kind === 'attack' ? (this.dodgeKind === 'glide' ? this.dodgeDur - this.dodgeT > 0.3 : this.dodgeKind === 'rocket' ? this.dodgeDur - this.dodgeT > 0.06 : this.dodgeT < this.dodgeDur * 0.3) : false;
+    if (this.dodgeT > 0) return kind === 'attack' ? (this.dodgeKind === 'glide' ? this.dodgeDur - this.dodgeT > 0.3 : (this.dodgeKind === 'rocket' || this.dodgeKind === 'arch') ? this.dodgeDur - this.dodgeT > 0.06 : this.dodgeT < this.dodgeDur * 0.3) : false;
     const A = this.A;
     if (!A || A.soft) return true;
     return A.cancel !== undefined && this.actionU >= A.cancel;
@@ -244,8 +244,9 @@ export class Fighter {
           // GUARD + DODGE: a roll in the stick direction (every element)
           this.buf.dodge = 0; this.endHold(); this.guarding = false; B.guardEnd(this); this.rollDir();
           this.startTech(T.roll, 1, true); this.invuln = 0.45; this.dodgeCd = 0.4; this.guardCd = 0.7;   // the roll is not cut short by the still-held GUARD
-        } else if (!this.onGround && T.flip && this.en >= 6) {
-          // DODGE in the air: a somersault, forward if the stick points ahead, otherwise backward
+        } else if (!this.onGround && T.flip && this.en >= 6 && !(this.el === 'water' && this.pos.y - this.groundY > 1.2 && this.en >= 10)) {
+          // DODGE in the air: a somersault, forward if the stick points ahead, otherwise backward (Water up high on its
+          // column slides down on an ice arch instead: doDodge)
           this.buf.dodge = 0; this.startTech(this.input.mz * Math.cos(this.faceYaw) + this.input.mx * Math.sin(this.faceYaw) > 0.3 ? T.flip : T.flipBack, 1, true);
           this.vel.y = Math.max(this.vel.y, 4.5); this.invuln = 0.35; this.dodgeCd = 0.35;
         } else if (this.el === 'earth' && this.onGround && this.mobCd <= 0) {
@@ -297,7 +298,7 @@ export class Fighter {
       let struck = false;
       if (this.buf.hand && handFirst && !this.charging && canStrike) {
         struck = true; this.lastStrike = 'hand';
-        this.buf.hand = 0; if (this.dodgeKind !== 'rocket') this.dodgeT = 0;
+        this.buf.hand = 0; if (this.dodgeKind !== 'rocket' && this.dodgeKind !== 'arch') this.dodgeT = 0;
         if (this.counterT > 0) { this.counterT = 0; this.startAction('counter'); w.combat.lunge(this, ACTIONS.counter); w.popup(this, 'COUNTER', true); w.audio.whoosh(0.9); }
         else if (B.spiralRelease && B.spiralRelease(this)) { w.popup(this, 'RELEASE', true); }
         else { this.handSide = -this.handSide; this.startTech(st.tech.hand, this.handSide, true); }
@@ -305,9 +306,10 @@ export class Fighter {
       }
       if (this.buf.leg && !struck && !this.charging && canStrike) {
         this.buf.leg = 0; this.lastStrike = 'leg';
-        const jetGlide = this.dodgeKind === 'rocket' && this.dodgeT > 0 && st.tech.glideBlast;
+        const jetGlide = (this.dodgeKind === 'rocket' || this.dodgeKind === 'arch') && this.dodgeT > 0 && st.tech.glideBlast;
         if (!jetGlide) this.dodgeT = 0;
-        // LEG while jet-gliding: the legs stay on the jets, both palms drive a blast of flame (Jet Blast)
+        // LEG while jet-gliding (Fire) or riding the ice arch (Water): the legs stay on the jets / the ice, both palms
+        // drive a blast (Jet Blast; Ice Volley)
         if (jetGlide) this.startTech(st.tech.glideBlast, this.handSide = -this.handSide, true);
         else if (!this.onGround && (this.pos.y - this.groundY > 0.4 || this.airTime > 0.12) && this.vel.y > -12 && st.tech.airKick && !(this.mob && this.mob.kind === 'surf')) {
           // in the air: a jumping kick, the right foot first, then the left, then the right again
@@ -423,6 +425,15 @@ export class Fighter {
         const gsp = 4 + 9 * k;
         this.vel.x = this.dodgeDir.x * gsp; this.vel.z = this.dodgeDir.z * gsp;
         this.vel.y = (0.7 - (this.pos.y - this.groundY)) * 6 + 21 * dt; this.onGround = false;
+      } else if (this.dodgeKind === 'arch') {
+        // Water's ice arch: ice shoots up under the feet and the bender surfs along it, up and to the side, then down
+        // (from high on the water column, down and across to the floor); the stick steers; strikes go on over it
+        if (Math.hypot(mx, mz) > 0.3) { const l = Math.hypot(mx, mz), kk = 1 - Math.exp(-4 * dt); this.dodgeDir.x += (mx / l - this.dodgeDir.x) * kk; this.dodgeDir.z += (mz / l - this.dodgeDir.z) * kk; const n = Math.hypot(this.dodgeDir.x, this.dodgeDir.z) || 1; this.dodgeDir.x /= n; this.dodgeDir.z /= n; }
+        const u = 1 - this.dodgeT / this.dodgeDur, asp = 7 + 6 * k;
+        this.vel.x = this.dodgeDir.x * asp; this.vel.z = this.dodgeDir.z * asp;
+        const h = (this.archH0 || 0) * (1 - smooth01(u)) + ARCH_H * Math.sin(Math.PI * Math.min(1, u * 1.05));
+        this.vel.y = (h - (this.pos.y - this.groundY)) * 10 + 21 * dt; this.onGround = false;
+        B.weapons.archTick(this, Math.max(0, h - 0.02), dt);
       } else if (this.dodgeKind === 'rocket') {
         // Fire's jet glide: the bender rides the flames from the soles like a board, half a metre off the floor, legs
         // locked in the riding stance (hero.js), driven fast at first and easing; the stick steers it like a board
@@ -480,9 +491,11 @@ export class Fighter {
     // waterbenders: the same hold raises a column of water under the feet, strong near the ground and weaker
     // the higher it has to reach (it needs to stay connected to the ground)
     const alt = this.pos.y - this.groundY;
-    if (this.el === 'water' && live && !restrained && !this.onGround && inp.jumpHeld && this.jetFuel > 0 && this.en > 1 && this.dodgeT <= 0 && !this.mob && !(this.A && this.A.react) && alt < 5) {
-      this.jetting = true; this.highJump = true; this.jetFuel -= dt; this.en -= 22 * dt;
-      this.vel.y = Math.min(this.vel.y + 30 * (1 - alt / 5.5) * dt, 5.2);
+    // (M9: the water wraps round the body as well as under the feet, and lifts the bender higher: up to about 6.5 m;
+    //  from up there DODGE slides down on an ice arch and strikes go on over it)
+    if (this.el === 'water' && live && !restrained && !this.onGround && inp.jumpHeld && this.jetFuel > 0 && this.en > 1 && this.dodgeT <= 0 && !this.mob && !(this.A && this.A.react) && alt < 6.5) {
+      this.jetting = true; this.highJump = true; this.jetFuel -= dt * 0.7; this.en -= 20 * dt;
+      this.vel.y = Math.min(this.vel.y + 34 * (1 - alt / 7) * dt, 6.5);
       this.vel.x += mx * 10 * dt; this.vel.z += mz * 10 * dt;
       B.weapons.selfColumn(this, alt);
     } else if (this.el === 'water') B.weapons.selfColumn(this, -1);
@@ -534,7 +547,7 @@ export class Fighter {
     else if (this.sprinting && mlen > 0.15) wantYaw = Math.atan2(mx, mz);
     else if (inp.strafe || this.guarding || this.holding || this.charging || (this.action && this.action !== 'land')) wantYaw = inp.faceYaw;
     else if (mlen > 0.15 && this.dodgeT <= 0) wantYaw = Math.atan2(mx, mz);
-    if (wantYaw !== null && wantYaw !== undefined && (this.dodgeT <= 0 || this.dodgeKind === 'glide' || this.dodgeKind === 'rocket')) {   // (the glide keeps turning to face the rival)
+    if (wantYaw !== null && wantYaw !== undefined && (this.dodgeT <= 0 || this.dodgeKind === 'glide' || this.dodgeKind === 'rocket' || this.dodgeKind === 'arch')) {   // (the glide keeps turning to face the rival)
       const rate = this.action && this.action !== 'land' ? 18 : (inp.strafe ? 14 : (this.sprinting ? 7 : 11));
       this.faceYaw = dampAngle(this.faceYaw, wantYaw, rate, dt);
     }
@@ -761,7 +774,7 @@ export class Fighter {
     else w.fx.debrisBurst(this.pos.clone().setY(this.pos.y + 0.05), 1, 1.2, 0.06, 0x7a6a58, 0.5);
   }
   dodgeTrail() {
-    if (this.dodgeKind === 'rocket' || this.dodgeKind === 'glide') return;   // these draw their own jets / whirlwind
+    if (this.dodgeKind === 'rocket' || this.dodgeKind === 'glide' || this.dodgeKind === 'arch') return;   // these draw their own jets / whirlwind / ice
     const w = this.world, t = this.style.dodge.trail, p = _v.copy(this.pos).setY(this.pos.y + 0.3);
     if (t === 'fire') { for (let i = 0; i < 3; i++) w.fx.fire(p, _v2.set(-this.vel.x * 0.1 + rand(-0.5, 0.5), rand(0, 1.5), -this.vel.z * 0.1 + rand(-0.5, 0.5)), 0.5, 0.35); }
     else if (t === 'water') { if (Math.random() < 0.7) w.fx.splash(p, 2); }
@@ -793,8 +806,15 @@ export class Fighter {
       if (Math.hypot(inp.mx, inp.mz) < 0.2) { this.whirlSide = -(this.whirlSide || 1); this.dodgeDir.set(Math.cos(this.faceYaw) * this.whirlSide, 0, -Math.sin(this.faceYaw) * this.whirlSide); }
       this.dodgeKind = 'rocket';
     }
-    this.dodgeDur = this.dodgeKind === 'glide' ? 2.0 : this.dodgeKind === 'rocket' ? 0.95 : this.dodgeKind === 'side' ? 0.26 : this.dodgeKind === 'back' ? 0.3 : this.dodgeKind === 'circle' ? 0.42 : D.dur;
-    this.dodgeT = this.dodgeDur; this.dodgeCd = this.dodgeKind === 'glide' ? 0.6 : 0.42; this.invuln = this.dodgeKind === 'glide' ? 0.6 : this.dodgeKind === 'rocket' ? 0.35 : this.dodgeDur * (D.iframes || 0.75); this.en -= this.dodgeKind === 'glide' ? 16 : 10;
+    // Water: an arch of ice forms under the feet and slides the bender up and to the side (or the stick's way), from the
+    // floor or from high on the water column
+    if (this.el === 'water') {
+      if (Math.hypot(inp.mx, inp.mz) < 0.2) { this.whirlSide = -(this.whirlSide || 1); this.dodgeDir.set(Math.cos(this.faceYaw) * this.whirlSide, 0, -Math.sin(this.faceYaw) * this.whirlSide); }
+      this.dodgeKind = 'arch'; this.archH0 = Math.max(0, this.pos.y - this.groundY); this.vel.y = Math.max(this.vel.y, 0);
+      this.world.audio.ice('form', 0.8, this.pos);
+    }
+    this.dodgeDur = this.dodgeKind === 'glide' ? 2.0 : this.dodgeKind === 'rocket' ? 0.95 : this.dodgeKind === 'arch' ? 1.0 : this.dodgeKind === 'side' ? 0.26 : this.dodgeKind === 'back' ? 0.3 : this.dodgeKind === 'circle' ? 0.42 : D.dur;
+    this.dodgeT = this.dodgeDur; this.dodgeCd = this.dodgeKind === 'glide' ? 0.6 : 0.42; this.invuln = this.dodgeKind === 'glide' ? 0.6 : (this.dodgeKind === 'rocket' || this.dodgeKind === 'arch') ? 0.35 : this.dodgeDur * (D.iframes || 0.75); this.en -= this.dodgeKind === 'glide' ? 16 : 10;
     this.action = null; this.tech = null; this.spinYaw = 0;
     this.world.fx.dust(this.pos, 5, 1.2);
     if (this.el === 'air') this.world.audio.gust(0.6, this.pos); else if (this.el === 'fire') this.world.audio.fireWhoosh(0.6, this.pos); else this.world.audio.dodge(0.7, this.pos);
@@ -1062,5 +1082,6 @@ export class Fighter {
     }
   }
 }
+const ARCH_H = 1.6;   // how high Water's ice arch lifts the bender off the floor (m)
 const _up = new THREE.Vector3(0, 1, 0), _zx = new THREE.Vector3(), _qw = new THREE.Quaternion();
 const _axis = new THREE.Vector3(), _qi = new THREE.Quaternion(), _fwd = new THREE.Vector3(), _v = new THREE.Vector3(), _v2 = new THREE.Vector3();

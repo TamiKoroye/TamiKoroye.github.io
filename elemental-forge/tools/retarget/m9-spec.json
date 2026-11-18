@@ -69,12 +69,12 @@
  {
   "name": "water_grabslam",
   "src": ".anim-src/drive7/Grab And Slam.fbx",
-  "start": 0.3,
+  "start": 1.6,
   "end": 4.0,
   "impact": 3.5,
   "mirror": false,
   "aim": "hips",
-  "note": "reach, pull, lift overhead, slam to one knee (the whip does the grabbing)"
+  "note": "from the pull: lift overhead, slam to one knee (the water whip holds the rival; the reach is the whip throw, cut)"
  },
  {
   "name": "water_pool",

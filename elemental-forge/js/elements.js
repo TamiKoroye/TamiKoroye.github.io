@@ -406,6 +406,15 @@ export class Bending {
         this.weapons.wave(f, 'water', { freeze: true, width: 6.5 + g.length, h: 3.8 + g.length * 0.3, dmg: 9 + g.length * 2, life: 1.15 }); w.shake(0.3, f.pos);
         return;
       }
+      case 'water.spin': {
+        // the tucked spinning jump lands and a ring of water bursts out round the bender
+        this.ring(f, 'water', 3.4, 11, { dmg: 7, knock: 7, level: 1 }); this.weapons.ringBurst(_v.set(f.pos.x, f.groundY, f.pos.z), 1.2, 1.6, 9); w.audio.splash(1, f.pos); return;
+      }
+      case 'water.archShot': {
+        const hl = this.handPoint(f, -1, new THREE.Vector3()), hr = this.handPoint(f, 1, new THREE.Vector3()), mid = hl.add(hr).multiplyScalar(0.5);
+        for (const d of [-0.16, 0, 0.16]) { const o = this.fire('iceSpear', f, mid.clone()); o.vel.applyAxisAngle(_up, d); o.dmg = 6; }
+        w.fx.debrisBurst(mid, 8, 2, 0.05, 0xe0f4ff); w.audio.ice('form', 0.6, mid); return;
+      }
       case 'water.iceShot': this.iceShot(f); return;
       case 'water.specialStart': this.specials.waterStart(f); return;
       case 'water.special': this.specials.waterEstablish(f); return;

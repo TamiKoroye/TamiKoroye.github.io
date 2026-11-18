@@ -72,7 +72,7 @@ export const LOOPS = {
 // playback speed relative to the capture, per style (earth heavy, fire and air quick, water measured);
 // individual clips can override it (the tai chi take is performed very slowly)
 const SPEED = { earth: 1.45, fire: 1.75, water: 1.45, air: 1.65 };
-const CLIP_SPEED = { whip_h_horse: 2.8, tc_brush_palm: 2.8, tc_parry_punch: 2.8, whip_d_single: 2.8, tc_push: 2.6, tc_heel_kick: 2.3, tc_rooster: 2.3, tc_snake: 2.4, water_cast: 2.2, mma_kick: 1.8, round_kick2: 1.75, sweep_spin: 1.6, jump_kick: 2.4, flip_kick: 2.2, fire_jab: 1.6, earth_gather: 1.8, turn_spin: 0.8, water_redirect: 2.0, whip_h: 1.5, whip_v: 1.9, whip_d: 1.7, water_palm: 3.0, water_tidal: 2.0, water_sphere: 1.5, earth_stomp: 1.6, earth_pillar: 1.7, fire_orb: 1.5, air_vortex: 1.6, earth_sweep: 1.5, fire_spin: 1.5 };
+const CLIP_SPEED = { water_ripple: 1.5, water_twirl: 1.6, water_spin: 1.5, whip_h_horse: 2.8, tc_brush_palm: 2.8, tc_parry_punch: 2.8, whip_d_single: 2.8, tc_push: 2.6, tc_heel_kick: 2.3, tc_rooster: 2.3, tc_snake: 2.4, water_cast: 2.2, mma_kick: 1.8, round_kick2: 1.75, sweep_spin: 1.6, jump_kick: 2.4, flip_kick: 2.2, fire_jab: 1.6, earth_gather: 1.8, turn_spin: 0.8, water_redirect: 2.0, whip_h: 1.5, whip_v: 1.9, whip_d: 1.7, water_palm: 3.0, water_tidal: 2.0, water_sphere: 1.5, earth_stomp: 1.6, earth_pillar: 1.7, fire_orb: 1.5, air_vortex: 1.6, earth_sweep: 1.5, fire_spin: 1.5 };
 
 const names = (T) => (Array.isArray(T.clip) ? T.clip : [T.clip]);
 function techList(st) {
