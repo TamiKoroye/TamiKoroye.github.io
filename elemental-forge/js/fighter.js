@@ -623,13 +623,38 @@ export class Fighter {
     if (Math.abs(this.wallRoll) > 1e-3 || Math.abs(this.wallPitch) > 1e-3) {
       this.root.quaternion.setFromAxisAngle(_up, this.yaw).multiply(_qw.setFromAxisAngle(_zx.set(0, 0, 1), this.wallRoll)).multiply(_qw.setFromAxisAngle(_zx.set(1, 0, 0), this.wallPitch));
     }
-    if (this.hero) { this.root.updateMatrixWorld(true); this.hero.drive(this, dt); this.floorGuard(dt); }
+    if (this.hero) { this.root.updateMatrixWorld(true); this.hero.drive(this, dt); this.floorGuard(dt); this.lookAtFoe(dt); }
     this.recLimbs();
     const f = this.flash, ch = this.charging ? Math.min(1, this.chargeT / 0.55) * (0.15 + 0.1 * Math.sin(this.time * 30)) : 0;
     const ec = new THREE.Color(this.style.color);
     this.material.emissive.setRGB(f * 0.9 + ch * ec.r, f * 0.25 + ch * ec.g, f * 0.15 + ch * ec.b);
   }
 
+  // The eyes stay on the rival (18 Nov, after review: in some clips, the boxer's stance and mid-combat turns, the head
+  // looked off to the side). After the clip is applied, the neck and head are turned together towards the rival, at
+  // most 70 degrees and up / down 25, smoothed; off while down, getting up or knocked out.
+  lookAtFoe(dt) {
+    const h = this.hero, t = this.target, head = h && h.bones['DEF-head'], neck = h && h.bones['DEF-neck'];
+    const on = !!(head && neck && t && !t.dead && !this.dead && this.action !== 'down' && this.action !== 'getup' && !(this.restrainT > 0));
+    this.lookW = (this.lookW || 0) + ((on ? 1 : 0) - (this.lookW || 0)) * (1 - Math.exp(-8 * dt));
+    if (!head || !neck || this.lookW < 0.02 || !t || (typeof window !== 'undefined' && window.__noLook)) return;   // (__noLook: tests compare with it off)
+    // the head's own forward axis, from the bind pose (the model is bound facing +Z)
+    if (!h._headFwd) { const sk = h.meshes[0].skeleton, i = sk.bones.indexOf(head); const bw = new THREE.Matrix4().copy(sk.boneInverses[i]).invert(); h._headFwd = new THREE.Vector3(0, 0, 1).applyQuaternion(new THREE.Quaternion().setFromRotationMatrix(bw).invert()).normalize(); }
+    head.updateWorldMatrix(true, false);
+    const hq = head.getWorldQuaternion(_qa), hp = head.getWorldPosition(_va);
+    const cur = _vb.copy(h._headFwd).applyQuaternion(hq), want = t.chestPos(_vc).setY(t.pos.y + 1.55).sub(hp).normalize();
+    // limit: yaw 70 degrees either side of where the head already looks, pitch 25 degrees
+    const yc = Math.atan2(cur.x, cur.z), yw = Math.atan2(want.x, want.z), dy = clamp(Math.atan2(Math.sin(yw - yc), Math.cos(yw - yc)), -1.22, 1.22);
+    const pc = Math.asin(clamp(cur.y, -1, 1)), pw = Math.asin(clamp(want.y, -1, 1)), dp = clamp(pw - pc, -0.44, 0.44);
+    const yawQ = _qb.setFromAxisAngle(_up, dy * this.lookW);
+    const side = _vd.set(Math.cos(yc + dy), 0, -Math.sin(yc + dy));   // pitch about the turned head's sideways axis
+    const full = _qc.setFromAxisAngle(side, -dp * this.lookW).multiply(yawQ);
+    // shared between neck (40 %) and head (60 %), each as a world-space turn converted into the bone's parent space
+    for (const [b, k] of [[neck, 0.4], [head, 0.6]]) {
+      const part = _qd.identity().slerp(full, k), pw0 = b.parent.getWorldQuaternion(_qe), bw = _qf.copy(pw0).multiply(b.quaternion);
+      b.quaternion.copy(pw0.invert().multiply(part.multiply(bw))); b.updateWorldMatrix(false, true);
+    }
+  }
   // Nothing sinks into the floor: the captured falls, get-ups and floor moves were recorded on other bodies, and on ours
   // their lowest points went up to half a metre below the floor (measured joint by joint). Each frame, if any joint
   // of the body is lower than the floor plus the thickness of a limb, the whole body is raised by the difference
@@ -1180,6 +1205,8 @@ export class Fighter {
     }
   }
 }
+const _qa = new THREE.Quaternion(), _qb = new THREE.Quaternion(), _qc = new THREE.Quaternion(), _qd = new THREE.Quaternion(), _qe = new THREE.Quaternion(), _qf = new THREE.Quaternion();
+const _va = new THREE.Vector3(), _vb = new THREE.Vector3(), _vc = new THREE.Vector3(), _vd = new THREE.Vector3();
 const ARCH_H = 1.6;   // how high Water's ice arch lifts the bender off the floor (m)
 const _up = new THREE.Vector3(0, 1, 0), _zx = new THREE.Vector3(), _qw = new THREE.Quaternion();
 const _axis = new THREE.Vector3(), _qi = new THREE.Quaternion(), _fwd = new THREE.Vector3(), _v = new THREE.Vector3(), _v2 = new THREE.Vector3();

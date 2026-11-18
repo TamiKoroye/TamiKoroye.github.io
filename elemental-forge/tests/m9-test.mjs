@@ -31,6 +31,22 @@ const tap = async (code, hold = 2) => { await page.keyboard.down(code); await st
 let fails = 0;
 const check = (name, ok, info) => { console.log(`${ok ? 'PASS' : 'FAIL'} ${name}  ${info}`); if (!ok) fails++; };
 const CHECKS = {
+  async headOnRival() {
+    // where the head points against the direction to the rival (horizontal angle, degrees), in the stance and through a
+    // HAND / LEG combo, for every element; measured with the head turn on and, for comparison, off (window.__noLook)
+    const probe = "(() => { const h = P.hero, b = h.bones['DEF-head']; if (!h._headFwd) return -1; const q = b.getWorldQuaternion(new E.camera.quaternion.constructor()), f = h._headFwd.clone().applyQuaternion(q), p = b.getWorldPosition(new P.pos.constructor()); const a = Math.atan2(f.x, f.z), w = Math.atan2(O.pos.x - p.x, O.pos.z - p.z); return Math.abs(Math.atan2(Math.sin(a - w), Math.cos(a - w))) * 57.3; })()";
+    const rows = [];
+    for (const off of [true, false]) for (const el of ['earth', 'fire', 'water', 'air']) {
+      await page.evaluate((off) => { window.__noLook = off; }, off);
+      await setup(el, 'fire', 3); const st = (await step(60, probe)).slice(20);
+      const cb = []; for (let i = 0; i < 4; i++) { await tap(i % 2 ? 'KeyG' : 'KeyF'); cb.push(...await step(30, probe)); }
+      const m = (a) => (a.reduce((s, v) => s + v, 0) / a.length).toFixed(0), mx = (a) => Math.max(...a).toFixed(0);
+      rows.push({ off, el, st: +m(st), stMax: +mx(st), cb: +m(cb) });
+    }
+    await page.evaluate(() => { window.__noLook = false; });
+    const on = rows.filter(r => !r.off), off = rows.filter(r => r.off);
+    check('Head on the rival: in the stance within 12 degrees for every element, and closer in combat than without the turn', on.every(r => r.stMax <= 12) && on.reduce((s, r) => s + r.cb, 0) < off.reduce((s, r) => s + r.cb, 0), rows.map(r => `${r.off ? 'off' : 'on'} ${r.el}: stance ${r.st} (max ${r.stMax}), combo ${r.cb}`).join(' | '));
+  },
   async review18b() {
     // 18 Nov, second review (phone recording r21)
     // 1. Water lifted on its column stands in the water stance (no Falling Into Pool flailing)
