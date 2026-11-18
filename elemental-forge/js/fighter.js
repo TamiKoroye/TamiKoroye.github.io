@@ -80,7 +80,7 @@ export class Fighter {
   setElement(el, quiet) {
     if (el === this.el || !STYLES[el]) return;
     const old = this.el;
-    if (old && this.world.bending) { this.world.bending.dropAll(this, old); if (this.guarding) { this.guarding = false; this.world.bending.guardEnd(this); } }
+    if (old && this.world.bending) { this.world.bending.dropAll(this, old); this.guarding = false; this.world.bending.guardEnd(this, true); }
     this.holding = false; this.charging = false; this.handHoldT = -1; this.legHoldT = -1;
     // a ride of the old element (ice surf, rock slide, flame run, flight) ends: the new element cannot keep it up
     if (this.mob && this.mob.el !== el) this.endMob();
@@ -133,7 +133,8 @@ export class Fighter {
   free(kind) {
     if (this.dead || this.stunT > 0 || this.restrainT > 0 || this.reacting()) return false;
     // Air's glide can be broken off into a strike once it has carried the bender clear (0.3 s)
-    if (this.dodgeT > 0) return kind === 'attack' ? (this.dodgeKind === 'glide' ? this.dodgeDur - this.dodgeT > 0.3 : this.dodgeT < this.dodgeDur * 0.3) : false;
+    // Fire's jet glide: punches and blasts are thrown while gliding (the glide carries on under them)
+    if (this.dodgeT > 0) return kind === 'attack' ? (this.dodgeKind === 'glide' ? this.dodgeDur - this.dodgeT > 0.3 : this.dodgeKind === 'rocket' ? this.dodgeDur - this.dodgeT > 0.06 : this.dodgeT < this.dodgeDur * 0.3) : false;
     const A = this.A;
     if (!A || A.soft) return true;
     return A.cancel !== undefined && this.actionU >= A.cancel;
@@ -225,6 +226,11 @@ export class Fighter {
       if (this.mob && this.mob.kind === 'fly') this.buf.jump = 0;   // in flight JUMP means climb
       // water GUARD combinations: HAND throws an ice spear, LEG sends a stream to capture the opponent
       // (only while GUARD is still held: a HAND pressed as the guard is released is the counter-strike, not a spear)
+      // a guard let go stays up for a moment (elements.js guardEnd): Earth punches its rocks out as while guarding,
+      // Water punches spikes off the ice it froze into, Fire's punch throws the wall (elements.js fire.hand)
+      const lgE = B.lingering(this, 'earth'), lgW = B.lingering(this, 'water');
+      if (lgW && lgW.ice && lgW.iceShots > 0 && this.el === 'water' && this.buf.hand && this.free('attack') && this.en >= 3) { this.buf.hand = 0; this.startTech(st.tech.icePunch, this.handSide = -this.handSide, true); }
+      if (lgE && this.el === 'earth' && this.buf.hand && this.free('attack') && this.en >= 8) { if (B.guardShatter(this)) { this.buf.hand = 0; this.en -= 8; this.startTech(st.tech.hand, this.handSide = -this.handSide, true); } }
       if (this.guarding && inp.guard && this.el === 'earth' && this.buf.hand && this.en >= 8) { if (B.guardShatter(this)) { this.buf.hand = 0; this.en -= 8; this.startTech(st.tech.hand, this.handSide = -this.handSide, true); } }
       if (this.guarding && inp.guard && this.el === 'water') {
         if (this.buf.hand && this.en >= 10) { this.buf.hand = 0; this.en -= 10; B.iceSpear(this); }
@@ -291,15 +297,19 @@ export class Fighter {
       let struck = false;
       if (this.buf.hand && handFirst && !this.charging && canStrike) {
         struck = true; this.lastStrike = 'hand';
-        this.buf.hand = 0; this.dodgeT = 0;
+        this.buf.hand = 0; if (this.dodgeKind !== 'rocket') this.dodgeT = 0;
         if (this.counterT > 0) { this.counterT = 0; this.startAction('counter'); w.combat.lunge(this, ACTIONS.counter); w.popup(this, 'COUNTER', true); w.audio.whoosh(0.9); }
         else if (B.spiralRelease && B.spiralRelease(this)) { w.popup(this, 'RELEASE', true); }
         else { this.handSide = -this.handSide; this.startTech(st.tech.hand, this.handSide, true); }
         this.handHoldT = 0;
       }
       if (this.buf.leg && !struck && !this.charging && canStrike) {
-        this.buf.leg = 0; this.dodgeT = 0; this.lastStrike = 'leg';
-        if (!this.onGround && (this.pos.y - this.groundY > 0.4 || this.airTime > 0.12) && this.vel.y > -12 && st.tech.airKick && !(this.mob && this.mob.kind === 'surf')) {
+        this.buf.leg = 0; this.lastStrike = 'leg';
+        const jetGlide = this.dodgeKind === 'rocket' && this.dodgeT > 0 && st.tech.glideBlast;
+        if (!jetGlide) this.dodgeT = 0;
+        // LEG while jet-gliding: the legs stay on the jets, both palms drive a blast of flame (Jet Blast)
+        if (jetGlide) this.startTech(st.tech.glideBlast, this.handSide = -this.handSide, true);
+        else if (!this.onGround && (this.pos.y - this.groundY > 0.4 || this.airTime > 0.12) && this.vel.y > -12 && st.tech.airKick && !(this.mob && this.mob.kind === 'surf')) {
           // in the air: a jumping kick, the right foot first, then the left, then the right again
           this.airKickN = (this.airKickN || 0) + 1; this.startTech(st.tech.airKick, this.airKickN % 2 ? -1 : 1, true);
           this.vel.y = Math.max(this.vel.y, this.airKickN < (this.el === 'fire' ? 4 : 3) ? 3.2 : 0);   // the kick lifts a little, so another fits before landing (Fire: four)
@@ -414,9 +424,14 @@ export class Fighter {
         this.vel.x = this.dodgeDir.x * gsp; this.vel.z = this.dodgeDir.z * gsp;
         this.vel.y = (0.7 - (this.pos.y - this.groundY)) * 6 + 21 * dt; this.onGround = false;
       } else if (this.dodgeKind === 'rocket') {
-        const rsp = 3 + 15 * k;
+        // Fire's jet glide: the bender rides the flames from the soles like a board, half a metre off the floor, legs
+        // locked in the riding stance (hero.js), driven fast at first and easing; the stick steers it like a board
+        // carving, and punches / blasts go on over it
+        if (Math.hypot(mx, mz) > 0.3) { const l = Math.hypot(mx, mz), kk = 1 - Math.exp(-4 * dt); this.dodgeDir.x += (mx / l - this.dodgeDir.x) * kk; this.dodgeDir.z += (mz / l - this.dodgeDir.z) * kk; const n = Math.hypot(this.dodgeDir.x, this.dodgeDir.z) || 1; this.dodgeDir.x /= n; this.dodgeDir.z /= n; }
+        const rsp = 6 + 12 * k, el = this.dodgeDur - this.dodgeT;
         this.vel.x = this.dodgeDir.x * rsp; this.vel.z = this.dodgeDir.z * rsp;
-        this.vel.y = (0.45 * Math.sin(Math.PI * (1 - this.dodgeT / this.dodgeDur)) - (this.pos.y - this.groundY)) * 10 + 21 * dt; this.onGround = false;
+        const hov = 0.5 * Math.min(1, el / 0.12) * Math.min(1, this.dodgeT / 0.15);
+        this.vel.y = (hov - (this.pos.y - this.groundY)) * 8 + 21 * dt; this.onGround = false;
         // the jets: tight streams of flame driven out of both feet against the direction of travel, small and bright at
         // the sole and widening behind (two per foot per frame, fast and short-lived, so they read as thrust)
         const F = this.world.fx.flip;
@@ -519,7 +534,7 @@ export class Fighter {
     else if (this.sprinting && mlen > 0.15) wantYaw = Math.atan2(mx, mz);
     else if (inp.strafe || this.guarding || this.holding || this.charging || (this.action && this.action !== 'land')) wantYaw = inp.faceYaw;
     else if (mlen > 0.15 && this.dodgeT <= 0) wantYaw = Math.atan2(mx, mz);
-    if (wantYaw !== null && wantYaw !== undefined && (this.dodgeT <= 0 || this.dodgeKind === 'glide')) {   // (the glide keeps turning to face the rival)
+    if (wantYaw !== null && wantYaw !== undefined && (this.dodgeT <= 0 || this.dodgeKind === 'glide' || this.dodgeKind === 'rocket')) {   // (the glide keeps turning to face the rival)
       const rate = this.action && this.action !== 'land' ? 18 : (inp.strafe ? 14 : (this.sprinting ? 7 : 11));
       this.faceYaw = dampAngle(this.faceYaw, wantYaw, rate, dt);
     }
@@ -778,8 +793,8 @@ export class Fighter {
       if (Math.hypot(inp.mx, inp.mz) < 0.2) { this.whirlSide = -(this.whirlSide || 1); this.dodgeDir.set(Math.cos(this.faceYaw) * this.whirlSide, 0, -Math.sin(this.faceYaw) * this.whirlSide); }
       this.dodgeKind = 'rocket';
     }
-    this.dodgeDur = this.dodgeKind === 'glide' ? 2.0 : this.dodgeKind === 'rocket' ? 0.36 : this.dodgeKind === 'side' ? 0.26 : this.dodgeKind === 'back' ? 0.3 : this.dodgeKind === 'circle' ? 0.42 : D.dur;
-    this.dodgeT = this.dodgeDur; this.dodgeCd = this.dodgeKind === 'glide' ? 0.6 : 0.42; this.invuln = this.dodgeKind === 'glide' ? 0.6 : this.dodgeDur * (D.iframes || 0.75); this.en -= this.dodgeKind === 'glide' ? 16 : 10;
+    this.dodgeDur = this.dodgeKind === 'glide' ? 2.0 : this.dodgeKind === 'rocket' ? 0.95 : this.dodgeKind === 'side' ? 0.26 : this.dodgeKind === 'back' ? 0.3 : this.dodgeKind === 'circle' ? 0.42 : D.dur;
+    this.dodgeT = this.dodgeDur; this.dodgeCd = this.dodgeKind === 'glide' ? 0.6 : 0.42; this.invuln = this.dodgeKind === 'glide' ? 0.6 : this.dodgeKind === 'rocket' ? 0.35 : this.dodgeDur * (D.iframes || 0.75); this.en -= this.dodgeKind === 'glide' ? 16 : 10;
     this.action = null; this.tech = null; this.spinYaw = 0;
     this.world.fx.dust(this.pos, 5, 1.2);
     if (this.el === 'air') this.world.audio.gust(0.6, this.pos); else if (this.el === 'fire') this.world.audio.fireWhoosh(0.6, this.pos); else this.world.audio.dodge(0.7, this.pos);
@@ -809,7 +824,7 @@ export class Fighter {
 
   die(dir) {
     this.dead = true; this.guarding = false; this.charging = false; this.endHold();
-    this.world.bending.guardEnd(this);
+    this.world.bending.guardEnd(this, true);
     this.startAction('ko'); this.koDir = dir.clone();
     this.vel.x = dir.x * 6; this.vel.z = dir.z * 6; this.vel.y = 4;
   }

@@ -374,6 +374,10 @@ STYLES.water.tech.hand.clip = ['whip_h', 'fire_jab', 'whip_v', 'fire_punch', 'wh
 // the Tidal Wave: Snake Creeps Down, sinking low and surging forward as the wave goes out
 STYLES.water.tech.leg.push(T({ name: 'Water Sweep', clip: 'earth_sweep', dur: 0.62, cost: 11, cancel: 0.75, move: 0.5, lunge: 3, keys: K0,
   active: { from: 0.45, to: 0.68, dmg: 8, range: 2.4, arc: -1.4, knock: 4, level: 2 }, events: [[0.5, 'water.sweep']] }));
+// a punch at the lingering ice shield (GUARD let go): a spike breaks off it and flies at the opponent (water.iceShot)
+STYLES.water.tech.icePunch = T({ name: 'Ice Shard Punch', clip: ['fire_jab', 'fire_punch'], dur: 0.3, cost: 3, cancel: 0.55, move: 1, upper: true, keys: K0, events: [[0.45, 'water.iceShot']] });
+// LEG while Fire jet-glides: both palms drive a blast of flame forward; the legs stay on the jets (fire.glideBlast)
+STYLES.fire.tech.glideBlast = T({ name: 'Jet Blast', clip: 'water_palm', dur: 0.42, cost: 6, cancel: 0.6, move: 0, upper: true, keys: K0, events: [[0.5, 'fire.glideBlast']] });
 STYLES.water.tech.whipSlam = T({ name: 'Whip Slam', clip: 'earth_stomp', clipSpeed: 1.5, dur: 1.1, cost: 0, cancel: 0.85, move: 0, keys: K0, events: [] });
 // Fire's kick chain (17 Nov, M6): kick-heavy and flowing, each kick its own authored clip, every kick throwing flame
 // from the kicking leg. LEG taps run through it in order; the chain restarts after a pause.

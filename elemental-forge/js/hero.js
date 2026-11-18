@@ -276,7 +276,7 @@ export class Hero {
   // When the fighter is moving under an upper-body action (a punch, guard, hold or the stance), the action's
   // upper-body tracks run over an authored walk / jog / sidestep for the legs. Procedural motion is a fallback only.
   drive(f, dt) {
-    let wU = 1, wL = 1, clip = 'Idle_Loop', ts = 1, fade = 0.18, restart = false, layered = false, startAt = 0;
+    let wU = 1, wL = 1, clip = 'Idle_Loop', ts = 1, fade = 0.18, restart = false, layered = false, startAt = 0, glideLegs = null;
     const A = f.A, sp = Math.hypot(f.vel.x, f.vel.z), fwd = f.moveLocal.y, side = f.moveLocal.x, moving = sp > 0.6 && f.onGround;
     const L = LOOPS[f.el] || {}, has = (n) => n && this.actions[n];
     // coming out of a run: the authored run-to-stop plays as the fighter halts
@@ -351,7 +351,14 @@ export class Hero {
       if (f.dodgeKind === 'glide' && has('air_loop')) { clip = 'air_loop'; ts = 1; wU = wL = 0; fade = 0.2; }
       // Fire's rocket dodge: Fire's own fighting stance (fists up, knees bent), held nearly still while the jets carry
       // the body sideways: no steps, no running legs (the body's lean comes from fighter.js)
-      else if (f.dodgeKind === 'rocket' && has('fire_idle')) { clip = 'fire_idle'; ts = 0.12; wU = wL = 0; fade = 0.06; }
+      // Fire's jet glide: the legs ride the jets in the skateboard crouch (Mixamo Skateboarding, the riding frames:
+      // feet staggered, knees bent, never a step), the upper body in Male Action Pose (crouched, fists up); a punch or
+      // blast thrown while gliding replaces only the upper body
+      else if (f.dodgeKind === 'rocket' && has('skate_ride')) {
+        clip = has('fire_action') ? 'fire_action' : 'fire_idle'; ts = 1; fade = 0.08;
+        if (f.action === 'tech' && f.tech && f.tech.clip) { const [n, scale] = clipFor(f.tech, f.techSide); if (has(n)) { clip = n; ts = scale; fade = 0.06; if (f.techN !== this.techN) { this.techN = f.techN; restart = true; } } }
+        wU = wL = 0; layered = true; glideLegs = ['skate_ride', 0.6];
+      }
       else {
       const n = f.dodgeKind !== 'roll' && Math.abs(lx) > 0.5 && has('dodge_side') ? (lx < 0 ? 'dodge_side' : 'dodge_side_M') : lz < -0.6 && f.el === 'air' && has('dodge_back') ? 'dodge_back' : 'Roll';
       if (n === 'Roll') { clip = 'Roll'; wU = wL = 0; ts = 1.46 / (f.dodgeDur * 1.7); fade = 0.06; if (this.curName !== 'Roll') restart = true; }
@@ -421,7 +428,7 @@ export class Hero {
     // nothing else matched (any state not listed above): the element's authored stance, never the procedural body
     if (clip === 'Idle_Loop' && wU === 1 && has(L.idle)) { clip = L.idle; wU = wL = 0; fade = 0.2; layered = moving; }
     if (layered) {
-      const [ln, lts] = lowOv || loco();
+      const [ln, lts] = glideLegs || lowOv || loco();
       this.play(clip + '|U', fade, ts, restart);
       this.playLower(ln + '|L', lts, 0.18);
     } else {

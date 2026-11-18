@@ -43,6 +43,7 @@ function distPointSeg(p, a, b) {
   return p.distanceTo(_v3.copy(a).addScaledVector(_v, t));
 }
 
+const LINGER = 2.0;   // seconds a released guard stays up
 export class Bending {
   constructor(world) {
     this.world = world;
@@ -277,10 +278,18 @@ export class Bending {
       case 'fire.hand': {
         const orbs = this.heldList(f, 'fire').filter(o => o.state === 'orbit');
         if (orbs.length) { this.launch(orbs[0], f, 1); return; }
+        if (this.fireWallBurst(f, hand)) return;   // punching the lingering fire wall out
         // a compact fireball punched out of the striking fist (jab, cross or hook), carried on a stream of flame that
         // leaves the fist along the punch; out of the fire wall the stream is long and forceful
         const o = this.fire(f.guarding ? 'fireOrb' : 'fireball', f, hand, { scale: f.guarding ? 1 : 0.72 }); o.dmg = f.guarding ? 11 : 7;
         this.flameJet(hand, o.vel.clone().normalize(), f.guarding ? 1.5 : 1); w.audio.fireWhoosh(f.guarding ? 1 : 0.6); return;
+      }
+      case 'fire.glideBlast': {
+        // Jet Blast: a big flame orb pushed out from between both palms, with a jet from each hand
+        const hl = this.handPoint(f, -1, new THREE.Vector3()), hr = this.handPoint(f, 1, new THREE.Vector3()), mid = hl.clone().add(hr).multiplyScalar(0.5);
+        const o = this.fire('fireOrb', f, mid, { scale: 1.2 }); o.dmg = 10;
+        for (const h of [hl, hr]) this.flameJet(h, o.vel.clone().normalize(), 1.3);
+        w.audio.fireWhoosh(1); return;
       }
       case 'fire.knee': { this.ring(f, 'fire', 2.4, 10, { dmg: 6, knock: 7, level: 1 }); for (let i = 0; i < 10; i++) w.fx.fire(foot, _v.set(rand(-3, 3), rand(0, 3), rand(-3, 3)), 0.5, 0.3); w.audio.fireWhoosh(1); return; }
       case 'fire.stompMark': return;   // no flame before the foot comes down: the stomp ignites on the plant
@@ -397,6 +406,7 @@ export class Bending {
         this.weapons.wave(f, 'water', { freeze: true, width: 6.5 + g.length, h: 3.8 + g.length * 0.3, dmg: 9 + g.length * 2, life: 1.15 }); w.shake(0.3, f.pos);
         return;
       }
+      case 'water.iceShot': this.iceShot(f); return;
       case 'water.specialStart': this.specials.waterStart(f); return;
       case 'water.special': this.specials.waterEstablish(f); return;
       case 'water.specialRelease': this.specials.waterRelease(f); return;
@@ -752,14 +762,58 @@ export class Bending {
     const o = this.fire('boulder', f, p, { dir: to.sub(p).normalize() }); o.dmg = 13; o.knock = 9;
     o.mesh.scale.multiplyScalar(1.15);
     w.fx.debrisBurst(p, 12, 3.5, 0.1, 0x7a6a58); w.fx.dust(p, 4, 1.2); w.audio.impact(1); w.shake(0.15, f.pos); w.popup(f, 'ROCK PUNCH', true);
-    if (!d.rocks.length) { this.guardEnd(f); f.guarding = false; f.guardCd = 0.4; }
+    if (d.lingering) d.linger = Math.max(d.linger, 1);
+    if (!d.rocks.length) { f.guarding = false; this.guardEnd(f, true); f.guardCd = 0.4; }
     return true;
   }
-  guardEnd(f) {
-    const d = f.defense; f.defense = null;
-    if (!d || d.dead) return;
+  // GUARD let go. Earth's rocks, Fire's wall and Water's shield stay up for LINGER seconds so the bender can turn them
+  // into weapons: Earth punches the rocks out (as while guarding), Water's shield freezes and each punch breaks an ice
+  // spike off it, Fire's punch throws the whole wall forward as a burst. Every use buys at least another second, so a
+  // three-punch chain is never cut off. now = true (element switch, death, last rock thrown) drops it at once.
+  guardEnd(f, now) {
+    const d = f.defense;
+    if (!d || d.dead) { f.defense = null; return; }
+    if (!now && !d.ice && !d.lingering && d.el !== 'air' && !f.dead && d.rise > 0.5) {
+      d.lingering = true; d.linger = LINGER;
+      if (d.el === 'water') {
+        // the water shield turns to ice (the same ice wall as GUARD + SPECIAL, here for LINGER seconds): four spikes in it
+        this.freeze(d, true); d.free = true; d.life = LINGER; d.iceShots = 4;
+      }
+      return;   // f.defense stays: the lingering shield still blocks
+    }
+    f.defense = null;
     if (d.ice) { d.free = true; return; }   // ice stays standing where it was raised
     d.sink = 0.001;
+  }
+  lingering(f, el) { const d = f.defense; return d && !d.dead && d.lingering && !f.guarding && d.el === el && !(d.sink > 0) ? d : null; }
+  // Water: a punch at the lingering ice breaks a spike off it, on the punching side, and drives it at the opponent
+  iceShot(f) {
+    const d = this.lingering(f, 'water'), w = this.world; if (!d || !d.ice || !(d.iceShots > 0)) return false;
+    d.iceShots--; d.life = Math.max(d.life, 1);
+    const s = f.techSide || 1, a = d.yaw + s * 0.45 * (d.iceShots % 2 ? 1 : -1) * (d.iceShots > 1 ? 1 : 0.3);
+    const p = new THREE.Vector3(d.pos.x + Math.sin(a) * 1.2, d.pos.y + 1.2, d.pos.z + Math.cos(a) * 1.2);
+    const t = f.target && !f.target.dead ? f.target : null;
+    const to = t ? t.chestPos(new THREE.Vector3()) : p.clone().add(f.forward(new THREE.Vector3()).multiplyScalar(10));
+    const o = this.fire('iceSpear', f, p, { dir: to.sub(p).normalize() }); o.dmg = 9;
+    w.fx.debrisBurst(p, 10, 2.6, 0.07, 0xdff6ff); w.audio.ice('break', 0.7, p);
+    if (d.fx && d.fx.mesh) d.fx.mesh.scale.y = Math.max(0.35, 0.4 + 0.15 * d.iceShots);   // the wall gets lower as spikes leave it
+    if (d.iceShots <= 0) this.breakDefence(d);
+    return true;
+  }
+  // Fire: the lingering wall thrown forward by a punch: three big flame orbs fanned out, the wall gone
+  fireWallBurst(f, hand) {
+    const d = this.lingering(f, 'fire'), w = this.world; if (!d) return false;
+    const t = f.target && !f.target.dead ? f.target : null, base = f.forward(new THREE.Vector3());
+    if (t) base.subVectors(t.chestPos(new THREE.Vector3()), hand).normalize();
+    for (const k of [-0.22, 0, 0.22]) {
+      const dir = base.clone().applyAxisAngle(_up, k);
+      const from = hand.clone().addScaledVector(new THREE.Vector3(-dir.z, 0, dir.x), k * 3);
+      const o = this.fire('fireOrb', f, from, { dir, scale: 1.25 }); o.dmg = k === 0 ? 12 : 8;
+      this.flameJet(from, dir, 1.6);
+    }
+    w.audio.fireWhoosh(1.3); w.shake(0.12, f.pos); w.popup(f, 'FIRE WALL BURST', true);
+    d.sink = 0.001; if (f.defense === d) f.defense = null;
+    return true;
   }
   placeDef(d, snap) {
     const f = d.owner;
@@ -861,14 +915,14 @@ export class Bending {
     const w = this.world; d.dead = true; w.scene.remove(d.mesh);
     if (d.cols) for (const c of d.cols) { c.dead = true; } w.arena.colliders = w.arena.colliders.filter(c => !c.dead);
     if (d.el === 'earth') { w.fx.debrisBurst(d.pos.clone().setY(d.pos.y + 1), 24, 4, 0.15, 0x7a6a58); w.audio.impact(1.1); }
-    if (d.el === 'water' && d.ice) { w.fx.debrisBurst(_v.copy(d.pos).add(_v2.set(Math.sin(d.yaw) * 1.2, 1, Math.cos(d.yaw) * 1.2)), 34, 4.5, 0.13, 0xcdefff); w.audio.impact(1.0); w.popup(d.owner, 'ICE SHATTERS', true); }
+    if (d.el === 'water' && d.ice) { w.fx.debrisBurst(_v.copy(d.pos).add(_v2.set(Math.sin(d.yaw) * 1.2, 1, Math.cos(d.yaw) * 1.2)), 34, 4.5, 0.13, 0xcdefff); w.audio.impact(1.0); if (!d.lingering) w.popup(d.owner, 'ICE SHATTERS', true); }
     else if (d.el === 'water') { w.fx.splash(_v.copy(d.pos).setY(d.pos.y + 1), 26); w.audio.splash(1); }
     if (d.el === 'fire') { for (let i = 0; i < 16; i++) w.fx.fire(d.pos.clone().setY(d.pos.y + 1), _v.set(rand(-3, 3), rand(0, 3), rand(-3, 3))); w.fx.smoke(d.pos); }
-    const o = d.owner; if (o && o.defense === d) { o.defense = null; o.guarding = false; o.guardCd = 1.1; o.stunT = 0.3; w.popup(o, 'GUARD BROKEN', true); }
+    const o = d.owner; if (o && o.defense === d) { o.defense = null; if (o.guarding) { o.guarding = false; o.guardCd = 1.1; o.stunT = 0.3; w.popup(o, 'GUARD BROKEN', true); } }
   }
   // icebending (GUARD + SPECIAL with the water wall up, once unlocked): the wall freezes into a solid ice wall: real colliders, high durability; it stays
   // standing after the guard is released and can be climbed onto
-  freeze(d) {
+  freeze(d, quiet) {
     const w = this.world, f = d.owner;
     d.ice = true; d.hp = 150; d.maxHp = 150; d.life = 9; d.arc = { r: 1.25, band: 0.55, half: 0.95, h: 2.1 };
     w.scene.remove(d.mesh); d.fx = makeIceWall(1.25, 0.95, 7); d.mesh = d.fx.mesh; w.scene.add(d.mesh);
@@ -879,6 +933,7 @@ export class Bending {
       const c = { kind: 'c', x, z, r: 0.42, top: d.pos.y + 1.7, walk: true, ice: true }; d.cols.push(c); w.arena.colliders.push(c);
     }
     w.fx.debrisBurst(_v.copy(d.pos).add(_v2.set(Math.sin(d.yaw) * 1.2, 0.6, Math.cos(d.yaw) * 1.2)), 16, 2.5, 0.08, 0xdff6ff);
+    if (quiet) { w.audio.ice('form', 0.7, d.pos); return; }
     w.audio.impact(0.6); w.popup(f, 'ICE WALL', true);
   }
   // what a defence does to a projectile that enters it. Returns true if the projectile stops.
@@ -1198,7 +1253,13 @@ export class Bending {
         d.tubes.forEach((tb, i) => { const P = d.wpts[i]; for (let j = 0; j < P.length; j++) { const q = j / (P.length - 1), a = -d.t * 9 + q * 7 + i * 2.09; P[j].set(of.pos.x + Math.cos(a) * R * (0.85 + 0.25 * q), of.pos.y + 0.1 + q * 2.2, of.pos.z + Math.sin(a) * R * (0.85 + 0.25 * q)); } tb.set(P, (u) => 0.05 + 0.06 * Math.sin(Math.PI * u), d.t * 2); });
         for (let k = 0; k < 2; k++) { const a = Math.random() * 6.28; w.fx.wind(_v.set(d.pos.x + Math.cos(a) * d.sphere, d.pos.y + rand(-0.8, 0.8), d.pos.z + Math.sin(a) * d.sphere), _v2.set(-Math.sin(a) * 8, 0, Math.cos(a) * 8), 0.5, 0.3); }
       }
-      if (!d.ice && !d.owner.guarding && d.sink === 0) d.sink = 0.001;
+      if (!d.ice && !d.owner.guarding && d.sink === 0) {
+        if (d.lingering && d.owner.defense === d && !d.owner.dead && d.linger > 0) d.linger -= dt;
+        else {
+          d.sink = 0.001; if (d.owner.defense === d) d.owner.defense = null;
+          if (d.lingering && d.el === 'earth') w.fx.debrisBurst(d.pos.clone().setY(d.pos.y + 0.8), 18, 2.2, 0.12, 0x7a6a58, 0.9);   // unused rocks crumble
+        }
+      }
     }
     this.defs = this.defs.filter(d => !d.dead);
   }

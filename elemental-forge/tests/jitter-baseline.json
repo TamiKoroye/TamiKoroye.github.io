@@ -1,0 +1,182 @@
+[
+ {
+  "el": "fire",
+  "seq": "hand taps",
+  "revPerSecPerPart": 0.63,
+  "snapsPerSecPerPart": 0.49,
+  "worstPart": "DEF-forearmR",
+  "worstRate": 1.54,
+  "pass": true
+ },
+ {
+  "el": "fire",
+  "seq": "leg taps",
+  "revPerSecPerPart": 0.31,
+  "snapsPerSecPerPart": 5.86,
+  "worstPart": "DEF-forearmR",
+  "worstRate": 0.67,
+  "pass": true
+ },
+ {
+  "el": "fire",
+  "seq": "hand+leg",
+  "revPerSecPerPart": 0.38,
+  "snapsPerSecPerPart": 1.06,
+  "worstPart": "DEF-forearmR",
+  "worstRate": 1.5,
+  "pass": true
+ },
+ {
+  "el": "fire",
+  "seq": "guard on/off",
+  "revPerSecPerPart": 0.37,
+  "snapsPerSecPerPart": 0.9,
+  "worstPart": "DEF-handL",
+  "worstRate": 0.85,
+  "pass": true
+ },
+ {
+  "el": "fire",
+  "seq": "dodges",
+  "revPerSecPerPart": 0.71,
+  "snapsPerSecPerPart": 1.3,
+  "worstPart": "DEF-handR",
+  "worstRate": 1.42,
+  "pass": true
+ },
+ {
+  "el": "water",
+  "seq": "hand taps",
+  "revPerSecPerPart": 0.19,
+  "snapsPerSecPerPart": 1.18,
+  "worstPart": "DEF-handL",
+  "worstRate": 0.44,
+  "pass": true
+ },
+ {
+  "el": "water",
+  "seq": "leg taps",
+  "revPerSecPerPart": 0.19,
+  "snapsPerSecPerPart": 1.64,
+  "worstPart": "DEF-handL",
+  "worstRate": 1.11,
+  "pass": true
+ },
+ {
+  "el": "water",
+  "seq": "hand+leg",
+  "revPerSecPerPart": 0.25,
+  "snapsPerSecPerPart": 1.88,
+  "worstPart": "DEF-forearmR",
+  "worstRate": 0.75,
+  "pass": true
+ },
+ {
+  "el": "water",
+  "seq": "guard on/off",
+  "revPerSecPerPart": 0.66,
+  "snapsPerSecPerPart": 2.45,
+  "worstPart": "DEF-footL",
+  "worstRate": 1.06,
+  "pass": true
+ },
+ {
+  "el": "water",
+  "seq": "dodges",
+  "revPerSecPerPart": 0.44,
+  "snapsPerSecPerPart": 1.33,
+  "worstPart": "DEF-handL",
+  "worstRate": 1.18,
+  "pass": true
+ },
+ {
+  "el": "earth",
+  "seq": "hand taps",
+  "revPerSecPerPart": 0.05,
+  "snapsPerSecPerPart": 0,
+  "worstPart": "DEF-forearmR",
+  "worstRate": 0.44,
+  "pass": true
+ },
+ {
+  "el": "earth",
+  "seq": "leg taps",
+  "revPerSecPerPart": 0.11,
+  "snapsPerSecPerPart": 0.47,
+  "worstPart": "DEF-forearmR",
+  "worstRate": 0.44,
+  "pass": true
+ },
+ {
+  "el": "earth",
+  "seq": "hand+leg",
+  "revPerSecPerPart": 0.06,
+  "snapsPerSecPerPart": 0.81,
+  "worstPart": "DEF-handR",
+  "worstRate": 0.25,
+  "pass": true
+ },
+ {
+  "el": "earth",
+  "seq": "guard on/off",
+  "revPerSecPerPart": 0.45,
+  "snapsPerSecPerPart": 1.97,
+  "worstPart": "DEF-handL",
+  "worstRate": 0.85,
+  "pass": true
+ },
+ {
+  "el": "earth",
+  "seq": "dodges",
+  "revPerSecPerPart": 0.32,
+  "snapsPerSecPerPart": 0.62,
+  "worstPart": "DEF-handL",
+  "worstRate": 0.94,
+  "pass": true
+ },
+ {
+  "el": "air",
+  "seq": "hand taps",
+  "revPerSecPerPart": 0.82,
+  "snapsPerSecPerPart": 5.69,
+  "worstPart": "DEF-handL",
+  "worstRate": 1.32,
+  "pass": true
+ },
+ {
+  "el": "air",
+  "seq": "leg taps",
+  "revPerSecPerPart": 0.19,
+  "snapsPerSecPerPart": 4.11,
+  "worstPart": "DEF-footR",
+  "worstRate": 0.67,
+  "pass": true
+ },
+ {
+  "el": "air",
+  "seq": "hand+leg",
+  "revPerSecPerPart": 0.22,
+  "snapsPerSecPerPart": 2.34,
+  "worstPart": "DEF-handL",
+  "worstRate": 0.5,
+  "pass": true
+ },
+ {
+  "el": "air",
+  "seq": "guard on/off",
+  "revPerSecPerPart": 0.35,
+  "snapsPerSecPerPart": 2.58,
+  "worstPart": "DEF-footL",
+  "worstRate": 0.85,
+  "pass": true
+ },
+ {
+  "el": "air",
+  "seq": "dodges",
+  "revPerSecPerPart": 0.21,
+  "snapsPerSecPerPart": 3.37,
+  "worstPart": "DEF-handL",
+  "worstRate": 0.94,
+  "pass": true
+ }
+]
