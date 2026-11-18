@@ -630,8 +630,9 @@ export class Fighter {
       w.fx.ring(this.pos, 2.2, 0xffffff, 0.4); for (let i = 0; i < 12; i++) w.fx.wind(this.pos.clone().setY(this.pos.y + 0.1), _v.set(rand(-4, 4), rand(1, 4), rand(-4, 4)), 0.6, 0.4);
       w.audio.gust(1.1); w.popup(this, 'FLIGHT', false); return;
     }
-    // (Fire may go straight from the rocket dodge, a little off the floor, into the flame run)
-    if (!this.onGround && !(el === 'fire' && this.dodgeKind === 'rocket' && this.dodgeT > 0)) return;
+    // (Fire may go straight from the rocket dodge, a little off the floor, into the flame run; Water from its ice arch
+    //  into the ice surf, when DODGE is held)
+    if (!this.onGround && !((el === 'fire' && this.dodgeKind === 'rocket' || el === 'water' && this.dodgeKind === 'arch') && this.dodgeT > 0)) return;
     const heading = sp > 1 ? Math.atan2(this.vel.x, this.vel.z) : this.faceYaw;
     if (el === 'fire') { this.mob = { kind: 'flame', el, t: 0, heading, speed: Math.max(sp, 6) }; this.dodgeT = 0; w.audio.fireWhoosh(1); return; }
     this.mob = { kind: 'surf', el, t: 0, speed: Math.max(sp, 4), heading }; this.dodgeT = 0; this.en -= 6;
