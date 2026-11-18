@@ -64,5 +64,13 @@ soles. HAND punches and LEG throws a Jet Blast without ending the glide. DODGE a
   frame (`JSHOT=element:sequence:dir`). Found and fixed: the Flair was cut by the next kick while upside down (now
   plays to the end, slower blend in and out); the Corkscrew could be interrupted while on the floor (strikes now
   only once on the feet); a dodge at the end of the Fire glide or the Water arch gave a back somersault (now glides /
-  arches again). No twitching found; the remaining excess is fast motion that the moves are made of (flips, spins).
+  arches again). Re-filmed after the fixes: the Flair plays to its end and the next kick blends in over about 0.3 s;
+  no pops or twitching seen in these sequences. The remaining excess over r19 is fast motion that the moves are made
+  of (flips, spins, the breakdance sweep). One thing still open: the Corkscrew Evade ends on hands and knees on our
+  rig, and the next strike lifts him back up over about 6 frames (smooth, but low).
+- Older suites on r20: play 86/86, overhaul 52/52, milestone 22/22, effects 49/49, acceptance 15/15 (a first run
+  of acceptance gave 11/15 with empty rows while the live rival interrupted the round; a rerun passed). Fixed on the
+  way: holding DODGE as Water goes from the arch into the ice surf; Air flips go the stick's way; the whip slam comes
+  about 0.7 s in; Water's arm-wave whip is fifth in the HAND chain.
+- Live dev URL (r20): pack decodes 207/207; fire glide, ice arch, ice shield spikes and Dragon's Breath checks pass.
 - `tests/m9-test.mjs`: 20 checks, played through the keyboard controls.
