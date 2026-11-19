@@ -245,8 +245,13 @@ for (const el of els) {
   if (el === 'fire' || el === 'air') {
     // (M3 brief: the flame orbs and vortex orbs are replaced. Fire SPECIAL is Dragon Descent, a leaping flying kick
     //  that explodes at the kicking foot; Air SPECIAL is a tornado wound up by a full turn that travels to the rival)
-    await setup({ el, p: [0, 0, -10], o: [0, 0, -5] });
+    // (19 Nov: Fire's SPECIAL standing still is now Dragon's Breath, because the user could not find it behind GUARD +
+    //  SPECIAL; Dragon Descent is SPECIAL at a run. This check runs at the rival on the stick first, then presses
+    //  SPECIAL, and still requires the leap, the explosion and the knockdown. Air is unchanged.)
+    await setup({ el, p: [0, 0, el === 'fire' ? -13 : -10], o: [0, 0, -5] });
+    if (el === 'fire') { await stick(0, -90); await stepN(40); }
     await press('btn-special', 2);
+    if (el === 'fire') await stickUp();
     let lifted = 0, down = false; const acts = new Set();
     for (let i = 0; i < 90; i++) { await stepN(1); const r = await P(); lifted = Math.max(lifted, r.oy); if (r.oact === 'down') down = true; if (r.tech) acts.add(r.tech); if (i === 24) await shot(`13-${el}-special`); }
     const sh = await hitsOn(); await clearHits();
