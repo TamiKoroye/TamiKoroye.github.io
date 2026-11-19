@@ -17,6 +17,7 @@ C2 = 'sfx_100_v2/sfx100v2_%s.ogg'
 RPG = '80-CC0-RPG-SFX_0/%s.ogg'
 WS = 'water-splash-slime-sfx/%s.ogg'
 K = 'RPGsounds_Kenney/OGG/%s.ogg'
+WV = '@wave_0%d_cc0-11505__transitking__wavesound.flac'
 
 # name: (target RMS in dBFS, [(source, max length s, start offset from onset s), ...], loop?)
 BANK = {
@@ -38,9 +39,11 @@ BANK = {
   'fireHit':   (-16, [(FS % i, 0.7, 0) for i in (9, 13, 1)], False),
   'fireLoop':  (-21, [('@fire_sound_effect.mp3', 3.0, 0.6)], True),
   # water and ice
-  'waterWhip': (-18, [(WS % s, 0.35, 0) for s in ('splash_09', 'splash_10', 'splash_15', 'splash_06')], False),
-  'waterCast': (-18, [(WS % s, 0.6, 0) for s in ('splash_02', 'splash_03', 'splash_14', 'splash_12')], False),
-  'waterBig':  (-15, [(WS % 'splash_04', 0.9, 0), (WS % 'splash_08', 0.7, 0), ('@wave_01_cc0-11505__transitking__wavesound.flac', 1.4, 0)], False),
+  # (19 Nov, after review: the slime-pack splashes sounded like drops in a basin) water is cut from recordings of real
+  # waves: a whip is the rush of a breaking wave (short), a cast a longer rush, a big move the full crash
+  'waterWhip': (-18, [(WV % i, 0.38, o) for i, o in ((1, 0.0), (2, 0.1), (3, 0.0), (4, 0.15), (2, 0.6))], False),
+  'waterCast': (-17, [(WV % i, 0.7, o) for i, o in ((1, 0.2), (3, 0.3), (4, 0.0))], False),
+  'waterBig':  (-15, [(WV % i, 1.4, 0) for i in (1, 2, 3)], False),
   'waterLoop': (-22, [(WS % 'loop_water_01', 3.0, 0)], True),
   'iceForm':   (-17, [('@freeze.wav', 1.3, 0)], False),
   'iceBreak':  (-16, [(B % s, 0.6, 0) for s in ('glass_breaking_02', 'glass_breaking_05', 'glass_breaking_06')], False),

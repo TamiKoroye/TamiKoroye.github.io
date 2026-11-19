@@ -31,6 +31,24 @@ const tap = async (code, hold = 2) => { await page.keyboard.down(code); await st
 let fails = 0;
 const check = (name, ok, info) => { console.log(`${ok ? 'PASS' : 'FAIL'} ${name}  ${info}`); if (!ok) fails++; };
 const CHECKS = {
+  async review19() {
+    // 19 Nov: Earth's pillars no longer stack (each rises from the real floor and drops any pillar on its spot), the
+    // uppercut's rising rock sinks back, and a pillar in front of Earth can be punched out as a boulder
+    await setup('earth', 'fire', 3); await step(20);
+    const towers = await page.evaluate(() => { const E = window.__EF, B = E.world.bending, P = E.player, O = E.opp; for (let i = 0; i < 3; i++) { B.raisePillar(P, O.pos.x, O.pos.z); for (let k = 0; k < 30; k++) E.step(1 / 60); } return B.pillars.filter(p => !p.col.dead).map(p => +p.gy.toFixed(2)); });
+    check('Earth pillars raised on the same spot do not stack', towers.every(g => g < 0.3) && towers.length <= 1, `standing pillars' bases ${JSON.stringify(towers)}`);
+    await setup('earth', 'fire', 2.2); await step(20);
+    await page.evaluate(() => { const E = window.__EF, B = E.world.bending, P = E.player; const fw = P.forward(new P.pos.constructor()); B.raisePillar(P, P.pos.x + fw.x * 1.4, P.pos.z + fw.z * 1.4); });
+    await step(30); const before = await ev("E.world.bending.pillars.filter(p => !p.col.dead).length");
+    let thrown = 0; for (let i = 0; i < 3 && !thrown; i++) { await tap('KeyF'); const r = await step(40, "E.world.bending.objs.filter(o => o.owner === P && o.kind === 'boulder' && o.state !== 'dead').length"); thrown = Math.max(...r); }
+    const after = await ev("E.world.bending.pillars.filter(p => !p.col.dead).length");
+    check('Earth punches a pillar in front of him out as a boulder', before === 1 && after === 0 && thrown > 0, `pillars ${before} -> ${after}, boulders thrown ${thrown}`);
+    // Water's kicks bring ice up out of the floor (no whips, no breaking-wave blocks)
+    await setup('water', 'earth', 5); await step(60);
+    let spikes = 0, whips = 0, waves = 0;
+    for (let i = 0; i < 5; i++) { await tap('KeyG'); for (const r of await step(40, "E.world.bending.spikes.filter(s => s.owner === P && s.ice).length + ':' + (E.world.bending.weapons.whips || []).filter(W => W.f === P).length + ':' + E.world.bending.weapons.waves.filter(V => V.f === P).length")) { const [a, b2, c] = r.split(':').map(Number); spikes = Math.max(spikes, a); whips = Math.max(whips, b2); waves = Math.max(waves, c); } }
+    check("Water's kicks send ice spikes up out of the floor; no whips or waves from the kicks", spikes > 3 && whips === 0 && waves === 0, `ice spikes ${spikes}, whips ${whips}, waves ${waves}`);
+  },
   async review18c() {
     // 18 Nov, third review
     await setup('water', 'fire', 6); const ws = (await step(50, 'P.hero.curName')).slice(20);
