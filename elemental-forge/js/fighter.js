@@ -128,6 +128,20 @@ export class Fighter {
   }
   handPos(side, out = new THREE.Vector3()) { return (this.hero ? this.hero.bones['DEF-hand' + side] : this.J['w' + side]).getWorldPosition(out); }
   footPos(side, out = new THREE.Vector3()) { return (this.hero ? this.hero.bones['DEF-foot' + side] : this.J['a' + side]).getWorldPosition(out); }
+  // (19 Nov, after review: Fire's jets come out of the heels only, and the hands' jets out of the fists only)
+  // the heel: from the ankle, a quarter of the foot's length back away from the toes and a little down toward the sole
+  heelPos(side, out = new THREE.Vector3()) {
+    this.footPos(side, out); if (!this.hero) return out;
+    const toe = this.hero.bones['DEF-toe' + side]; if (!toe) return out;
+    toe.getWorldPosition(_heelT); _heelT.sub(out);
+    return out.addScaledVector(_heelT, -0.25).add(_heelD.set(0, -0.06, 0));
+  }
+  // the fist: the middle of the closed hand, about where the knuckles fold (wrist to the base of the middle finger)
+  fistPos(side, out = new THREE.Vector3()) {
+    this.handPos(side, out); if (!this.hero) return out;
+    const k = this.hero.bones['DEF-f_middle01' + side]; if (!k) return out;
+    k.getWorldPosition(_heelT); return out.lerp(_heelT, 0.85);
+  }
 
   get A() { return this.action === 'tech' ? this.tech : (this.action ? ACTIONS[this.action] : null); }
   get actionU() { const A = this.A; return A ? this.actionT / A.dur : 1; }
@@ -838,7 +852,7 @@ export class Fighter {
       if (stick > 0.3) m.heading += THREE.MathUtils.clamp(angleDiff(m.heading, Math.atan2(mx, mz)), -M.turn * dt, M.turn * dt);
       m.speed = Math.min(M.top, m.speed + M.accel * dt);
       this.vel.x = Math.sin(m.heading) * m.speed; this.vel.z = Math.cos(m.heading) * m.speed;
-      for (const sd of ['L', 'R']) { const fp = this.footPos(sd, _v); w.fx.fire(fp, _v2.set(-this.vel.x * 0.3 + rand(-0.5, 0.5), rand(0.5, 2), -this.vel.z * 0.3 + rand(-0.5, 0.5)), 0.4, 0.22); }
+      for (const sd of ['L', 'R']) { const fp = this.heelPos(sd, _v); w.fx.fire(fp, _v2.set(-this.vel.x * 0.3 + rand(-0.5, 0.5), rand(0.5, 2), -this.vel.z * 0.3 + rand(-0.5, 0.5)), 0.4, 0.22); }
       if (Math.random() < dt * 8) B.burn(this.pos.x, this.pos.z, this.groundY, this);
       if (this.en <= 1) this.endMob();
       return true;
@@ -885,7 +899,7 @@ export class Fighter {
     }
   }
   // Fire's rocket jets (firefx JetSet): on the jump's blast-off and while JUMP holds the jets, straight down out of both
-  // feet and both palms; in the rocket dodge and glide, back against the travel out of the feet and the palms
+  // heels, and out of the fists once he is up with the arms pointing down; in the rocket dodge, back against the travel out of the heels alone
   fireJets(dt) {
     if (this.el !== 'fire' && !this.jets) return;
     if (!this.jets) this.jets = new JetSet(this.world.scene);
@@ -896,22 +910,29 @@ export class Fighter {
       // from each foot, and behind them a wide wake of flame flaring out like wings (the user's reference picture)
       const back = _v.set(-this.dodgeDir.x, 0, -this.dodgeDir.z), side = _axis.set(-back.z, 0, back.x);
       for (const sd of ['L', 'R']) {
-        const fp = this.footPos(sd, _v2);
+        const fp = this.heelPos(sd, _v2);
         this.jets.fire('f' + sd, fp, _fwd.copy(back).multiplyScalar(0.8).add(_zx.set(0, -0.5, 0)), 1.7, 0.15);
         const s = sd === 'L' ? 1 : -1;
-        if (Math.random() < 0.6) this.world.fx.fire(_zx.copy(fp).addScaledVector(back, 0.5), _fwd.copy(back).multiplyScalar(rand(6, 10)).addScaledVector(side, s * rand(2, 5)).add(_qwv.set(0, rand(0.5, 2.5), 0)), rand(0.32, 0.55), 0.28);
+        if (Math.random() < 0.6) this.world.fx.fire(_zx.copy(fp).addScaledVector(back, 0.25), _fwd.copy(back).multiplyScalar(rand(6, 10)).addScaledVector(side, s * rand(2, 5)).add(_qwv.set(0, rand(0.5, 2.5), 0)), rand(0.32, 0.55), 0.28);
       }
     } else if (live && this.jetBurstT > 0 && !this.onGround) {
       for (const sd of ['L', 'R']) {
-        this.jets.fire('f' + sd, this.footPos(sd, _v2), _fwd.set(-this.vel.x * 0.04, -1, -this.vel.z * 0.04), 1.4, 0.13);
-        this.jets.fire('h' + sd, this.handPos(sd, _v2), _fwd.set(sd === 'L' ? 0.15 : -0.15, -1, 0).applyAxisAngle(_up, this.yaw), 1.0, 0.09);
+        this.jets.fire('f' + sd, this.heelPos(sd, _v2), _fwd.set(-this.vel.x * 0.04, -1, -this.vel.z * 0.04), 1.4, 0.13);
+        // (19 Nov, after review, physics) the fists fire only once he is up in the jump pose with the arms driven down:
+        // the jet leaves the fist along the forearm (elbow to fist), so the thrust pushes the same way as the heels'.
+        // On the take-off, while the arms are up or out, the heels alone carry him.
+        if (this.hero && this.pos.y - this.groundY > 0.7) {
+          const fist = this.fistPos(sd, _v2), dir = this.hero.bones['DEF-forearm' + sd].getWorldPosition(_fwd);
+          dir.subVectors(fist, dir).normalize();
+          if (dir.y < -0.6) this.jets.fire('h' + sd, fist, dir, 1.0 * Math.min(1, (-dir.y - 0.6) / 0.25), 0.09);
+        }
       }
     }
     this.jets.update(dt);
   }
   jumpFx(air) {
     const w = this.world;
-    if (this.el === 'fire') { this.vel.y += air ? 0 : 0.6; this.jetBurstT = 0.35; for (let i = 0; i < 4; i++) w.fx.fire(this.pos.clone().setY(this.pos.y + 0.05), _v.set(rand(-2.5, 2.5), rand(-0.5, 0.5), rand(-2.5, 2.5)), 0.3, 0.25); w.audio.fireWhoosh(1.0); }   // the blast-off: rocket jets from feet and hands (fireJets), a little flame splashing off the floor
+    if (this.el === 'fire') { this.vel.y += air ? 0 : 0.6; this.jetBurstT = 0.35; w.audio.fireWhoosh(1.0); }   // the blast-off: rocket jets from the heels and the fists (fireJets), nothing else
     // (19 Nov, from the reference: the jump is driven by a blast out of the soles) Water: a gush of water from each
     // foot down into the floor; Air: a blast of wind from each foot that raises dust
     if ((this.el === 'water' || this.el === 'air') && w.bending) for (const s of ['L', 'R']) w.bending.weapons.footJet(this, this.el, s, { down: true, len: air ? 1.4 : 1.8, dur: 0.32, r: this.el === 'air' ? 0.3 : 0.22 });
@@ -1286,3 +1307,4 @@ const _va = new THREE.Vector3(), _vb = new THREE.Vector3(), _vc = new THREE.Vect
 const ARCH_H = 1.6;   // how high Water's ice arch lifts the bender off the floor (m)
 const _up = new THREE.Vector3(0, 1, 0), _zx = new THREE.Vector3(), _qw = new THREE.Quaternion();
 const _axis = new THREE.Vector3(), _qwv = new THREE.Vector3(), _qi = new THREE.Quaternion(), _fwd = new THREE.Vector3(), _v = new THREE.Vector3(), _v2 = new THREE.Vector3();
+const _heelT = new THREE.Vector3(), _heelD = new THREE.Vector3();

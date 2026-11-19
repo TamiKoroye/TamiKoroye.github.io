@@ -1266,25 +1266,25 @@ export class Bending {
       // (19 Nov, after review) nearest the mouth a very thin white line of superheated gas with tiny rings of shimmering
       // air round it; about 1.6 m out, where it slams into the air (ram pressure), it flares into real flame; from
       // there the cone
-      const D0 = Math.min(1.6, B.len * 0.35);
+      const D0 = Math.min(0.35, B.len * 0.2);   // (19 Nov, after review: the white line is a short one, under half a metre, then real flame)
       if (!B.line) B.line = makeFireTube(w.scene, 6, 6, { flow: 30, heat: 1, tipFade: 0.02, core: 0xffffff, mid: 0xfffcf0, edge: 0xfff2c8, opacity: 1 });
-      B.line.set([mouth.clone().addScaledVector(dir, D0 + 0.1), mouth.clone().addScaledVector(dir, D0 * 0.5), mouth.clone()], (q) => endK * (0.022 + 0.02 * (1 - q)), B.t * 4);
+      B.line.set([mouth.clone().addScaledVector(dir, D0), mouth.clone().addScaledVector(dir, D0 * 0.5), mouth.clone()], (q) => endK * (0.022 + 0.02 * (1 - q)), B.t * 4);
       B.rings = B.rings || [];
       if ((B.ringT = (B.ringT || 0) - dt) <= 0 && endK > 0.3) {
         B.ringT = 0.035;
         const m = new THREE.Mesh(this.ringGeo || (this.ringGeo = new THREE.TorusGeometry(1, 0.11, 5, 18)), new THREE.MeshBasicMaterial({ color: 0xfff1c8, transparent: true, opacity: 0.85, depthWrite: false }));
-        m.position.copy(mouth).addScaledVector(dir, rand(0.15, D0 * 0.9)); m.quaternion.setFromUnitVectors(_v.set(0, 0, 1), dir); w.scene.add(m);
+        m.position.copy(mouth).addScaledVector(dir, rand(0.05, D0 * 0.9)); m.quaternion.setFromUnitVectors(_v.set(0, 0, 1), dir); w.scene.add(m);
         B.rings.push({ m, t: 0 });
       }
-      for (const r of B.rings) { r.t += dt; r.m.position.addScaledVector(dir, dt * 5); r.m.scale.setScalar(0.035 + r.t * 0.45); r.m.material.opacity = Math.max(0, 0.85 * (1 - r.t / 0.25)); if (r.t > 0.25) { w.scene.remove(r.m); r.m.material.dispose(); r.dead = true; } }
+      for (const r of B.rings) { r.t += dt; r.m.position.addScaledVector(dir, dt * 2); r.m.scale.setScalar(0.03 + r.t * 0.35); r.m.material.opacity = Math.max(0, 0.85 * (1 - r.t / 0.14)); if (r.t > 0.14) { w.scene.remove(r.m); r.m.material.dispose(); r.dead = true; } }
       B.rings = B.rings.filter(r => !r.dead);
-      { const fl = mouth.clone().addScaledVector(dir, D0); for (let i = 0; i < 2 * endK; i++) w.fx.fire(fl, _v.copy(dir).multiplyScalar(rand(4, 8)).add(_v2.set(rand(-1.2, 1.2), rand(-0.8, 1.2), rand(-1.2, 1.2))), rand(0.25, 0.4), 0.2); }   // the flare where it ignites
+      { const fl = mouth.clone().addScaledVector(dir, D0); for (let i = 0; i < 3 * endK; i++) w.fx.fire(_v3.copy(fl).addScaledVector(dir, rand(0, 0.4)), _v.copy(dir).multiplyScalar(rand(1.5, 5)).add(_v2.set(rand(-0.8, 0.8), rand(-0.5, 0.9), rand(-0.8, 0.8))), rand(0.18, 0.32), 0.16); }   // the flare where it ignites: flame starts right at the end of the white line
       const n = 16, pts = [];
       for (let i = 0; i <= n; i++) { const q = 1 - i / n, d = D0 + (B.len - D0) * q, p = mouth.clone().addScaledVector(dir, d); p.y += 0.35 * q * q * B.len / 11 + Math.sin(B.t * 9 + q * 5) * 0.12 * q; p.x += Math.cos(B.t * 7 + q * 4) * 0.12 * q; p.z += Math.sin(B.t * 8 + q * 3) * 0.12 * q; pts.push(p); }
       const R = (q, a, b) => endK * (a * 0.6 + b * Math.pow(1 - q, 1.1)) * (0.92 + 0.08 * Math.sin(B.t * 31 + q * 13));
       const grow = (B.len - D0) / Math.max(1, reach - D0);
       B.outer.set(pts, (q) => R(q, 0.16, 2.2 * grow), B.t * 2); B.body.set(pts, (q) => R(q, 0.11, 1.5 * grow), B.t * 2.6); B.core.set(pts, (q) => R(q, 0.05, 0.55 * grow), B.t * 3);
-      const radiusAt = (d) => d < D0 ? 0.1 : endK * (0.1 + 2.2 * Math.min(1, (d - D0) / Math.max(1, reach - D0)));   // (by the full reach: at ignition the cone is narrow near the mouth)
+      const radiusAt = (d) => d < D0 ? 0.1 : endK * (0.16 + 2.2 * Math.min(1, (d - D0) / Math.max(1, reach - D0)));   // (by the full reach: at ignition the cone is narrow near the mouth)
       // billowing flames along the body, a wash of flame where it strikes, embers, smoke
       for (let i = 0; i < 8 * endK; i++) {
         const d = D0 + 0.5 + (B.len - D0 - 0.5) * Math.sqrt(Math.random()), rr = radiusAt(d) * 0.6, p = _v.copy(mouth).addScaledVector(dir, d).add(_v2.set(rand(-rr, rr), rand(-rr, rr) * 0.7, rand(-rr, rr)));

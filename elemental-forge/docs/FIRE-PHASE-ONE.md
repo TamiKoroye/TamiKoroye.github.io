@@ -169,3 +169,12 @@ added up to a wall of flame. Now: fireballs as above, the fist flare about 40% s
   - the sound: a synthesised roar of the flame's pressure (a deep growl that wavers at about 6 Hz, a rumble and a
     hiss) under the fire loop;
   - the white glare is gone: the embers no longer use the impact spark (which adds a white flash every call).
+
+## Fifth round (19 Nov night), after review
+- Jump and dodge jets come out of the heels only (a quarter of the foot back from the ankle, at the sole). The jump's
+  floor splash is gone, and the flame run's flames also start at the heels.
+- The hands' jets come from the fists only, and only when the physics allows it: once he is about 0.7 m up and the
+  forearms point down (elbow to fist, more than about 37 degrees below level), the jet leaves the fist along the
+  forearm, so it pushes the same way as the heels. On the take-off, with the arms up or out, the heels carry him alone.
+- Dragon's Breath: the white line is short (at most 0.35 m from the mouth). Flame starts right where it ends, and the
+  flame cone starts wider there.
