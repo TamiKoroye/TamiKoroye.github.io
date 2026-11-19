@@ -268,10 +268,11 @@ export class Weapons {
           // Water's whip wraps the rival (airborne, or caught by the overhead lash on the ground): grab, lift, slam
           // (a raised guard facing the whip stops the grab: the lash is then resolved against the guard like any blow)
           const guarded = t.guarding && t.defense && w.bending.covers(t.defense, dir);
-          // (18 Nov, after review: the grab must work on the ground and in the air) any thrown water whip that lands grabs,
-          // once every 3 s; a tapped whip grabs, while HAND held down is the sustained twin whips (they keep lashing, no grab,
-          // and the bender stays free to move with them)
-          if (W.el === 'water' && W.kind !== 'hold' && !(f.input && f.input.handHeld) && !W.frozen && !guarded && f.style.tech.whipSlam && !this.grabs.length && t.hp > 0 && (f.grabCd || 0) <= f.time) { f.grabCd = f.time + 3; W.hit.add(t); this.grabSlam(f, t, W.ls); break; }
+          // (19 Nov, after review "Water cannot whip the opponent anymore"): the 18 Nov rule made every landed whip a grab,
+          // so the side and diagonal lashes never hit. Back to the r19 rule: the overhead whip grabs on the ground and any
+          // whip grabs a rival in the air; the other lashes hit. At most one grab every 3 s, and held HAND (the sustained
+          // twin whips) never grabs.
+          if (W.el === 'water' && (airborne || W.kind === 'v') && W.kind !== 'hold' && !(f.input && f.input.handHeld) && !W.frozen && !guarded && f.style.tech.whipSlam && !this.grabs.length && t.hp > 0 && (f.grabCd || 0) <= f.time) { f.grabCd = f.time + 3; W.hit.add(t); this.grabSlam(f, t, W.ls); break; }
           w.combat.damage(t, Math.round((W.frozen ? 1.4 : 1) * (airborne ? 1.5 : 1) * W.dmg), dir.clone(), f, W.tag, p.clone(), W.knock, W.frozen || airborne ? 2 : W.level);
           if (airborne && !t.dead) { t.vel.y = -18; t.vel.x *= 0.3; t.vel.z *= 0.3; w.shake(0.3, p); w.popup(f, 'SLAM', true); }
           if (W.frozen) { w.fx.debrisBurst(p, 10, 3, 0.07, 0xe0f4ff); }
