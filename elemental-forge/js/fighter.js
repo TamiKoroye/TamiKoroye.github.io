@@ -192,6 +192,7 @@ export class Fighter {
     if (inp.jump) this.buf.jump = 0.15;
     if (this.guarding) this.guardT += dt;
     if (this.slamFall && this.onGround && this.action !== 'down' && !(this.restrainT > 0)) this.slamFall = false;   // a slam's fall ends on landing
+    if (this.bombDive && (this.onGround || this.reacting() || this.dead)) { const landed = this.onGround && !this.reacting() && !this.dead; this.bombDive = false; if (landed) { this.vel.x = this.vel.z = 0; this.world.bending.fireBomb(this); } }
     if (this.floatT > 0) this.floatT -= dt;   // lifted by wind: the Floating clip (hero.js)
     // footwork cues for hero.js (M9): the ground speed at take-off picks Running Jump / Standing Jump; the first stride
     // of a run from standing is the Male Locomotion Pose lunge; reversing the stick at a run plants and turns
@@ -329,7 +330,7 @@ export class Fighter {
         this.buf.hand = 0; if (this.dodgeKind !== 'rocket' && this.dodgeKind !== 'arch') this.dodgeT = 0;
         if (this.counterT > 0) { this.counterT = 0; this.startAction('counter'); w.combat.lunge(this, ACTIONS.counter); w.popup(this, 'COUNTER', true); w.audio.whoosh(0.9); }
         else if (B.spiralRelease && B.spiralRelease(this)) { w.popup(this, 'RELEASE', true); }
-        else { this.handSide = -this.handSide; const riding = this.el === 'water' && st.tech.surfPunch && ((this.dodgeKind === 'arch' && this.dodgeT > 0) || (this.mob && this.mob.kind === 'surf')); this.startTech(riding ? st.tech.surfPunch : st.tech.hand, this.handSide, true); }
+        else { this.handSide = -this.handSide; const riding = this.el === 'water' && st.tech.surfPunch && ((this.dodgeKind === 'arch' && this.dodgeT > 0) || (this.mob && this.mob.kind === 'surf')); this.startTech(riding ? st.tech.surfPunch : (this.el === 'fire' && this.fireHandTech()) || st.tech.hand, this.handSide, true); }
         this.handHoldT = 0;
       }
       if (this.buf.leg && !struck && !this.charging && canStrike) {
@@ -367,7 +368,20 @@ export class Fighter {
       }
       // (19 Nov, after review: "WHY IS THERE NO DRAGON'S BREATH FOR FIRE STILL?") GUARD + SPECIAL was never found on the
       // phone. SPECIAL on its own now breathes it, standing or walking; Dragon Descent stays on SPECIAL at a run or in the air
-      if (this.buf.special && !this.charging && canStrike && this.el === 'fire' && st.tech.breath && this.onGround && this.speedNorm < 0.45 && this.en >= st.tech.breath.cost) { this.buf.special = 0; this.startTech(st.tech.breath, 1); }
+      // (19 Nov, phase one) Fire on the floor: SPECIAL tapped breathes Dragon's Breath; held 0.3 s and let go, the Fire
+      // Comet (40 energy, 8 s cooldown; without them it breathes instead). The breath waits for the release (at most 0.3 s).
+      if (this.el === 'fire' && st.tech.breath) {
+        if (this.buf.special && !this.charging && canStrike && this.onGround && this.speedNorm < 0.45 && (this.spT ?? -1) < 0) { this.buf.special = 0; this.spT = 0; }
+        if ((this.spT ?? -1) >= 0) {
+          if (inp.specialHeld && this.spT < 0.3) { this.spT += dt; if (this.spT >= 0.3) w.popup(this, 'FIRE COMET', false); }
+          else {
+            const comet = this.spT >= 0.3 && st.tech.comet && this.en >= st.tech.comet.cost && (this.cometCd || 0) <= this.time;
+            this.spT = -1;
+            if (comet) { this.cometCd = this.time + 8; this.startTech(st.tech.comet, 1); }
+            else if (this.en >= st.tech.breath.cost) this.startTech(st.tech.breath, 1);
+          }
+        }
+      }
       if (this.buf.special && !this.charging && canStrike) { this.buf.special = 0; this.startTech(st.tech.special, this.handSide); }
 
       // HAND held -> sustained technique (stream / lift / draw / push)
@@ -399,6 +413,13 @@ export class Fighter {
           // a held LEG starts gathering force straight away: a kick that has not landed yet is abandoned
           const K = this.tech, kev = K && K.events && K.events.length ? K.events[0][0] : 0.3;
           const kickDone = !this.action || (this.action === 'tech' && (this.actionU < kev || this.actionU > Math.min(0.6, K.cancel ?? 0.6)));
+          // Fire in the air: LEG held is the Fire Bomb: drive down feet first, explode on landing (the tap kick is dropped)
+          if (this.el === 'fire' && st.tech.bomb && !this.onGround && !this.bombDive && this.legHoldT > 0.18 && this.pos.y - this.groundY > 0.35 && this.en >= st.tech.bomb.cost && !this.reacting()) {
+            this.legHoldT = -1; this.action = null; this.tech = null; this.startTech(st.tech.bomb, 1); this.bombDive = true;
+            const t = this.target, to = t && !t.dead ? _v.set(t.pos.x - this.pos.x, 0, t.pos.z - this.pos.z) : null;
+            this.vel.y = -24; if (to && to.length() < 9) { this.vel.x = to.x * 2; this.vel.z = to.z * 2; } else { this.vel.x *= 0.3; this.vel.z *= 0.3; }
+            this.dodgeT = 0; this.jetFuel = 0;
+          }
           // Fire: LEG held is the stomp, straight away (the tap kick is dropped if it has not landed yet)
           if (this.el === 'fire' && st.tech.stomp && this.onGround && !this.mob && this.legHoldT > 0.3 && !this.charging && !this.guarding && !this.reacting() && (!this.action || this.action === 'land' || (this.action === 'tech' && this.tech !== st.tech.stomp && this.actionU < kev))) {
             this.legHoldT = -1; this.action = null; this.tech = null; this.startTech(st.tech.stomp, 1);
@@ -884,6 +905,16 @@ export class Fighter {
   }
 
   // faces the roll along the stick (or straight ahead without it)
+  // Fire's HAND (19 Nov, phase one): the stick pulled away from the rival throws the Fire Whip; within 2.3 m on the
+  // floor the HAND chain is the melee family (dagger, dagger, Fire Blade); otherwise the fire jabs (null)
+  fireHandTech() {
+    const st = this.style, t = this.target, inp = this.input;
+    if (!t || t.dead) return null;
+    const dx = t.pos.x - this.pos.x, dz = t.pos.z - this.pos.z, d = Math.hypot(dx, dz) || 1, sl = Math.hypot(inp.mx, inp.mz);
+    if (st.tech.whip && sl > 0.5 && (inp.mx * dx + inp.mz * dz) / (sl * d) < -0.5) return st.tech.whip;
+    if (st.tech.melee && this.onGround && d < 2.3 && Math.abs(t.pos.y - this.pos.y) < 1.2) return st.tech.melee;
+    return null;
+  }
   rollDir() { const inp = this.input; if (Math.hypot(inp.mx, inp.mz) > 0.3) this.faceYaw = this.yaw = Math.atan2(inp.mx, inp.mz); this.lungeDir.set(Math.sin(this.faceYaw), 0, Math.cos(this.faceYaw)).multiplyScalar(9); this.lungeT = 0.45; }   // about 4 m
   doDodge() {
     const inp = this.input, D = this.style.dodge;
