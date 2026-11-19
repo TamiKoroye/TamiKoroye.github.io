@@ -255,7 +255,8 @@ const CHECKS = {
     await setup('water', 'earth', 2.2); await step(30);
     const seen = new Set();
     for (let i = 0; i < 8; i++) { await tap('KeyF'); for (const r of await step(40, 'P.hero.curName')) seen.add(r); }
-    for (let i = 0; i < 6; i++) { await tap('KeyG'); for (const r of await step(30, 'P.hero.curName')) seen.add(r); }
+    // (presses spaced to the kicks' length: a press made during the 1.25 s twirl expires from the 0.45 s buffer, as in play)
+    for (let i = 0; i < 9; i++) { await tap('KeyG'); for (const r of await step(50, 'P.hero.curName')) seen.add(r); }
     // (18 Nov, second review: the arm wave, water_ripple, is out of the HAND chain: it contorted the body mid-combo)
     const want = ['water_twirl', 'water_spin'], got = want.filter(n => [...seen].some(c => c.split('|')[0].replace(/_M$/, '') === n));
     if (process.env.DEBUG) console.log([...seen].join(' '));
