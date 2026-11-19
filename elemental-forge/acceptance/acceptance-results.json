@@ -44,12 +44,12 @@
   {
    "name": "7 attacks while moving: authored upper body over authored footwork, never running legs",
    "ok": true,
-   "detail": "earth: 35 frames, legs earth_punch2_M/earth_punch/fire_punch2_M; fire: 39 frames, legs whip_h_M/whip_d/whip_d_single/fire_jab_M/fire_round_M; water: 7 frames, legs water_kick; air: 35 frames, legs whip_h/air_crescent_M/whip_d_M/whip_v_M"
+   "detail": "earth: 49 frames, legs earth_punch2_M/earth_punch/fire_punch2_M/earth_punch2/earth_kick/axe_kick_M; fire: 54 frames, legs whip_h_M/whip_d/whip_d_single/whip_h/fire_round_M/fire_punch/fire_front; water: 0 frames, legs ; air: 38 frames, legs whip_d_M/fire_punch_M/whip_v_M"
   },
   {
    "name": "8 six quick attacks per element without refilling energy all play authored clips",
    "ok": true,
-   "detail": "distinct strikes 4/5/2/4, energy at the end 54/84/96/100, strikes without bending 0 frames"
+   "detail": "distinct strikes 5/6/4/4, energy at the end 84/94/93/100, strikes without bending 0 frames"
   },
   {
    "name": "9 switching through all four elements via the element buttons",
@@ -64,12 +64,12 @@
   {
    "name": "NO procedural fallback: every technique/guard/hold frame shows a clip from the pack",
    "ok": true,
-   "detail": "917 frames checked, 0 procedural"
+   "detail": "935 frames checked, 0 procedural"
   },
   {
    "name": "NO procedural body in ANY frame of the session (stance, movement, reactions included)",
    "ok": true,
-   "detail": "1205 frames, 0 procedural"
+   "detail": "1278 frames, 0 procedural"
   },
   {
    "name": "10 all of the above through touch controls only, no page errors",
