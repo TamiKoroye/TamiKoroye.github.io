@@ -134,3 +134,23 @@ Animation 2" (the airbender 1:12 to 1:46, the waterbender 1:46 to 2:20) and "WAT
   16 great spikes, rock thrown into the air, a crater; 20 damage on the lines, 28 at the end, the rival launched.
 - Fire: SPECIAL on its own breathes Dragon's Breath (standing or walking); Dragon Descent stays on SPECIAL at a run or
   in the air; GUARD + SPECIAL still breathes it. The button reads DRAGON'S BREATH.
+
+## r27 (19 Nov, after the user's recording of r26: Water "the weakest and most confused move set")
+What the recording showed: the ice lines and water surges rose at fixed distances in front of the bender (with the
+rival 6 to 10 m away they never reached them); the gush was short; close up, the Air rival's raised guard cancelled
+every grab (DEFLECT); with the rival high and far, the whips swatted projectiles but a grab needed the rope's tip to
+touch the body.
+- Grab: decided on the throw, not on the rope touching. Any Water HAND whip grabs when the rival is in front (65
+  degrees) and close on the floor (3.6 m) or in the air (12 m); it goes through a guard. When a grab is possible the
+  HAND press always throws the overhead whip (a punch in the chain would throw a ball). Once every 2.5 s; between
+  grabs the whips lash. Held HAND (the twin whips) never grabs.
+- Kicks: every one goes to the rival (led by the rival's movement, up to 14 m); nothing is raised at the bender's feet.
+  - Crescent (front) kick: the gush, aimed at the chest and following the rival while the leg is out, long enough to
+    reach them; 12 damage, knocks down (15 with a held water orb).
+  - Turning Wave and Butterfly Twirl: a line of ice races along the floor to the rival and bursts up round them.
+  - Rising kick: the geyser under the rival (unchanged).
+  - Spinning Water Ring: a ring of water at the waist; five ice shards fly out of it at the rival (4 each).
+  - Sweep: a low gush along the floor, the ice line after it.
+  - Charged (LEG held): a big ice line, then a geyser under the rival that throws them up.
+- Scripted check (rival at 3, 6, 9 m): every kick lands at every distance. Grab check: a guarding Air rival at 2.8 m,
+  and a rival held 3 m up at 8 m and 11 m, are each grabbed and slammed (16).
