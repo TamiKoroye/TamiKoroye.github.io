@@ -149,7 +149,10 @@ export class Weapons {
       if (o.low) dir.y = Math.min(dir.y, 0) - 0.02 * Math.hypot(dir.x, dir.z);
       dir.normalize();
     }
-    const J = { f, el, foot, from, dir, len: o.len || 8, t: -(o.delay || 0), dur: o.dur || 0.5, head: 0, tail: 0, hit: new Set(), dmg: o.dmg ?? 9, knock: o.knock ?? 15,
+    // home: the length reaches the opponent wherever they are (up to 14 m) and the jet keeps aiming at them while the
+    // leg is out
+    const len = o.home && t ? Math.min(14, Math.max(4, from.distanceTo(t.chestPos(_b)) + 1.5)) : (o.len || 8);
+    const J = { f, el, foot, from, dir, len, home: !!o.home, t: -(o.delay || 0), dur: o.dur || 0.5, head: 0, tail: 0, hit: new Set(), dmg: o.dmg ?? 9, knock: o.knock ?? 15,
       level: o.level ?? 2, down: !!o.down, low: !!o.low, r: o.r || (el === 'air' ? 0.5 : 0.42), tube: this.tube() };
     if (el === 'air') J.tube.mesh.material = this.airTubeMat;
     this.jets.push(J);
@@ -163,7 +166,11 @@ export class Weapons {
       if (J.t < 0) { J.tube.mesh.visible = false; if (!f.dead) f.footPos(J.foot, J.from); continue; }   // delayed start (follows the foot)
       // the nozzle stays on the foot while the leg is out (down jets: for their whole life)
       const attached = J.down || J.t < J.dur * 0.45;
-      if (attached && !f.dead) { f.footPos(J.foot, J.from); if (J.down) J.from.y -= 0.05; }
+      if (attached && !f.dead) {
+        f.footPos(J.foot, J.from); if (J.down) J.from.y -= 0.05;
+        const tg = f.target;
+        if (J.home && tg && !tg.dead) { const c = J.low ? _b.set(tg.pos.x, tg.pos.y + 0.4, tg.pos.z) : tg.chestPos(_b); J.dir.lerp(c.sub(J.from).normalize(), Math.min(1, dt * 12)).normalize(); }
+      }
       J.head = Math.min(J.len, J.head + dt * (J.down ? 14 : 45));
       if (!attached) J.tail = Math.min(J.head, J.tail + dt * 30);
       if (J.t > J.dur || J.tail >= J.len - 0.05) { J.dead = true; continue; }
@@ -260,10 +267,32 @@ export class Weapons {
     if (b) b.getWorldPosition(out); else f.chestPos(out);
     return out.subVectors(tip, out).normalize();
   }
+  // (19 Nov, after the r26 recording: close to the rival and no grab, the rival high above and no grab.) The grab no
+  // longer waits for the rope's tip to touch the body (fast rivals, guards and the arc of the rope made it miss). A
+  // thrown water whip grabs on the throw when the rival is in front (within 65 degrees) and either close on the floor
+  // (3.6 m) or in the air (12 m), at most once every 2.5 s. It goes through a guard: the whip wraps round it. Then
+  // lift, over the head, slam. Held HAND (the twin whips) never grabs; between grabs the whips lash as before.
+  canWhipGrab(f) {
+    const t = f.target;
+    if (f.el !== 'water' || !f.style.tech.whipSlam) return false;   // (HAND is down at the press: the held-HAND test is made at the throw)
+    if (!t || t.dead || t.hp <= 0 || t.invuln > 0 || this.grabs.length || (f.grabCd || 0) > f.time) return false;
+    const dx = t.pos.x - f.pos.x, dz = t.pos.z - f.pos.z, d = Math.hypot(dx, dz), fw = f.forward(_e).setY(0).normalize();
+    if (d > 0.01 && (dx * fw.x + dz * fw.z) / d < Math.cos(1.13)) return false;
+    const airborne = !t.onGround && t.pos.y - t.groundY > 0.6;
+    return airborne ? Math.hypot(d, t.pos.y - f.pos.y) <= 12 : d <= 3.6;
+  }
+  tryWhipGrab(W) {
+    const f = W.f, t = f.target;
+    if (W.el !== 'water' || W.kind === 'hold' || W.frozen || (f.input && f.input.handHeld) || !this.canWhipGrab(f)) return false;
+    f.grabCd = f.time + 2.5; W.hit.add(t); t.guarding = false;
+    this.grabSlam(f, t, W.ls);
+    return true;
+  }
   // the impact frame: full length, the lash thrown at the target, hits live
   releaseWhip(W) {
     if (W.tRel >= 0) return;
     const f = W.f; W.tRel = W.t;
+    if (this.tryWhipGrab(W)) return;
     this.B.aimDir(f, this.limbPos(f, W.limb, W.ls, _a), W.aim);
     // the lash: the outer half of the rope is thrown along the aim and the hand's own motion
     const v = _b.copy(W.aim).multiplyScalar(W.spin ? 6 : 15).addScaledVector(W.vRoot, 0.4), dt = W.dtLast || 1 / 60;
