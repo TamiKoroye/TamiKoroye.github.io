@@ -224,8 +224,9 @@ export class Bending {
       case 'earth.hand': {
         if (this.launchGuardRock(f)) return;   // punching a rock out of the guard
         // the rising uppercut: a column of rock erupts under the opponent and throws them up
+        if (this.punchPillar(f, hand)) return;   // a pillar in front of the fist breaks into a thrown boulder
         if (f.tech && f.tech.clip === 'fire_punch2' && f.target && !f.target.dead && f.target.pos.distanceTo(f.pos) < 9) {
-          const t = f.target; this.raisePillar(f, t.pos.x, t.pos.z);
+          const t = f.target; this.raisePillar(f, t.pos.x, t.pos.z, { life: 1.0 });   // the rising rock throws them up and sinks back
           if (t.onGround && t.invuln <= 0) w.combat.damage(t, 10, _v.set(0, 0, 0).add(f.forward(_v2)).setY(0).normalize().clone(), f, 'pillar', t.chestPos(new THREE.Vector3()), 2, 2);
           t.vel.y = Math.max(t.vel.y, 9); t.onGround = false; w.popup(f, 'RISING ROCK', true); return;
         }
@@ -316,7 +317,10 @@ export class Bending {
         if (el === 'water') {
           // (18 Nov, after review: a real wave, not a whip) the leg comes over and a breaking wave of water rises out of
           // the floor under the bender and rolls at the rival, as tall as the bender, knocking them down
-          this.weapons.wave(f, 'water', { width: 5.5, h: 3.0, life: 1.05, speed: 11, dmg: 11, knock: 10, level: 2 });
+          // (19 Nov: from the references, the water comes up out of the ground) where the leg comes down the water
+          // erupts under the rival and freezes into a cluster of tall ice spikes, throwing them up
+          const d = this.aimFlat(f); this.weapons.eruption(f, at, d, 3.4, 3.0);
+          this.iceRows(f, at.clone().addScaledVector(d, -1.2), d, [[0.6, 2, 0.9], [1.2, 3, 0.8], [1.8, 2, 0.9]], 1.5, 0.04);
           w.audio.splash(1.3, at); w.shake(0.3, at); f.vel.y = Math.min(f.vel.y, -4); return;
         }
         // Fire: a huge flame thrown down from the leg to the floor, which bursts and spreads out over the ground as a
@@ -414,24 +418,21 @@ export class Bending {
       }
       case 'water.sweep': {
         // the low sweep: the sweeping foot drags a crescent of water along the floor round the bender
-        this.weapons.limbArc(f, 'water', 'foot', s > 0 ? 'L' : 'R', { span: 0.32, speed: 9, grow: 1.8, dmg: 8, knock: 4, level: 2 }); w.audio.splash(0.9); return;
+        // low sweep: a low fan of short ice spikes across the floor in front
+        { const d = this.aimFlat(f); this.iceRows(f, f.pos, d, [[1.4, 3, 1.0], [2.4, 4, 1.0], [3.4, 5, 1.0]], 0.7); } return;
       }
       case 'water.leg': {
-        // crescent kick: a broad, low arc of water sweeping out at leg height (takes the opponent's footing)
-        const g = this.heldList(f, 'water').filter(o => o.state === 'orbit');
-        // the water follows the kicking foot's path off the ground and is thrown on as one arc
-        // every third water kick freezes what it throws into a fan of ice daggers
-        if (((f.iceN = (f.iceN || 0) + 1) % 3) === 0) { for (const d of [-0.18, 0, 0.18]) { const o = this.fire('iceSpear', f, this.footPoint(f, s, new THREE.Vector3()).setY(f.pos.y + 1.0)); o.vel.applyAxisAngle(_up, d); o.dmg = 6; } w.fx.debrisBurst(this.footPoint(f, s, _v), 8, 2, 0.05, 0xe0f4ff); w.audio.splash(0.8); return; }
-        this.weapons.limbArc(f, 'water', 'foot', s > 0 ? 'L' : 'R', { span: 0.24, speed: 13, grow: g.length ? 1.8 : 1.4, dmg: g.length ? 12 : 10, knock: 7, level: 1 });
-        if (g.length) this.kill(g[0], 'silent');
-        w.fx.splash(this.forwardPoint(f, 1, 0.4, _v), 12); w.audio.splash(0.9); return;
+        // front kick: a line of ice spikes bursts up out of the floor one after another towards the opponent
+        const g = this.heldList(f, 'water').filter(o => o.state === 'orbit'); if (g.length) this.kill(g[0], 'silent');
+        const d = this.aimFlat(f); this.iceRows(f, f.pos, d, [[1.3, 1, 0], [2.2, 1, 0], [3.1, 2, 0.7], [4.0, 2, 0.7], [4.9, 2, 0.7], [5.8, 3, 0.7], [6.7, 3, 0.7]], g.length ? 1.3 : 1.0, 0.04); return;   // reaches about 7 m
       }
       case 'water.leg2': {
-        // spinning kick: a water whip swung all the way round the body
+        // turning / twirling kick: water bursts up out of the floor in front in sheets and freezes into a double row of
+        // ice spikes running on at the opponent
         const g = this.heldList(f, 'water').filter(o => o.state === 'orbit'); if (g.length) this.kill(g[0], 'silent');
-        // the spinning kick throws water round the body and releases a wave on the kick itself
-        this.weapons.whipStrike(f, 'water', 'circle', { foot: s > 0 ? 'L' : 'R', released: true, hitWin: 0.4, len: g.length ? 3.8 : 3.2, dmg: 10, knock: 8, level: 1 });
-        this.weapons.wave(f, 'water', { width: 4.2, h: 2.4, dmg: 8, life: 0.9 }); return;
+        const d = this.aimFlat(f), at = f.pos.clone().addScaledVector(d, 1.6); at.y = f.groundY;
+        this.weapons.eruption(f, at, d, 3, 2.4);
+        this.iceRows(f, f.pos, d, [[2.0, 2, 0.8], [3.0, 3, 0.8], [4.0, 3, 0.8], [5.0, 4, 0.8]], 1.1, 0.07); return;
       }
       case 'water.column': {
         // rising kick: the water surges up under the opponent
@@ -443,14 +444,18 @@ export class Bending {
         const o = this.fire('waterLance', f, this.forwardPoint(f, 0.8, 1.0)); w.fx.splash(o.pos, 8); w.audio.splash(0.8); return;
       }
       case 'water.charged': {
-        const g = this.heldList(f, 'water'); g.forEach(o => this.kill(o, 'silent'));
-        // Tidal Wave: a wall of water advancing over the ground; where it stops it freezes into a line of ice spikes
-        this.weapons.wave(f, 'water', { freeze: true, width: 6.5 + g.length, h: 3.8 + g.length * 0.3, dmg: 9 + g.length * 2, life: 1.15 }); w.shake(0.3, f.pos);
-        return;
+        // Tidal Sweep: a wave of ice spikes, growing taller and wider as it runs out from the bender, with a mist of
+        // spray along it (from the reference videos: the ice wave)
+        this.heldList(f, 'water').forEach(o => this.kill(o, 'silent'));
+        const d = this.aimFlat(f), at = f.pos.clone().addScaledVector(d, 1.4); at.y = f.groundY;
+        this.weapons.eruption(f, at, d, 4.5, 2.8);
+        this.iceRows(f, f.pos, d, [[1.8, 3, 0.9], [2.8, 4, 0.9], [3.8, 5, 0.9], [4.8, 6, 0.9], [5.8, 7, 0.9], [6.8, 7, 0.95]], 1.35, 0.08);
+        w.shake(0.25, f.pos); w.audio.splash(1.3, f.pos); return;
       }
       case 'water.spin': {
-        // the tucked spinning jump lands and a ring of water bursts out round the bender
-        this.ring(f, 'water', 3.4, 11, { dmg: 7, knock: 7, level: 1 }); this.weapons.ringBurst(_v.set(f.pos.x, f.groundY, f.pos.z), 1.2, 1.6, 9); w.audio.splash(1, f.pos); return;
+        // the spinning jump lands and a ring of ice spikes bursts up all round the bender
+        const hit = new Set(); for (let i = 0; i < 10; i++) { const a = i / 10 * Math.PI * 2, x = f.pos.x + Math.cos(a) * 1.9, z = f.pos.z + Math.sin(a) * 1.9; this.spikes.push({ owner: f, ice: true, size: rand(0.9, 1.15), t: -i * 0.015, pos: new THREE.Vector3(x, w.arena.groundAt(x, z, f.pos.y + 1), z), mesh: null, hit }); }
+        w.audio.ice('form', 1, f.pos); return;
       }
       case 'water.archShot': {
         const hl = this.handPoint(f, -1, new THREE.Vector3()), hr = this.handPoint(f, 1, new THREE.Vector3()), mid = hl.add(hr).multiplyScalar(0.5);
@@ -547,9 +552,13 @@ export class Bending {
     return R;
   }
 
-  raisePillar(f, x, z) {
+  // (19 Nov, after review: pillars raised where a pillar already stood came up on top of it and stacked into towers
+  //  the rival stood on, out of reach) a pillar now drops any pillar on its spot and rises from the real floor;
+  //  opts.life sets how long it stands (the uppercut's rising rock: about a second, then it sinks)
+  raisePillar(f, x, z, opts = {}) {
     const w = this.world;
-    const mine = this.pillars.filter(p => p.owner === f);
+    for (const p of this.pillars) if (!p.dead && Math.hypot(p.col.x - x, p.col.z - z) < 1.5) { p.col.dead = true; this.lowerPillar(p); }
+    const mine = this.pillars.filter(p => p.owner === f && !p.col.dead);
     if (mine.length >= 3) this.lowerPillar(mine[0]);
     const gy = w.arena.groundAt(x, z, 10);
     const mesh = new THREE.Mesh(this.pillarGeo, this.mat.stone);
@@ -557,7 +566,7 @@ export class Bending {
     w.scene.add(mesh);
     const col = { kind: 'b', x, z, hx: 0.6, hz: 0.6, top: gy + 0.07, walk: true, mesh, pillar: true };   // the top rises with the rock (updated every frame)
     w.arena.colliders.push(col); w.arena.cameraBlockers.push(mesh);
-    const p = { owner: f, mesh, col, t: 0, life: 14, gy };
+    const p = { owner: f, mesh, col, t: 0, life: opts.life ?? 14, gy };
     this.pillars.push(p);
     w.fx.debrisBurst(new THREE.Vector3(x, gy + 0.1, z), 18, 3, 0.12, 0x7a6a58); w.fx.dust(new THREE.Vector3(x, gy, z), 10, 2.5); w.fx.crater(new THREE.Vector3(x, gy, z), 2.2);
     this.weapons.burst.spawn(x, gy, z, 0.38);   // the ground breaks open around the rising pillar
@@ -571,6 +580,31 @@ export class Bending {
     }
   }
   lowerPillar(p) { p.life = Math.min(p.life, 0.01); }
+  // Water's kicks (19 Nov, from the reference videos: the kick sends ice up out of the ground at the opponent, no
+  // whips): rows of ice spikes burst out of the floor one after another along dir, from `from`. rows: [[distance,
+  // spikes across, spacing across], ...]; size scales the spikes; one hit per fighter for the whole move.
+  iceRows(f, from, dir, rows, size = 1, gap = 0.06) {
+    const w = this.world, side = new THREE.Vector3(-dir.z, 0, dir.x), hit = new Set();
+    rows.forEach(([d, n, sp], r) => { for (let i = 0; i < n; i++) {
+      const o = (i - (n - 1) / 2) * sp + rand(-0.15, 0.15), x = from.x + dir.x * d + side.x * o, z = from.z + dir.z * d + side.z * o;
+      this.spikes.push({ owner: f, ice: true, size: size * rand(0.85, 1.15), t: -r * gap - Math.abs(i - (n - 1) / 2) * 0.02, pos: new THREE.Vector3(x, w.arena.groundAt(x, z, from.y + 1), z), mesh: null, hit });
+    } });
+    w.fx.splash(from.clone().setY(from.y + 0.2), 10); w.audio.ice('form', 0.9, from);
+  }
+  aimFlat(f) { const d = this.aimDir(f, f.pos, new THREE.Vector3()); d.y = 0; return d.lengthSq() > 1e-6 ? d.normalize() : f.forward(new THREE.Vector3()).setY(0).normalize(); }
+  // Earth punches a standing pillar in front of it: the pillar breaks off at the base and is driven at the rival as a
+  // boulder (anyone standing on it drops)
+  punchPillar(f, hand) {
+    const w = this.world, fw = f.forward(_v2);
+    const p = this.pillars.find(p => !p.dead && !p.col.dead && p.life > 0 && Math.hypot(p.col.x - f.pos.x, p.col.z - f.pos.z) < 2.4 && ((p.col.x - f.pos.x) * fw.x + (p.col.z - f.pos.z) * fw.z) / (Math.hypot(p.col.x - f.pos.x, p.col.z - f.pos.z) || 1) > 0.5);
+    if (!p) return false;
+    p.col.dead = true; p.life = -0.39;   // gone at once
+    const from = new THREE.Vector3(p.col.x, p.gy + 1.0, p.col.z), t = f.target && !f.target.dead ? f.target : null;
+    const to = t ? t.chestPos(new THREE.Vector3()) : from.clone().add(fw.clone().multiplyScalar(10));
+    const o = this.fire('boulder', f, from, { dir: to.sub(from).normalize() }); o.dmg = 13; o.knock = 10; o.mesh.scale.multiplyScalar(1.3);
+    w.fx.debrisBurst(from, 22, 4, 0.13, 0x7a6a58); w.fx.dust(from, 8, 2); w.audio.impact(1.1); w.shake(0.2, from); w.popup(f, 'PILLAR PUNCH', true);
+    return true;
+  }
 
   // ================================================================== sustained techniques (HAND held)
   holdStart(f) {
@@ -1367,7 +1401,7 @@ export class Bending {
       s.t += dt;
       if (s.t >= 0 && !s.mesh) {
         // ice spikes: the downloaded ice cluster, each with its own height, width and lean (no row of identical cones)
-        s.mesh = s.ice ? iceClusterMesh(rand(1.0, 1.9), rand(0.7, 1.25)) : new THREE.Mesh(this.pillarGeo, this.mat.stone);
+        s.mesh = s.ice ? iceClusterMesh(rand(1.0, 1.9) * (s.size || 1), rand(0.7, 1.25) * (s.size || 1)) : new THREE.Mesh(this.pillarGeo, this.mat.stone);
         if (s.ice) { s.mesh.rotation.set(rand(-0.35, 0.35), rand(0, 6.28), rand(-0.35, 0.35)); s.iceCluster = true; this.world.audio.ice('form', 0.7, s.pos); } else s.mesh.scale.set(0.35, 0.9, 0.35);
         s.mesh.castShadow = true;
         s.mesh.position.copy(s.pos).setY(s.pos.y - 1); w.scene.add(s.mesh);

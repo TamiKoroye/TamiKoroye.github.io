@@ -121,7 +121,7 @@ export class Weapons {
           G.dead = true; t.slamFall = false;
           const at = _b.set(t.pos.x, t.groundY, t.pos.z);
           w.fx.crater(at, 2.4); w.shake(0.45, at); w.audio.impact(1.3); w.popup(f, 'SLAM', true);
-          this.ringBurst(at, 1.5, 2.1, 11); w.audio.splash(1.2, at);
+          w.audio.splash(1.2, at);   // (19 Nov: no flat ring of water on the slam)
           this.burst.spawn(at.x, at.y, at.z, 0.3);
         }
       }
