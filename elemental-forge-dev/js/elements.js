@@ -10,6 +10,7 @@ import { jaggedRockGeometry, HALF } from './arena.js';
 import { clamp, mulberry32, smooth01, rand } from './util.js';
 import { iceClusterMesh } from './ice.js';
 import { TOON_RAMP } from './hero.js';
+import { makeFireTube } from './firefx.js';
 import { makeWaterWall, makeWaterRing, makeIceWall, makeWaterTube, waterMaterial, iceMat } from './defence-fx.js';
 import { Weapons } from './weapons.js';
 import { Specials } from './specials.js';
@@ -198,10 +199,11 @@ export class Bending {
     this.world.scene.remove(o.mesh);
     if (o.trails) for (const t of o.trails) t.release();
     if (o.tube) { this.world.scene.remove(o.tube.mesh); o.tube.mesh.geometry.dispose(); o.tube.mesh.material.dispose(); o.tube = null; }
+    if (o.ftube) { o.ftube.dispose(); o.ftube = null; }
     const fx = this.world.fx, w = this.world;
     if (how === 'silent') return;
     if (o.el === 'earth') { fx.debrisBurst(o.pos, 12, 3.5, 0.1, 0x6e665e); fx.dust(o.pos, 5, 2, 0x9f9282); w.audio.rumble(0.8, o.pos); }
-    if (o.el === 'fire') { for (let i = 0; i < 10; i++) fx.fire(o.pos, _v.set(rand(-3, 3), rand(-1, 3), rand(-3, 3)), 0.5, 0.35); fx.smoke(o.pos); w.audio.fireHit(0.6, o.pos); }
+    if (o.el === 'fire') { const n = SPEC[o.kind] && SPEC[o.kind].wide ? 10 : 5, sz = n === 10 ? 0.5 : 0.34; for (let i = 0; i < n; i++) fx.fire(o.pos, _v.set(rand(-3, 3), rand(-1, 3), rand(-3, 3)), sz, 0.3); fx.smoke(o.pos); w.audio.fireHit(0.6, o.pos); }   // (19 Nov: a fireball's burst half the size, so the fighters stay readable)
     // water bursts in the KanaWorks splash flipbook; ice shatters into pale fragments
     if (o.el === 'water') { if (SPEC[o.kind] && SPEC[o.kind].ice) { fx.debrisBurst(o.pos, 14, 4, 0.08, 0xe0f4ff); w.audio.ice('break', 0.8, o.pos); } else w.audio.splash(0.8, o.pos); this.extinguishNear(o.pos, 1.8); }
     if (o.el === 'air') { for (let i = 0; i < 6; i++) fx.wind(o.pos, _v.set(rand(-4, 4), rand(-1, 2), rand(-4, 4)), 0.6, 0.35); }
@@ -297,15 +299,46 @@ export class Bending {
         for (const h of [hl, hr]) this.flameJet(h, o.vel.clone().normalize(), 1.3);
         w.audio.fireWhoosh(1); return;
       }
+      case 'fire.dagger': {
+        // Fire Daggers / Fire Blade: the slash lands on whoever is in front within reach (the flames on the hands are
+        // drawn by updateFireBlades for as long as the cut lasts)
+        const blade = /whip_d_single/.test(f.tech && f.tech.clip || ''), reach = blade ? 2.9 : 2.2, fw = f.forward(_v2).setY(0).normalize();
+        for (const t of w.fighters) {
+          if (t === f || t.dead || t.invuln > 0) continue;
+          const dx = t.pos.x - f.pos.x, dz = t.pos.z - f.pos.z, d = Math.hypot(dx, dz);
+          if (d > reach + t.radius || Math.abs(t.pos.y - f.pos.y) > 1.6 || (d > 0.3 && (dx * fw.x + dz * fw.z) / d < (blade ? 0.2 : 0.4))) continue;
+          const dir = new THREE.Vector3(dx, 0, dz).normalize(), at = t.chestPos(new THREE.Vector3());
+          w.combat.damage(t, blade ? 12 : 5, dir, f, blade ? 'fireBlade' : 'fireDagger', at, blade ? 10 : 4, blade ? 2 : 0);
+          for (let i = 0; i < (blade ? 10 : 4); i++) w.fx.fire(at, _v.copy(dir).multiplyScalar(rand(2, 5)).add(_v3.set(rand(-1, 1), rand(0, 2), rand(-1, 1))), 0.35, 0.25);
+          if (blade && Math.random() < 0.6) this.burn(t.pos.x, t.pos.z, t.groundY, f);
+        }
+        w.audio.fireWhoosh(blade ? 1.1 : 0.6); return;
+      }
+      case 'fire.whip': {
+        // Fire Whip: thrown on the swing of the arm and laid along the hand's path (weapons.whipStrike), long enough
+        // to reach the rival up to 6.5 m away
+        const t = f.target && !f.target.dead ? f.target : null, d = t ? Math.hypot(t.pos.x - f.pos.x, t.pos.z - f.pos.z) : 5;
+        this.weapons.whipStrike(f, 'fire', this.whipKind(f), { released: true, len: clamp(d + 0.6, 3, 6.5), dmg: 10, knock: 9, level: 1, tech: f.tech, life: 0.7, hitWin: 0.32, tag: 'fireWhip' }); return;
+      }
+      case 'fire.cometCharge': {
+        // the hands draw a ball of fire in front of the chest; it grows until the launch (updateComets)
+        (this.comets = this.comets || []).push({ f, t: 0, state: 'charge', pos: f.chestPos(new THREE.Vector3()), vel: new THREE.Vector3(), r: 0.15, trail: [] });
+        w.audio.fireWhoosh(0.8); return;
+      }
+      case 'fire.cometLaunch': {
+        const C = (this.comets || []).find(c => c.f === f && c.state === 'charge'); if (!C) return;
+        const t = f.target && !f.target.dead ? f.target : null, dir = t ? t.chestPos(new THREE.Vector3()).sub(C.pos).normalize() : f.forward(new THREE.Vector3());
+        C.state = 'fly'; C.t = 0; C.vel.copy(dir).multiplyScalar(17); C.r = 0.65;
+        w.audio.fireWhoosh(1.5); w.shake(0.2, C.pos); w.popup(f, 'FIRE COMET', true); return;
+      }
       case 'fire.breath': {
         // Dragon's Breath: a big slow ball of fire from the mouth, with a roaring jet; it engulfs what it hits
         const head = f.hero && f.hero.bones['DEF-head'] ? f.hero.bones['DEF-head'].getWorldPosition(new THREE.Vector3()) : f.chestPos(new THREE.Vector3()).setY(f.pos.y + 1.6);
         const mouth = head.addScaledVector(f.forward(_v2), 0.25); mouth.y -= 0.05;
-        // (18 Nov, after review: it read as nothing) a roaring torrent of flame pours out of the mouth for 0.7 s,
-        // burning everything in a cone 7 m long (updateBreaths), and a big fireball, aimed at the rival, engulfs them
-        const t = f.target && !f.target.dead ? f.target : null;
-        const o = this.fire('fireOrb', f, mouth, { scale: 1.9, speedMul: 0.9, target: t ? t.chestPos(new THREE.Vector3()) : undefined }); o.dmg = 12; o.engulf = true; o.knock = 6;
-        (this.breaths = this.breaths || []).push({ f, t: 0, dur: 0.7, hit: new Map() });
+        // (19 Nov, after review: "because of the intensity of the flames, I am not sure what he does. It should be a thin
+        // line from the mouth and then turns to a flame thrower.") A thin white-hot line shoots from the mouth to the
+        // rival (0.2 s), then swells into a flamethrower cone along that line (updateBreaths). No fireball, no puffs.
+        (this.breaths = this.breaths || []).push({ f, t: 0, dur: 0.95, hit: new Map(), mouth, dir: null, len: 0 });
         w.audio.fireWhoosh(1.4); w.shake(0.1, f.pos); w.popup(f, "DRAGON'S BREATH", true); return;
       }
       case 'water.airFlip': case 'fire.airFlip': {
@@ -573,8 +606,10 @@ export class Bending {
     const w = this.world, F = w.fx.flip;
     const R = this.ring(f, 'fire', maxR, speed, { dmg: 14, knock: 10, level: 2 });
     R.center.copy(at); R.r = 0.4; R.mesh.visible = false; R.quiet = true;
-    F.spawn('fire_explosion', { pos: at.clone().setY(at.y - 0.2), size: [4.6, 4.6], life: 1.5, pivot: 1, f0: 1, f1: 26, grow: 0.25, fadeIn: 0.03 });
-    F.spawn('fire_flames', { pos: at.clone(), size: [2.4, 3.2], life: 0.7, pivot: 1, f0: 6, f1: 20, grow: 0.6, fadeIn: 0.02 });
+    // (19 Nov, phase one: a rolling wave along the floor, not a wall that fills the camera) a smaller burst at the foot,
+    // and the rows of the wave about half the old height
+    F.spawn('fire_explosion', { pos: at.clone().setY(at.y - 0.2), size: [2.8, 2.8], life: 1.0, pivot: 1, f0: 1, f1: 26, grow: 0.25, fadeIn: 0.03 });
+    F.spawn('fire_flames', { pos: at.clone(), size: [1.6, 2.0], life: 0.6, pivot: 1, f0: 6, f1: 20, grow: 0.6, fadeIn: 0.02 });
     const N = 30, rows = [1, 0.8, 0.58].map((k, j) => Array.from({ length: N }, (_, i) => ({ a: (i + j * 0.5) / N * Math.PI * 2 + rand(-0.06, 0.06), f: rand(4, 14), h: rand(0.85, 1.15), k, j })));
     const gy = at.y;
     F.control((dt, put, t) => {
@@ -583,7 +618,7 @@ export class Bending {
       const fade = t > maxR / speed ? 1 - (t - maxR / speed) / 0.55 : 1;
       for (const row of rows) for (const s of row) {
         const rr = Math.max(0.3, r * s.k), circ = 2 * Math.PI * rr;
-        const wdt = Math.max(1.1, circ / N * 2.2), hgt = (s.j === 0 ? 3.0 : s.j === 1 ? 2.3 : 1.5) * s.h * (0.55 + 0.6 * Math.min(1, t / 0.18)) * (1 - 0.35 * u);
+        const wdt = Math.max(1.1, circ / N * 2.2), hgt = (s.j === 0 ? 1.4 : s.j === 1 ? 1.05 : 0.7) * s.h * (0.55 + 0.6 * Math.min(1, t / 0.18)) * (1 - 0.35 * u);
         _v.set(at.x + Math.cos(s.a) * rr, gy - 0.05, at.z + Math.sin(s.a) * rr);
         put('fire_flames', _v, wdt, hgt, Math.min(35, s.f + t * (22 + s.j * 6)), fade * (s.j === 0 ? 1 : 0.85), 1, 0);
       }
@@ -697,6 +732,7 @@ export class Bending {
     if (h.whip) { this.world.scene.remove(h.whip.mesh); h.whip.mesh.geometry.dispose(); h.whip = null; }
     this.weapons.endSustain(h);
     if (h.streams) { for (const m of h.streams) this.world.scene.remove(m); }
+    if (h.fireTube) { h.fireTube.dispose(); h.fireTube = null; }
     this.holds.delete(f);
   }
   holdTick(f, dt) {
@@ -735,7 +771,13 @@ export class Bending {
       // defences and walls cut the stream short
       const blocker = this.rayDefence(f, from, dir, len);
       if (blocker) { len = blocker.d; if (h.tick <= 0) this.hitDefence(blocker.def, 4, from.clone().addScaledVector(dir, len), 'fire', null); }
-      for (let i = 0; i < 7; i++) { const k = Math.random(); this.world.fx.fire(from.clone().addScaledVector(dir, 0.3 + k * 0.6), dir.clone().multiplyScalar(len * 2.2 + rand(-1, 1)).add(_v.set(rand(-0.8, 0.8), rand(-0.4, 0.8), rand(-0.8, 0.8))), 0.35 + k * 0.4, 0.42); }
+      // (19 Nov, Fire phase one: "Fire Streams must appear connected") one flame body from between the palms along the
+      // aim, narrow at the hands and widening to the end; a few licks break off the end
+      if (!h.fireTube) h.fireTube = makeFireTube(w.scene, 22, 9, { flow: 9 });
+      { const n = 10, pts = [], grow = Math.min(1, h.t / 0.15);
+        for (let i = 0; i <= n; i++) { const d = len * grow * (1 - i / n), p = from.clone().addScaledVector(dir, d); p.y += Math.sin(h.t * 19 + i * 0.9) * 0.04 * (1 - i / n); pts.push(p); }
+        h.fireTube.set(pts, (q) => 0.15 + 0.5 * Math.pow(1 - q, 1.2), h.t * 3);
+        if (Math.random() < 0.6) this.world.fx.fire(pts[0], dir.clone().multiplyScalar(3).add(_v.set(rand(-1, 1), rand(0.5, 2), rand(-1, 1))), 0.45, 0.3); }
       if (h.tick <= 0) {
         h.tick = 0.15;
         for (const t of w.fighters) {
@@ -1174,7 +1216,7 @@ export class Bending {
     this.lightBoost = 0;
     this.waterSurf.uniforms.uTime.value += dt;
     this.updateDefences(dt);   // first, so a defence raised this frame is already in place for projectiles
-    this.updateObjects(dt); this.updateEngulf(dt); this.updateBreaths(dt);
+    this.updateObjects(dt); this.updateEngulf(dt); this.updateBreaths(dt); this.updateFireBlades(dt); this.updateComets(dt);
     this.updateRings(dt);
     this.updateSpirals(dt);
     this.specials.update(dt);
@@ -1191,29 +1233,119 @@ export class Bending {
   // engulfed by Dragon's Breath: flames climb over the body for a few seconds, a little damage each 0.35 s; water
   // benders put it out three times as fast
   updateBreaths(dt) {
-    const w = this.world, F = w.fx.flip;
+    const w = this.world;
     for (const B of this.breaths || []) {
-      B.t += dt; const f = B.f; if (f.dead || B.t > B.dur) { B.done = true; continue; }
+      B.t += dt; const f = B.f;
+      if (f.dead || B.t > B.dur || f.reacting()) { B.done = true; if (B.tube) B.tube.dispose(); continue; }
       const head = f.hero && f.hero.bones['DEF-head'] ? f.hero.bones['DEF-head'].getWorldPosition(new THREE.Vector3()) : f.chestPos(new THREE.Vector3()).setY(f.pos.y + 1.6);
-      const t = f.target && !f.target.dead ? f.target : null, dir = f.forward(new THREE.Vector3());
-      if (t) dir.subVectors(t.chestPos(new THREE.Vector3()), head).normalize();
-      const mouth = head.addScaledVector(dir, 0.25);
-      for (let i = 0; i < 5; i++) { const sp = rand(14, 20), sd = _v.copy(dir).add(_v2.set(rand(-0.18, 0.18), rand(-0.1, 0.12), rand(-0.18, 0.18))).normalize();
-        F.spawn('fire_flames', { pos: mouth, vel: sd.multiplyScalar(sp), size: [0.45, 0.55], grow: 5, life: 0.38, f0: 4, f1: 30, drag: 1.6, fadeIn: 0, rot: rand(-0.6, 0.6) }); }
+      const t = f.target && !f.target.dead ? f.target : null, want = f.forward(new THREE.Vector3());
+      if (t) want.subVectors(t.chestPos(new THREE.Vector3()), head).normalize();
+      if (!B.dir) B.dir = want.clone(); else B.dir.lerp(want, Math.min(1, dt * 4)).normalize();   // the head turns after the rival, the flame follows
+      const mouth = head.addScaledVector(B.dir, 0.2); mouth.y -= 0.06;
+      const reach = t ? Math.min(9, Math.max(3, mouth.distanceTo(t.chestPos(_v3)) + 1)) : 8;
+      // the line: 0.2 s to reach full length; then the flamethrower opens out along it
+      const LINE = 0.2, k = Math.min(1, B.t / LINE), open = smooth01(Math.min(1, Math.max(0, (B.t - LINE) / 0.18)));
+      const fade = B.t > B.dur - 0.15 ? Math.max(0, (B.dur - B.t) / 0.15) : 1;
+      B.len = reach * smooth01(k);
+      if (!B.tube) B.tube = makeFireTube(w.scene, 28, 10, { flow: 11, tipFade: 0.08 });
+      const n = 14, pts = [];
+      for (let i = 0; i <= n; i++) { const d = B.len * (1 - i / n), p = mouth.clone().addScaledVector(B.dir, d); p.y += Math.sin(B.t * 23 + i) * 0.03 * open; pts.push(p); }
+      // radius along the body (t = 0 at the far end): a 3 cm hot thread, then a cone 0.08 m at the lips to 1.1 m at the end
+      B.tube.set(pts, (q) => fade * (0.035 * (1 - open) + open * (0.08 + 1.0 * Math.pow(1 - q, 1.3))), B.t * 3);
+      B.tube.mat.uniforms.uHeat.value = 1 - open * 0.35;
+      if (open > 0.3 && Math.random() < 0.5) w.fx.fire(pts[0], _v.copy(B.dir).multiplyScalar(4).add(_v2.set(0, 1.5, 0)), 0.5, 0.3);   // licks breaking off the end
+      if (open <= 0) continue;
       for (const v of w.fighters) {
         if (v === f || v.dead) continue;
-        const c = v.chestPos(_v3), rel = _v.subVectors(c, mouth), d = rel.length();
-        if (d < 7 && rel.dot(dir) / (d || 1) > 0.88 && (B.hit.get(v) || 0) <= B.t) { B.hit.set(v, B.t + 0.18); w.combat.damage(v, 3, dir.clone().setY(0).normalize(), f, 'fireStream', c.clone(), 2, 0); v.engulfT = Math.max(v.engulfT || 0, 1.8); v.engulfBy = f; }
+        const c = v.chestPos(_v3), rel = _v.subVectors(c, mouth), along = rel.dot(B.dir);
+        if (along < 0 || along > B.len + 0.3) continue;
+        const off = rel.addScaledVector(B.dir, -along).length(), r = 0.08 + 1.0 * (along / reach);
+        if (off < r + v.radius && (B.hit.get(v) || 0) <= B.t) { B.hit.set(v, B.t + 0.15); w.combat.damage(v, 3, B.dir.clone().setY(0).normalize(), f, 'fireStream', c.clone(), 2, 0); v.engulfT = Math.max(v.engulfT || 0, 1.8); v.engulfBy = f; }
       }
     }
     this.breaths = (this.breaths || []).filter(B => !B.done);
+  }
+  // flames on the hands for the melee family: short daggers (0.5 m past the fist) or long blades (1.3 m), along the
+  // forearm's line, for as long as the cut lasts
+  updateFireBlades(dt) {
+    const w = this.world;
+    for (const f of w.fighters) {
+      const M = f.style && f.style.tech.melee, on = M && f.action === 'tech' && f.tech && (f.tech === M || f.tech.variantOf === M) && !f.dead;
+      if (!on) { if (f._blades) { f._blades.forEach(b => b.dispose()); f._blades = null; } continue; }
+      const blade = /whip_d_single/.test(f.tech.clip), len = blade ? 1.3 : 0.5, u = f.actionU;
+      const k = u < 0.2 ? u / 0.2 : u > 0.85 ? Math.max(0, (1 - u) / 0.15) : 1;   // the flame grows from the fist and dies with the follow-through
+      if (!f._blades) f._blades = ['L', 'R'].map(() => makeFireTube(w.scene, 10, 8, { flow: 12, tipFade: 0.2 }));
+      ['L', 'R'].forEach((sd, i) => {
+        const hand = f.handPos(sd, new THREE.Vector3()), fb = f.hero && f.hero.bones['DEF-forearm' + sd];
+        const dir = fb ? hand.clone().sub(fb.getWorldPosition(new THREE.Vector3())).normalize() : f.forward(new THREE.Vector3());
+        const tip = hand.clone().addScaledVector(dir, len * k + 0.05);
+        f._blades[i].set([tip, hand.clone().lerp(tip, 0.5), hand], (q) => (blade ? 0.16 : 0.1) * (0.3 + 0.7 * q) * Math.max(0.2, k), f.time);
+        if (k > 0.5 && Math.random() < (blade ? 0.7 : 0.35)) w.fx.fire(tip, _v.set(rand(-0.5, 0.5), rand(0.5, 1.5), rand(-0.5, 0.5)), blade ? 0.32 : 0.22, 0.2);   // licks trailing off the tip
+      });
+    }
+  }
+  // the Fire Comet: grows between the hands, then flies at the rival with a long flame tail and explodes on impact
+  updateComets(dt) {
+    const w = this.world;
+    for (const C of this.comets || []) {
+      const f = C.f; C.t += dt;
+      if (!C.core) {
+        C.core = new THREE.Mesh(this.cometGeo || (this.cometGeo = new THREE.SphereGeometry(1, 20, 14)), new THREE.MeshBasicMaterial({ color: 0xffe27a, transparent: true, opacity: 0.95, depthWrite: false }));
+        C.glow = new THREE.Mesh(this.cometGeo, new THREE.MeshBasicMaterial({ color: 0xff5a0a, transparent: true, opacity: 0.55, depthWrite: false }));
+        w.scene.add(C.core); w.scene.add(C.glow); C.tail = makeFireTube(w.scene, 24, 10, { flow: 14 });
+      }
+      if (C.state === 'charge') {
+        if (f.dead || f.reacting() || f.action !== 'tech' || f.tech !== f.style.tech.comet) { C.dead = true; continue; }
+        f.handPos('L', _v).add(f.handPos('R', _v2)).multiplyScalar(0.5); C.pos.lerp(_v.addScaledVector(f.forward(_v2), 0.25), 0.5);
+        C.r = Math.min(0.55, 0.15 + C.t * 0.7);
+        if (Math.random() < 0.7) w.fx.fire(C.pos, _v.set(rand(-1, 1), rand(0.5, 2), rand(-1, 1)), 0.3, 0.25);
+      } else {
+        const t = f.target && !f.target.dead ? f.target : null;
+        if (t) { const want = t.chestPos(_v).sub(C.pos).normalize().multiplyScalar(17); C.vel.lerp(want, Math.min(1, dt * 1.2)); }   // a gentle homing
+        C.pos.addScaledVector(C.vel, dt); C.trail.unshift(C.pos.clone()); if (C.trail.length > 14) C.trail.pop();
+        const gy = w.arena.groundAt(C.pos.x, C.pos.z, C.pos.y + 1);
+        let hit = C.t > 2.4 || C.pos.y - gy < C.r * 0.6;
+        for (const v of w.fighters) if (v !== f && !v.dead && v.chestPos(_v3).distanceTo(C.pos) < C.r + v.radius + 0.3) hit = true;
+        for (const o of this.objs) if (o.state === 'flying' && o.owner !== f && o.pos.distanceTo(C.pos) < C.r + o.r) this.kill(o);
+        if (hit) { this.cometBlast(C); C.dead = true; continue; }
+        if (C.trail.length > 2) C.tail.set(C.trail, (q) => C.r * 0.95 * (1 - q * 0.85), C.t * 3);
+      }
+      const pulse = 1 + Math.sin(C.t * 30) * 0.06; C.core.position.copy(C.pos); C.core.scale.setScalar(C.r * 0.75 * pulse); C.glow.position.copy(C.pos); C.glow.scale.setScalar(C.r * 1.35 * pulse);
+    }
+    this.comets = (this.comets || []).filter(C => { if (C.dead) { if (C.core) { w.scene.remove(C.core); w.scene.remove(C.glow); C.core.material.dispose(); C.glow.material.dispose(); C.tail.dispose(); } } return !C.dead; });
+  }
+  cometBlast(C) {
+    const w = this.world, f = C.f, c = C.pos.clone(), gy = w.arena.groundAt(c.x, c.z, c.y + 1);
+    this.specials.fireExplode(f, c);   // the dome of fire, burning ground, shake (the same blast as Dragon Descent's landing)
+    for (let i = 0; i < 24; i++) { const a = rand(0, 6.28); w.fx.fire(c, _v.set(Math.cos(a) * rand(4, 9), rand(1, 6), Math.sin(a) * rand(4, 9)), rand(0.5, 0.8), rand(0.35, 0.55)); }
+    w.shake(0.7, c);
+    for (const t of w.fighters) {
+      if (t === f || t.dead || t.invuln > 0) continue;
+      const d = t.chestPos(_v3).distanceTo(c);
+      if (d < 3.8) { w.combat.damage(t, Math.round(26 - d * 4), _v.set(t.pos.x - c.x, 0, t.pos.z - c.z).normalize().clone(), f, 'fireComet', t.chestPos(new THREE.Vector3()), 16, 2); t.engulfT = Math.max(t.engulfT || 0, 2); t.engulfBy = f; }
+    }
+    void gy;
+  }
+  // the Fire Bomb landing: a dome of fire where the feet come down and a wave of fire rolling out in a full circle
+  fireBomb(f) {
+    // a burst where the feet come down (not the special's dome) and a wave of fire rolling out along the floor
+    const w = this.world, at = new THREE.Vector3(f.pos.x, f.groundY, f.pos.z);
+    for (let i = 0; i < 14; i++) { const a = rand(0, 6.28); w.fx.fire(_v.set(at.x, at.y + 0.3, at.z), _v2.set(Math.cos(a) * rand(3, 6), rand(1.5, 4), Math.sin(a) * rand(3, 6)), rand(0.45, 0.7), rand(0.3, 0.45)); }
+    w.fx.crater(at, 1.8); w.shake(0.45, at);
+    for (const t of w.fighters) {
+      if (t === f || t.dead || t.invuln > 0) continue;
+      const d = Math.hypot(t.pos.x - at.x, t.pos.z - at.z);
+      if (d < 2.4 && Math.abs(t.pos.y - at.y) < 1.8) w.combat.damage(t, 14, _v.set(t.pos.x - at.x, 0, t.pos.z - at.z).normalize().clone(), f, 'fireBomb', t.chestPos(new THREE.Vector3()), 13, 2);
+    }
+    this.fireWave(f, at, 6.5, 12);
+    w.popup(f, 'FIRE BOMB', true);
   }
   updateEngulf(dt) {
     const w = this.world;
     for (const t of w.fighters) {
       if (!(t.engulfT > 0)) continue;
       t.engulfT -= dt * (t.el === 'water' ? 3 : 1); if (t.dead) { t.engulfT = 0; continue; }
-      for (let i = 0; i < 2; i++) w.fx.flip.spawn('fire_flames', { pos: _v.set(t.pos.x + rand(-0.3, 0.3), t.pos.y + rand(0.2, 1.6), t.pos.z + rand(-0.3, 0.3)), vel: _v2.set(rand(-0.4, 0.4), rand(1.2, 2.4), rand(-0.4, 0.4)), size: [0.45, 0.6], grow: 1.3, life: 0.35, f0: 6, f1: 26, fadeIn: 0.05, rot: rand(-0.4, 0.4) });
+      for (let i = 0; i < 1; i++) w.fx.flip.spawn('fire_flames', { pos: _v.set(t.pos.x + rand(-0.3, 0.3), t.pos.y + rand(0.2, 1.6), t.pos.z + rand(-0.3, 0.3)), vel: _v2.set(rand(-0.4, 0.4), rand(1.2, 2.4), rand(-0.4, 0.4)), size: [0.45, 0.6], grow: 1.3, life: 0.35, f0: 6, f1: 26, fadeIn: 0.05, rot: rand(-0.4, 0.4) });
       if ((t.engulfTick = (t.engulfTick || 0) - dt) <= 0) { t.engulfTick = 0.35; w.combat.damage(t, 2, _v3.set(0, 0, 0), t.engulfBy || t, 'burn', t.chestPos(new THREE.Vector3()), 0, -1); }
     }
   }
@@ -1338,6 +1470,15 @@ export class Bending {
     else if (o.el === 'fire') {
       // held orbs circle close to the body, so they burn smaller than a thrown one
       const held = o.state !== 'flying', big = SPEC[o.kind].wide ? 6 : held ? 1 : 3;
+      // (19 Nov, phase one: the jab's fireball was a long trail of large puffs that hid the fighter) a thrown fireball
+      // is a compact bright ball with a short connected flame tail, and one small lick a frame
+      if (!SPEC[o.kind].wide && !held) {
+        if (!o.ftube) { o.ftube = makeFireTube(w.scene, 10, 8, { flow: 12, tipFade: 0.05 }); o.fhist = []; }
+        o.fhist.unshift(o.pos.clone()); if (o.fhist.length > 6) o.fhist.pop();
+        if (o.fhist.length > 1) o.ftube.set(o.fhist, (t) => o.r * 1.15 * (1 - t * 0.8), o.t * 3);
+        if (Math.random() < 0.6) w.fx.fire(o.pos, _v2.copy(o.vel).multiplyScalar(-0.15).add(_v3.set(rand(-0.4, 0.4), rand(0, 0.8), rand(-0.4, 0.4))), o.r * 1.1, 0.2);
+        m.scale.setScalar(o.r * 0.75); return;
+      }
       for (let i = 0; i < big; i++) w.fx.fire(o.pos.clone().add(_v.set(rand(-0.15, 0.15) * o.r * 3, rand(-0.1, 0.1), rand(-0.15, 0.15) * o.r * 3)), _v2.copy(o.vel).multiplyScalar(-0.35).add(_v3.set(rand(-0.6, 0.6), rand(0, 1.2), rand(-0.6, 0.6))), o.r * (held ? 1.0 : 1.9), 0.3);
       m.scale.setScalar((SPEC[o.kind].wide ? o.r : o.r * 0.6) * (0.9 + Math.random() * 0.2)); if (SPEC[o.kind].wide) m.scale.z = o.r * 1.6;
     } else if (o.el === 'water') {
@@ -1459,7 +1600,8 @@ export class Bending {
     // burning ground: hurts anyone standing in it, spreads flame particles
     for (const b of this.burns) {
       b.t -= dt;
-      if (Math.random() < dt * 9) w.fx.fire(_v.set(b.x + rand(-b.r, b.r) * 0.7, b.y + 0.05, b.z + rand(-b.r, b.r) * 0.7), _v2.set(0, rand(1.5, 3), 0), 0.42, 0.4);
+      // (19 Nov, phase one: burning ground built into a wall of flame that hid the fighters) low licks along the floor
+      if (Math.random() < dt * 6) w.fx.fire(_v.set(b.x + rand(-b.r, b.r) * 0.7, b.y + 0.05, b.z + rand(-b.r, b.r) * 0.7), _v2.set(0, rand(0.8, 1.6), 0), 0.26, 0.35);
       b.tick -= dt;
       if (b.tick <= 0) {
         b.tick = 0.4;
@@ -1579,7 +1721,7 @@ export class Bending {
     this.spirals = [];
     this.weapons.clear(); this.specials.clear(); this.world.fx.flip.clear();
     // projectiles leave nothing behind: their mesh and, for water, the stream drawn behind them
-    for (const o of this.objs) { this.world.scene.remove(o.mesh); if (o.tube) { this.world.scene.remove(o.tube.mesh); o.tube.mesh.geometry.dispose(); o.tube.mesh.material.dispose(); o.tube = null; } }
+    for (const o of this.objs) { this.world.scene.remove(o.mesh); if (o.ftube) { o.ftube.dispose(); o.ftube = null; } if (o.tube) { this.world.scene.remove(o.tube.mesh); o.tube.mesh.geometry.dispose(); o.tube.mesh.material.dispose(); o.tube = null; } }
     for (const d of this.defs) { this.world.scene.remove(d.mesh); if (d.tubes) d.tubes.forEach(t => this.weapons.freeTube(t)); }
     this.world.arena.colliders = this.world.arena.colliders.filter(c => !c.ice);
     for (const r of this.rings) this.world.scene.remove(r.mesh);
@@ -1589,6 +1731,9 @@ export class Bending {
     this.world.arena.cameraBlockers = this.world.arena.cameraBlockers.filter(m => !this.pillars.some(p => p.mesh === m));
     for (const [f] of this.holds) this.holdEnd(f);
     for (const f of this.world.fighters) { if (f.bubble) { this.world.scene.remove(f.bubble); f.bubble = null; } f.restrainT = 0; f.defense = null; }
+    for (const B of this.breaths || []) if (B.tube) B.tube.dispose(); this.breaths = [];
+    for (const C of this.comets || []) if (C.core) { this.world.scene.remove(C.core); this.world.scene.remove(C.glow); C.tail.dispose(); } this.comets = [];
+    for (const f of this.world.fighters || []) if (f._blades) { f._blades.forEach(b => b.dispose()); f._blades = null; }
     this.objs = []; this.defs = []; this.rings = []; this.spikes = []; this.pillars = []; this.burns = [];
     this.world.arena.resetLoose();
   }

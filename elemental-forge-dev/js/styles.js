@@ -455,3 +455,26 @@ STYLES.air.tech.leg.push(T({ name: 'Ground Gust Sweep', clip: 'earth_sweep', dur
   active: { from: 0.45, to: 0.68, dmg: 6, range: 2.4, arc: -1.4, knock: 6, level: 2 }, events: [[0.5, 'air.sweep']] }));
 STYLES.air.tech.leg.push(T({ name: 'Wind Flair', clip: 'earth_flair', clipSpeed: 1.0, dur: 1.0, cost: 12, cancel: 0.85, full: true, fadeIn: 0.28, fadeOut: 0.32, move: 0.5, keys: K0,
   events: [[0.35, 'air.flair'], [0.62, 'air.flair']] }));
+
+// ---------------------------------------------------------------- Fire restructuring, phase one (19 Nov)
+// Fire Jabs: HAND taps, left-right, about 0.3 s each (they were 0.56 s); the fist throws the fireball (fire.hand)
+STYLES.fire.tech.hand.clipSpeed = 2.7;
+// (the lunging hook, earth_punch, turns the whole body a quarter turn: at jab speed that read as a jerk; the jabs are
+// the jab and the cross, each mirrored, so taps alternate left and right)
+STYLES.fire.tech.hand.clip = ['fire_jab', 'fire_punch'];
+// Fire Daggers and Fire Blade (one melee family): HAND at close range (rival within 2.3 m, on the floor). Two quick
+// dagger slashes with short flames on both hands (elbows bent, whip_h / whip_d at speed), then a Fire Blade cut with
+// long flame blades (whip_d_single: the torso turns into a downward diagonal cut). fire.dagger in elements.js.
+STYLES.fire.tech.melee = T({ name: 'Fire Daggers', clip: ['whip_h', 'whip_d', 'whip_d_single'], clipSpeed: 3.2, dur: 0.32, cost: 4, cancel: 0.62, move: 1.5, lunge: 5, keys: K0,
+  events: [[0.45, 'fire.dagger']] });
+// Fire Whip: HAND with the stick pulled away from the rival (draw back and lash): the arm draws back and the whip is
+// released on the swing, following the hand (whip_v overhead, whip_h across). fire.whip in elements.js.
+STYLES.fire.tech.whip = T({ name: 'Fire Whip', clip: ['whip_v', 'whip_h'], clipSpeed: 2.6, dur: 0.5, cost: 7, cancel: 0.7, move: 0.5, keys: K0,
+  events: [[0.42, 'fire.whip']] });
+// Fire Bomb: in the air, LEG held: the fighter drives down feet first and explodes on landing (from the reference: a
+// leap that comes down in a dome of fire). The dive is in fighter.js, the blast is fire.bomb in elements.js.
+STYLES.fire.tech.bomb = T({ name: 'Fire Bomb', clip: 'fire_fly', clipSpeed: 2.0, dur: 0.6, cost: 18, cancel: 0.95, move: 0, keys: K0, events: [] });
+// Fire Comet (special): SPECIAL held for 0.3 s and released. Both hands draw a growing ball of fire in front of the
+// chest (Standing 2H Magic Attack) and drive it out; it flies at the rival and explodes. 40 energy, 8 s cooldown.
+STYLES.fire.tech.comet = T({ name: 'Fire Comet', clip: 'magic_2h', clipSpeed: 1.5, dur: 1.2, cost: 40, cancel: 0.85, move: 0, keys: K0,
+  events: [[0.12, 'fire.cometCharge'], [0.6, 'fire.cometLaunch']] });

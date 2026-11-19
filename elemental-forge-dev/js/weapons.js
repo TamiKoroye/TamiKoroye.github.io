@@ -10,6 +10,7 @@
 // Every one has real hit detection; the visuals follow the same points the hits are tested on.
 import * as THREE from 'three';
 import { makeWaterTube, waterMaterial, iceMat } from './defence-fx.js';
+import { makeFireTube } from './firefx.js';
 import { smooth01, rand, clamp } from './util.js';
 import { GroundBurst } from './crack.js';
 import { ICE, iceClusterMesh } from './ice.js';
@@ -246,6 +247,7 @@ export class Weapons {
     this.limbDir(f, limb, ls, W.dir);
     if (el === 'water') { W.tube = this.tube(); if (W.frozen) W.tube.mesh.material = iceMat; }
     if (el === 'air') { W.tube = this.tube(); W.tube.mesh.material = this.airTubeMat; }
+    if (el === 'fire') W.ftube = makeFireTube(this.w.scene, 22, 8, { flow: 10 });   // (19 Nov) a connected whip of fire
     if (el === 'air') W.ribbons = [0, 1, 2].map(i => this.w.fx.ribbons.start({ color: i === 1 ? 0x8fa6e8 : 0xe8eeff, width: 0.2 - i * 0.04, life: 0.3, alpha: 0.95 }));
     this.whips.push(W);
     if (opts.released) this.releaseWhip(W);
@@ -363,9 +365,10 @@ export class Weapons {
       if (W.el === 'water' && !fr && ts > 5 && Math.random() < 0.6) w.fx.splash(tip, 2);
     }
     if (W.ribbons) { W.ribbons[0].push(W.pts[N - 1]); W.ribbons[1].push(W.pts[N - 4]); W.ribbons[2].push(W.pts[N - 8]); if (ts > 4 && Math.random() < 0.6) w.fx.wind(tip, tv.multiplyScalar(0.5), 0.6, 0.3); }
-    if (W.el === 'fire') for (let k = 2; k < N; k++) if (Math.random() < 0.75) w.fx.fire(W.pts[k], _b.subVectors(W.pts[k], W.prev[k]).multiplyScalar(20).add(_c.set(0, 1, 0)), (0.2 + 0.28 * k / N) * Math.max(0.4, W.ext), 0.2);
+    if (W.ftube) W.ftube.set(W.pts.slice().reverse(), (s) => (0.05 + 0.13 * s) * Math.max(0.35, W.ext), W.t * 3);
+    if (W.el === 'fire') for (let k = 2; k < N; k++) if (Math.random() < 0.12) w.fx.fire(W.pts[k], _b.subVectors(W.pts[k], W.prev[k]).multiplyScalar(20).add(_c.set(0, 1, 0)), (0.2 + 0.28 * k / N) * Math.max(0.4, W.ext), 0.2);
   }
-  dropWhip(W) { this.freeTube(W.tube); W.tube = null; if (W.ribbons) for (const r of W.ribbons) r.release(); W.ribbons = null; }
+  dropWhip(W) { this.freeTube(W.tube); W.tube = null; if (W.ftube) { W.ftube.dispose(); W.ftube = null; } if (W.ribbons) for (const r of W.ribbons) r.release(); W.ribbons = null; }
   // tests the whip's segments against fighters, enemy projectiles (the whip swats them aside) and burning ground
   whipHits(W) {
     const w = this.w, B = this.B, f = W.f, N = W.pts.length;
