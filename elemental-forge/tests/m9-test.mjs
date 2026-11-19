@@ -150,7 +150,9 @@ const CHECKS = {
     await setup('air', 'earth', 8); await step(10); await page.keyboard.down('Space'); await step(30); await page.keyboard.down('KeyW'); const fl = await step(90, "(P.mob ? P.mob.kind : '-') + ':' + P.hero.lowName + ':' + P.hero.curName"); await page.keyboard.up('KeyW'); await page.keyboard.up('Space'); await step(30);
     await setup('fire', 'earth', 5); await step(30);
     await page.keyboard.down('KeyQ'); await step(20); await page.keyboard.down('KeyE'); await step(2); await page.keyboard.up('KeyE'); await page.keyboard.up('KeyQ');
-    const br = await step(120, "({ n: (E.world.bending.breaths || []).length, hp: O.hp, eng: O.engulfT || 0 })");
+    // (19 Nov, later: the breath was rebuilt with an inhale and a 1.75 s roar after the user's review; the roar now starts
+    //  about 1.2 s after the press, so the check watches 4 s instead of 2; the requirements are unchanged)
+    const br = await step(240, "({ n: (E.world.bending.breaths || []).length, hp: O.hp, eng: O.engulfT || 0 })");
     check('Earth stance is the fighting idle (Bouncing Fight Idle)', st.slice(-10).every(c => c === 'earth_fight'), `clips ${[...new Set(st)].join(', ')}`);
     check('Fire gets up with the plain get-up (no flip), in about 1.1 s', gu.some(x => x.startsWith('getup:')) && !gu.some(x => /kip/.test(x)) && getupFrames < 80, `clips ${[...new Set(gu.map(x => x.split(':')[0]))].join(', ')}, ${getupFrames} frames getting up`);
     check('Air flight stays upright (no reclined Flying pose)', fl.some(x => x.startsWith('fly')) && !fl.some(x => /air_fly/.test(x)), `${[...new Set(fl)].slice(0, 4).join(' | ')}`);
