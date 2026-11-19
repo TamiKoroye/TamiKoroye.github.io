@@ -416,31 +416,25 @@ export class Bending {
         if (el === 'water') w.fx.splash(this.handPoint(f, -s, _v), 4);
         return;
       }
+      // (19 Nov, after the r26 recording: "whatever pops from the ground and turns to ice, without touching opponent,
+      // waves that pop up and do not move away from feet ... a tongue of water that pops with no closeness to the
+      // opponent".) Every Water kick now sends its water or ice to where the opponent is (led by their movement), up to
+      // 14 m; nothing is raised at the bender's own feet.
       case 'water.sweep': {
-        // the low sweep: the sweeping foot drags a crescent of water along the floor round the bender
-        // low sweep: a low fan of short ice spikes across the floor in front, and a gush of water skimming the floor
-        // from the sweeping foot (19 Nov)
-        { const d = this.aimFlat(f); this.iceRows(f, f.pos, d, [[1.4, 3, 1.0], [2.4, 4, 1.0], [3.4, 5, 1.0]], 0.7); }
-        this.weapons.footJet(f, 'water', this.kickFoot(f), { low: true, len: 6.5, dmg: 6, knock: 9, level: 2 }); return;
+        // low sweep: a low gush skims the floor to the opponent and a line of short ice spikes runs after it
+        this.weapons.footJet(f, 'water', this.kickFoot(f), { low: true, home: true, dmg: 6, knock: 10, level: 2 });
+        this.iceRun(f, { size: 0.8, step: 0.7, rate: 0.03, end: 3, dmg: 8 }); return;
       }
       case 'water.leg': {
-        // (19 Nov, after review: "why cant water push out a gush of water from their feet, like a suction pump, with great
-        // force?") front kick: a thick gush of water driven out of the kicking foot straight at the opponent, knocking
-        // them down; a held water orb feeds it (longer and heavier)
+        // front kick: a thick gush of water driven out of the kicking foot at the opponent wherever they are, aimed
+        // at the chest and following them while the leg is out; knocks down; a held water orb makes it heavier
         const g = this.heldList(f, 'water').filter(o => o.state === 'orbit'); if (g.length) this.kill(g[0], 'silent');
-        this.weapons.footJet(f, 'water', this.kickFoot(f), { len: g.length ? 10 : 8.5, dmg: g.length ? 12 : 9, knock: 16, level: 2, r: g.length ? 0.52 : 0.44 }); return;
+        this.weapons.footJet(f, 'water', this.kickFoot(f), { home: true, dmg: g.length ? 15 : 12, knock: 19, level: 2, r: g.length ? 0.6 : 0.5, dur: 0.6 }); return;
       }
       case 'water.leg2': {
-        // turning / twirling kick: water bursts up out of the floor in front in sheets and freezes into a double row of
-        // ice spikes running on at the opponent
+        // twirling kick: a line of ice races along the floor from the kick to the opponent and bursts up round them
         const g = this.heldList(f, 'water').filter(o => o.state === 'orbit'); if (g.length) this.kill(g[0], 'silent');
-        // (19 Nov, from the reference: the kick sends water skimming along the floor and it bursts up as a geyser under
-        // the opponent, freezing into ice) a low gush from the foot along the floor, then the geyser and ice at the rival
-        const d = this.aimFlat(f), t = f.target && !f.target.dead && f.target.pos.distanceTo(f.pos) < 9 ? f.target : null;
-        const at = t ? t.pos.clone() : f.pos.clone().addScaledVector(d, 5); at.y = t ? t.groundY : f.groundY;
-        this.weapons.footJet(f, 'water', this.kickFoot(f), { low: true, len: Math.max(3, at.distanceTo(f.pos)), dmg: 5, knock: 4, level: 1, dur: 0.4 });
-        this.weapons.eruption(f, at, d, 3.4, 2.4, 0.18); this.iceRows(f, at.clone().addScaledVector(d, -0.6), d, [[0.5, 2, 0.8], [1.2, 3, 0.8]], 1.2, 0.05, 0.22);
-        return;
+        this.iceRun(f, { size: 1.0, step: 0.75, rate: 0.035, end: 6, dmg: 10 }); return;
       }
       case 'water.column': {
         // rising kick: the water surges up under the opponent
@@ -452,17 +446,22 @@ export class Bending {
         const o = this.fire('waterLance', f, this.forwardPoint(f, 0.8, 1.0)); w.fx.splash(o.pos, 8); w.audio.splash(0.8); return;
       }
       case 'water.charged': {
-        // Tidal Sweep: a wave of ice spikes, growing taller and wider as it runs out from the bender, with a mist of
-        // spray along it (from the reference videos: the ice wave)
+        // Tidal Strike: a big line of ice runs to the opponent, and a geyser bursts up under them and throws them up
         this.heldList(f, 'water').forEach(o => this.kill(o, 'silent'));
-        const d = this.aimFlat(f), at = f.pos.clone().addScaledVector(d, 1.4); at.y = f.groundY;
-        this.weapons.eruption(f, at, d, 4.5, 2.8);
-        this.iceRows(f, f.pos, d, [[1.8, 3, 0.9], [2.8, 4, 0.9], [3.8, 5, 0.9], [4.8, 6, 0.9], [5.8, 7, 0.9], [6.8, 7, 0.95]], 1.35, 0.08);
+        const at = this.iceRun(f, { size: 1.35, step: 0.8, rate: 0.03, end: 8, dmg: 12 });
+        if (at) this.weapons.column(f, 'water', at, { warn: 0.25, dmg: 12, lift: 13 });
         w.shake(0.25, f.pos); w.audio.splash(1.3, f.pos); return;
       }
       case 'water.spin': {
-        // the spinning jump lands and a ring of ice spikes bursts up all round the bender
-        const hit = new Set(); for (let i = 0; i < 10; i++) { const a = i / 10 * Math.PI * 2, x = f.pos.x + Math.cos(a) * 1.9, z = f.pos.z + Math.sin(a) * 1.9; this.spikes.push({ owner: f, ice: true, size: rand(0.9, 1.15), t: -i * 0.015, pos: new THREE.Vector3(x, w.arena.groundAt(x, z, f.pos.y + 1), z), mesh: null, hit }); }
+        // (from the reference: a ring of water spins round the waist and throws ice shards) the spin raises a ring of
+        // water at the waist; five ice shards fly out of it at the opponent
+        const t = f.target && !f.target.dead ? f.target : null, c = f.chestPos(new THREE.Vector3()); c.y -= 0.35;
+        w.fx.ring(c, 1.3, 0x8fd0ff, 0.45); w.fx.splashDrops(c, 16);
+        const aim = t ? t.chestPos(new THREE.Vector3()) : c.clone().add(f.forward(new THREE.Vector3()).multiplyScalar(8));
+        for (let i = 0; i < 5; i++) {
+          const a = f.yaw + (i - 2) * 0.5, p = new THREE.Vector3(c.x + Math.sin(a) * 1.1, c.y, c.z + Math.cos(a) * 1.1);
+          const o = this.fire('iceSpear', f, p, { dir: aim.clone().sub(p).normalize() }); o.dmg = 4;
+        }
         w.audio.ice('form', 1, f.pos); return;
       }
       case 'water.archShot': {
@@ -631,6 +630,31 @@ export class Bending {
       this.spikes.push({ owner: f, ice: true, size: size * rand(0.85, 1.15), t: -delay - r * gap - Math.abs(i - (n - 1) / 2) * 0.02, pos: new THREE.Vector3(x, w.arena.groundAt(x, z, from.y + 1), z), mesh: null, hit });
     } });
     w.fx.splash(from.clone().setY(from.y + 0.2), 10); w.audio.ice('form', 0.9, from);
+  }
+  // (19 Nov) a line of ice spikes that races along the floor from just in front of the bender to where the opponent
+  // will be (their position plus their motion over the travel time), up to 14 m, and bursts up round them in a ring
+  // of `end` larger spikes. One hit per fighter for the whole line. Returns the end point (null with no opponent in
+  // front within 16 m: the line then runs 7 m straight ahead).
+  iceRun(f, o = {}) {
+    const w = this.world, t = f.target && !f.target.dead ? f.target : null, step = o.step || 0.75, rate = o.rate || 0.035;
+    const from = f.pos.clone(); let to;
+    if (t && Math.hypot(t.pos.x - f.pos.x, t.pos.z - f.pos.z) < 16) {
+      const d0 = Math.hypot(t.pos.x - f.pos.x, t.pos.z - f.pos.z), lead = Math.min(0.6, (d0 / step) * rate);
+      to = new THREE.Vector3(t.pos.x + t.vel.x * lead, 0, t.pos.z + t.vel.z * lead);
+    } else to = from.clone().addScaledVector(this.aimFlat(f), 7);
+    const dir = new THREE.Vector3(to.x - from.x, 0, to.z - from.z); let len = Math.min(14, dir.length()); dir.normalize();
+    to.set(from.x + dir.x * len, 0, from.z + dir.z * len);
+    const hit = new Set(), n = Math.max(2, Math.floor((len - 0.9) / step));
+    for (let i = 0; i <= n; i++) {
+      const dd = 0.9 + (len - 0.9) * i / n, x = from.x + dir.x * dd + rand(-0.15, 0.15), z = from.z + dir.z * dd + rand(-0.15, 0.15);
+      this.spikes.push({ owner: f, ice: true, size: (o.size || 1) * (0.6 + 0.4 * i / n) * rand(0.85, 1.15), t: -i * rate, pos: new THREE.Vector3(x, w.arena.groundAt(x, z, f.pos.y + 1), z), mesh: null, hit, dmg: o.dmg });
+    }
+    for (let i = 0; i < (o.end || 0); i++) {
+      const a = i / o.end * Math.PI * 2, x = to.x + Math.cos(a) * 0.8, z = to.z + Math.sin(a) * 0.8;
+      this.spikes.push({ owner: f, ice: true, size: (o.size || 1) * rand(1.1, 1.4), t: -(n + 1) * rate - rand(0, 0.04), pos: new THREE.Vector3(x, w.arena.groundAt(x, z, f.pos.y + 1), z), mesh: null, hit, dmg: o.dmg });
+    }
+    to.y = w.arena.groundAt(to.x, to.z, f.pos.y + 1);
+    return t ? to : null;
   }
   // the kicking foot: the one further out from the hips (forward and up)
   kickFoot(f) {
@@ -1454,7 +1478,7 @@ export class Bending {
         s.mesh.position.copy(s.pos).setY(s.pos.y - 1); w.scene.add(s.mesh);
         if (s.ice) { w.fx.splash(s.pos.clone().setY(s.pos.y + 0.2), 6); w.audio.splash(0.4); } else { w.fx.debrisBurst(s.pos.clone().setY(s.pos.y + 0.1), 8, 3, 0.1, 0x7a6a58); w.audio.rumble(0.4); }
         for (const t of w.fighters) if (t !== s.owner && !t.dead && !s.hit.has(t) && Math.hypot(t.pos.x - s.pos.x, t.pos.z - s.pos.z) < 1.0 && t.pos.y - t.groundY < 0.6 && t.invuln <= 0) {
-          s.hit.add(t); w.combat.damage(t, 9, new THREE.Vector3(t.pos.x - s.owner.pos.x, 0, t.pos.z - s.owner.pos.z).normalize(), s.owner, 'spike', t.chestPos(new THREE.Vector3()), 3, 2); t.vel.y = 7;
+          s.hit.add(t); w.combat.damage(t, s.dmg || 9, new THREE.Vector3(t.pos.x - s.owner.pos.x, 0, t.pos.z - s.owner.pos.z).normalize(), s.owner, 'spike', t.chestPos(new THREE.Vector3()), 3, 2); t.vel.y = 7;
         }
       }
       if (s.mesh) { const k = s.t < 0.15 ? smooth01(s.t / 0.15) : s.t > 1.3 ? 1 - smooth01((s.t - 1.3) / 0.3) : 1; s.mesh.position.y = s.iceCluster ? s.pos.y - 1.9 * (1 - k) - 0.1 : s.pos.y - 1 + k * 1.15; }
