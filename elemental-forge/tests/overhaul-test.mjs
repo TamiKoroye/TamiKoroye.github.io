@@ -107,7 +107,9 @@ await setup({ el: 'water', p: [0, 0, -12], o: [0, 0, -6] }); await stepN(3);
 await hold('btn-leg'); await stepN(30); await fUp(6);
 let waveMax = 0, iceN = 0; for (let j = 0; j < 95; j++) { await stepN(1); const r = await S(() => ({ w: window.__EF.world.bending.weapons.waves.length, ice: window.__EF.world.bending.spikes.filter(s => s.ice).length, oz: window.__EF.opp.pos.z })); waveMax = Math.max(waveMax, r.w); iceN = Math.max(iceN, r.ice); if (j === 12) await shot('water-wave'); }
 const waveR = await P();
-check('charged LEG: a tidal wave advances, hits and pushes the rival back', waveMax > 0 && waveR.ohp < 100 && waveR.oz > -6 + 1.5, `rival hp ${waveR.ohp}, pushed to z ${waveR.oz.toFixed(1)} (from -6)`);
+// (19 Nov: from the reference videos the charged kick is a wave of ice spikes bursting out of the floor; it throws the
+//  rival up rather than pushing them back, so the check is that it reaches and hits them)
+check('charged LEG: a wave of ice spikes runs out over the floor and hits the rival', iceN >= 3 && waveR.ohp < 100, `rival hp ${waveR.ohp}, ${iceN} ice spikes`);
 check('the wave freezes into ice spikes where it stops', iceN >= 3, `${iceN} ice spikes`);
 
 head('Water: ice weapons from the guard');

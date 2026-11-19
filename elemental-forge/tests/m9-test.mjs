@@ -57,8 +57,9 @@ const CHECKS = {
     const fl = await step(60, "E.world.fx.flip.sheets ? Object.values(E.world.fx.flip.sheets).reduce((s, sh) => s + (sh.n || 0), 0) : -1");
     check('Fire at rest: no flames on the hands', Math.max(...fl) === 0, `flame sprites alive at rest: up to ${Math.max(...fl)}`);
     await setup('water', 'earth', 4); await step(20); await page.keyboard.down('Space'); await step(40); await page.keyboard.up('Space'); await tap('KeyG');
-    const waves = Math.max(...await step(60, "E.world.bending.weapons.waves.filter(W => W.f === P).length"));
-    check('Water somersault throws a real wave (the breaking wave), not a whip arc', waves > 0, `waves seen ${waves}`);
+    // (19 Nov: from the new reference videos, the water comes up out of the ground: ice and water erupt under the rival)
+    const ice = Math.max(...await step(60, "E.world.bending.spikes.filter(s => s.owner === P && s.ice).length"));
+    check('Water somersault brings ice up out of the floor under the rival', ice >= 5, `ice spikes ${ice}`);
     await setup('air', 'earth', 2.5); await step(20);
     await page.evaluate(() => { const E = window.__EF, P = E.player, O = E.opp; P.invuln = 0; E.world.combat.damage(P, 8, new P.pos.constructor(0, 0, -1), O, 'melee', P.chestPos(new P.pos.constructor()), 5, 2); });
     const gu = await step(240, "P.action"), downT = gu.filter(a => a === 'down').length / 60, upT = gu.filter(a => a === 'getup').length / 60;
@@ -257,6 +258,7 @@ const CHECKS = {
     for (let i = 0; i < 6; i++) { await tap('KeyG'); for (const r of await step(30, 'P.hero.curName')) seen.add(r); }
     // (18 Nov, second review: the arm wave, water_ripple, is out of the HAND chain: it contorted the body mid-combo)
     const want = ['water_twirl', 'water_spin'], got = want.filter(n => [...seen].some(c => c.split('|')[0].replace(/_M$/, '') === n));
+    if (process.env.DEBUG) console.log([...seen].join(' '));
     check('Water: the twirl and spin kicks are in the LEG chain (the arm wave is out)', got.length === 2 && ![...seen].some(c => /water_ripple/.test(c)), `played ${got.join(', ')}`);
   },
   async fireGlide() {

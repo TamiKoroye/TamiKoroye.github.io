@@ -142,7 +142,9 @@ for (const el of (process.env.WHIPS ? [process.env.WHIPS] : process.env.ONLY ? [
 }
 
 // ------------------------------------------------------------------ kicks throw the element along the foot's path
-for (const el of (process.env.ONLY || process.env.WHIPS ? [] : ["water", "fire", "air"])) {
+// (19 Nov: Water's kicks no longer throw an arc off the foot; from the reference videos they bring ice up out of the
+//  floor, checked in tests/m9-test.mjs review19)
+for (const el of (process.env.ONLY || process.env.WHIPS ? [] : ["fire", "air"])) {
   head(`${el}: kick arcs follow the kicking foot`);
   await setup({ el, p: [0, 0, -9], o: [0, 0, -5] }); await stepN(10); await clearHits();
   await press('btn-leg', 2);

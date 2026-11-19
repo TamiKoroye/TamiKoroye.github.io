@@ -424,7 +424,7 @@ export class Bending {
       case 'water.leg': {
         // front kick: a line of ice spikes bursts up out of the floor one after another towards the opponent
         const g = this.heldList(f, 'water').filter(o => o.state === 'orbit'); if (g.length) this.kill(g[0], 'silent');
-        const d = this.aimFlat(f); this.iceRows(f, f.pos, d, [[1.3, 1, 0], [2.3, 1, 0], [3.3, 2, 0.7], [4.3, 2, 0.7], [5.3, 3, 0.7]], g.length ? 1.3 : 1.0); return;
+        const d = this.aimFlat(f); this.iceRows(f, f.pos, d, [[1.3, 1, 0], [2.2, 1, 0], [3.1, 2, 0.7], [4.0, 2, 0.7], [4.9, 2, 0.7], [5.8, 3, 0.7], [6.7, 3, 0.7]], g.length ? 1.3 : 1.0, 0.04); return;   // reaches about 7 m
       }
       case 'water.leg2': {
         // turning / twirling kick: water bursts up out of the floor in front in sheets and freezes into a double row of
