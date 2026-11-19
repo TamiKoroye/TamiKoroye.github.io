@@ -296,7 +296,7 @@ export class Fighter {
         // (from the whirlwind glide, JUMP takes off straight into flight)
         if (gliding) this.dodgeT = 0;
         // Air: JUMP takes off into sustained, steerable flight (JUMP held climbs; it lands when the wind runs out)
-        this.buf.jump = 0; this.action = null; this.startMob(); if (this.mob) this.mob.tap = true;
+        this.buf.jump = 0; this.action = null; this.startMob(); if (this.mob) { this.mob.tap = true; for (const s of ['L', 'R']) B.weapons.footJet(this, 'air', s, { down: true, len: 2.2, dur: 0.4, r: 0.32 }); w.fx.dust(this.pos, 10, 3); }
       }
       if (this.buf.jump && this.free('jump') && !this.charging && !this.guarding && this.onGround && !this.mob && this.el === 'earth') {
         // Earth: the ground thrusts up under the feet and launches the bender straight up (the column stays as a platform)
@@ -359,6 +359,9 @@ export class Fighter {
       if (this.buf.special && this.guarding && inp.guard && this.el === 'fire' && st.tech.breath && this.en >= st.tech.breath.cost && !this.charging) {
         this.buf.special = 0; this.guarding = false; B.guardEnd(this, true); this.guardCd = 0.6; this.startTech(st.tech.breath, 1);
       }
+      // (19 Nov, after review: "WHY IS THERE NO DRAGON'S BREATH FOR FIRE STILL?") GUARD + SPECIAL was never found on the
+      // phone. SPECIAL on its own now breathes it, standing or walking; Dragon Descent stays on SPECIAL at a run or in the air
+      if (this.buf.special && !this.charging && canStrike && this.el === 'fire' && st.tech.breath && this.onGround && this.speedNorm < 0.45 && this.en >= st.tech.breath.cost) { this.buf.special = 0; this.startTech(st.tech.breath, 1); }
       if (this.buf.special && !this.charging && canStrike) { this.buf.special = 0; this.startTech(st.tech.special, this.handSide); }
 
       // HAND held -> sustained technique (stream / lift / draw / push)
@@ -852,6 +855,9 @@ export class Fighter {
   jumpFx(air) {
     const w = this.world;
     if (this.el === 'fire') { this.vel.y += air ? 0 : 0.6; for (let i = 0; i < 10; i++) w.fx.fire(this.pos.clone().setY(this.pos.y + 0.1), _v.set(rand(-1.5, 1.5), rand(-2, 0.5), rand(-1.5, 1.5)), 0.5, 0.35); }
+    // (19 Nov, from the reference: the jump is driven by a blast out of the soles) Water: a gush of water from each
+    // foot down into the floor; Air: a blast of wind from each foot that raises dust
+    if ((this.el === 'water' || this.el === 'air') && w.bending) for (const s of ['L', 'R']) w.bending.weapons.footJet(this, this.el, s, { down: true, len: air ? 1.4 : 1.8, dur: 0.32, r: this.el === 'air' ? 0.3 : 0.22 });
     if (this.el === 'air' || air) { w.fx.ring(this.pos, 1.6, 0xffffff, 0.35); for (let i = 0; i < 8; i++) w.fx.wind(this.pos.clone().setY(this.pos.y + 0.2), _v.set(rand(-3, 3), -1, rand(-3, 3)), 0.6, 0.4); w.audio.gust(air ? 0.7 : 0.4); }
     else w.audio.whoosh(0.4, this.pos);
     w.audio.jump(air ? 0.5 : 0.7, this.pos);

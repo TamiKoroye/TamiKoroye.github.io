@@ -110,3 +110,27 @@ The 18 Nov change made every landed water whip a grab, so the side and diagonal 
 back to the r19 rule: the overhead whip grabs on the ground, any whip grabs a rival in the air, at most once every 3 s.
 Measured on a scripted round (rival at 3 m and 4 m, presses of 2 and 10 frames): the lash hits (Water Whip, 10 damage),
 then the overhead whip grabs and slams (16).
+
+## r26 (19 Nov, after review of r25; reference videos re-read at 3 frames a second)
+The earlier contact sheets took one frame every 4 to 5 s and missed most of the moves. Re-sampled "Avatar Element
+Animation 2" (the airbender 1:12 to 1:46, the waterbender 1:46 to 2:20) and "WATER vs FIRE" at 2 to 3 frames a second.
+- Ice: the kick spikes used the downloaded crystal model's own material, which rendered dark grey and read as rock.
+  They now use a pale, see-through, glossy ice material lit from inside.
+- Foot jets (new, `weapons.footJet`): a thick pulsing stream driven out of the kicking foot at about 45 m/s; it hits
+  once anywhere along its length, knocks down and pushes hard, washes away projectiles, puts out fire (water).
+  - Water front kick: the gush straight at the rival (8.5 m; 10 m and heavier with a held water orb).
+  - Water Butterfly Twirl: the gush skims the floor to the rival, then a geyser bursts up under them and freezes.
+  - Water sweep: the ice fan plus a low gush along the floor.
+  - Air Crescent kick: a blast of wind from the foot (9 m) as well as the blade.
+  - Air Whirlwind kick: the ground gust plus a V of wind fanned out from both feet.
+- Jumps: Water and Air jump on a blast out of the soles (water / wind down into the floor, dust for Air); Air's
+  take-off into flight too.
+- Water whip: against a rival on the floor the thrown whip is short (2.2 to 3.2 m): the bender has to be close (the
+  strike's lunge closes a metre or so). When the rival or the bender is in the air the whip reaches up to 9 m. Grabs:
+  the overhead whip on the floor, any whip on a rival in the air; lifted over the head and slammed into the floor.
+- Air, two new kicks in the LEG chain: Ground Gust Sweep (rings of wind round the feet, a gust and dust along the
+  floor, knocks off the feet) and Wind Flair (spins on the floor in a whirl of wind, blows away anyone within 2.6 m).
+- Earth, Ground Rupture: three lines fan out (the centre one to the rival) with bigger spikes; at the rival a ring of
+  16 great spikes, rock thrown into the air, a crater; 20 damage on the lines, 28 at the end, the rival launched.
+- Fire: SPECIAL on its own breathes Dragon's Breath (standing or walking); Dragon Descent stays on SPECIAL at a run or
+  in the air; GUARD + SPECIAL still breathes it. The button reads DRAGON'S BREATH.
