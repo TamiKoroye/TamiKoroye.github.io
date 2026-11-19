@@ -138,3 +138,16 @@ added up to a wall of flame. Now: fireballs as above, the fist flare about 40% s
   whole front half). The daggers barely push, and once the chain has started it carries on to the finisher while the
   rival is within 3.5 m. Not used yet: Knife Idle, Stabbing, Smash, Wall Crash, Sweep Fall, Getting Thrown, Knocked
   Out, Dying (hit and knockout reactions for a later round).
+
+## Third round (19 Nov night), after the user's review of r29
+- Fire Comet: a small sun with a tail. The head is a ball whose surface is displaced by moving noise (never a smooth
+  outline), coloured from a white-yellow centre through orange to a deep red rim with boiling granulation, inside a
+  flickering red-orange corona; a few tongues lick off it (three a frame in flight, one now and then while it forms);
+  the tail tapers behind it. A synthesised blowtorch roar (a hissing band around 2 kHz over a low roar, fluttering)
+  while it forms and flies (audio.torch).
+- Rocket jets (firefx JetSet): sharp exhaust cones, a white-hot core inside an orange sheath, tight at the nozzle,
+  widest a quarter of the way out, tapering to a point, flickering in length. The jump: on blast-off (0.35 s) and
+  while JUMP holds the jets, straight down out of both feet and both palms. The dodge and glide: back against the
+  travel out of the feet and the palms. They replace the flame puffs.
+- Rocket dodge pose: the body is thrown into the flight, about 28 degrees to the side (back if fleeing backwards,
+  about 12 degrees), with a jolt as the jets fire; it was 14 degrees leaning away.

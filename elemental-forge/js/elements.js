@@ -10,7 +10,7 @@ import { jaggedRockGeometry, HALF } from './arena.js';
 import { clamp, mulberry32, smooth01, rand } from './util.js';
 import { iceClusterMesh } from './ice.js';
 import { TOON_RAMP } from './hero.js';
-import { makeFireTube } from './firefx.js';
+import { makeFireTube, sunMaterial, coronaMaterial } from './firefx.js';
 import { makeWaterWall, makeWaterRing, makeIceWall, makeWaterTube, waterMaterial, iceMat } from './defence-fx.js';
 import { Weapons } from './weapons.js';
 import { Specials } from './specials.js';
@@ -1346,21 +1346,23 @@ export class Bending {
     for (const C of this.comets || []) {
       const f = C.f; C.t += dt;
       if (!C.core) {
-        C.core = new THREE.Mesh(this.cometGeo || (this.cometGeo = new THREE.SphereGeometry(1, 20, 14)), new THREE.MeshBasicMaterial({ color: 0xffe27a, transparent: true, opacity: 0.95, depthWrite: false }));
-        C.glow = new THREE.Mesh(this.cometGeo, new THREE.MeshBasicMaterial({ color: 0xff5a0a, transparent: true, opacity: 0.55, depthWrite: false }));
-        w.scene.add(C.core); w.scene.add(C.glow); C.tail = makeFireTube(w.scene, 24, 10, { flow: 14 });
+        // a small sun (firefx sunMaterial): a defined, boiling ball, yellow-white at the centre to a red rim, inside a
+        // flickering corona; the tail tapers away from it
+        C.core = new THREE.Mesh(this.cometGeo || (this.cometGeo = new THREE.IcosahedronGeometry(1, 4)), sunMaterial());
+        C.glow = new THREE.Mesh(this.cometGeo, coronaMaterial());
+        w.scene.add(C.core); w.scene.add(C.glow); C.tail = makeFireTube(w.scene, 24, 10, { flow: 14, core: 0xffd060, mid: 0xff6a10, edge: 0xb02008, heat: 0.7 });
       }
       if (C.state === 'charge') {
         if (f.dead || f.reacting() || f.action !== 'tech' || f.tech !== f.style.tech.comet) { C.dead = true; continue; }
         f.handPos('L', _v).add(f.handPos('R', _v2)).multiplyScalar(0.5); C.pos.lerp(_v.addScaledVector(f.forward(_v2), 0.25), 0.5);
         C.r = Math.min(0.7, 0.15 + C.t * 0.9);
-        for (let i = 0; i < 3; i++) { const a = rand(0, 6.28); w.fx.fire(_v.copy(C.pos).add(_v2.set(Math.cos(a) * 1.2, rand(-0.6, 0.8), Math.sin(a) * 1.2)), _v3.set(-Math.cos(a) * 4, rand(-1, 1), -Math.sin(a) * 4), 0.25, 0.25); }   // flame drawn in to the forming ball
-        w.audio.hold('comet', 'fireLoop', 1.2, C.pos);
+        if (Math.random() < 0.5) { const a = rand(0, 6.28); w.fx.fire(_v.copy(C.pos).add(_v2.set(Math.cos(a) * 0.9, rand(-0.4, 0.6), Math.sin(a) * 0.9)), _v3.set(-Math.cos(a) * 3.5, rand(-0.5, 0.5), -Math.sin(a) * 3.5), 0.16, 0.22); }   // a lick of flame drawn in to the forming ball
+        w.audio.torch('comet', 0.6 + C.t, C.pos);
       } else {
         const t = f.target && !f.target.dead ? f.target : null;
         if (t) { const want = t.chestPos(_v).sub(C.pos).normalize().multiplyScalar(17); C.vel.lerp(want, Math.min(1, dt * 1.2)); }   // a gentle homing
         C.pos.addScaledVector(C.vel, dt); C.trail.unshift(C.pos.clone()); if (C.trail.length > 22) C.trail.pop();
-        w.audio.hold('comet', 'fireLoop', 2.0, C.pos);
+        w.audio.torch('comet', 2.0, C.pos);   // the blowtorch roar
         if (Math.random() < 0.7) w.fx.spark(C.pos, 0xffc060, 2); if (Math.random() < 0.25) w.fx.smoke(C.trail[C.trail.length - 1], 0.8);
         const gy = w.arena.groundAt(C.pos.x, C.pos.z, C.pos.y + 1);
         let hit = C.t > 2.4 || C.pos.y - gy < C.r * 0.6;
@@ -1370,9 +1372,11 @@ export class Bending {
         if (C.trail.length > 2) C.tail.set(C.trail, (q) => C.r * 1.15 * (1 - q * 0.8), C.t * 3);
       }
       // a roiling skin of flame: licks burst off the surface all round and stream back
-      for (let i = 0; i < (C.state === 'fly' ? 7 : 3); i++) { const u = _v.set(rand(-1, 1), rand(-1, 1), rand(-1, 1)).normalize(); w.fx.fire(_v2.copy(C.pos).addScaledVector(u, C.r * 0.8), _v3.copy(u).multiplyScalar(2.5).addScaledVector(C.vel, -0.3).add(_v.set(0, 1, 0)), C.r * 0.75, 0.22); }
+      // a few tongues of flame lick off the surface and stream back (fewer than before: the ball stays defined)
+      for (let i = 0; i < (C.state === 'fly' ? 3 : Math.random() < 0.4 ? 1 : 0); i++) { const u = _v.set(rand(-1, 1), rand(-1, 1), rand(-1, 1)).normalize(); w.fx.fire(_v2.copy(C.pos).addScaledVector(u, C.r * 0.95), _v3.copy(u).multiplyScalar(2.0).addScaledVector(C.vel, -0.35), C.r * 0.45, 0.2); }
+      C.core.material.uniforms.uTime.value = C.t; C.glow.material.uniforms.uTime.value = C.t;
       this.light.position.copy(C.pos); this.lightBoost = 2;
-      const pulse = 1 + Math.sin(C.t * 30) * 0.06; C.core.position.copy(C.pos); C.core.scale.setScalar(C.r * 0.75 * pulse); C.glow.position.copy(C.pos); C.glow.scale.setScalar(C.r * 1.35 * pulse);
+      const pulse = 1 + Math.sin(C.t * 30) * 0.06; C.core.position.copy(C.pos); C.core.scale.setScalar(C.r * 0.8 * pulse); C.glow.position.copy(C.pos); C.glow.scale.setScalar(C.r * 1.3 * pulse);
     }
     this.comets = (this.comets || []).filter(C => { if (C.dead) { if (C.core) { w.scene.remove(C.core); w.scene.remove(C.glow); C.core.material.dispose(); C.glow.material.dispose(); C.tail.dispose(); } } return !C.dead; });
   }

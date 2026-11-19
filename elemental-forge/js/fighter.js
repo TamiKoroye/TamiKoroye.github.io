@@ -8,6 +8,7 @@ import { STYLES } from './styles.js';
 import { Hero, heroReady } from './hero.js';
 import { MOCAP } from './mocap.js';
 import { HALF } from './arena.js';
+import { JetSet } from './firefx.js';
 
 // Reactions and shared moves (element techniques live in styles.js)
 export const ACTIONS = {
@@ -510,12 +511,7 @@ export class Fighter {
         this.vel.x = this.dodgeDir.x * rsp; this.vel.z = this.dodgeDir.z * rsp;
         const hov = 1.2 * Math.min(1, el / 0.2) * Math.min(1, this.dodgeT / 0.3);
         this.vel.y = (hov - (this.pos.y - this.groundY)) * 8 + 21 * dt; this.onGround = false;
-        // the jets: tight streams of flame driven out of both feet against the direction of travel, small and bright at
-        // the sole and widening behind (two per foot per frame, fast and short-lived, so they read as thrust)
-        const F = this.world.fx.flip;
-        for (const sd of ['L', 'R']) for (let j = 0; j < 2; j++) { const fp = this.footPos(sd, _v2).addScaledVector(this.dodgeDir, -0.12 - j * 0.18); F.spawn('fire_flames', { pos: fp, vel: _v.copy(this.dodgeDir).multiplyScalar(-rand(16, 22)).add(_fwd.set(rand(-0.6, 0.6), rand(-1.2, -0.2), rand(-0.6, 0.6))), size: [0.32, 0.42], grow: 4.5, life: 0.16, f0: 4, f1: 26, drag: 2.5, fadeIn: 0.0, rot: rand(-0.5, 0.5) }); }
-        // a flame held right under each sole (it moves with the body), so the jets visibly come out of the feet
-        for (const sd of ['L', 'R']) F.spawn('fire_flames', { pos: this.footPos(sd, _v2).add(_fwd.set(0, -0.08, 0)), vel: _v.copy(this.vel).addScaledVector(this.dodgeDir, -3), size: [0.55, 0.6], grow: 1, life: 0.07, f0: 10, f1: 16, fadeIn: 0.0, rot: rand(-0.3, 0.3) });
+        // the jets: rocket exhaust from both feet and both hands, driven against the direction of travel (fireJets)
       } else {
       const sp = this.dodgeKind === 'side' ? 2 + (this.el === 'air' ? 19 : 13) * k : this.dodgeKind === 'back' ? 2 + 10 * k : 2.5 + (D.speed - 2.5) * k;
       this.vel.x = this.dodgeDir.x * sp; this.vel.z = this.dodgeDir.z * sp;
@@ -572,7 +568,7 @@ export class Fighter {
       this.vel.y = Math.min(this.vel.y + 30 * dt, 4.6);
       this.vel.x += mx * 14 * dt; this.vel.z += mz * 14 * dt;
       const hs = Math.hypot(this.vel.x, this.vel.z); if (hs > 7.5) { this.vel.x *= 7.5 / hs; this.vel.z *= 7.5 / hs; }
-      for (const sd of ['L', 'R']) { const fp = this.footPos(sd, _v); for (let i = 0; i < 2; i++) w.fx.fire(fp, _v2.set(rand(-0.5, 0.5), rand(-7, -4.5), rand(-0.5, 0.5)), rand(0.35, 0.55), 0.28); }
+      this.jetBurstT = Math.max(this.jetBurstT || 0, 0.05);   // the jets burn while JUMP is held (fireJets)
       this.jetTick = (this.jetTick || 0) - dt;
       if (this.jetTick <= 0) {
         this.jetTick = 0.2; w.audio.fireWhoosh(0.35);
@@ -643,17 +639,24 @@ export class Fighter {
     const W = this.wall, wantRoll = W && (W.kind === 'run' || W.kind === 'surf') ? W.side * (W.kind === 'surf' ? 1.35 : 0.95) * Math.min(1, W.T / 0.12) : 0, wantPitch = W && W.kind === 'up' ? -0.8 * Math.min(1, W.T / 0.12) : 0;
     // rocket dodge: the jets at the feet push the body sideways, so the upper body leans away from the travel (about
     // 14 degrees, in and out with the thrust) while the stance holds
-    let rocketRoll = 0;
+    let rocketRoll = 0, rocketPitch = 0;
     if (this.dodgeKind === 'rocket' && this.dodgeT > 0) {
       const lx = this.dodgeDir.x * Math.cos(this.yaw) - this.dodgeDir.z * Math.sin(this.yaw);   // + : towards the fighter's left
-      rocketRoll = -Math.sign(lx || 1) * 0.25 * Math.sin(Math.PI * (1 - this.dodgeT / this.dodgeDur)) * Math.min(1, Math.abs(lx) * 1.5);
+      // (19 Nov, after review: "he simply just leans a little ... I want it like he is fleeing from the attack") the body
+      // is thrown into the direction of flight, about 35 degrees to the side (back if he flees backwards), with a jolt
+      // over the first 0.15 s as the jets fire, settling to about 28 degrees while the glide holds
+      const lz = this.dodgeDir.x * Math.sin(this.yaw) + this.dodgeDir.z * Math.cos(this.yaw), el = this.dodgeDur - this.dodgeT;
+      const jolt = el < 0.15 ? 0.7 + 0.4 * Math.sin(Math.PI * el / 0.15) : 0.8, ease = Math.min(1, this.dodgeT / 0.25);
+      rocketRoll = Math.sign(lx || 1) * 0.6 * jolt * ease * Math.min(1, Math.abs(lx) * 1.4);
+      rocketPitch = lz * 0.5 * jolt * ease;
     }
     const kw = 1 - Math.exp(-14 * dt);
-    this.wallRoll = (this.wallRoll || 0) + (wantRoll + rocketRoll - (this.wallRoll || 0)) * kw; this.wallPitch = (this.wallPitch || 0) + (wantPitch - (this.wallPitch || 0)) * kw;
+    this.wallRoll = (this.wallRoll || 0) + (wantRoll + rocketRoll - (this.wallRoll || 0)) * kw; this.wallPitch = (this.wallPitch || 0) + (wantPitch + rocketPitch - (this.wallPitch || 0)) * kw;
     if (Math.abs(this.wallRoll) > 1e-3 || Math.abs(this.wallPitch) > 1e-3) {
       this.root.quaternion.setFromAxisAngle(_up, this.yaw).multiply(_qw.setFromAxisAngle(_zx.set(0, 0, 1), this.wallRoll)).multiply(_qw.setFromAxisAngle(_zx.set(1, 0, 0), this.wallPitch));
     }
     if (this.hero) { this.root.updateMatrixWorld(true); this.hero.drive(this, dt); this.floorGuard(dt); this.lookAtFoe(dt); }
+    this.fireJets(dt);
     this.recLimbs();
     const f = this.flash, ch = this.charging ? Math.min(1, this.chargeT / 0.55) * (0.15 + 0.1 * Math.sin(this.time * 30)) : 0;
     const ec = new THREE.Color(this.style.color);
@@ -879,9 +882,30 @@ export class Fighter {
       F.spawn('fire_flames', { pos: h, vel: _v.set(rand(-0.3, 0.3), rand(0.8, 1.6), rand(-0.3, 0.3)), size: strike ? [0.2, 0.26] : [0.16, 0.22], grow: 1.4, life: strike ? 0.18 : 0.18, f0: 8, f1: 30, fadeIn: 0.02, rot: rand(-0.4, 0.4) });
     }
   }
+  // Fire's rocket jets (firefx JetSet): on the jump's blast-off and while JUMP holds the jets, straight down out of both
+  // feet and both palms; in the rocket dodge and glide, back against the travel out of the feet and the palms
+  fireJets(dt) {
+    if (this.el !== 'fire' && !this.jets) return;
+    if (!this.jets) this.jets = new JetSet(this.world.scene);
+    this.jetBurstT = Math.max(0, (this.jetBurstT || 0) - dt);
+    const live = !this.dead && this.el === 'fire';
+    if (live && this.dodgeKind === 'rocket' && this.dodgeT > 0) {
+      const back = _v.set(-this.dodgeDir.x, 0, -this.dodgeDir.z);
+      for (const sd of ['L', 'R']) {
+        this.jets.fire('f' + sd, this.footPos(sd, _v2), _fwd.copy(back).multiplyScalar(0.75).add(_axis.set(0, -0.65, 0)), 1.5, 0.13);
+        this.jets.fire('h' + sd, this.handPos(sd, _v2), _fwd.copy(back).add(_axis.set(0, -0.25, 0)), 1.0, 0.09);
+      }
+    } else if (live && this.jetBurstT > 0 && !this.onGround) {
+      for (const sd of ['L', 'R']) {
+        this.jets.fire('f' + sd, this.footPos(sd, _v2), _fwd.set(-this.vel.x * 0.04, -1, -this.vel.z * 0.04), 1.4, 0.13);
+        this.jets.fire('h' + sd, this.handPos(sd, _v2), _fwd.set(sd === 'L' ? 0.15 : -0.15, -1, 0).applyAxisAngle(_up, this.yaw), 1.0, 0.09);
+      }
+    }
+    this.jets.update(dt);
+  }
   jumpFx(air) {
     const w = this.world;
-    if (this.el === 'fire') { this.vel.y += air ? 0 : 0.6; for (let i = 0; i < 10; i++) w.fx.fire(this.pos.clone().setY(this.pos.y + 0.1), _v.set(rand(-1.5, 1.5), rand(-2, 0.5), rand(-1.5, 1.5)), 0.5, 0.35); }
+    if (this.el === 'fire') { this.vel.y += air ? 0 : 0.6; this.jetBurstT = 0.35; for (let i = 0; i < 4; i++) w.fx.fire(this.pos.clone().setY(this.pos.y + 0.05), _v.set(rand(-2.5, 2.5), rand(-0.5, 0.5), rand(-2.5, 2.5)), 0.3, 0.25); w.audio.fireWhoosh(1.0); }   // the blast-off: rocket jets from feet and hands (fireJets), a little flame splashing off the floor
     // (19 Nov, from the reference: the jump is driven by a blast out of the soles) Water: a gush of water from each
     // foot down into the floor; Air: a blast of wind from each foot that raises dust
     if ((this.el === 'water' || this.el === 'air') && w.bending) for (const s of ['L', 'R']) w.bending.weapons.footJet(this, this.el, s, { down: true, len: air ? 1.4 : 1.8, dur: 0.32, r: this.el === 'air' ? 0.3 : 0.22 });

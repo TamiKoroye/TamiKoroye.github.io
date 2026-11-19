@@ -101,9 +101,32 @@ export class Audio {
     L.g.gain.setTargetAtTime(Math.max(0.0001, target), c.currentTime, 0.08);
     if (L.p) L.p.pan.setTargetAtTime(pan, c.currentTime, 0.05);
   }
+  // (19 Nov) a blowtorch: a held, synthesised loop (no recording in the bank fits): a hissing band of noise around
+  // 2 kHz over a low roar, with a slow flutter in the hiss, kept alive each frame like hold() and faded out when it stops
+  torch(key, vol = 1, pos = null) {
+    const c = this.ctx; if (!c || this.muted || !this.noiseBuf) return;
+    let L = this.loops.get(key);
+    const [pan, att] = this.place(pos), target = 0.5 * vol * att;
+    if (!L || L.name !== '~torch') {
+      if (L) this.stopLoop(key);
+      const src = c.createBufferSource(); src.buffer = this.noiseBuf; src.loop = true;
+      const hiss = c.createBiquadFilter(); hiss.type = 'bandpass'; hiss.frequency.value = 2100; hiss.Q.value = 0.7;
+      const roar = c.createBiquadFilter(); roar.type = 'lowpass'; roar.frequency.value = 300; roar.Q.value = 0.9;
+      const gh = c.createGain(); gh.gain.value = 0.7; const gr = c.createGain(); gr.gain.value = 1.6;
+      const lfo = c.createOscillator(); lfo.frequency.value = 9; const lg = c.createGain(); lg.gain.value = 0.18; lfo.connect(lg); lg.connect(gh.gain); lfo.start();
+      const g = c.createGain(); g.gain.value = 0.0001;
+      src.connect(hiss); hiss.connect(gh); gh.connect(g); src.connect(roar); roar.connect(gr); gr.connect(g);
+      let p = null; if (c.createStereoPanner) { p = c.createStereoPanner(); g.connect(p); p.connect(this.master); } else g.connect(this.master);
+      src.start(c.currentTime, Math.random()); 
+      L = { name: '~torch', src, g, p, lfo }; this.loops.set(key, L);
+    }
+    L.seen = this.t;
+    L.g.gain.setTargetAtTime(Math.max(0.0001, target), c.currentTime, 0.06);
+    if (L.p) L.p.pan.setTargetAtTime(pan, c.currentTime, 0.05);
+  }
   stopLoop(key) {
     const L = this.loops.get(key); if (!L) return; this.loops.delete(key);
-    const c = this.ctx; L.g.gain.setTargetAtTime(0.0001, c.currentTime, 0.12); L.src.stop(c.currentTime + 0.6);
+    const c = this.ctx; L.g.gain.setTargetAtTime(0.0001, c.currentTime, 0.12); L.src.stop(c.currentTime + 0.6); if (L.lfo) L.lfo.stop(c.currentTime + 0.6);
   }
   // fades out loops that were not held this frame (called once per frame by the game)
   update(dt = 1 / 60) {
