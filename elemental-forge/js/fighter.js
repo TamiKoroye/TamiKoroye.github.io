@@ -647,8 +647,10 @@ export class Fighter {
       // over the first 0.15 s as the jets fire, settling to about 28 degrees while the glide holds
       const lz = this.dodgeDir.x * Math.sin(this.yaw) + this.dodgeDir.z * Math.cos(this.yaw), el = this.dodgeDur - this.dodgeT;
       const jolt = el < 0.15 ? 0.7 + 0.4 * Math.sin(Math.PI * el / 0.15) : 0.8, ease = Math.min(1, this.dodgeT / 0.25);
+      // (19 Nov, the user's dodge picture: thrown low and forward into the dash) the body also pitches forward over the
+      // feet whatever the direction, so he dives into the escape
       rocketRoll = Math.sign(lx || 1) * 0.6 * jolt * ease * Math.min(1, Math.abs(lx) * 1.4);
-      rocketPitch = lz * 0.5 * jolt * ease;
+      rocketPitch = (lz * 0.45 + 0.35) * jolt * ease;
     }
     const kw = 1 - Math.exp(-14 * dt);
     this.wallRoll = (this.wallRoll || 0) + (wantRoll + rocketRoll - (this.wallRoll || 0)) * kw; this.wallPitch = (this.wallPitch || 0) + (wantPitch + rocketPitch - (this.wallPitch || 0)) * kw;
@@ -890,10 +892,14 @@ export class Fighter {
     this.jetBurstT = Math.max(0, (this.jetBurstT || 0) - dt);
     const live = !this.dead && this.el === 'fire';
     if (live && this.dodgeKind === 'rocket' && this.dodgeT > 0) {
-      const back = _v.set(-this.dodgeDir.x, 0, -this.dodgeDir.z);
+      // (19 Nov, after review: jets from the arms only on the jump) the dodge drives out of the feet alone: a rocket jet
+      // from each foot, and behind them a wide wake of flame flaring out like wings (the user's reference picture)
+      const back = _v.set(-this.dodgeDir.x, 0, -this.dodgeDir.z), side = _axis.set(-back.z, 0, back.x);
       for (const sd of ['L', 'R']) {
-        this.jets.fire('f' + sd, this.footPos(sd, _v2), _fwd.copy(back).multiplyScalar(0.75).add(_axis.set(0, -0.65, 0)), 1.5, 0.13);
-        this.jets.fire('h' + sd, this.handPos(sd, _v2), _fwd.copy(back).add(_axis.set(0, -0.25, 0)), 1.0, 0.09);
+        const fp = this.footPos(sd, _v2);
+        this.jets.fire('f' + sd, fp, _fwd.copy(back).multiplyScalar(0.8).add(_zx.set(0, -0.5, 0)), 1.7, 0.15);
+        const s = sd === 'L' ? 1 : -1;
+        if (Math.random() < 0.6) this.world.fx.fire(_zx.copy(fp).addScaledVector(back, 0.5), _fwd.copy(back).multiplyScalar(rand(6, 10)).addScaledVector(side, s * rand(2, 5)).add(_qwv.set(0, rand(0.5, 2.5), 0)), rand(0.32, 0.55), 0.28);
       }
     } else if (live && this.jetBurstT > 0 && !this.onGround) {
       for (const sd of ['L', 'R']) {
@@ -1279,4 +1285,4 @@ const _qa = new THREE.Quaternion(), _qb = new THREE.Quaternion(), _qc = new THRE
 const _va = new THREE.Vector3(), _vb = new THREE.Vector3(), _vc = new THREE.Vector3(), _vd = new THREE.Vector3();
 const ARCH_H = 1.6;   // how high Water's ice arch lifts the bender off the floor (m)
 const _up = new THREE.Vector3(0, 1, 0), _zx = new THREE.Vector3(), _qw = new THREE.Quaternion();
-const _axis = new THREE.Vector3(), _qi = new THREE.Quaternion(), _fwd = new THREE.Vector3(), _v = new THREE.Vector3(), _v2 = new THREE.Vector3();
+const _axis = new THREE.Vector3(), _qwv = new THREE.Vector3(), _qi = new THREE.Quaternion(), _fwd = new THREE.Vector3(), _v = new THREE.Vector3(), _v2 = new THREE.Vector3();

@@ -151,3 +151,21 @@ added up to a wall of flame. Now: fireballs as above, the fist flare about 40% s
   travel out of the feet and the palms. They replace the flame puffs.
 - Rocket dodge pose: the body is thrown into the flight, about 28 degrees to the side (back if fleeing backwards,
   about 12 degrees), with a jolt as the jets fire; it was 14 degrees leaning away.
+
+## Fourth round (19 Nov night), after the user's review and reference pictures
+- Rocket jets: red and yellow like a flame (a yellow core, orange body, red edges; a pale yellow inner core).
+- Jets from the arms only on the jump. The dodge drives from the feet alone: a rocket jet from each foot and a wide wake
+  of flame flaring out behind like wings; the body is thrown into the flight and pitched forward over the feet (the
+  user's dodge picture).
+- Fire daggers (the user's picture): thin blades of flame out of the side of each fist, along the hand bone's cross
+  axis (thumb to little finger, mirrored left and right) tipped a little back, so the blade turns with the wrist
+  through every cut; a red-orange outer blade with a short yellow-white core; 0.75 m for the daggers, 1.4 m for the
+  Fire Blade.
+- Dragon's Breath:
+  - the roaring pose is held for as long as the flame pours out (the clip stops on it and the technique's clock waits);
+  - nearest the mouth a very thin white line of superheated gas with tiny rings of shimmering air travelling along it;
+    about 1.6 m out it flares into flame where it slams into the air, then the cone (its width now set by its full
+    reach, so it is narrow near the mouth from the first frame);
+  - the sound: a synthesised roar of the flame's pressure (a deep growl that wavers at about 6 Hz, a rumble and a
+    hiss) under the fire loop;
+  - the white glare is gone: the embers no longer use the impact spark (which adds a white flash every call).

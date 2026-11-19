@@ -109,7 +109,7 @@ export class JetSet {
   constructor(scene) { this.scene = scene; this.map = new Map(); this.t = 0; }
   fire(key, from, dir, len = 1.2, r = 0.11) {
     let J = this.map.get(key);
-    if (!J) { J = { sheath: makeFireTube(this.scene, 12, 8, { flow: 26, heat: 0.5, tipFade: 0.25, core: 0xffd25a, mid: 0xff7a12, edge: 0xc8300a }), core: makeFireTube(this.scene, 12, 6, { flow: 34, heat: 1, tipFade: 0.3, core: 0xffffff, mid: 0xfff2b0, edge: 0xffc040 }), k: 0 }; this.map.set(key, J); }
+    if (!J) { J = { sheath: makeFireTube(this.scene, 12, 8, { flow: 26, heat: 0.9, tipFade: 0.25, core: 0xffe03a, mid: 0xff9a18, edge: 0xe0300c }), core: makeFireTube(this.scene, 12, 6, { flow: 34, heat: 1, tipFade: 0.3, core: 0xfff6b0, mid: 0xffd84a, edge: 0xffa020 }), k: 0 }; this.map.set(key, J); }   // (red and yellow, like a flame: a yellow core, orange, red edges)
     J.seen = true; J.from = from.clone(); J.dir = dir.clone().normalize(); J.len = len; J.r = r;
   }
   update(dt) {

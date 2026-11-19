@@ -110,6 +110,11 @@ export class FX {
         new THREE.Vector3(Math.cos(a) * spread, 0.4 + Math.random() * 0.6, Math.sin(a) * spread), 0.6 + Math.random() * 0.4, 0.7 + Math.random() * 0.4, color, 0.5);
     }
   }
+  // a glowing ember or mote: no flash (spark() adds a white flash for impacts; called every frame it bloomed into a glare)
+  ember(pos, color = 0xffb040, vel = null) {
+    const sp = this.puff(pos, vel || new THREE.Vector3(rand(-1, 1), rand(0, 1.5), rand(-1, 1)), 0.08, 0.35, color, 1, 0.2);
+    sp.s.material.blending = THREE.AdditiveBlending;
+  }
   spark(pos, color = 0xffd27a, n = 6) {
     for (let i = 0; i < n; i++) {
       const v = new THREE.Vector3(rand(-1, 1), rand(-0.4, 1), rand(-1, 1)).normalize().multiplyScalar(rand(3, 7));
