@@ -125,7 +125,7 @@ const fire = {
   loco: { walk: 3.2, run: 7.0, sprint: 9.8, accel: 40, stride: 1.05, bob: 1.1, knee: 1.25, lean: 1.4, swing: 1.1, elbow: 1.55, carry: -0.15, out: 0.03, heavy: 0.9 },
   jump: { v: 9.6, air: 0 },   // Fire jumps high (Air keeps flight, the highest)
   dodge: { kind: 'dash', dur: 0.32, speed: 17, iframes: 0.75, trail: 'fire' },
-  labels: { hand: 'FIRE FIST', leg: 'FLAME KICK', guard: 'FIRE WALL', special: 'DRAGON DESCENT' },
+  labels: { hand: 'FIRE FIST', leg: 'FLAME KICK', guard: 'FIRE WALL', special: "DRAGON'S BREATH" },
   tech: {
     // jab (lead hand), cross (rear hand), hook: each fires a compact fireball out of the striking fist
     hand: T({ name: 'Fire Fist', clip: ['fire_jab', 'fire_punch', 'earth_punch'], dur: 0.27, cost: 6, cancel: 0.5, upper: true, move: 4.2, lunge: 5,
@@ -448,3 +448,10 @@ STYLES.water.tech.handHold.name = 'Twin Water Whips';
 STYLES.air.tech.handHold.name = 'Twin Air Streams';
 STYLES.water.labels.hand = 'WATER WHIP'; STYLES.air.labels.hand = 'AIR WHIP';
 STYLES.air.tech.charged.events = [[0.55, 'air.charged']];   // one compressed release
+
+// Air's kicks (19 Nov, from the reference video's airbender): a low wind sweep and the floor spin in a whirl of wind
+// join the Crescent and Whirlwind kicks (air.sweep / air.flair in elements.js)
+STYLES.air.tech.leg.push(T({ name: 'Ground Gust Sweep', clip: 'earth_sweep', dur: 0.62, cost: 10, cancel: 0.75, move: 0.5, lunge: 3, keys: K0,
+  active: { from: 0.45, to: 0.68, dmg: 6, range: 2.4, arc: -1.4, knock: 6, level: 2 }, events: [[0.5, 'air.sweep']] }));
+STYLES.air.tech.leg.push(T({ name: 'Wind Flair', clip: 'earth_flair', clipSpeed: 1.0, dur: 1.0, cost: 12, cancel: 0.85, full: true, fadeIn: 0.28, fadeOut: 0.32, move: 0.5, keys: K0,
+  events: [[0.35, 'air.flair'], [0.62, 'air.flair']] }));

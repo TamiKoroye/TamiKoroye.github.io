@@ -19,9 +19,10 @@ export async function loadIce() {
       geo.computeBoundingBox(); const b = geo.boundingBox, s = 1 / (b.max.y - b.min.y);
       geo.translate(-(b.min.x + b.max.x) / 2, -b.min.y, -(b.min.z + b.max.z) / 2); geo.scale(s, s, s); geo.computeVertexNormals();
       ICE.cluster = geo;
-      // the model's own clearcoated material, made a little paler and more see-through so it reads as ice in the arena light
-      const m = mesh.material.clone(); m.transparent = true; m.opacity = 0.88; m.depthWrite = true; m.side = THREE.FrontSide;
-      if (m.color) m.color.multiplyScalar(1.25); if ('emissive' in m) { m.emissive = new THREE.Color(0x1d3a4a); m.emissiveIntensity = 0.5; }
+      // (19 Nov: the model's own material rendered dark grey-blue in the arena light and read as rock.) Clear pale ice:
+      // near-white blue, lit from inside, glossy facets, see-through
+      const m = new THREE.MeshPhongMaterial({ color: 0xd6f3ff, emissive: 0x5aaed6, emissiveIntensity: 0.55, specular: 0xffffff, shininess: 140,
+        transparent: true, opacity: 0.8, flatShading: true, depthWrite: true });
       ICE.clusterMat = m;
     }
   } catch (e) { console.warn('ice cluster model did not load; procedural ice is used', e); }

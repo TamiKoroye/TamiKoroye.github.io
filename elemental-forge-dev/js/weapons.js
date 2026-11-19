@@ -67,7 +67,7 @@ export class Weapons {
     })();
     // one sheet of an eruption: a curved strip of water, 1 m tall (uv.y up), opening outward
     this.surgeGeo = (() => { const g = new THREE.CylinderGeometry(0.55, 0.8, 1, 10, 6, true, -0.55, 1.1); g.translate(0, 0.5, 0); return g; })();
-    this.surges = [];
+    this.surges = []; this.jets = [];
     // the waves' water: more solid than the guard, foam all along the crest and over the curl
     this.waveMat = waterMaterial(-2.6); this.waveMat.uniforms.uRise.value = 1; this.waveMat.uniforms.uWobble.value = 0.8; this.waveMat.uniforms.uOpacity.value = 0.97; this.waveMat.uniforms.uFoamFrom.value = 0.6;
     this.rockMat = B.mat.stone;
@@ -134,6 +134,86 @@ export class Weapons {
     this.grabs = this.grabs.filter(G => { if (G.dead) this.freeTube(G.tube); return !G.dead; });
   }
 
+  // ============================================================ foot jets
+  // (19 Nov, from the reference videos: Water's kicks drive a gush of water out of the foot like a pump, Air's a blast
+  // of wind.) A jet is a thick stream from the kicking foot: it shoots out at about 45 m/s to its length, pulses,
+  // then the tail leaves the foot and the whole body of water (or air) runs on and breaks up. It hits once per
+  // fighter anywhere along its length, knocks down and pushes hard along the jet. opts: { len, dmg, knock, level,
+  // dur, delay, low (skims the floor), down (straight down from the soles, no hit: the jump jets), r (radius) }
+  footJet(f, el, foot, o = {}) {
+    const w = this.w, from = f.footPos(foot, new THREE.Vector3()), dir = new THREE.Vector3();
+    const t = f.target && !f.target.dead ? f.target : null;
+    if (o.down) dir.set(0, -1, 0);
+    else {
+      if (t) dir.copy(t.chestPos(_a)).sub(from); else f.forward(dir);
+      if (o.low) dir.y = Math.min(dir.y, 0) - 0.02 * Math.hypot(dir.x, dir.z);
+      dir.normalize();
+    }
+    const J = { f, el, foot, from, dir, len: o.len || 8, t: -(o.delay || 0), dur: o.dur || 0.5, head: 0, tail: 0, hit: new Set(), dmg: o.dmg ?? 9, knock: o.knock ?? 15,
+      level: o.level ?? 2, down: !!o.down, low: !!o.low, r: o.r || (el === 'air' ? 0.5 : 0.42), tube: this.tube() };
+    if (el === 'air') J.tube.mesh.material = this.airTubeMat;
+    this.jets.push(J);
+    if (el === 'water') { w.audio.splash(o.down ? 0.7 : 1.1, from); } else w.audio.gust(o.down ? 0.8 : 1.1);
+    return J;
+  }
+  updateJets(dt) {
+    const w = this.w;
+    for (const J of this.jets) {
+      const f = J.f; J.t += dt;
+      if (J.t < 0) { J.tube.mesh.visible = false; if (!f.dead) f.footPos(J.foot, J.from); continue; }   // delayed start (follows the foot)
+      // the nozzle stays on the foot while the leg is out (down jets: for their whole life)
+      const attached = J.down || J.t < J.dur * 0.45;
+      if (attached && !f.dead) { f.footPos(J.foot, J.from); if (J.down) J.from.y -= 0.05; }
+      J.head = Math.min(J.len, J.head + dt * (J.down ? 14 : 45));
+      if (!attached) J.tail = Math.min(J.head, J.tail + dt * 30);
+      if (J.t > J.dur || J.tail >= J.len - 0.05) { J.dead = true; continue; }
+      // the body: from the tail to the head, with a slight droop under its own weight (water) and a wobble
+      const n = 10, pts = [], sag = J.el === 'water' && !J.down ? 0.25 : 0;
+      for (let k = 0; k <= n; k++) {
+        const d = J.tail + (J.head - J.tail) * (1 - k / n), q = d / J.len;
+        const p = new THREE.Vector3().copy(J.from).addScaledVector(J.dir, d);
+        p.y -= sag * q * q * J.len * 0.15;
+        p.x += Math.sin(J.t * 31 + k * 1.7) * 0.03; p.z += Math.cos(J.t * 27 + k * 1.3) * 0.03;
+        if (!J.down) p.y = Math.max(p.y, (f.groundY ?? 0) + 0.12);
+        pts.push(p);
+      }
+      const pulse = 1 + Math.sin(J.t * 46) * 0.16, fade = J.t > J.dur * 0.75 ? 1 - (J.t - J.dur * 0.75) / (J.dur * 0.25) : 1;
+      // thickest at the head (the gush spreads as it flies), narrow at the nozzle
+      J.tube.set(pts, (s) => J.r * pulse * fade * (1.25 - 0.75 * s) * (J.down ? 1.3 : 1), J.t * 3);
+      const head = pts[0], nozzle = pts[n];
+      if (J.el === 'water') {
+        if (Math.random() < 0.8) w.fx.splashDrops(head, J.down ? 3 : 4);
+        if (attached && Math.random() < 0.6) w.fx.splashDrops(nozzle, 2);
+        if (Math.random() < 0.35) w.fx.puff(head, _b.copy(J.dir).multiplyScalar(2), 0.5, 0.5, 0xeaf6ff, 0.35, 2.4);
+        this.B.extinguishNear(head, 1.4);
+      } else {
+        if (Math.random() < 0.9) w.fx.wind(head, _b.copy(J.dir).multiplyScalar(14), 0.9, 0.35);
+        if (Math.random() < 0.5) w.fx.wind(nozzle.clone().lerp(head, Math.random()), _b.copy(J.dir).multiplyScalar(12), 0.6, 0.3);
+      }
+      // dust and spray where the jet meets the floor (the jump jets blast the ground under the feet)
+      if (head.y < (f.groundY ?? 0) + 0.5 && Math.random() < 0.6) {
+        const g = _c.set(head.x, f.groundY ?? 0, head.z);
+        if (J.el === 'air') w.fx.dust(g, 3, 2.5); else w.fx.splashDrops(g, 4);
+      }
+      if (J.down) continue;
+      // hits: anywhere along the body
+      for (const t of w.fighters) {
+        if (t === f || t.dead || J.hit.has(t) || t.invuln > 0) continue;
+        const c = t.chestPos(_d);
+        if (distPointSeg(c, nozzle, head) > t.radius + J.r + 0.15 && distPointSeg(_e.set(t.pos.x, t.pos.y + 0.3, t.pos.z), nozzle, head) > t.radius + J.r + 0.15) continue;
+        J.hit.add(t);
+        const push = _a.set(J.dir.x, 0, J.dir.z); if (push.lengthSq() < 1e-4) push.set(t.pos.x - f.pos.x, 0, t.pos.z - f.pos.z); push.normalize();
+        w.combat.damage(t, J.dmg, push.clone(), f, J.el === 'water' ? 'waterJet' : 'airJet', c.clone(), J.knock, J.level);
+        w.shake(0.22, c);
+        if (J.el === 'water') { w.fx.splashDrops(c, 22); w.fx.puff(c, _b.set(0, 1, 0), 0.9, 0.6, 0xeaf6ff, 0.4, 2.6); w.audio.splash(1.2, c); }
+        else { w.fx.dust(_c.set(t.pos.x, t.groundY, t.pos.z), 10, 3); for (let i = 0; i < 6; i++) w.fx.wind(c, _b.copy(push).multiplyScalar(16).add(_c.set(rand(-3, 3), rand(0, 4), rand(-3, 3))), 0.8, 0.4); }
+      }
+      // enemy projectiles in its path are washed / blown away
+      for (const o of this.B.objs) if (o.state === 'flying' && o.owner !== f && distPointSeg(o.pos, nozzle, head) < o.r + J.r) this.B.kill(o, J.el === 'water' && o.el === 'fire' ? 'steam' : undefined);
+    }
+    this.jets = this.jets.filter(J => { if (J.dead) this.freeTube(J.tube); return !J.dead; });
+  }
+
   // ============================================================ whips
   // A whip is a rope of 14 points hanging from the striking hand (or foot), simulated every frame:
   //   - the root is the hand bone itself; the rope's lay comes from the forearm direction (elbow to hand) and the
@@ -151,7 +231,7 @@ export class Weapons {
     const N = 14, root = this.limbPos(f, limb, ls, new THREE.Vector3());
     const W = {
       f, el, kind, limb, ls, t: 0, tRel: -1, ext: 0, out: true, tech: opts.tech || null, life: opts.life || 1.6,
-      len: Math.min(4.6, opts.len || clamp(dist + 0.4, 2.6, 4.6)), dmg: opts.dmg ?? 8, knock: opts.knock ?? 7, level: opts.level ?? 1,
+      len: opts.len ? Math.min(4.6, opts.len) : this.whipLen(f, el, kind, t, dist), dmg: opts.dmg ?? 8, knock: opts.knock ?? 7, level: opts.level ?? 1,
       hitWin: opts.hitWin || 0.3, pts: Array.from({ length: N }, () => root.clone()), old: Array.from({ length: N }, () => root.clone()),
       prev: Array.from({ length: N }, () => root.clone()), rootPrev: root.clone(), vRoot: new THREE.Vector3(), dir: new THREE.Vector3(),
       hit: new Set(), frozen: !!opts.frozen, aim: this.B.aimDir(f, root, new THREE.Vector3()), tag: opts.tag || el + 'Whip', spin: kind === 'circle',
@@ -163,6 +243,15 @@ export class Weapons {
     this.whips.push(W);
     if (opts.released) this.releaseWhip(W);
     return W;
+  }
+  // (19 Nov, after review: "Whilst flying, water whip can extend, but when they are standing, no. They have to be
+  // close.") Water's thrown whip is short against a rival on the floor (the bender has to close in) and reaches up to
+  // 9 m when the rival is in the air or the bender is (jumping, on the column, riding the arch). Other elements keep
+  // the old 2.6-4.6 m.
+  whipLen(f, el, kind, t, dist) {
+    if (el !== 'water' || kind === 'hold') return clamp(dist + 0.4, 2.6, 4.6);
+    const up = (x) => x && !x.onGround && x.pos.y - x.groundY > 0.6;
+    return up(t) || up(f) ? clamp(dist + 0.6, 2.6, 9) : clamp(dist + 0.3, 2.2, 3.2);
   }
   limbPos(f, limb, s, out) { return limb === 'foot' ? f.footPos(s, out) : f.handPos(s, out); }
   // the limb's pointing direction: elbow to hand, or knee to foot
@@ -408,13 +497,13 @@ export class Weapons {
   }
   // water bursts up out of the floor in a fan of sheets in front of the bender (staggered from the middle outwards),
   // rises past the bender's head and falls back: the burst that launches a wave
-  eruption(f, at, dir, width = 5, h = 3.8) {
+  eruption(f, at, dir, width = 5, h = 3.8, delay = 0) {
     const side = new THREE.Vector3().crossVectors(dir, UP).normalize(), n = Math.max(5, Math.round(width / 0.9)), yaw = Math.atan2(dir.x, dir.z);
     for (let i = 0; i < n; i++) {
       const u = n === 1 ? 0 : i / (n - 1) - 0.5, m = new THREE.Mesh(this.surgeGeo, this.waveMat);
       m.position.set(at.x + side.x * u * width + dir.x * (0.2 - Math.abs(u) * 0.8), at.y, at.z + side.z * u * width + dir.z * (0.2 - Math.abs(u) * 0.8));
       m.rotation.set(0, yaw + Math.PI + u * 0.6, 0); m.renderOrder = 3; m.scale.set(1.3, 0.01, 1.3); this.w.scene.add(m);
-      this.surges.push({ m, t: -Math.abs(u) * 0.12, life: 0.75, h: h * (1 - Math.abs(u) * 0.35) * rand(0.85, 1.1), lean: rand(-0.25, 0.25), tilt: rand(0.15, 0.35) });
+      this.surges.push({ m, t: -delay - Math.abs(u) * 0.12, life: 0.75, h: h * (1 - Math.abs(u) * 0.35) * rand(0.85, 1.1), lean: rand(-0.25, 0.25), tilt: rand(0.15, 0.35) });
     }
     this.w.shake(0.18, at);
   }
@@ -833,10 +922,11 @@ export class Weapons {
     this.tubeMat.uniforms.uTime.value += dt;
     this.burst.update(dt);
     for (const f of this.w.fighters) if (f._arch && !(f.dodgeKind === 'arch' && f.dodgeT > 0)) { this.surfEnd(f._arch); f._arch = null; }
-    this.updateWhips(dt); this.updateGrabs(dt); this.updateArcs(dt); this.updateTraps(dt); this.updateWhirls(dt); this.updateSpires(dt); this.updateWaves(dt); this.updateSurges(dt); this.updateColumns(dt); this.updateErupts(dt); this.updateFireRings(dt); this.updateCaptures(dt); this.updateTrails(dt);
+    this.updateWhips(dt); this.updateJets(dt); this.updateGrabs(dt); this.updateArcs(dt); this.updateTraps(dt); this.updateWhirls(dt); this.updateSpires(dt); this.updateWaves(dt); this.updateSurges(dt); this.updateColumns(dt); this.updateErupts(dt); this.updateFireRings(dt); this.updateCaptures(dt); this.updateTrails(dt);
   }
   clear() {
     for (const W of this.whips) this.dropWhip(W);
+    for (const J of this.jets) this.freeTube(J.tube); this.jets = [];
     for (const A of this.arcs) { this.freeTube(A.tube); if (A.ribbons) A.ribbons.forEach(r => r.release()); }
     for (const W of this.whirls) W.tubes.forEach(t => this.freeTube(t));
     for (const S of this.spires) this.w.scene.remove(S.m);

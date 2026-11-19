@@ -59,10 +59,19 @@ export class Specials {
     const w = this.w, t = f.target && !f.target.dead ? f.target : null;
     const dir = t ? _a.set(t.pos.x - f.pos.x, 0, t.pos.z - f.pos.z) : f.forward(_a); dir.y = 0;
     const reach = t ? clamp(dir.length() + 1.5, 4, 10) : 8; dir.normalize();
+    // (19 Nov, after review: "earth's special move should be more devastating") three lines of rupture fan out from the
+    // bender (the centre one runs to the rival), with bigger spikes; at the rival the ground blows open: a ring of
+    // great spikes, rock thrown into the air, a crater, and the rival launched
     const n = Math.round(reach / 1.4), side = new THREE.Vector3(-dir.z, 0, dir.x);
-    const pts = []; for (let i = 0; i < n; i++) { const d = 1.3 + (reach - 1.3) * i / (n - 1); pts.push(new THREE.Vector3(f.pos.x + dir.x * d + side.x * rand(-0.35, 0.35), 0, f.pos.z + dir.z * d + side.z * rand(-0.35, 0.35))); }
+    const pts = [];
+    for (let i = 0; i < n; i++) for (const ln of [0, -1, 1]) {
+      if (ln && i === n - 1) continue;
+      const d = 1.3 + (reach - 1.3) * i / (n - 1), off = ln * d * 0.32;
+      const p = new THREE.Vector3(f.pos.x + dir.x * d + side.x * (off + rand(-0.3, 0.3)), 0, f.pos.z + dir.z * d + side.z * (off + rand(-0.3, 0.3)));
+      p.i = i; p.last = !ln && i === n - 1; pts.push(p);
+    }
     this.add({ kind: 'rupture', f, t: 0, pts, next: 0, hit: new Set(), spikes: [], dir: dir.clone() });
-    w.shake(0.35, f.pos); w.fx.dust(f.pos, 14, 3);
+    w.shake(0.6, f.pos); w.fx.dust(f.pos, 22, 4); w.fx.ring(_b.set(f.pos.x, f.groundY + 0.1, f.pos.z), 4.5, 0xa08a70, 0.5); w.fx.crater(f.pos, 1.6);
   }
 
   // ------------------------------------------------------------------ WATER
@@ -146,23 +155,24 @@ export class Specials {
         }
         case 'rupture': {
           // the rupture races out: one burst and spike cluster every 0.08 s along the line
-          while (S.next < S.pts.length && S.t > S.next * 0.08) {
-            const p = S.pts[S.next], last = S.next === S.pts.length - 1, gy = this.ground(p.x, p.z, f.pos.y + 1); p.y = gy;
-            this.B.weapons.burst.spawn(p.x, gy, p.z, last ? 1.0 : 0.42 + 0.06 * S.next);
-            const n = last ? 9 : 4;
+          while (S.next < S.pts.length && S.t > S.pts[S.next].i * 0.08) {
+            const p = S.pts[S.next], last = p.last, gy = this.ground(p.x, p.z, f.pos.y + 1); p.y = gy;
+            this.B.weapons.burst.spawn(p.x, gy, p.z, last ? 1.6 : 0.5 + 0.07 * p.i);
+            const n = last ? 16 : 5;
             for (let i = 0; i < n; i++) {
-              const a = rand(0, 6.28), r = last ? rand(0.3, 1.5) : rand(0.1, 0.7), m = new THREE.Mesh(this.spikeGeo, this.B.mat.stone);
+              const a = last ? i / n * 6.28 + rand(-0.2, 0.2) : rand(0, 6.28), r = last ? rand(1.2, 2.6) : rand(0.1, 0.8), m = new THREE.Mesh(this.spikeGeo, this.B.mat.stone);
               m.position.set(p.x + Math.cos(a) * r, gy - 2, p.z + Math.sin(a) * r); m.castShadow = true;
-              m.rotation.set(Math.sin(a) * rand(0.15, 0.5), rand(0, 6), -Math.cos(a) * rand(0.15, 0.5)); m.scale.setScalar((last ? 1.15 : 0.8) * rand(0.7, 1.2));
+              m.rotation.set(Math.sin(a) * rand(0.2, 0.6), rand(0, 6), -Math.cos(a) * rand(0.2, 0.6)); m.scale.setScalar((last ? 1.9 : 1.15) * rand(0.75, 1.2));
               w.scene.add(m); S.spikes.push({ m, gy, born: S.t, y0: gy - 1.9 * m.scale.y, life: rand(1.3, 1.7) });
             }
-            w.fx.dust(p, 6, 2.5); w.fx.debrisBurst(_a.set(p.x, gy + 0.2, p.z), last ? 16 : 7, last ? 6 : 4, 0.11, 0x6e5a48);
-            w.shake(last ? 0.45 : 0.15, p); if (w.audio.rumble) w.audio.rumble(last ? 1 : 0.4);
+            w.fx.dust(p, last ? 20 : 7, last ? 5 : 2.5); w.fx.debrisBurst(_a.set(p.x, gy + 0.2, p.z), last ? 40 : 9, last ? 11 : 5, last ? 0.22 : 0.13, 0x6e5a48);
+            if (last) { w.fx.crater(p, 3.2); w.fx.ring(_b.set(p.x, gy + 0.1, p.z), 5, 0xa08a70, 0.55); w.fx.debrisBurst(_a.set(p.x, gy + 0.5, p.z), 14, 13, 0.4, 0x7a6a58, 2.2); }
+            w.shake(last ? 0.9 : 0.2, p); if (w.audio.rumble) w.audio.rumble(last ? 1.4 : 0.5);
             for (const t of w.fighters) {
               if (t === f || t.dead || t.invuln > 0 || S.hit.has(t)) continue;
-              if (Math.hypot(t.pos.x - p.x, t.pos.z - p.z) < (last ? 2.2 : 1.5) && t.pos.y - gy < 1.5) {
-                S.hit.add(t); w.combat.damage(t, 17, _a.copy(S.dir).add(_b.set(0, 0.2, 0)).normalize().clone(), f, 'rupture', t.chestPos(new THREE.Vector3()), 9, 2);
-                if (!t.dead) { t.vel.y = 9; t.onGround = false; }
+              if (Math.hypot(t.pos.x - p.x, t.pos.z - p.z) < (last ? 3.0 : 1.6) && t.pos.y - gy < 1.8) {
+                S.hit.add(t); w.combat.damage(t, last ? 28 : 20, _a.copy(S.dir).add(_b.set(0, 0.3, 0)).normalize().clone(), f, 'rupture', t.chestPos(new THREE.Vector3()), 12, 2);
+                if (!t.dead) { t.vel.y = last ? 14 : 10; t.onGround = false; }
               }
             }
             S.next++;
@@ -171,7 +181,7 @@ export class Specials {
             const a = S.t - sp.born, up = a < 0.12 ? smooth01(a / 0.12) * 1.08 : a < 0.2 ? 1.08 - 0.08 * (a - 0.12) / 0.08 : a > sp.life ? 1 - smooth01((a - sp.life) / 0.45) : 1;
             sp.m.position.y = sp.y0 - 0.15 + up * (sp.gy - sp.y0 + 0.15);
           }
-          if (S.t > S.pts.length * 0.08 + 2.3) { S.dead = true; for (const sp of S.spikes) w.scene.remove(sp.m); }
+          if (S.t > (S.pts.length ? S.pts[S.pts.length - 1].i : 0) * 0.08 + 2.5) { S.dead = true; for (const sp of S.spikes) w.scene.remove(sp.m); }
           break;
         }
         case 'dragon': this.updateDragon(S, dt); break;
