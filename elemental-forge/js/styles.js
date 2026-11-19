@@ -394,7 +394,7 @@ STYLES.fire.tech.glideBlast = T({ name: 'Jet Blast', clip: 'water_palm', dur: 0.
 STYLES.water.tech.glideBlast = T({ name: 'Ice Volley', clip: 'water_palm', dur: 0.42, cost: 6, cancel: 0.6, move: 0, upper: true, keys: K0, events: [[0.5, 'water.archShot']] });
 // Fire, GUARD + SPECIAL: Dragon's Breath (Mixamo Zombie Scream: draws in, leans forward and roars): a ball of fire
 // breathed out of the mouth that engulfs whoever it hits, burning them for a few seconds (fire.breath, elements.js)
-STYLES.fire.tech.breath = T({ name: "Dragon's Breath", clip: 'fire_breath', clipSpeed: 1.6, dur: 1.4, cost: 16, cancel: 0.85, move: 0, keys: K0, events: [[0.5, 'fire.breath']] });
+STYLES.fire.tech.breath = T({ name: "Dragon's Breath", clip: 'fire_breath', clipSpeed: 0.9, dur: 1.4, cost: 30, cancel: 0.95, move: 0, keys: K0, events: [[0.2, 'fire.breathInhale'], [0.5, 'fire.breath']] });   // (19 Nov: slower, so the roar is held; inhale, then ignite)
 // HAND while riding the ice (the arch dodge or the ice surf): punches only, each throwing a ball of water or ice
 // (18 Nov, after review: no whips while riding)
 STYLES.water.tech.surfPunch = T({ name: 'Water Punch', clip: ['fire_jab', 'fire_punch'], dur: 0.3, cost: 4, cancel: 0.55, move: 1, upper: true, keys: K0, events: [[0.52, 'water.hand']] });
@@ -465,7 +465,9 @@ STYLES.fire.tech.hand.clip = ['fire_jab', 'fire_punch'];
 // Fire Daggers and Fire Blade (one melee family): HAND at close range (rival within 2.3 m, on the floor). Two quick
 // dagger slashes with short flames on both hands (elbows bent, whip_h / whip_d at speed), then a Fire Blade cut with
 // long flame blades (whip_d_single: the torso turns into a downward diagonal cut). fire.dagger in elements.js.
-STYLES.fire.tech.melee = T({ name: 'Fire Daggers', clip: ['whip_h', 'whip_d', 'whip_d_single'], clipSpeed: 3.2, dur: 0.32, cost: 4, cancel: 0.62, move: 1.5, lunge: 5, keys: K0,
+// (19 Nov, later: the user's knife animations from the Drive replace the whip clips: Stable Sword Inward / Outward
+// Slash, Stabbing, and Thrust Slash's spin into a two-armed slash for the Fire Blade finisher)
+STYLES.fire.tech.melee = T({ name: 'Fire Daggers', clip: ['dagger_in', 'dagger_out', 'dagger_stab', 'blade_spin'], clipSpeed: 3.0, dur: 0.32, cost: 4, cancel: 0.62, move: 1.5, lunge: 5, keys: K0,
   events: [[0.45, 'fire.dagger']] });
 // Fire Whip: HAND with the stick pulled away from the rival (draw back and lash): the arm draws back and the whip is
 // released on the swing, following the hand (whip_v overhead, whip_h across). fire.whip in elements.js.

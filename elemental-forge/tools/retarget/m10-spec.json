@@ -1,0 +1,6 @@
+[
+ { "name": "dagger_in", "src": ".anim-src/m10/Stable Sword Inward Slash.fbx", "start": 0.1, "end": 1.9, "impact": 0.45, "limb": "pR", "note": "Fire Daggers: crouched knife stance, inward cut (0.45 s) then a backhand cut back (1.25 s), returns to stance" },
+ { "name": "dagger_out", "src": ".anim-src/m10/Stable Sword Outward Slash.fbx", "start": 0.3, "end": 1.9, "impact": 0.82, "limb": "pR", "note": "Fire Daggers: outward cut, the body turns into it, returns to stance" },
+ { "name": "dagger_stab", "src": ".anim-src/m10/Stabbing (1).fbx", "start": 0.5, "end": 2.0, "impact": 0.9, "limb": "pL", "note": "Fire Daggers: a stab with the lead hand, then a cut back across" },
+ { "name": "blade_spin", "src": ".anim-src/m10/Thrust Slash (1).fbx", "start": 0.4, "end": 2.8, "impact": 1.5, "aim": "hips", "note": "Fire Blade finisher: the body spins into a wide two-armed slash, then settles back to stance" }
+]

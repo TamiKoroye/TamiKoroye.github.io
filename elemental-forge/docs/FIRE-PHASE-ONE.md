@@ -114,3 +114,27 @@ added up to a wall of flame. Now: fireballs as above, the fist flare about 40% s
 - Damage is still decided on each client from the effect positions; for multiplayer the hit tests (cone, rope, radius)
   need to move to an authoritative tick. Not done in this round.
 - Not tested on the Samsung Galaxy S25 Ultra.
+
+## Second round (19 Nov evening), after the user's review of r28
+- Dragon's Breath ("not destructive enough, not scary enough ... just a red line"). Rebuilt in phases, taking the
+  staging from the user's reference clip (rooted stance, inhale and brace, ignite, sustain one coherent flame, taper,
+  recover), not its look:
+  - inhale: embers drawn in to the mouth, a glow;
+  - ignite: a blast, a rumble, a strong shake;
+  - roar, 1.75 s: one body of fire in three layers (red outer shell, orange body, white-hot core), up to 11 m long
+    and about 4.5 m across at the far end, rising and swaying; flames billow along it, wash out where it strikes,
+    embers, smoke; the floor under it is scorched and left burning; a held roar (fire loop) with crackles;
+  - it burns 4 every 0.12 s and drives the rival back while they stand in it, sets them alight, destroys projectiles,
+    batters guards and walls, and crumbles earth pillars it plays on;
+  - taper: the last 0.35 s it thins and sputters out.
+  The clip plays slower (2.4 s) so the roar is held; 30 energy.
+- Fire Comet: a roiling ball (white-hot core, orange shell, a skin of flame licks bursting off it, embers, smoke) with
+  a longer, thicker flame tail; flame drawn in to the ball as it forms. The explosion: the dome, a ring of fire rolling
+  out, a burst of flame and smoke, the ground burning, pillars within 5 m blown apart; up to 34 damage within 4.5 m.
+- Fire Daggers: the user's new animations from the Drive (Stable Sword Inward Slash, Stable Sword Outward Slash,
+  Stabbing, Thrust Slash) are baked into the pack (tools/retarget/m10-spec.json, with mirrors) and replace the whip
+  clips: inward cut and backhand cut back (two hits, 0.60 s), outward cut (0.53 s), stab (0.50 s), then the Fire
+  Blade: the body spins into a wide two-armed slash with long flame blades (0.80 s, 13 damage, knockdown, cuts the
+  whole front half). The daggers barely push, and once the chain has started it carries on to the finisher while the
+  rival is within 3.5 m. Not used yet: Knife Idle, Stabbing, Smash, Wall Crash, Sweep Fall, Getting Thrown, Knocked
+  Out, Dying (hit and knockout reactions for a later round).
