@@ -154,7 +154,8 @@ export class Fighter {
     // whatever its place in the chain (a punch there would throw a ball and no grab could happen)
     const grabWhip = def.variants && this.el === 'water' && def === this.style.tech.hand && this.world.bending && this.world.bending.weapons.canWhipGrab(this)
       ? def.variants.find(v => /^whip_v/.test(v.clip)) : null;
-    if (grabWhip) { def = grabWhip; this.lastAltEnd = this.time + def.dur; this.grabArmed = def; } else this.grabArmed = null;   // (the grab is armed at the press: "close" means close when HAND is pressed, the lunge does not turn a lash into a grab)
+    this.grabArmed = grabWhip;   // (the grab is armed at the press: "close" means close when HAND is pressed; the lunge does not turn a lash into a grab)
+    if (grabWhip) { def = grabWhip; this.lastAltEnd = this.time + def.dur; }
     else if (def.variants) { if (this.time - (this.lastAltEnd ?? -9) > 0.9) this.altN = 0; const n = this.altN || 0; this.altN = n + 1; def = def.variants[n % def.variants.length]; this.lastAltEnd = this.time + def.dur; }
     if (this.dodgeKind === 'glide' && this.dodgeT > 0) { this.dodgeT = 0; this.vel.y = Math.min(this.vel.y, 0); }   // a strike ends the glide
     const powered = this.en >= (def.cost || 0);
