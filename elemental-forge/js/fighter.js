@@ -876,7 +876,7 @@ export class Fighter {
       const strike = punching && (this.techSide > 0 ? 'R' : 'L') === sd;
       if (!strike) continue;   // (18 Nov, after review: no flames on the fists at rest; they flare only on the strike)
       const h = this.handPos(sd, _v2);
-      F.spawn('fire_flames', { pos: h, vel: _v.set(rand(-0.3, 0.3), rand(0.8, 1.6), rand(-0.3, 0.3)), size: strike ? [0.32, 0.42] : [0.16, 0.22], grow: 1.6, life: strike ? 0.22 : 0.18, f0: 8, f1: 30, fadeIn: 0.02, rot: rand(-0.4, 0.4) });
+      F.spawn('fire_flames', { pos: h, vel: _v.set(rand(-0.3, 0.3), rand(0.8, 1.6), rand(-0.3, 0.3)), size: strike ? [0.2, 0.26] : [0.16, 0.22], grow: 1.4, life: strike ? 0.18 : 0.18, f0: 8, f1: 30, fadeIn: 0.02, rot: rand(-0.4, 0.4) });
     }
   }
   jumpFx(air) {

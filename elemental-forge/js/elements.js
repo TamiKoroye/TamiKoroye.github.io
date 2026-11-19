@@ -199,10 +199,11 @@ export class Bending {
     this.world.scene.remove(o.mesh);
     if (o.trails) for (const t of o.trails) t.release();
     if (o.tube) { this.world.scene.remove(o.tube.mesh); o.tube.mesh.geometry.dispose(); o.tube.mesh.material.dispose(); o.tube = null; }
+    if (o.ftube) { o.ftube.dispose(); o.ftube = null; }
     const fx = this.world.fx, w = this.world;
     if (how === 'silent') return;
     if (o.el === 'earth') { fx.debrisBurst(o.pos, 12, 3.5, 0.1, 0x6e665e); fx.dust(o.pos, 5, 2, 0x9f9282); w.audio.rumble(0.8, o.pos); }
-    if (o.el === 'fire') { for (let i = 0; i < 10; i++) fx.fire(o.pos, _v.set(rand(-3, 3), rand(-1, 3), rand(-3, 3)), 0.5, 0.35); fx.smoke(o.pos); w.audio.fireHit(0.6, o.pos); }
+    if (o.el === 'fire') { const n = SPEC[o.kind] && SPEC[o.kind].wide ? 10 : 5, sz = n === 10 ? 0.5 : 0.34; for (let i = 0; i < n; i++) fx.fire(o.pos, _v.set(rand(-3, 3), rand(-1, 3), rand(-3, 3)), sz, 0.3); fx.smoke(o.pos); w.audio.fireHit(0.6, o.pos); }   // (19 Nov: a fireball's burst half the size, so the fighters stay readable)
     // water bursts in the KanaWorks splash flipbook; ice shatters into pale fragments
     if (o.el === 'water') { if (SPEC[o.kind] && SPEC[o.kind].ice) { fx.debrisBurst(o.pos, 14, 4, 0.08, 0xe0f4ff); w.audio.ice('break', 0.8, o.pos); } else w.audio.splash(0.8, o.pos); this.extinguishNear(o.pos, 1.8); }
     if (o.el === 'air') { for (let i = 0; i < 6; i++) fx.wind(o.pos, _v.set(rand(-4, 4), rand(-1, 2), rand(-4, 4)), 0.6, 0.35); }
@@ -1469,6 +1470,15 @@ export class Bending {
     else if (o.el === 'fire') {
       // held orbs circle close to the body, so they burn smaller than a thrown one
       const held = o.state !== 'flying', big = SPEC[o.kind].wide ? 6 : held ? 1 : 3;
+      // (19 Nov, phase one: the jab's fireball was a long trail of large puffs that hid the fighter) a thrown fireball
+      // is a compact bright ball with a short connected flame tail, and one small lick a frame
+      if (!SPEC[o.kind].wide && !held) {
+        if (!o.ftube) { o.ftube = makeFireTube(w.scene, 10, 8, { flow: 12, tipFade: 0.05 }); o.fhist = []; }
+        o.fhist.unshift(o.pos.clone()); if (o.fhist.length > 6) o.fhist.pop();
+        if (o.fhist.length > 1) o.ftube.set(o.fhist, (t) => o.r * 1.15 * (1 - t * 0.8), o.t * 3);
+        if (Math.random() < 0.6) w.fx.fire(o.pos, _v2.copy(o.vel).multiplyScalar(-0.15).add(_v3.set(rand(-0.4, 0.4), rand(0, 0.8), rand(-0.4, 0.4))), o.r * 1.1, 0.2);
+        m.scale.setScalar(o.r * 0.75); return;
+      }
       for (let i = 0; i < big; i++) w.fx.fire(o.pos.clone().add(_v.set(rand(-0.15, 0.15) * o.r * 3, rand(-0.1, 0.1), rand(-0.15, 0.15) * o.r * 3)), _v2.copy(o.vel).multiplyScalar(-0.35).add(_v3.set(rand(-0.6, 0.6), rand(0, 1.2), rand(-0.6, 0.6))), o.r * (held ? 1.0 : 1.9), 0.3);
       m.scale.setScalar((SPEC[o.kind].wide ? o.r : o.r * 0.6) * (0.9 + Math.random() * 0.2)); if (SPEC[o.kind].wide) m.scale.z = o.r * 1.6;
     } else if (o.el === 'water') {
@@ -1590,7 +1600,8 @@ export class Bending {
     // burning ground: hurts anyone standing in it, spreads flame particles
     for (const b of this.burns) {
       b.t -= dt;
-      if (Math.random() < dt * 9) w.fx.fire(_v.set(b.x + rand(-b.r, b.r) * 0.7, b.y + 0.05, b.z + rand(-b.r, b.r) * 0.7), _v2.set(0, rand(1.5, 3), 0), 0.42, 0.4);
+      // (19 Nov, phase one: burning ground built into a wall of flame that hid the fighters) low licks along the floor
+      if (Math.random() < dt * 6) w.fx.fire(_v.set(b.x + rand(-b.r, b.r) * 0.7, b.y + 0.05, b.z + rand(-b.r, b.r) * 0.7), _v2.set(0, rand(0.8, 1.6), 0), 0.26, 0.35);
       b.tick -= dt;
       if (b.tick <= 0) {
         b.tick = 0.4;
@@ -1710,7 +1721,7 @@ export class Bending {
     this.spirals = [];
     this.weapons.clear(); this.specials.clear(); this.world.fx.flip.clear();
     // projectiles leave nothing behind: their mesh and, for water, the stream drawn behind them
-    for (const o of this.objs) { this.world.scene.remove(o.mesh); if (o.tube) { this.world.scene.remove(o.tube.mesh); o.tube.mesh.geometry.dispose(); o.tube.mesh.material.dispose(); o.tube = null; } }
+    for (const o of this.objs) { this.world.scene.remove(o.mesh); if (o.ftube) { o.ftube.dispose(); o.ftube = null; } if (o.tube) { this.world.scene.remove(o.tube.mesh); o.tube.mesh.geometry.dispose(); o.tube.mesh.material.dispose(); o.tube = null; } }
     for (const d of this.defs) { this.world.scene.remove(d.mesh); if (d.tubes) d.tubes.forEach(t => this.weapons.freeTube(t)); }
     this.world.arena.colliders = this.world.arena.colliders.filter(c => !c.ice);
     for (const r of this.rings) this.world.scene.remove(r.mesh);

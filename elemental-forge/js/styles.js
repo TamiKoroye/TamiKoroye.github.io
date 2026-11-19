@@ -459,6 +459,9 @@ STYLES.air.tech.leg.push(T({ name: 'Wind Flair', clip: 'earth_flair', clipSpeed:
 // ---------------------------------------------------------------- Fire restructuring, phase one (19 Nov)
 // Fire Jabs: HAND taps, left-right, about 0.3 s each (they were 0.56 s); the fist throws the fireball (fire.hand)
 STYLES.fire.tech.hand.clipSpeed = 2.7;
+// (the lunging hook, earth_punch, turns the whole body a quarter turn: at jab speed that read as a jerk; the jabs are
+// the jab and the cross, each mirrored, so taps alternate left and right)
+STYLES.fire.tech.hand.clip = ['fire_jab', 'fire_punch'];
 // Fire Daggers and Fire Blade (one melee family): HAND at close range (rival within 2.3 m, on the floor). Two quick
 // dagger slashes with short flames on both hands (elbows bent, whip_h / whip_d at speed), then a Fire Blade cut with
 // long flame blades (whip_d_single: the torso turns into a downward diagonal cut). fire.dagger in elements.js.
