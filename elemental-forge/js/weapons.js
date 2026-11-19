@@ -139,7 +139,7 @@ export class Weapons {
   // of wind.) A jet is a thick stream from the kicking foot: it shoots out at about 45 m/s to its length, pulses,
   // then the tail leaves the foot and the whole body of water (or air) runs on and breaks up. It hits once per
   // fighter anywhere along its length, knocks down and pushes hard along the jet. opts: { len, dmg, knock, level,
-  // dur, low (skims the floor), down (straight down from the soles, no hit: the jump jets), r (radius) }
+  // dur, delay, low (skims the floor), down (straight down from the soles, no hit: the jump jets), r (radius) }
   footJet(f, el, foot, o = {}) {
     const w = this.w, from = f.footPos(foot, new THREE.Vector3()), dir = new THREE.Vector3();
     const t = f.target && !f.target.dead ? f.target : null;
@@ -149,7 +149,7 @@ export class Weapons {
       if (o.low) dir.y = Math.min(dir.y, 0) - 0.02 * Math.hypot(dir.x, dir.z);
       dir.normalize();
     }
-    const J = { f, el, foot, from, dir, len: o.len || 8, t: 0, dur: o.dur || 0.5, head: 0, tail: 0, hit: new Set(), dmg: o.dmg ?? 9, knock: o.knock ?? 15,
+    const J = { f, el, foot, from, dir, len: o.len || 8, t: -(o.delay || 0), dur: o.dur || 0.5, head: 0, tail: 0, hit: new Set(), dmg: o.dmg ?? 9, knock: o.knock ?? 15,
       level: o.level ?? 2, down: !!o.down, low: !!o.low, r: o.r || (el === 'air' ? 0.5 : 0.42), tube: this.tube() };
     if (el === 'air') J.tube.mesh.material = this.airTubeMat;
     this.jets.push(J);
@@ -160,6 +160,7 @@ export class Weapons {
     const w = this.w;
     for (const J of this.jets) {
       const f = J.f; J.t += dt;
+      if (J.t < 0) { J.tube.mesh.visible = false; if (!f.dead) f.footPos(J.foot, J.from); continue; }   // delayed start (follows the foot)
       // the nozzle stays on the foot while the leg is out (down jets: for their whole life)
       const attached = J.down || J.t < J.dur * 0.45;
       if (attached && !f.dead) { f.footPos(J.foot, J.from); if (J.down) J.from.y -= 0.05; }

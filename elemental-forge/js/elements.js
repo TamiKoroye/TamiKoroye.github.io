@@ -497,7 +497,7 @@ export class Bending {
       case 'air.leg': {
         const ft = this.kickFoot(f);
         this.weapons.limbArc(f, 'air', 'foot', ft, { span: 0.2, speed: 21, grow: 1.1, dmg: 4, knock: 8, level: 1, life: 0.55 });
-        this.weapons.footJet(f, 'air', ft, { len: 9, dmg: 6, knock: 17, level: 2, r: 0.5 }); return;
+        this.weapons.footJet(f, 'air', ft, { len: 9, dmg: 6, knock: 17, level: 2, r: 0.5, delay: 0.16 }); return;   // the blade lands first, the blast follows
       }
       case 'air.leg2': {
         // whirlwind kick: a low gust racing along the ground that knocks the opponent off their feet, and on landing

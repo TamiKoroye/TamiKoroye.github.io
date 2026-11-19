@@ -185,8 +185,13 @@ const spec = () => S(() => {
 });
 for (const el of (process.env.ONLY || process.env.WHIPS ? [] : ["fire", "earth", "water", "air"])) {
   head(`${el}: SPECIAL`);
-  await setup({ el, p: [0, 0, -9], o: [0, 0, el === 'fire' ? -5.5 : -4.5] }); await stepN(10); await clearHits();
+  // (19 Nov: Fire's SPECIAL standing still is now Dragon's Breath, because the user could not find it behind GUARD +
+  //  SPECIAL; Dragon Descent is SPECIAL at a run. For Fire this runs at the rival from further back, then presses
+  //  SPECIAL; the blast, trail and knockdown checks below are unchanged.)
+  await setup({ el, p: [0, 0, el === 'fire' ? -12 : -9], o: [0, 0, el === 'fire' ? -5.5 : -4.5] }); await stepN(10); await clearHits();
+  if (el === 'fire') { await stick(0, -90); await stepN(40); }
   await press('btn-special', 2);
+  if (el === 'fire') await stickUp();
   const rows = []; let shot = 0;
   for (let j = 0; j < 120; j++) {
     await stepN(1); const r = await spec(); rows.push(r);
