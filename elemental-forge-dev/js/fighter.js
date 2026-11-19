@@ -912,7 +912,9 @@ export class Fighter {
     if (!t || t.dead) return null;
     const dx = t.pos.x - this.pos.x, dz = t.pos.z - this.pos.z, d = Math.hypot(dx, dz) || 1, sl = Math.hypot(inp.mx, inp.mz);
     if (st.tech.whip && sl > 0.5 && (inp.mx * dx + inp.mz * dz) / (sl * d) < -0.5) return st.tech.whip;
-    if (st.tech.melee && this.onGround && d < 2.3 && Math.abs(t.pos.y - this.pos.y) < 1.2) return st.tech.melee;
+    // once the melee chain has started it carries on to its finisher while the rival is within 3.5 m
+    const inChain = this.time - (this.lastMeleeT ?? -9) < 0.9;
+    if (st.tech.melee && this.onGround && d < (inChain ? 3.5 : 2.3) && Math.abs(t.pos.y - this.pos.y) < 1.2) { this.lastMeleeT = this.time + 0.6; return st.tech.melee; }
     return null;
   }
   rollDir() { const inp = this.input; if (Math.hypot(inp.mx, inp.mz) > 0.3) this.faceYaw = this.yaw = Math.atan2(inp.mx, inp.mz); this.lungeDir.set(Math.sin(this.faceYaw), 0, Math.cos(this.faceYaw)).multiplyScalar(9); this.lungeT = 0.45; }   // about 4 m
