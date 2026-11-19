@@ -10,7 +10,7 @@ import { jaggedRockGeometry, HALF } from './arena.js';
 import { clamp, mulberry32, smooth01, rand } from './util.js';
 import { iceClusterMesh } from './ice.js';
 import { TOON_RAMP } from './hero.js';
-import { makeFireTube } from './firefx.js';
+import { makeFireTube, sunMaterial, coronaMaterial } from './firefx.js';
 import { makeWaterWall, makeWaterRing, makeIceWall, makeWaterTube, waterMaterial, iceMat } from './defence-fx.js';
 import { Weapons } from './weapons.js';
 import { Specials } from './specials.js';
@@ -1243,12 +1243,14 @@ export class Bending {
       if (B.phase === 'inhale') {
         if (f.dead || f.reacting() || f.tech !== B.tech || B.t > 2) { B.done = true; continue; }
         const mouth = head.addScaledVector(want, 0.2);
-        for (let i = 0; i < 3; i++) { const from = _v.copy(mouth).add(_v2.set(rand(-1.4, 1.4), rand(-0.6, 0.9), rand(-1.4, 1.4))); w.fx.spark(from, 0xffb040, 1); }
+        for (let i = 0; i < 3; i++) { const from = _v.copy(mouth).add(_v2.set(rand(-1.4, 1.4), rand(-0.6, 0.9), rand(-1.4, 1.4))); w.fx.ember(from, 0xffb040, _v3.subVectors(mouth, from).multiplyScalar(2.5)); }   // embers drawn in to the mouth
         if (Math.random() < 0.5) w.fx.fire(mouth, _v.subVectors(mouth, f.chestPos(_v2)).multiplyScalar(-1.5), 0.12 + Math.min(0.2, B.t * 0.3), 0.15);
         this.light.position.copy(mouth); this.lightBoost = Math.max(this.lightBoost || 0, Math.min(0.45, B.t));   // a glow, not a glare
         continue;
       }
-      if (f.dead || B.t > B.dur || (f.reacting() && B.t > 0.2)) { B.done = true; for (const k of ['outer', 'body', 'core']) if (B[k]) B[k].dispose(); continue; }
+      if (f.dead || B.t > B.dur || (f.reacting() && B.t > 0.2)) { B.done = true; f.breathHold = false; for (const k of ['outer', 'body', 'core', 'line']) if (B[k]) B[k].dispose(); for (const r of B.rings || []) w.scene.remove(r.m); continue; }
+      // the roaring pose is held (the clip stops on it, the technique's clock waits) while the flame pours out
+      if (f.action === 'tech' && f.tech === f.style.tech.breath) { if (B.pinT === undefined) B.pinT = f.actionT; f.actionT = Math.min(f.actionT, B.pinT); f.breathHold = B.t < B.dur - 0.2; }
       if (!B.dir) B.dir = want.clone(); else B.dir.lerp(want, Math.min(1, dt * 2.5)).normalize();   // a slow, heavy sweep after the rival
       const dir = B.dir, mouth = head.addScaledVector(dir, 0.2); mouth.y -= 0.06;
       const TAPER = 0.35, k = smooth01(Math.min(1, B.t / 0.12)), endK = B.t > B.dur - TAPER ? Math.max(0, (B.dur - B.t) / TAPER) : 1;
@@ -1256,28 +1258,45 @@ export class Bending {
       const blocker = this.rayDefence(f, mouth, dir, reach); if (blocker) reach = blocker.d + 0.3;
       B.len = reach * k;
       if (!B.outer) {
-        B.outer = makeFireTube(w.scene, 30, 12, { flow: 6, opacity: 0.8, core: 0xffb347, mid: 0xe8550f, edge: 0x9c1d06, heat: 0.2, tipFade: 0.18 });
+        B.outer = makeFireTube(w.scene, 30, 12, { flow: 6, opacity: 0.8, core: 0xffc040, mid: 0xff7414, edge: 0xd8360c, heat: 0.35, tipFade: 0.18 });
         B.body = makeFireTube(w.scene, 30, 12, { flow: 10, opacity: 0.92, core: 0xffe08a, mid: 0xff8a14, edge: 0xd8420a, heat: 0.6, tipFade: 0.14 });
         B.core = makeFireTube(w.scene, 30, 10, { flow: 16, opacity: 0.95, core: 0xfffbe8, mid: 0xffe9a0, edge: 0xffb030, heat: 1, tipFade: 0.1 });
       }
       // the body: rises a little and sways more towards the far end (hot gas lifting, the jet whipping)
+      // (19 Nov, after review) nearest the mouth a very thin white line of superheated gas with tiny rings of shimmering
+      // air round it; about 1.6 m out, where it slams into the air (ram pressure), it flares into real flame; from
+      // there the cone
+      const D0 = Math.min(0.35, B.len * 0.2);   // (19 Nov, after review: the white line is a short one, under half a metre, then real flame)
+      if (!B.line) B.line = makeFireTube(w.scene, 6, 6, { flow: 30, heat: 1, tipFade: 0.02, core: 0xffffff, mid: 0xfffcf0, edge: 0xfff2c8, opacity: 1 });
+      B.line.set([mouth.clone().addScaledVector(dir, D0), mouth.clone().addScaledVector(dir, D0 * 0.5), mouth.clone()], (q) => endK * (0.022 + 0.02 * (1 - q)), B.t * 4);
+      B.rings = B.rings || [];
+      if ((B.ringT = (B.ringT || 0) - dt) <= 0 && endK > 0.3) {
+        B.ringT = 0.035;
+        const m = new THREE.Mesh(this.ringGeo || (this.ringGeo = new THREE.TorusGeometry(1, 0.11, 5, 18)), new THREE.MeshBasicMaterial({ color: 0xfff1c8, transparent: true, opacity: 0.85, depthWrite: false }));
+        m.position.copy(mouth).addScaledVector(dir, rand(0.05, D0 * 0.9)); m.quaternion.setFromUnitVectors(_v.set(0, 0, 1), dir); w.scene.add(m);
+        B.rings.push({ m, t: 0 });
+      }
+      for (const r of B.rings) { r.t += dt; r.m.position.addScaledVector(dir, dt * 2); r.m.scale.setScalar(0.03 + r.t * 0.35); r.m.material.opacity = Math.max(0, 0.85 * (1 - r.t / 0.14)); if (r.t > 0.14) { w.scene.remove(r.m); r.m.material.dispose(); r.dead = true; } }
+      B.rings = B.rings.filter(r => !r.dead);
+      { const fl = mouth.clone().addScaledVector(dir, D0); for (let i = 0; i < 3 * endK; i++) w.fx.fire(_v3.copy(fl).addScaledVector(dir, rand(0, 0.4)), _v.copy(dir).multiplyScalar(rand(1.5, 5)).add(_v2.set(rand(-0.8, 0.8), rand(-0.5, 0.9), rand(-0.8, 0.8))), rand(0.18, 0.32), 0.16); }   // the flare where it ignites: flame starts right at the end of the white line
       const n = 16, pts = [];
-      for (let i = 0; i <= n; i++) { const q = 1 - i / n, d = B.len * q, p = mouth.clone().addScaledVector(dir, d); p.y += 0.35 * q * q * B.len / 11 + Math.sin(B.t * 9 + q * 5) * 0.12 * q; p.x += Math.cos(B.t * 7 + q * 4) * 0.12 * q; p.z += Math.sin(B.t * 8 + q * 3) * 0.12 * q; pts.push(p); }
-      const R = (q, a, b) => endK * (a + b * Math.pow(1 - q, 1.1)) * (0.92 + 0.08 * Math.sin(B.t * 31 + q * 13));
-      B.outer.set(pts, (q) => R(q, 0.16, 2.2), B.t * 2); B.body.set(pts, (q) => R(q, 0.11, 1.5), B.t * 2.6); B.core.set(pts, (q) => R(q, 0.05, 0.55), B.t * 3);
-      const radiusAt = (d) => endK * (0.16 + 2.2 * Math.min(1, d / Math.max(1, B.len)));
+      for (let i = 0; i <= n; i++) { const q = 1 - i / n, d = D0 + (B.len - D0) * q, p = mouth.clone().addScaledVector(dir, d); p.y += 0.35 * q * q * B.len / 11 + Math.sin(B.t * 9 + q * 5) * 0.12 * q; p.x += Math.cos(B.t * 7 + q * 4) * 0.12 * q; p.z += Math.sin(B.t * 8 + q * 3) * 0.12 * q; pts.push(p); }
+      const R = (q, a, b) => endK * (a * 0.6 + b * Math.pow(1 - q, 1.1)) * (0.92 + 0.08 * Math.sin(B.t * 31 + q * 13));
+      const grow = (B.len - D0) / Math.max(1, reach - D0);
+      B.outer.set(pts, (q) => R(q, 0.16, 2.2 * grow), B.t * 2); B.body.set(pts, (q) => R(q, 0.11, 1.5 * grow), B.t * 2.6); B.core.set(pts, (q) => R(q, 0.05, 0.55 * grow), B.t * 3);
+      const radiusAt = (d) => d < D0 ? 0.1 : endK * (0.16 + 2.2 * Math.min(1, (d - D0) / Math.max(1, reach - D0)));   // (by the full reach: at ignition the cone is narrow near the mouth)
       // billowing flames along the body, a wash of flame where it strikes, embers, smoke
       for (let i = 0; i < 8 * endK; i++) {
-        const d = 1.5 + (B.len - 1.5) * Math.sqrt(Math.random()), rr = radiusAt(d) * 0.6, p = _v.copy(mouth).addScaledVector(dir, d).add(_v2.set(rand(-rr, rr), rand(-rr, rr) * 0.7, rand(-rr, rr)));
+        const d = D0 + 0.5 + (B.len - D0 - 0.5) * Math.sqrt(Math.random()), rr = radiusAt(d) * 0.6, p = _v.copy(mouth).addScaledVector(dir, d).add(_v2.set(rand(-rr, rr), rand(-rr, rr) * 0.7, rand(-rr, rr)));
         w.fx.fire(p, _v2.copy(dir).multiplyScalar(rand(7, 13)).add(_v3.set(0, rand(0.5, 2.5), 0)), 0.35 + radiusAt(d) * 0.45, rand(0.3, 0.45));
       }
       const end = pts[0];
-      for (let i = 0; i < 4 * endK; i++) { const a = rand(0, 6.28); w.fx.fire(end, _v.set(Math.cos(a) * rand(3, 7), rand(1, 4), Math.sin(a) * rand(3, 7)).addScaledVector(dir, 2), rand(0.6, 1.0), 0.4); }
-      if (Math.random() < 0.6) w.fx.spark(_v.copy(mouth).addScaledVector(dir, rand(0, B.len)), 0xffc060, 2);
+      for (let i = 0; i < 4 * endK * grow * grow; i++) { const a = rand(0, 6.28); w.fx.fire(end, _v.set(Math.cos(a) * rand(3, 7), rand(1, 4), Math.sin(a) * rand(3, 7)).addScaledVector(dir, 2), rand(0.6, 1.0), 0.4); }
+      if (Math.random() < 0.8) w.fx.ember(_v.copy(mouth).addScaledVector(dir, rand(D0, B.len)), 0xffc060, _v2.copy(dir).multiplyScalar(rand(4, 8)).add(_v3.set(rand(-1, 1), rand(0, 2), rand(-1, 1))));
       if (Math.random() < 0.3) w.fx.smoke(_v.copy(end).add(_v2.set(0, 0.8, 0)), 1.0);
-      this.light.position.copy(mouth).addScaledVector(dir, B.len * 0.5); this.lightBoost = 2;
+      this.light.position.copy(mouth).addScaledVector(dir, B.len * 0.55); this.lightBoost = 1;   // (not at the mouth: a strong light there bloomed into a white glare)
       // sound: the roar (a held loop) with crackles; a steady shake
-      w.audio.hold('breath' + (f === w.fighters[0] ? 0 : 1), 'fireLoop', 2.4 * endK, mouth);
+      w.audio.hold('breath' + (f === w.fighters[0] ? 0 : 1), 'fireLoop', 1.8 * endK, mouth); w.audio.roar('roar' + (f === w.fighters[0] ? 0 : 1), 2.2 * endK, mouth);
       if ((B.roar -= dt) <= 0) { B.roar = rand(0.18, 0.3); w.audio.fireWhoosh(0.8 + 0.4 * endK); w.shake(0.12 * endK, mouth); }
       // the floor under the flame is scorched and left burning
       if ((B.scorch -= dt) <= 0) {
@@ -1328,15 +1347,24 @@ export class Bending {
       const M = f.style && f.style.tech.melee, on = M && f.action === 'tech' && f.tech && (f.tech === M || f.tech.variantOf === M) && !f.dead;
       if (!on) { f._dagger2 = 0; if (f._blades) { f._blades.forEach(b => b.dispose()); f._blades = null; } continue; }
       if (f._dagger2 && f.time >= f._dagger2) { f._dagger2 = 0; this.daggerHit(f, false); }
-      const blade = /blade_spin/.test(f.tech.clip), len = blade ? 1.3 : 0.5, u = f.actionU;
-      const k = u < 0.2 ? u / 0.2 : u > 0.85 ? Math.max(0, (1 - u) / 0.15) : 1;   // the flame grows from the fist and dies with the follow-through
-      if (!f._blades) f._blades = ['L', 'R'].map(() => makeFireTube(w.scene, 10, 8, { flow: 12, tipFade: 0.2 }));
+      const blade = /blade_spin/.test(f.tech.clip), len = blade ? 1.4 : 0.75, u = f.actionU;
+      const k = u < 0.15 ? u / 0.15 : u > 0.88 ? Math.max(0, (1 - u) / 0.12) : 1;   // the blades spring from the fists and die with the follow-through
+      // (19 Nov, the user's picture: thin blades of flame out of the side of each fist, yellow at the fist to red points)
+      // along the hand bone's cross axis (thumb to little finger, mirrored left / right), tipped a little back, so the
+      // blade turns with the wrist through every cut; an outer red-orange blade and a short yellow-white core
+      if (!f._blades) f._blades = [0, 1, 2, 3].map(i => makeFireTube(w.scene, 10, 8, i % 2 ? { flow: 16, heat: 1, tipFade: 0.3, core: 0xfffbe0, mid: 0xffe46a, edge: 0xffb020 } : { flow: 12, heat: 0.7, tipFade: 0.15, core: 0xffc040, mid: 0xff6a12, edge: 0xc82808 }));
       ['L', 'R'].forEach((sd, i) => {
-        const hand = f.handPos(sd, new THREE.Vector3()), fb = f.hero && f.hero.bones['DEF-forearm' + sd];
-        const dir = fb ? hand.clone().sub(fb.getWorldPosition(new THREE.Vector3())).normalize() : f.forward(new THREE.Vector3());
-        const tip = hand.clone().addScaledVector(dir, len * k + 0.05);
-        f._blades[i].set([tip, hand.clone().lerp(tip, 0.5), hand], (q) => (blade ? 0.16 : 0.1) * (0.3 + 0.7 * q) * Math.max(0.2, k), f.time);
-        if (k > 0.5 && Math.random() < (blade ? 0.7 : 0.35)) w.fx.fire(tip, _v.set(rand(-0.5, 0.5), rand(0.5, 1.5), rand(-0.5, 0.5)), blade ? 0.32 : 0.22, 0.2);   // licks trailing off the tip
+        const hb = f.hero && f.hero.bones['DEF-hand' + sd], fb = f.hero && f.hero.bones['DEF-forearm' + sd];
+        const hand = f.handPos(sd, new THREE.Vector3());
+        let dir;
+        if (hb && fb) {
+          const q = hb.getWorldQuaternion(new THREE.Quaternion()), F = hand.clone().sub(fb.getWorldPosition(new THREE.Vector3())).normalize();
+          dir = new THREE.Vector3(sd === 'L' ? -1 : 1, 0, 0).applyQuaternion(q).addScaledVector(F, -0.45).normalize();
+        } else dir = f.forward(new THREE.Vector3());
+        const L = len * k, tip = hand.clone().addScaledVector(dir, L + 0.04), mid = hand.clone().addScaledVector(dir, L * 0.5);
+        f._blades[i * 2].set([tip, mid, hand], (q) => (blade ? 0.09 : 0.065) * (0.15 + 0.85 * q) * Math.max(0.2, k), f.time);
+        f._blades[i * 2 + 1].set([hand.clone().addScaledVector(dir, L * 0.5), hand.clone().addScaledVector(dir, L * 0.25), hand], (q) => (blade ? 0.05 : 0.035) * (0.2 + 0.8 * q) * Math.max(0.2, k), f.time);
+        if (k > 0.5 && Math.random() < (blade ? 0.5 : 0.2)) w.fx.fire(tip, _v.set(rand(-0.5, 0.5), rand(0.5, 1.5), rand(-0.5, 0.5)), blade ? 0.28 : 0.16, 0.18);   // licks off the point
       });
     }
   }
@@ -1346,22 +1374,24 @@ export class Bending {
     for (const C of this.comets || []) {
       const f = C.f; C.t += dt;
       if (!C.core) {
-        C.core = new THREE.Mesh(this.cometGeo || (this.cometGeo = new THREE.SphereGeometry(1, 20, 14)), new THREE.MeshBasicMaterial({ color: 0xffe27a, transparent: true, opacity: 0.95, depthWrite: false }));
-        C.glow = new THREE.Mesh(this.cometGeo, new THREE.MeshBasicMaterial({ color: 0xff5a0a, transparent: true, opacity: 0.55, depthWrite: false }));
-        w.scene.add(C.core); w.scene.add(C.glow); C.tail = makeFireTube(w.scene, 24, 10, { flow: 14 });
+        // a small sun (firefx sunMaterial): a defined, boiling ball, yellow-white at the centre to a red rim, inside a
+        // flickering corona; the tail tapers away from it
+        C.core = new THREE.Mesh(this.cometGeo || (this.cometGeo = new THREE.IcosahedronGeometry(1, 4)), sunMaterial());
+        C.glow = new THREE.Mesh(this.cometGeo, coronaMaterial());
+        w.scene.add(C.core); w.scene.add(C.glow); C.tail = makeFireTube(w.scene, 24, 10, { flow: 14, core: 0xffd060, mid: 0xff6a10, edge: 0xb02008, heat: 0.7 });
       }
       if (C.state === 'charge') {
         if (f.dead || f.reacting() || f.action !== 'tech' || f.tech !== f.style.tech.comet) { C.dead = true; continue; }
         f.handPos('L', _v).add(f.handPos('R', _v2)).multiplyScalar(0.5); C.pos.lerp(_v.addScaledVector(f.forward(_v2), 0.25), 0.5);
         C.r = Math.min(0.7, 0.15 + C.t * 0.9);
-        for (let i = 0; i < 3; i++) { const a = rand(0, 6.28); w.fx.fire(_v.copy(C.pos).add(_v2.set(Math.cos(a) * 1.2, rand(-0.6, 0.8), Math.sin(a) * 1.2)), _v3.set(-Math.cos(a) * 4, rand(-1, 1), -Math.sin(a) * 4), 0.25, 0.25); }   // flame drawn in to the forming ball
-        w.audio.hold('comet', 'fireLoop', 1.2, C.pos);
+        if (Math.random() < 0.5) { const a = rand(0, 6.28); w.fx.fire(_v.copy(C.pos).add(_v2.set(Math.cos(a) * 0.9, rand(-0.4, 0.6), Math.sin(a) * 0.9)), _v3.set(-Math.cos(a) * 3.5, rand(-0.5, 0.5), -Math.sin(a) * 3.5), 0.16, 0.22); }   // a lick of flame drawn in to the forming ball
+        w.audio.torch('comet', 0.6 + C.t, C.pos);
       } else {
         const t = f.target && !f.target.dead ? f.target : null;
         if (t) { const want = t.chestPos(_v).sub(C.pos).normalize().multiplyScalar(17); C.vel.lerp(want, Math.min(1, dt * 1.2)); }   // a gentle homing
         C.pos.addScaledVector(C.vel, dt); C.trail.unshift(C.pos.clone()); if (C.trail.length > 22) C.trail.pop();
-        w.audio.hold('comet', 'fireLoop', 2.0, C.pos);
-        if (Math.random() < 0.7) w.fx.spark(C.pos, 0xffc060, 2); if (Math.random() < 0.25) w.fx.smoke(C.trail[C.trail.length - 1], 0.8);
+        w.audio.torch('comet', 2.0, C.pos);   // the blowtorch roar
+        if (Math.random() < 0.7) w.fx.ember(C.pos, 0xffc060, _v2.copy(C.vel).multiplyScalar(-0.2).add(_v3.set(rand(-1, 1), rand(-1, 1), rand(-1, 1)))); if (Math.random() < 0.25) w.fx.smoke(C.trail[C.trail.length - 1], 0.8);
         const gy = w.arena.groundAt(C.pos.x, C.pos.z, C.pos.y + 1);
         let hit = C.t > 2.4 || C.pos.y - gy < C.r * 0.6;
         for (const v of w.fighters) if (v !== f && !v.dead && v.chestPos(_v3).distanceTo(C.pos) < C.r + v.radius + 0.3) hit = true;
@@ -1370,9 +1400,11 @@ export class Bending {
         if (C.trail.length > 2) C.tail.set(C.trail, (q) => C.r * 1.15 * (1 - q * 0.8), C.t * 3);
       }
       // a roiling skin of flame: licks burst off the surface all round and stream back
-      for (let i = 0; i < (C.state === 'fly' ? 7 : 3); i++) { const u = _v.set(rand(-1, 1), rand(-1, 1), rand(-1, 1)).normalize(); w.fx.fire(_v2.copy(C.pos).addScaledVector(u, C.r * 0.8), _v3.copy(u).multiplyScalar(2.5).addScaledVector(C.vel, -0.3).add(_v.set(0, 1, 0)), C.r * 0.75, 0.22); }
+      // a few tongues of flame lick off the surface and stream back (fewer than before: the ball stays defined)
+      for (let i = 0; i < (C.state === 'fly' ? 3 : Math.random() < 0.4 ? 1 : 0); i++) { const u = _v.set(rand(-1, 1), rand(-1, 1), rand(-1, 1)).normalize(); w.fx.fire(_v2.copy(C.pos).addScaledVector(u, C.r * 0.95), _v3.copy(u).multiplyScalar(2.0).addScaledVector(C.vel, -0.35), C.r * 0.45, 0.2); }
+      C.core.material.uniforms.uTime.value = C.t; C.glow.material.uniforms.uTime.value = C.t;
       this.light.position.copy(C.pos); this.lightBoost = 2;
-      const pulse = 1 + Math.sin(C.t * 30) * 0.06; C.core.position.copy(C.pos); C.core.scale.setScalar(C.r * 0.75 * pulse); C.glow.position.copy(C.pos); C.glow.scale.setScalar(C.r * 1.35 * pulse);
+      const pulse = 1 + Math.sin(C.t * 30) * 0.06; C.core.position.copy(C.pos); C.core.scale.setScalar(C.r * 0.8 * pulse); C.glow.position.copy(C.pos); C.glow.scale.setScalar(C.r * 1.3 * pulse);
     }
     this.comets = (this.comets || []).filter(C => { if (C.dead) { if (C.core) { w.scene.remove(C.core); w.scene.remove(C.glow); C.core.material.dispose(); C.glow.material.dispose(); C.tail.dispose(); } } return !C.dead; });
   }
@@ -1798,7 +1830,7 @@ export class Bending {
     this.world.arena.cameraBlockers = this.world.arena.cameraBlockers.filter(m => !this.pillars.some(p => p.mesh === m));
     for (const [f] of this.holds) this.holdEnd(f);
     for (const f of this.world.fighters) { if (f.bubble) { this.world.scene.remove(f.bubble); f.bubble = null; } f.restrainT = 0; f.defense = null; }
-    for (const B of this.breaths || []) for (const k of ['outer', 'body', 'core']) if (B[k]) B[k].dispose(); this.breaths = [];
+    for (const B of this.breaths || []) { for (const k of ['outer', 'body', 'core', 'line']) if (B[k]) B[k].dispose(); for (const r of B.rings || []) this.world.scene.remove(r.m); B.f.breathHold = false; } this.breaths = [];
     for (const C of this.comets || []) if (C.core) { this.world.scene.remove(C.core); this.world.scene.remove(C.glow); C.tail.dispose(); } this.comets = [];
     for (const f of this.world.fighters || []) if (f._blades) { f._blades.forEach(b => b.dispose()); f._blades = null; }
     this.objs = []; this.defs = []; this.rings = []; this.spikes = []; this.pillars = []; this.burns = [];
