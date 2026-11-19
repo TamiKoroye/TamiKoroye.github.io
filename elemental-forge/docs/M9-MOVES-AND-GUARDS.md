@@ -89,3 +89,24 @@ soles. HAND punches and LEG throws a Jet Blast without ending the glide. DODGE a
   rig with Ninja Idle (turns and steps too much for a stance), Standing Block Idle and the Action Adventure idles.
 - Tests: all suites pass (play 86, overhaul 52, milestone 22, effects 49, acceptance 15, m9). Jitter gate: four
   sequences above r19, all with the moves reviewed frame by frame (Water kicks and arch, Earth Flair).
+
+## r22 to r24 (18 and 19 Nov, after the phone recordings and the new water references)
+- Water HAND: the arm-wave whip (Wave Hip Hop Dance) was the contortion in the recording; it is out of the chain.
+  The lift on held JUMP uses the stance instead of Falling Into Pool.
+- Water LEG and the air somersault: ice and water rise out of the floor at the rival (spike lines, an eruption under
+  the rival, a ring of spikes for the spin), following the new reference videos. No whips on the kicks.
+- Water riding the ice arch: punches only (water and ice balls), no whips.
+- Fire: no flames on the hands at rest (only on a strike). The air somersault drops a flame column that spreads along
+  the floor. The fire wall stays where it was raised; HAND throws it forward.
+- Earth: pillars rise from the real floor and replace a pillar on the same spot (no stacking, nobody stands on top);
+  HAND breaks a pillar into a boulder and punches it at the rival. Rock gathering ping-pongs smoothly.
+- Air: the Corkscrew Kip Up starts at once; the corkscrew and cartwheel dodges carry wind round the body.
+- Everyone: the head turns to the rival (neck and head, up to 70 degrees); hit fighters are kept above the floor;
+  a blow from the front knocks the fighter backwards.
+- Water sounds: the whip and cast takes are now cut from a recording of waves.
+
+## r25 (19 Nov, "Water cannot whip the opponent anymore")
+The 18 Nov change made every landed water whip a grab, so the side and diagonal lashes never did damage. The grab is
+back to the r19 rule: the overhead whip grabs on the ground, any whip grabs a rival in the air, at most once every 3 s.
+Measured on a scripted round (rival at 3 m and 4 m, presses of 2 and 10 frames): the lash hits (Water Whip, 10 damage),
+then the overhead whip grabs and slams (16).
