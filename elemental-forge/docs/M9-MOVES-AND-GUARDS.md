@@ -154,3 +154,8 @@ touch the body.
   - Charged (LEG held): a big ice line, then a geyser under the rival that throws them up.
 - Scripted check (rival at 3, 6, 9 m): every kick lands at every distance. Grab check: a guarding Air rival at 2.8 m,
   and a rival held 3 m up at 8 m and 11 m, are each grabbed and slammed (16).
+- Tests: all suites pass (m9, play 86, overhaul 52, milestone 22, effects 46, acceptance 15). The m9 ground-grab check
+  now requires the first HAND at a close rival to grab, and a lash at 5 m to hit without grabbing (the grab is armed at
+  the press, so the strike's lunge does not turn a lash into a grab). Jitter gate: Water kicks and Earth kicks over the
+  r19 numbers as before; Water guard on/off over this time (the Water stance loop, after the guard drops), filmed and
+  checked frame by frame: the arms come down from the guard into the stance smoothly.
