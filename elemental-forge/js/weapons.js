@@ -283,7 +283,7 @@ export class Weapons {
   }
   tryWhipGrab(W) {
     const f = W.f, t = f.target;
-    if (W.el !== 'water' || W.kind === 'hold' || W.frozen || (f.input && f.input.handHeld) || !this.canWhipGrab(f)) return false;
+    if (W.el !== 'water' || W.kind === 'hold' || W.frozen || (f.input && f.input.handHeld) || !f.grabArmed || f.tech !== f.grabArmed || !this.canWhipGrab(f)) return false;
     f.grabCd = f.time + 2.5; W.hit.add(t); t.guarding = false;
     this.grabSlam(f, t, W.ls);
     return true;

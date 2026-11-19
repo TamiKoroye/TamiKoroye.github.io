@@ -113,12 +113,14 @@ const CHECKS = {
     // 3. the whip grabs a rival standing on the ground, lifts over the head and slams
     await setup('water', 'earth', 3.2); await step(70);   // (the HAND chain starts again from the whip after 0.9 s back in stance)
     let peak = 0, grabbed = false, landedDown = false;
-    // (19 Nov: the first whip used to grab; the user then reported "Water cannot whip the opponent anymore", so the grab
-    // is back on the overhead whip, the third HAND of the chain. The check throws the side lash and the jab first (they
-    // must hit, not grab) and then requires the overhead whip to grab, lift past 2.4 m and slam, as before.)
-    let lashHit = false; { const hp0 = await ev('O.hp'); await tap('KeyF'); await step(28); await tap('KeyF'); await step(28); lashHit = (await ev('O.hp')) < hp0 && !(await ev('(E.world.bending.weapons.grabs || []).length')); }
+    // (19 Nov, r27: after the user's recording of r26, "I am close to opponent, yet I don't grab them", the grab is
+    // decided on the throw: the first HAND at a close rival grabs. The lash is checked separately at 5 m, where it
+    // must hit without grabbing.)
+    let lashHit = false;
+    { await setup('water', 'earth', 5); await step(70); const hp0 = await ev('O.hp'); await tap('KeyF'); await step(40); lashHit = (await ev('O.hp')) < hp0 && !(await ev('(E.world.bending.weapons.grabs || []).length')); }
+    await setup('water', 'earth', 3.2); await step(70);
     await tap('KeyF'); for (const r of await step(110, "({ g: (E.world.bending.weapons.grabs || []).length, oy: O.pos.y - O.groundY, oa: O.action, dz: (O.pos.x - P.pos.x) * Math.sin(P.yaw) + (O.pos.z - P.pos.z) * Math.cos(P.yaw) })")) { if (r.g) grabbed = true; if (r.g) peak = Math.max(peak, r.oy); if (r.oa === 'down') landedDown = true; }
-    check('Water whip grabs a rival on the ground, lifts them over the head and slams them down (the side lash hits first)', lashHit && grabbed && peak > 2.4 && landedDown, `lash hit ${lashHit}, grabbed ${grabbed}, lifted to ${peak.toFixed(2)} m, knocked down ${landedDown}`);
+    check('Water whip grabs a close rival on the ground, lifts them over the head and slams them down (and lashes at 5 m)', lashHit && grabbed && peak > 2.4 && landedDown, `lash hit ${lashHit}, grabbed ${grabbed}, lifted to ${peak.toFixed(2)} m, knocked down ${landedDown}`);
     // 4. somersault smash from the air, Water and Fire
     for (const el of ['water', 'fire']) {
       await setup(el, 'earth', 3.5); await step(20);
