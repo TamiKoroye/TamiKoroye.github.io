@@ -54,8 +54,11 @@ breath by at most 0.3 s. The AI never holds SPECIAL, so it keeps breathing on a 
 - Collision: anyone inside the cone (distance from the axis under the cone's radius at that point) takes 3 every
   0.15 s and is set on fire (engulf, 1.8 s).
 ### Fire Jabs / Fireballs
-- Assets: fire_jab, fire_punch, earth_punch (alternating, mirrored for left-right). Now 0.33 s, 0.30 s, 0.48 s.
-- Fire: the fireball leaves the punching fist at the impact frame (unchanged projectile).
+- Assets: fire_jab and fire_punch (the jab and the cross), each mirrored, so taps alternate left and right: 0.33 s and
+  0.30 s. The lunging hook (earth_punch) is out of the jab chain: it turns the whole body a quarter turn, which at jab
+  speed read as a jerk.
+- Fire: the fireball leaves the punching fist at the impact frame. It is now a compact bright ball with a short
+  connected flame tail (it was a long trail of large puffs that hid the fighter); its burst on impact is half the size.
 - Collision: projectile, 7 damage.
 ### Fire Stream
 - Asset: the held pose (unchanged). Fire: one firefx flame body from between the palms along the aim, 15 cm wide at the
@@ -87,6 +90,22 @@ breath by at most 0.3 s. The AI never holds SPECIAL, so it keeps breathing on a 
 ### Fire Shield, Jet Propulsion
 - Unchanged this round: the wall from the feet on GUARD, the jet glide on DODGE (legs held in the board crouch, no
   running). Reviewed again in phase two.
+
+## Readability pass
+Frames filmed at full rate (the jitter gate's frame capture) showed the fighter buried in fire during a fast exchange:
+the fist flare, the fireballs' puff trails, their impact bursts and the burning ground (licks 1.4 m tall, six patches)
+added up to a wall of flame. Now: fireballs as above, the fist flare about 40% smaller, burning ground in low licks
+(about 0.5 m), impact bursts halved. Damage is unchanged.
+
+## Tests completed
+- Scripted round (local and on the dev URL): jabs 0.33 / 0.30 s, each fireball hits (7); daggers 0.31 / 0.30 s and
+  the blade 0.56 s land (5 and 12); the whip lands (10) with the stick pulled back at 5 m; the bomb dives from a jump
+  and its wave hits (11); the Comet charges, flies and explodes (17 at that range); the breath burns in ticks of 3.
+- Frame sheets of every move reviewed (breath, stream, daggers and blade, whip, bomb, comet, jabs).
+- All suites: see the build notes in M9-MOVES-AND-GUARDS.md.
+- Jitter gate: the Fire hand sequences are above the r19 numbers in snaps per second. Reviewed frame by frame: the
+  motion is continuous (no pops); the count comes from the speed asked for in the brief (jabs 0.3 s, dagger slashes
+  0.3 s), which turns the arm much further per frame than the old 0.56 s punches.
 
 ## Limitations and what is missing
 - No dedicated motion capture for the dagger slashes or the blade: they are whip clips played fast. They read as cuts,
