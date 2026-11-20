@@ -91,13 +91,13 @@ void main() {
   float g = fbm(vP * 3.0 + vec3(0.0, uTime * 3.0, uTime * 2.0));
   float rim = pow(1.0 - vFacing, 1.6) * (0.55 + 0.6 * g);
   if (rim < 0.03) discard;
-  gl_FragColor = vec4(mix(vec3(0.85, 0.15, 0.02), vec3(1.0, 0.55, 0.08), g), rim * 0.85);
+  gl_FragColor = vec4(mix(vec3(0.75, 0.1, 0.02), vec3(1.0, 0.5, 0.06), g), min(1.0, rim * 1.05));
 }`;
 export function sunMaterial(rough = 0.28) {
   return new THREE.ShaderMaterial({ vertexShader: SUN_VS, fragmentShader: SUN_FS, uniforms: { uTime: { value: 0 }, uRough: { value: rough } } });
 }
 export function coronaMaterial() {
-  return new THREE.ShaderMaterial({ vertexShader: SUN_VS, fragmentShader: CORONA_FS, transparent: true, depthWrite: false, side: THREE.DoubleSide, uniforms: { uTime: { value: 0 }, uRough: { value: 0.45 } } });
+  return new THREE.ShaderMaterial({ vertexShader: SUN_VS, fragmentShader: CORONA_FS, transparent: true, depthWrite: false, side: THREE.DoubleSide, uniforms: { uTime: { value: 0 }, uRough: { value: 0.65 } } });
 }
 
 // ---------------------------------------------------------------- rocket-exhaust jets (Fire's jump, dodge and glide)

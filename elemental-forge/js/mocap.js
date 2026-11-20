@@ -87,7 +87,7 @@ export function adoptTiming(styles) {
   for (const st of Object.values(styles)) for (const T of techList(st)) {
     if (!T.clip) continue;
     const list = names(T).filter(n => MOCAP[n]); if (!list.length) continue;
-    const orig = { dur: T.dur, events: T.events, active: T.active, jumpAt: T.jumpAt, cancel: T.cancel, full: T.full };
+    const orig = { dur: T.dur, rawTiming: T.rawTiming, events: T.events, active: T.active, jumpAt: T.jumpAt, cancel: T.cancel, full: T.full };
     // every alternative take gets its own timing, so each plays at its proper speed with its impact on the hit
     const timings = list.map(n => timing(orig, n, T.clipSpeed || CLIP_SPEED[n] || SPEED[st.key] || 1.5));
     Object.assign(T, timings[0]); T.clip = list[0];
@@ -102,7 +102,9 @@ function timing(orig, name, sp) {
   const evU = (m.impact ?? m.clip.duration * 0.5) / m.clip.duration;   // evasions without a strike: timed from the middle
   const map = (u) => THREE.MathUtils.clamp(evU + (u - u0) * orig.dur / dur, 0, 0.98);
   const out = { clip: name, dur, impactT: evU * dur };
-  if (orig.events) out.events = orig.events.map(([u, n]) => [map(u), n]);
+  // (a technique marked rawTiming already gives its events as fractions of this clip, e.g. the Fire Comet's charge on
+  // the raised arms and launch on the downward drive; they are kept as written)
+  if (orig.events) out.events = orig.rawTiming ? orig.events.map(e => [...e]) : orig.events.map(([u, n]) => [map(u), n]);
   if (orig.active) out.active = { ...orig.active, from: map(orig.active.from), to: Math.max(map(orig.active.to), map(orig.active.from) + 0.08) };
   if (orig.jumpAt) out.jumpAt = [map(orig.jumpAt[0]), orig.jumpAt[1]];
   // the next technique can start 0.22 s after the impact: the strike's follow-through shows, the next one

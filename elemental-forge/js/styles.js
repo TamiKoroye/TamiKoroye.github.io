@@ -478,5 +478,9 @@ STYLES.fire.tech.whip = T({ name: 'Fire Whip', clip: ['whip_v', 'whip_h'], clipS
 STYLES.fire.tech.bomb = T({ name: 'Fire Bomb', clip: 'fire_fly', clipSpeed: 2.0, dur: 0.6, cost: 18, cancel: 0.95, move: 0, keys: K0, events: [] });
 // Fire Comet (special): SPECIAL held for 0.3 s and released. Both hands draw a growing ball of fire in front of the
 // chest (Standing 2H Magic Attack) and drive it out; it flies at the rival and explodes. 40 energy, 8 s cooldown.
-STYLES.fire.tech.comet = T({ name: 'Fire Comet', clip: 'magic_2h', clipSpeed: 1.5, dur: 1.2, cost: 40, cancel: 0.85, move: 0, keys: K0,
-  events: [[0.12, 'fire.cometCharge'], [0.6, 'fire.cometLaunch']] });
+// (20 Nov, after review) the Comet: both arms rise overhead (whip_v, the overhead strike), and the pose is HELD there
+// while a concentrated mass of fire gathers above the raised palms and swells into an enormous glowing ball
+// (updateComets pins the clip and the technique's clock for the charge); then the hips and shoulders turn and the arms
+// drive forwards and downwards, and the Comet leaves on that drive. Events as fractions of the 1.4 s clip.
+STYLES.fire.tech.comet = T({ name: 'Fire Comet', clip: 'whip_v', clipSpeed: 1, dur: 1.4, cost: 40, cancel: 0.85, move: 0, keys: K0, rawTiming: true,
+  events: [[0.17, 'fire.cometCharge'], [0.63, 'fire.cometLaunch']] });

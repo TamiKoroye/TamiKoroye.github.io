@@ -315,13 +315,13 @@ export class Bending {
       }
       case 'fire.cometCharge': {
         // the hands draw a ball of fire in front of the chest; it grows until the launch (updateComets)
-        (this.comets = this.comets || []).push({ f, t: 0, state: 'charge', pos: f.chestPos(new THREE.Vector3()), vel: new THREE.Vector3(), r: 0.15, trail: [] });
+        (this.comets = this.comets || []).push({ f, t: 0, state: 'charge', pos: f.chestPos(new THREE.Vector3()).setY(f.pos.y + 2.3), vel: new THREE.Vector3(), r: 0.1, trail: [] });
         w.audio.fireWhoosh(0.8); return;
       }
       case 'fire.cometLaunch': {
         const C = (this.comets || []).find(c => c.f === f && c.state === 'charge'); if (!C) return;
         const t = f.target && !f.target.dead ? f.target : null, dir = t ? t.chestPos(new THREE.Vector3()).sub(C.pos).normalize() : f.forward(new THREE.Vector3());
-        C.state = 'fly'; C.t = 0; C.vel.copy(dir).multiplyScalar(17); C.r = 0.95;
+        C.state = 'fly'; C.t = 0; C.vel.copy(dir).multiplyScalar(17); C.r = Math.max(C.r, 1.0); f.cometHold = false;
         w.audio.fireWhoosh(1.5); w.shake(0.2, C.pos); w.popup(f, 'FIRE COMET', true); return;
       }
       case 'fire.breathInhale': {
@@ -1381,32 +1381,49 @@ export class Bending {
         w.scene.add(C.core); w.scene.add(C.glow); C.tail = makeFireTube(w.scene, 24, 10, { flow: 14, core: 0xffd060, mid: 0xff6a10, edge: 0xb02008, heat: 0.7 });
       }
       if (C.state === 'charge') {
-        if (f.dead || f.reacting() || f.action !== 'tech' || f.tech !== f.style.tech.comet) { C.dead = true; continue; }
-        f.handPos('L', _v).add(f.handPos('R', _v2)).multiplyScalar(0.5); C.pos.lerp(_v.addScaledVector(f.forward(_v2), 0.25), 0.5);
-        C.r = Math.min(0.7, 0.15 + C.t * 0.9);
-        if (Math.random() < 0.5) { const a = rand(0, 6.28); w.fx.fire(_v.copy(C.pos).add(_v2.set(Math.cos(a) * 0.9, rand(-0.4, 0.6), Math.sin(a) * 0.9)), _v3.set(-Math.cos(a) * 3.5, rand(-0.5, 0.5), -Math.sin(a) * 3.5), 0.16, 0.22); }   // a lick of flame drawn in to the forming ball
-        w.audio.torch('comet', 0.6 + C.t, C.pos);
+        if (f.dead || f.reacting() || f.action !== 'tech' || f.tech !== f.style.tech.comet) { C.dead = true; f.cometHold = false; continue; }
+        // (20 Nov, after review) formation: the arms are raised overhead and HELD there (the technique's clock and the
+        // clip both wait, hero.js) for about a second while a concentrated mass of fire gathers just above the raised
+        // palms: streams of flame are drawn in from all round, and the ball swells rapidly into an enormous one
+        const pinU = 0.22, HOLD = 1.05;
+        if (f.actionT / f.A.dur >= pinU && C.t < HOLD) { f.actionT = pinU * f.A.dur; f.cometHold = true; } else if (C.t >= HOLD) f.cometHold = false;
+        const k = Math.min(1, C.t / HOLD), grow = k * k * (3 - 2 * k);
+        C.r = 0.1 + 1.05 * grow;
+        f.handPos('L', _v).add(f.handPos('R', _v2)).multiplyScalar(0.5); _v.y += C.r + 0.12;
+        C.pos.lerp(_v, 0.6);
+        if (Math.random() < 0.45) { const a = rand(0, 6.28), e = rand(-0.6, 0.9), R = C.r + rand(1.0, 1.8); w.fx.fire(_v.copy(C.pos).add(_v2.set(Math.cos(a) * Math.cos(e) * R, Math.sin(e) * R, Math.sin(a) * Math.cos(e) * R)), _v3.copy(_v2).multiplyScalar(-rand(2.5, 3.5)), rand(0.14, 0.22), 0.3); }   // streams of flame drawn in to the forming ball
+        if (Math.random() < 0.6) w.fx.ember(_v.copy(C.pos).add(_v2.set(rand(-2, 2), rand(-1, 2), rand(-2, 2))), 0xffc060, _v3.copy(_v2).multiplyScalar(-1.6));
+        w.audio.jet('comet', 0.5 + 1.2 * grow, C.pos);
       } else {
         const t = f.target && !f.target.dead ? f.target : null;
         if (t) { const want = t.chestPos(_v).sub(C.pos).normalize().multiplyScalar(17); C.vel.lerp(want, Math.min(1, dt * 1.2)); }   // a gentle homing
-        C.pos.addScaledVector(C.vel, dt); C.trail.unshift(C.pos.clone()); if (C.trail.length > 22) C.trail.pop();
-        w.audio.torch('comet', 2.0, C.pos);   // the blowtorch roar
-        if (Math.random() < 0.7) w.fx.ember(C.pos, 0xffc060, _v2.copy(C.vel).multiplyScalar(-0.2).add(_v3.set(rand(-1, 1), rand(-1, 1), rand(-1, 1)))); if (Math.random() < 0.25) w.fx.smoke(C.trail[C.trail.length - 1], 0.8);
+        C.pos.addScaledVector(C.vel, dt); C.trail.unshift(C.pos.clone()); if (C.trail.length > 34) C.trail.pop();
+        w.audio.jet('comet', 2.2, C.pos);   // the roar: combustion rumble, pressurised rush and crackle
+        // sparks, embers and small fragments of flame peeling away behind it
+        for (let i = 0; i < 3; i++) w.fx.ember(_v.copy(C.pos).add(_v2.set(rand(-1, 1), rand(-1, 1), rand(-1, 1)).multiplyScalar(C.r)), i ? 0xffc060 : 0xfff0c0, _v3.copy(C.vel).multiplyScalar(-rand(0.1, 0.35)).add(_v2.set(rand(-2, 2), rand(-1, 2.5), rand(-2, 2))));
+        if (Math.random() < 0.3) w.fx.smoke(C.trail[C.trail.length - 1], 1.0);
         const gy = w.arena.groundAt(C.pos.x, C.pos.z, C.pos.y + 1);
         let hit = C.t > 2.4 || C.pos.y - gy < C.r * 0.6;
         for (const v of w.fighters) if (v !== f && !v.dead && v.chestPos(_v3).distanceTo(C.pos) < C.r + v.radius + 0.3) hit = true;
         for (const o of this.objs) if (o.state === 'flying' && o.owner !== f && o.pos.distanceTo(C.pos) < C.r + o.r) this.kill(o);
         if (hit) { this.cometBlast(C); C.dead = true; continue; }
-        if (C.trail.length > 2) C.tail.set(C.trail, (q) => C.r * 1.15 * (1 - q * 0.8), C.t * 3);
+        // a long, violently streaming tail: a wide red-orange outer body and a hotter yellow inner one, both writhing
+        if (C.trail.length > 2) {
+          const tw = C.trail.map((p, i) => i < 2 ? p : p.clone().add(_v.set(Math.sin(C.t * 23 + i * 0.9), Math.cos(C.t * 19 + i * 1.1), Math.sin(C.t * 17 + i * 0.7)).multiplyScalar(0.05 * i)));
+          C.tail.set(tw, (q) => C.r * (1.0 - 0.8 * q) * (0.85 + 0.15 * Math.sin(C.t * 31 + q * 9)), C.t * 3);   // (q = 0 at the ball, 1 at the end of the tail)
+          if (!C.tail2) C.tail2 = makeFireTube(w.scene, 20, 9, { flow: 20, core: 0xfff2b0, mid: 0xffc040, edge: 0xff7a18, heat: 1 });
+          C.tail2.set(tw.slice(0, Math.max(3, Math.floor(tw.length * 0.55))), (q) => C.r * 0.62 * (1 - 0.8 * q), C.t * 4);
+        }
       }
       // a roiling skin of flame: licks burst off the surface all round and stream back
       // a few tongues of flame lick off the surface and stream back (fewer than before: the ball stays defined)
-      for (let i = 0; i < (C.state === 'fly' ? 3 : Math.random() < 0.4 ? 1 : 0); i++) { const u = _v.set(rand(-1, 1), rand(-1, 1), rand(-1, 1)).normalize(); w.fx.fire(_v2.copy(C.pos).addScaledVector(u, C.r * 0.95), _v3.copy(u).multiplyScalar(2.0).addScaledVector(C.vel, -0.35), C.r * 0.45, 0.2); }
+      // thick turbulent layers of orange and deep-red flame roll off the surface all round and stream back
+      if (Math.random() < (C.state === 'fly' ? 0.7 : 0.25)) { const u = _v.set(rand(-1, 1), rand(-1, 1), rand(-1, 1)).normalize(); w.fx.fire(_v2.copy(C.pos).addScaledVector(u, C.r * 0.85), _v3.copy(u).multiplyScalar(rand(1.0, 2.0)).addScaledVector(C.vel, -0.3), C.r * rand(0.22, 0.32), 0.18); }
       C.core.material.uniforms.uTime.value = C.t; C.glow.material.uniforms.uTime.value = C.t;
       this.light.position.copy(C.pos); this.lightBoost = 2;
-      const pulse = 1 + Math.sin(C.t * 30) * 0.06; C.core.position.copy(C.pos); C.core.scale.setScalar(C.r * 0.8 * pulse); C.glow.position.copy(C.pos); C.glow.scale.setScalar(C.r * 1.3 * pulse);
+      const pulse = 1 + Math.sin(C.t * 30) * 0.06; C.core.position.copy(C.pos); C.core.scale.setScalar(C.r * 0.78 * pulse); C.glow.position.copy(C.pos); C.glow.scale.setScalar(C.r * 1.4 * pulse);
     }
-    this.comets = (this.comets || []).filter(C => { if (C.dead) { if (C.core) { w.scene.remove(C.core); w.scene.remove(C.glow); C.core.material.dispose(); C.glow.material.dispose(); C.tail.dispose(); } } return !C.dead; });
+    this.comets = (this.comets || []).filter(C => { if (C.dead) { if (C.core) { w.scene.remove(C.core); w.scene.remove(C.glow); C.core.material.dispose(); C.glow.material.dispose(); C.tail.dispose(); if (C.tail2) C.tail2.dispose(); } } return !C.dead; });
   }
   cometBlast(C) {
     // (19 Nov, after review: "can be more destructive") the dome of fire, a ring of fire rolling out along the floor, a
@@ -1831,7 +1848,7 @@ export class Bending {
     for (const [f] of this.holds) this.holdEnd(f);
     for (const f of this.world.fighters) { if (f.bubble) { this.world.scene.remove(f.bubble); f.bubble = null; } f.restrainT = 0; f.defense = null; }
     for (const B of this.breaths || []) { for (const k of ['outer', 'body', 'core', 'line']) if (B[k]) B[k].dispose(); for (const r of B.rings || []) this.world.scene.remove(r.m); B.f.breathHold = false; } this.breaths = [];
-    for (const C of this.comets || []) if (C.core) { this.world.scene.remove(C.core); this.world.scene.remove(C.glow); C.tail.dispose(); } this.comets = [];
+    for (const C of this.comets || []) if (C.core) { this.world.scene.remove(C.core); this.world.scene.remove(C.glow); C.tail.dispose(); if (C.tail2) C.tail2.dispose(); C.f.cometHold = false; } this.comets = [];
     for (const f of this.world.fighters || []) if (f._blades) { f._blades.forEach(b => b.dispose()); f._blades = null; }
     this.objs = []; this.defs = []; this.rings = []; this.spikes = []; this.pillars = []; this.burns = [];
     this.world.arena.resetLoose();
