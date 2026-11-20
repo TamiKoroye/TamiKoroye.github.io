@@ -128,13 +128,20 @@ export class Fighter {
   }
   handPos(side, out = new THREE.Vector3()) { return (this.hero ? this.hero.bones['DEF-hand' + side] : this.J['w' + side]).getWorldPosition(out); }
   footPos(side, out = new THREE.Vector3()) { return (this.hero ? this.hero.bones['DEF-foot' + side] : this.J['a' + side]).getWorldPosition(out); }
-  // (19 Nov, after review: Fire's jets come out of the heels only, and the hands' jets out of the fists only)
-  // the heel: from the ankle, a quarter of the foot's length back away from the toes and a little down toward the sole
+  // (20 Nov, after review: "the flames do not all come from the back of the leg, especially the bent leg ... the back
+  // of the leg is the heel. Investigate.") The rig's foot bone starts at the lower shin, about 0.29 m above the floor
+  // when standing, so a point a few centimetres from it was on the shin, not the heel. The heel is now found on the
+  // character's own mesh: in the rest pose, the lowest and rearmost vertex skinned to each foot, stored in the foot
+  // bone's local space, so it turns with the foot through every pose (bent, pointed, tucked).
   heelPos(side, out = new THREE.Vector3()) {
-    this.footPos(side, out); if (!this.hero) return out;
-    const toe = this.hero.bones['DEF-toe' + side]; if (!toe) return out;
-    toe.getWorldPosition(_heelT); _heelT.sub(out);
-    return out.addScaledVector(_heelT, -0.25).add(_heelD.set(0, -0.06, 0));
+    if (!this.hero) return this.footPos(side, out);
+    const bone = this.hero.bones['DEF-foot' + side];
+    if (!this._heelOff) this._heelOff = {};
+    if (this._heelOff[side] === undefined) this._heelOff[side] = findHeel(this.hero, side);
+    const o = this._heelOff[side];
+    if (!o) return this.footPos(side, out);
+    bone.updateWorldMatrix(true, false);
+    return out.copy(o).applyMatrix4(bone.matrixWorld);
   }
   // the fist: the middle of the closed hand, about where the knuckles fold (wrist to the base of the middle finger)
   fistPos(side, out = new THREE.Vector3()) {
@@ -260,7 +267,7 @@ export class Fighter {
         // the element launches the bender: a rising ice pillar / rock slab, or a burst of flame from the feet
         const M = MOBILITY[this.mob.kind === 'surf' ? this.mob.el : 'flame'];
         if (this.mob.kind === 'surf') B.weapons.surfLaunch(this, this.mob.el); else this.jumpFx(false);   // (the rising pillar would set its own lift)
-        this.buf.jump = 0; this.vel.y = M.launch; this.onGround = false; this.highJump = true; this.jetFuel = this.el === 'fire' ? 0.8 : 0;
+        this.buf.jump = 0; this.vel.y = M.launch; this.onGround = false; this.highJump = true; this.jetFuel = this.el === 'fire' ? 1.1 : 0;
         if (this.mob.kind === 'flame') this.endMob();
       }
       if (this.mob && this.mob.kind === 'fly') this.buf.jump = 0;   // in flight JUMP means climb
@@ -326,10 +333,10 @@ export class Fighter {
       }
       // JUMP while jet-gliding: the jets throw the bender up out of the glide (hold JUMP to keep the flame jets going)
       if (this.buf.jump && this.dodgeKind === 'rocket' && this.dodgeT > 0 && !this.charging) {
-        this.buf.jump = 0; this.dodgeT = 0; this.action = null; this.vel.y = st.jump.v; this.onGround = false; this.highJump = true; this.jetFuel = 0.8; this.jetUsed = false; this.jumpFx(true);
+        this.buf.jump = 0; this.dodgeT = 0; this.action = null; this.vel.y = st.jump.v; this.onGround = false; this.highJump = true; this.jetFuel = 1.1; this.jetUsed = false; this.jumpFx(true);
       }
       if (this.buf.jump && this.free('jump') && !this.charging && !this.guarding) {
-        if (this.onGround) { this.buf.jump = 0; this.action = null; this.vel.y = st.jump.v; this.onGround = false; this.airJumps = 0; this.jetFuel = 0.8; this.jetUsed = false; this.highJump = false; this.jumpFx(false); }
+        if (this.onGround) { this.buf.jump = 0; this.action = null; this.vel.y = st.jump.v; this.onGround = false; this.airJumps = 0; this.jetFuel = 1.1; this.jetUsed = false; this.highJump = false; this.jumpFx(false); }
         else if (this.airJumps < st.jump.air && this.vel.y < 5) { this.buf.jump = 0; this.airJumps++; this.vel.y = 7.2; this.jumpFx(true); }
       }
       // Fire can punch and kick out of its fire wall without dropping it
@@ -576,7 +583,10 @@ export class Fighter {
       this.vel.x += mx * 10 * dt; this.vel.z += mz * 10 * dt;
       B.weapons.selfColumn(this, alt);
     } else if (this.el === 'water') B.weapons.selfColumn(this, -1);
-    if (this.el === 'fire' && live && !restrained && !this.onGround && inp.jumpHeld && this.jetFuel > 0 && this.en > 1 && this.dodgeT <= 0 && !(this.A && this.A.react)) {
+    // (20 Nov, after review: "the jump should last longer ... not as long as Air, but a little longer") a tap keeps the
+    // heel jets burning for 0.5 s after take-off on its own (autoJetT), and holding JUMP has 1.1 s of fuel (was 0.8 s)
+    this.autoJetT = Math.max(0, (this.autoJetT || 0) - dt);
+    if (this.el === 'fire' && live && !restrained && !this.onGround && (inp.jumpHeld || this.autoJetT > 0) && this.jetFuel > 0 && this.en > 1 && this.dodgeT <= 0 && !(this.A && this.A.react)) {
       this.jetting = true; this.jetUsed = true; this.highJump = true;
       this.jetFuel -= dt; this.en -= 32 * dt;
       this.vel.y = Math.min(this.vel.y + 30 * dt, 4.6);
@@ -605,7 +615,7 @@ export class Fighter {
     if (this.pos.y <= gy + 0.001) {
       if (!this.onGround && this.airTime > 0.28 && (!this.A || this.A.soft) && this.dodgeT <= 0 && !flying) { this.startAction(this.highJump && this.airTime > 0.5 ? 'landHigh' : 'land'); w.fx.dust(this.pos, this.highJump ? 12 : 6, 1.4); w.audio.land(this.highJump ? 1 : 0.6, this.pos); }
       if (!this.onGround && this.highJump && this.el === 'earth' && this.airTime > 0.5 && !this.dead) { B.weapons.burst.spawn(this.pos.x, gy, this.pos.z, 0.3); w.shake(0.2, this.pos); w.audio.rumble(0.7); }   // heavy earth landing cracks the ground
-      if (!this.onGround) { this.highJump = false; this.jetFuel = 0.8; }
+      if (!this.onGround) { this.highJump = false; this.jetFuel = 1.1; }
       if (!this.onGround && this.jetUsed && this.el === 'fire' && !this.dead) {
         // a jet landing: the flames hit the ground and burst outward
         this.jetUsed = false; B.ring(this, 'fire', 2.4, 9, { dmg: 6, knock: 6, level: 1 }); w.shake(0.12, this.pos); w.audio.fireWhoosh(0.9);
@@ -928,7 +938,7 @@ export class Fighter {
       burning = true;
     } else if (live && this.jetBurstT > 0 && !this.onGround) {
       // the jump: straight down out of both heels (a touch against the drift)
-      for (const sd of ['L', 'R']) this.jets.fire('f' + sd, this.heelPos(sd, _v2), _fwd.set(-this.vel.x * 0.04, -1, -this.vel.z * 0.04), 2.4, 0.26);
+      for (const sd of ['L', 'R']) this.jets.fire('f' + sd, this.heelPos(sd, _v2), _fwd.set(-this.vel.x * 0.04, -1, -this.vel.z * 0.04), 2.4, 0.21);
       burning = true;
     }
     if (burning) this.world.audio.jet('jet' + (this === this.world.fighters[0] ? 0 : 1), this.dodgeKind === 'rocket' && this.dodgeT > 0 ? 1 : 0.85, this.pos);
@@ -936,7 +946,7 @@ export class Fighter {
   }
   jumpFx(air) {
     const w = this.world;
-    if (this.el === 'fire') { this.vel.y += air ? 0 : 0.6; this.jetBurstT = 0.35; w.audio.fireWhoosh(1.0); }   // the blast-off: rocket jets from the heels and the fists (fireJets), nothing else
+    if (this.el === 'fire') { this.vel.y += air ? 0 : 0.6; this.jetBurstT = 0.35; this.autoJetT = 0.5; w.audio.fireWhoosh(1.0); }   // the blast-off: rocket jets from the heels and the fists (fireJets), nothing else
     // (19 Nov, from the reference: the jump is driven by a blast out of the soles) Water: a gush of water from each
     // foot down into the floor; Air: a blast of wind from each foot that raises dust
     if ((this.el === 'water' || this.el === 'air') && w.bending) for (const s of ['L', 'R']) w.bending.weapons.footJet(this, this.el, s, { down: true, len: air ? 1.4 : 1.8, dur: 0.32, r: this.el === 'air' ? 0.3 : 0.22 });
@@ -1317,3 +1327,27 @@ const ARCH_H = 1.6;   // how high Water's ice arch lifts the bender off the floo
 const _up = new THREE.Vector3(0, 1, 0), _zx = new THREE.Vector3(), _qw = new THREE.Quaternion();
 const _axis = new THREE.Vector3(), _qwv = new THREE.Vector3(), _qi = new THREE.Quaternion(), _fwd = new THREE.Vector3(), _v = new THREE.Vector3(), _v2 = new THREE.Vector3();
 const _heelT = new THREE.Vector3(), _heelD = new THREE.Vector3();
+// the heel vertex of a foot on the hero's skinned mesh, in that foot bone's local space (see heelPos)
+function findHeel(hero, side) {
+  const name = 'DEF-foot' + side, toeName = 'DEF-toe' + side, p = new THREE.Vector3(), bindInv = new THREE.Matrix4();
+  for (const mesh of hero.meshes || []) {
+    const sk = mesh.skeleton, bi = sk.bones.findIndex(b => b.name === name), ti = sk.bones.findIndex(b => b.name === toeName);
+    if (bi < 0 || ti < 0) continue;
+    const g = mesh.geometry, pos = g.attributes.position, si = g.attributes.skinIndex, sw = g.attributes.skinWeight;
+    if (!pos || !si || !sw) continue;
+    // rest-pose positions in the skeleton's bind space; the foot's and toe's rest positions give "forward"
+    const footBind = new THREE.Vector3().setFromMatrixPosition(bindInv.copy(sk.boneInverses[bi]).invert());
+    const toeBind = new THREE.Vector3().setFromMatrixPosition(new THREE.Matrix4().copy(sk.boneInverses[ti]).invert());
+    const fwd = toeBind.clone().sub(footBind).setY(0).normalize();
+    let best = null, score = Infinity;
+    for (let v = 0; v < pos.count; v++) {
+      let w = 0; for (let k = 0; k < 4; k++) if (si.getComponent(v, k) === bi) w += sw.getComponent(v, k);
+      if (w < 0.5) continue;
+      p.fromBufferAttribute(pos, v).applyMatrix4(mesh.bindMatrix);
+      const sc = (p.y - footBind.y) * 1.0 + p.clone().sub(footBind).dot(fwd) * 1.2;   // low and to the back
+      if (sc < score) { score = sc; best = p.clone(); }
+    }
+    if (best) return best.applyMatrix4(sk.boneInverses[bi]);   // into the foot bone's local space
+  }
+  return null;
+}

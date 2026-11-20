@@ -202,3 +202,12 @@ hit_uppercut (each with a mirrored copy). Running Forward Flip and Getting Up (2
   Blade 1.04 s) instead of whole clips at 3x, so the arms follow the knife animations without the frantic waving. A
   knife hit plays Stomach Hit (about 0.58 s, mirrored to the side the blow came from); the Blade plays Big Stomach Hit
   as a stagger and no longer throws the rival down.
+
+## Seventh round (20 Nov), after review
+- Jump time: a tap now keeps the heel jets burning for 0.5 s after take-off without holding (autoJetT), and holding
+  JUMP has 1.1 s of jet fuel (was 0.8 s). A tapped jump is in the air about 1.2 s; Air still stays up far longer.
+- Heels: the old heel point stepped back from the ankle away from the toes; when the foot pointed down (the bent leg
+  in the jump) that pointed up the shin, so the flame started on the shin. The heel is now taken from the character's
+  own mesh: in the rest pose, the lowest, rearmost vertex skinned to each foot, kept in the foot bone's local space so
+  it follows the foot in every pose. The plume stays heel-thin for its first stretch before it swells, so it does not
+  wrap the foot or the shin.
