@@ -518,7 +518,7 @@ export class Hero {
     }
     if (f.breathHold && this.curName && /fire_breath/.test(this.curName)) ts = 0;
     if (f.cometHold && this.curName && /whip_v/.test(this.curName)) ts = 0;
-    if (f.breakerHold && this.curName && /tc_push/.test(this.curName)) ts = 0;   // (Earthbreaker: the gathering pose held while the mass forms)   // (the Fire Comet: the arms stay raised while it forms)   // (Dragon's Breath: the roaring pose is held while the flame pours out)
+    if (f.breakerHold && this.curName && /earth_pillar/.test(this.curName)) ts = 0;   // (Earthbreaker: the gathering pose held while the mass forms)   // (the Fire Comet: the arms stay raised while it forms)   // (Dragon's Breath: the roaring pose is held while the flame pours out)
     if (this.cur) this.cur.timeScale = ts;
     if (startAt && this.cur) this.cur.time = startAt;
     if (ts === 0 && this.cur && this.chargeHold !== undefined) this.cur.time += (this.chargeHold - this.cur.time) * Math.min(1, dt * 6);

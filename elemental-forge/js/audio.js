@@ -281,8 +281,7 @@ export class Audio {
   }
   rumble(k = 0.6, pos) {
     // (20 Nov, after review: "it makes a 'dumbp' sound when the character is hit ... it wasn't there before") the
-    // synthesised boom is no longer played here, so no blow, rock or stomp landing on a fighter makes it; it is heard
-    // only under the Earthbreaker's crash (earth.js), where it is called directly
+    // synthesised boom is no longer played anywhere (it was also under the Earthbreaker's crash: removed there too)
     if (this.recorded) { this.play(k >= 0.75 ? 'rockCrash' : 'rockLift', { vol: 0.8 + 0.6 * k, pos }); if (k >= 0.9) this.play('quake', { vol: 0.8 + 0.3 * k, pos }); return; }
     this.noise(0.5, 'lowpass', 300, 60, 0.6 * k, 0.7); this.tone(0.4, 70, 40, 0.35 * k, 'triangle');
   }

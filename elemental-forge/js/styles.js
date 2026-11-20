@@ -512,8 +512,11 @@ STYLES.earth.tech.shift = T({ name: 'Ground Shift', clip: 'whip_h_horse', clipSp
 STYLES.earth.tech.shackles = T({ name: 'Slab Shackles', clip: 'magic_2h', clipSpeed: 2.2, dur: 0.7, cost: 20, cancel: 0.85, move: 0, keys: K0, events: [[0.6, 'earth.shackles']] });
 // SPECIAL held 1 s: Earthbreaker (Tai Chi Push: the deep stance, the arms gather, then both palms drive forward; the
 // gathering pose is held about 1 s while the mass forms, earth.js updateBreakers)
-STYLES.earth.tech.breaker = T({ name: 'Earthbreaker', clip: 'tc_push', clipSpeed: 1.3, dur: 1.4, cost: 50, cancel: 0.9, move: 0, keys: K0, rawTiming: true,
-  events: [[0.12, 'earth.breakerGather'], [0.62, 'earth.breakerLaunch']] });
+// (20 Nov, after review: "the earth bender's stance on Earthbreaker is horrible ... does not look natural") the Tai Chi
+// push (arms flung wide, head back, the weight on one leg) is replaced by Casting Spell's low rooted lunge: he sinks with
+// the hands low by the hips while the rocks gather (held there, earth.js), then the arm sweeps and thrusts at the rival
+STYLES.earth.tech.breaker = T({ name: 'Earthbreaker', clip: 'earth_pillar', clipSpeed: 1.3, dur: 1.4, cost: 50, cancel: 0.75, move: 0, keys: K0, rawTiming: true,
+  events: [[0.03, 'earth.breakerGather'], [0.27, 'earth.breakerLaunch']] });
 // (20 Nov, after review) the grounded stab: the rival on the floor; the knees bend, the body sinks and both flame daggers
 // drive down into them (Hard Landing's drop into a deep crouch, the hand driven to the floor in front), then he rises. The blades are the
 // hitboxes (elements.js bladeContact)

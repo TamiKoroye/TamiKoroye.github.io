@@ -626,7 +626,8 @@ export class EarthSkills {
       if (E.state === 'gather') {
         if (f.dead || f.reacting() || f.action !== 'tech' || f.tech !== f.style.tech.breaker) { for (const P of E.parts) w.scene.remove(P.m); w.scene.remove(E.g); E.dead = true; f.breakerHold = false; continue; }
         // the pose waits while the mass gathers (hero pins the clip)
-        const pinU = 0.33; if (f.actionU >= pinU && E.t < 1.0) { f.actionT = pinU * f.A.dur; f.breakerHold = true; } else if (E.t >= 1.0) f.breakerHold = false;
+        // (pinU: the low gathering crouch of earth_pillar; was 0.33 of the Tai Chi push)
+        const pinU = 0.07; if (f.actionU >= pinU && E.t < 1.0) { f.actionT = pinU * f.A.dur; f.breakerHold = true; } else if (E.t >= 1.0) f.breakerHold = false;
         E.g.position.copy(f.pos).addScaledVector(f.forward(_v).setY(0).normalize(), 1.7).setY(f.groundY + 1.5);
         for (const P of E.parts) {
           const k = clamp((E.t - P.d) / 0.7, 0, 1), e = k * k * (3 - 2 * k);
@@ -647,7 +648,7 @@ export class EarthSkills {
   }
   breakerImpact(E) {
     const w = this.world, c = E.dest, f = E.f, B = this.B;
-    w.fx.crater(c, 6); w.shake(1.1, c); w.audio.rumble(1.6, c); w.audio.boom(1.6, c); w.audio.impact(1.4);
+    w.fx.crater(c, 6); w.shake(1.1, c); w.audio.rumble(1.6, c); w.audio.impact(1.4);
     for (let i = 0; i < 4; i++) w.fx.debrisBurst(_v.copy(c).setY(c.y + 0.3), 16, 6 + i, 0.14, i % 2 ? 0x6a5d50 : 0x7a7068, 2);
     w.fx.dust(c, 24, 6, 0x9a8466);
     this.cloud(c.clone().setY(c.y + 0.5), 4.5, 3.5);
