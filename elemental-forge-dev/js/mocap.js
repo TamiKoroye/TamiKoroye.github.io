@@ -33,7 +33,7 @@ export async function loadMocap() {
 export function requiredClips(styles) {
   const need = new Set(['hit_a', 'hit_b', 'ko', 'getup', 'dodge_side', 'dodge_side_M', 'dodge_back', 'block_hit', 'strafe', 'strafe_M', 'water_redirect',
     'jump_high', 'air_loop', 'fall_loop', 'land_high', 'knockback', 'ko_b', 'ko_c', 'hit_big', 'hit_big_M', 'hit_body', 'run_loop', 'sprint_loop', 'walk_back', 'run_stop', 'fall_roll', 'wall_run', 'wall_run_M', 'wall_flip', 'struggle', 'surf_stance', 'water_flow', 'water_gather', 'turn_spin',
-    'skate_ride', 'fire_action', 'fire_air_pose', 'surf_stance', 'water_pool', 'air_cork', 'air_cork_M', 'cartwheel', 'cartwheel_M', 'air_fly', 'air_float', 'getup_cork']);
+    'skate_ride', 'run_arc_l', 'hit_stomach', 'hit_stomach_M', 'hit_stomach_big', 'hit_stomach_big_M', 'hit_uppercut', 'hit_uppercut_M', 'fire_action', 'fire_air_pose', 'surf_stance', 'water_pool', 'air_cork', 'air_cork_M', 'cartwheel', 'cartwheel_M', 'air_fly', 'air_float', 'getup_cork']);
   for (const L of Object.values(LOOPS)) for (const n of Object.values(L)) need.add(n);
   for (const st of Object.values(styles)) { const t = st.tech; for (const T of [t.hand, ...(t.leg || []), t.legMove, t.charged, t.special, t.stomp, t.release, t.airKick, t.flip, t.flipBack, t.roll, t.whipSlam, t.icePunch, t.glideBlast, t.breath, t.surfPunch, t.airFlip, t.melee, t.whip, t.bomb, t.comet]) if (T && T.clip) for (const n of (Array.isArray(T.clip) ? T.clip : [T.clip])) need.add(n); }
   return [...need].filter(n => !MOCAP[n]);
@@ -87,7 +87,7 @@ export function adoptTiming(styles) {
   for (const st of Object.values(styles)) for (const T of techList(st)) {
     if (!T.clip) continue;
     const list = names(T).filter(n => MOCAP[n]); if (!list.length) continue;
-    const orig = { dur: T.dur, events: T.events, active: T.active, jumpAt: T.jumpAt, cancel: T.cancel, full: T.full };
+    const orig = { dur: T.dur, rawTiming: T.rawTiming, events: T.events, active: T.active, jumpAt: T.jumpAt, cancel: T.cancel, full: T.full };
     // every alternative take gets its own timing, so each plays at its proper speed with its impact on the hit
     const timings = list.map(n => timing(orig, n, T.clipSpeed || CLIP_SPEED[n] || SPEED[st.key] || 1.5));
     Object.assign(T, timings[0]); T.clip = list[0];
@@ -102,7 +102,9 @@ function timing(orig, name, sp) {
   const evU = (m.impact ?? m.clip.duration * 0.5) / m.clip.duration;   // evasions without a strike: timed from the middle
   const map = (u) => THREE.MathUtils.clamp(evU + (u - u0) * orig.dur / dur, 0, 0.98);
   const out = { clip: name, dur, impactT: evU * dur };
-  if (orig.events) out.events = orig.events.map(([u, n]) => [map(u), n]);
+  // (a technique marked rawTiming already gives its events as fractions of this clip, e.g. the Fire Comet's charge on
+  // the raised arms and launch on the downward drive; they are kept as written)
+  if (orig.events) out.events = orig.rawTiming ? orig.events.map(e => [...e]) : orig.events.map(([u, n]) => [map(u), n]);
   if (orig.active) out.active = { ...orig.active, from: map(orig.active.from), to: Math.max(map(orig.active.to), map(orig.active.from) + 0.08) };
   if (orig.jumpAt) out.jumpAt = [map(orig.jumpAt[0]), orig.jumpAt[1]];
   // the next technique can start 0.22 s after the impact: the strike's follow-through shows, the next one

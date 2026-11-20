@@ -523,7 +523,7 @@ export class Fighter {
         if (held) { this.dodgeT = Math.max(this.dodgeT, 0.3); this.en -= 9 * dt; this.glideHeld = true; }
         const rsp = held || this.glideHeld ? Math.max(9, 6 + 12 * k) : 6 + 12 * k;
         this.vel.x = this.dodgeDir.x * rsp; this.vel.z = this.dodgeDir.z * rsp;
-        const hov = 1.2 * Math.min(1, el / 0.2) * Math.min(1, this.dodgeT / 0.3);
+        const hov = 1.36 * Math.min(1, el / 0.2) * Math.min(1, this.dodgeT / 0.3);   // (20 Nov: 1.36 m, so the trailing foot of the held Running Arc stance clears the floor by half a metre)
         this.vel.y = (hov - (this.pos.y - this.groundY)) * 8 + 21 * dt; this.onGround = false;
         // the jets: rocket exhaust from both feet and both hands, driven against the direction of travel (fireJets)
       } else {
@@ -624,6 +624,9 @@ export class Fighter {
     else if (this.sprinting && mlen > 0.15) wantYaw = Math.atan2(mx, mz);
     else if (inp.strafe || this.guarding || this.holding || this.charging || (this.action && this.action !== 'land')) wantYaw = inp.faceYaw;
     else if (mlen > 0.15 && this.dodgeT <= 0) wantYaw = Math.atan2(mx, mz);
+    // (20 Nov, after review: the dash is a flight, not a sidestep) in Fire's rocket dodge the body turns to the way the
+    // jets carry it and dives into it; a strike thrown on the way turns him back to the rival (inp.faceYaw above)
+    if (!this.dead && this.dodgeKind === 'rocket' && this.dodgeT > 0 && this.action !== 'tech') wantYaw = Math.atan2(this.dodgeDir.x, this.dodgeDir.z);
     if (wantYaw !== null && wantYaw !== undefined && (this.dodgeT <= 0 || this.dodgeKind === 'glide' || this.dodgeKind === 'rocket' || this.dodgeKind === 'arch')) {   // (the glide keeps turning to face the rival)
       const rate = this.action && this.action !== 'land' ? 18 : (inp.strafe ? 14 : (this.sprinting ? 7 : 11));
       this.faceYaw = dampAngle(this.faceYaw, wantYaw, rate, dt);
@@ -663,8 +666,10 @@ export class Fighter {
       const jolt = el < 0.15 ? 0.7 + 0.4 * Math.sin(Math.PI * el / 0.15) : 0.8, ease = Math.min(1, this.dodgeT / 0.25);
       // (19 Nov, the user's dodge picture: thrown low and forward into the dash) the body also pitches forward over the
       // feet whatever the direction, so he dives into the escape
-      rocketRoll = Math.sign(lx || 1) * 0.6 * jolt * ease * Math.min(1, Math.abs(lx) * 1.4);
-      rocketPitch = (lz * 0.45 + 0.35) * jolt * ease;
+      // (20 Nov) facing the travel now, the held Running Arc frame already leans the chest forward; the root adds a
+      // slight forward pitch with the jolt of the jets, and banks a little only while a strike keeps him side-on
+      rocketRoll = this.action === 'tech' ? Math.sign(lx || 1) * 0.25 * jolt * ease * Math.min(1, Math.abs(lx) * 1.4) : 0;
+      rocketPitch = (this.action === 'tech' ? lz * 0.2 + 0.1 : 0.14) * jolt * ease;
     }
     const kw = 1 - Math.exp(-14 * dt);
     this.wallRoll = (this.wallRoll || 0) + (wantRoll + rocketRoll - (this.wallRoll || 0)) * kw; this.wallPitch = (this.wallPitch || 0) + (wantPitch + rocketPitch - (this.wallPitch || 0)) * kw;
@@ -905,29 +910,28 @@ export class Fighter {
     if (!this.jets) this.jets = new JetSet(this.world.scene);
     this.jetBurstT = Math.max(0, (this.jetBurstT || 0) - dt);
     const live = !this.dead && this.el === 'fire';
+    // (20 Nov, after review: "the flames during jump/dodge ONLY come from their heels ... nowhere else"; "powerful and
+    // cohesive") one thick plume out of each heel, and nothing from the hands. Heard as the three-layer jet roar.
+    let burning = false;
     if (live && this.dodgeKind === 'rocket' && this.dodgeT > 0) {
-      // (19 Nov, after review: jets from the arms only on the jump) the dodge drives out of the feet alone: a rocket jet
-      // from each foot, and behind them a wide wake of flame flaring out like wings (the user's reference picture)
-      const back = _v.set(-this.dodgeDir.x, 0, -this.dodgeDir.z), side = _axis.set(-back.z, 0, back.x);
+      // the dash: each heel blasts back and a little down against the travel; the plume's ragged end rolls out into
+      // billows that spread to the sides behind him like wings (the user's reference)
+      const back = _v.set(-this.dodgeDir.x, 0, -this.dodgeDir.z), side = _axis.set(-back.z, 0, back.x), ease = Math.min(1, this.dodgeT / 0.25);
       for (const sd of ['L', 'R']) {
-        const fp = this.heelPos(sd, _v2);
-        this.jets.fire('f' + sd, fp, _fwd.copy(back).multiplyScalar(0.8).add(_zx.set(0, -0.5, 0)), 1.7, 0.15);
-        const s = sd === 'L' ? 1 : -1;
-        if (Math.random() < 0.6) this.world.fx.fire(_zx.copy(fp).addScaledVector(back, 0.25), _fwd.copy(back).multiplyScalar(rand(6, 10)).addScaledVector(side, s * rand(2, 5)).add(_qwv.set(0, rand(0.5, 2.5), 0)), rand(0.32, 0.55), 0.28);
-      }
-    } else if (live && this.jetBurstT > 0 && !this.onGround) {
-      for (const sd of ['L', 'R']) {
-        this.jets.fire('f' + sd, this.heelPos(sd, _v2), _fwd.set(-this.vel.x * 0.04, -1, -this.vel.z * 0.04), 1.4, 0.13);
-        // (19 Nov, after review, physics) the fists fire only once he is up in the jump pose with the arms driven down:
-        // the jet leaves the fist along the forearm (elbow to fist), so the thrust pushes the same way as the heels'.
-        // On the take-off, while the arms are up or out, the heels alone carry him.
-        if (this.hero && this.pos.y - this.groundY > 0.7) {
-          const fist = this.fistPos(sd, _v2), dir = this.hero.bones['DEF-forearm' + sd].getWorldPosition(_fwd);
-          dir.subVectors(fist, dir).normalize();
-          if (dir.y < -0.6) this.jets.fire('h' + sd, fist, dir, 1.0 * Math.min(1, (-dir.y - 0.6) / 0.25), 0.09);
+        const hp = this.heelPos(sd, _v2), s = sd === 'L' ? 1 : -1;
+        this.jets.fire('f' + sd, hp, _fwd.copy(back).add(_zx.set(0, -0.35, 0)), 3.2 * ease + 0.4, 0.3);
+        if (Math.random() < 0.85) {
+          const d = rand(1.6, 3.0);
+          this.world.fx.fire(_zx.copy(hp).addScaledVector(back, d).setY(hp.y - 0.1 * d), _fwd.copy(back).multiplyScalar(rand(2, 5)).addScaledVector(side, s * rand(1.5, 4)).add(_qwv.set(0, rand(0.6, 2), 0)), rand(0.45, 0.8), 0.32);
         }
       }
+      burning = true;
+    } else if (live && this.jetBurstT > 0 && !this.onGround) {
+      // the jump: straight down out of both heels (a touch against the drift)
+      for (const sd of ['L', 'R']) this.jets.fire('f' + sd, this.heelPos(sd, _v2), _fwd.set(-this.vel.x * 0.04, -1, -this.vel.z * 0.04), 2.4, 0.26);
+      burning = true;
     }
+    if (burning) this.world.audio.jet('jet' + (this === this.world.fighters[0] ? 0 : 1), this.dodgeKind === 'rocket' && this.dodgeT > 0 ? 1 : 0.85, this.pos);
     this.jets.update(dt);
   }
   jumpFx(air) {
@@ -1042,6 +1046,11 @@ export class Fighter {
     const legBlow = !!(T && !T.upper && /sweep|flair/i.test(T.name || '')), headBlow = !!(T && T.upper);
     const alt = this.pos.y - this.groundY;
     this.headHit = level === 0 && headBlow;
+    // (20 Nov, after review: "characters struck with fire blades must not flail around but respond to the attack") a
+    // cut or stab of the Fire Daggers doubles the body over the blow (Mixamo Stomach Hit); the Fire Blade's spinning
+    // slash drives it back, doubled over (Big Stomach Hit). hero.js plays them, mirrored to the side the blow came from.
+    const M = src && src.style && src.style.tech.melee, cut = T && M && (T === M || T.variantOf === M) ? T.clip : null;
+    this.cutClip = cut && level < 2 ? (/blade_spin/.test(cut) ? 'hit_stomach_big' : 'hit_stomach') : null;
     if (wasDodging && level >= 0 && this.action !== 'down' && this.action !== 'getup') { level = 2; this.downClip = 'trip'; }
     // (18 Nov, second review: Fall Flat and Hit To Head pitch the body forward, onto the face; struck from the front
     //  that read as a leap into the blow. A blow from the front now knocks the fighter backwards (Knocked Down); Fall
@@ -1059,7 +1068,7 @@ export class Fighter {
       this.actionT = -({ fall_flat: 0.6, hit_head_down: 0.6, hit_legs: 0.8, trip: 0.2 }[this.downClip] || 0);
     }
     else if (level === 1) { this.startAction('stagger'); this.stunT = 0.5; }
-    else { this.startAction('hit'); this.stunT = 0.2; }
+    else { this.startAction('hit'); this.stunT = 0.2; if (this.cutClip) this.actionT = -0.22; }   // (a knife hit holds the doubled-over bend a little longer, about 0.58 s)
   }
 
   die(dir) {

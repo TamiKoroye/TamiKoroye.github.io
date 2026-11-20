@@ -467,7 +467,7 @@ STYLES.fire.tech.hand.clip = ['fire_jab', 'fire_punch'];
 // long flame blades (whip_d_single: the torso turns into a downward diagonal cut). fire.dagger in elements.js.
 // (19 Nov, later: the user's knife animations from the Drive replace the whip clips: Stable Sword Inward / Outward
 // Slash, Stabbing, and Thrust Slash's spin into a two-armed slash for the Fire Blade finisher)
-STYLES.fire.tech.melee = T({ name: 'Fire Daggers', clip: ['dagger_in', 'dagger_out', 'dagger_stab', 'blade_spin'], clipSpeed: 3.0, dur: 0.32, cost: 4, cancel: 0.62, move: 1.5, lunge: 5, keys: K0,
+STYLES.fire.tech.melee = T({ name: 'Fire Daggers', clip: ['dagger_in', 'dagger_out', 'dagger_stab', 'blade_spin'], clipSpeed: 1.8, dur: 0.32, cost: 4, cancel: 0.62, move: 1.5, lunge: 5, keys: K0,
   events: [[0.45, 'fire.dagger']] });
 // Fire Whip: HAND with the stick pulled away from the rival (draw back and lash): the arm draws back and the whip is
 // released on the swing, following the hand (whip_v overhead, whip_h across). fire.whip in elements.js.
@@ -478,5 +478,9 @@ STYLES.fire.tech.whip = T({ name: 'Fire Whip', clip: ['whip_v', 'whip_h'], clipS
 STYLES.fire.tech.bomb = T({ name: 'Fire Bomb', clip: 'fire_fly', clipSpeed: 2.0, dur: 0.6, cost: 18, cancel: 0.95, move: 0, keys: K0, events: [] });
 // Fire Comet (special): SPECIAL held for 0.3 s and released. Both hands draw a growing ball of fire in front of the
 // chest (Standing 2H Magic Attack) and drive it out; it flies at the rival and explodes. 40 energy, 8 s cooldown.
-STYLES.fire.tech.comet = T({ name: 'Fire Comet', clip: 'magic_2h', clipSpeed: 1.5, dur: 1.2, cost: 40, cancel: 0.85, move: 0, keys: K0,
-  events: [[0.12, 'fire.cometCharge'], [0.6, 'fire.cometLaunch']] });
+// (20 Nov, after review) the Comet: both arms rise overhead (whip_v, the overhead strike), and the pose is HELD there
+// while a concentrated mass of fire gathers above the raised palms and swells into an enormous glowing ball
+// (updateComets pins the clip and the technique's clock for the charge); then the hips and shoulders turn and the arms
+// drive forwards and downwards, and the Comet leaves on that drive. Events as fractions of the 1.4 s clip.
+STYLES.fire.tech.comet = T({ name: 'Fire Comet', clip: 'whip_v', clipSpeed: 1, dur: 1.4, cost: 40, cancel: 0.85, move: 0, keys: K0, rawTiming: true,
+  events: [[0.17, 'fire.cometCharge'], [0.63, 'fire.cometLaunch']] });

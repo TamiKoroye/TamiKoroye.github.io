@@ -148,9 +148,55 @@ export class Audio {
     L.g.gain.setTargetAtTime(Math.max(0.0001, target), c.currentTime, 0.05);
     if (L.p) L.p.pan.setTargetAtTime(pan, c.currentTime, 0.05);
   }
+  // (20 Nov, after review) the sound of Fire's heel jets and the Comet, three layers held each frame like hold():
+  //   a deep combustion roar: low-passed noise under 90 Hz, swelling at about 3 Hz;
+  //   a pressurised flame rush: a broad band of noise around 900 Hz whose centre surges up and down (the WHOOSH of a
+  //   rocket exhaust), with a softer high hiss;
+  //   crackle: a looped buffer of sparse, irregular sharp clicks (bursts of three to six close together), high-passed.
+  jet(key, vol = 1, pos = null) {
+    const c = this.ctx; if (!c || this.muted || !this.noiseBuf) return;
+    let L = this.loops.get(key);
+    const [pan, att] = this.place(pos), target = 0.55 * vol * att;
+    if (!L || L.name !== '~jet') {
+      if (L) this.stopLoop(key);
+      if (!this.crackleBuf) {
+        const n = Math.floor(c.sampleRate * 2.3), b = c.createBuffer(1, n, c.sampleRate), d = b.getChannelData(0);
+        let i = 0;
+        while (i < n) {
+          i += Math.floor(c.sampleRate * (0.012 + Math.random() * Math.random() * 0.14));   // irregular gaps
+          const burst = 1 + Math.floor(Math.random() * Math.random() * 6);
+          for (let k = 0, j = i; k < burst && j < n; k++, j += Math.floor(c.sampleRate * (0.002 + Math.random() * 0.01))) {
+            const amp = 0.3 + Math.random() * 0.7, len = Math.floor(c.sampleRate * (0.0015 + Math.random() * 0.004));
+            for (let m = 0; m < len && j + m < n; m++) d[j + m] += amp * (Math.random() * 2 - 1) * Math.exp(-m / (len * 0.3));
+          }
+        }
+        this.crackleBuf = b;
+      }
+      const src = c.createBufferSource(); src.buffer = this.noiseBuf; src.loop = true;
+      const ck = c.createBufferSource(); ck.buffer = this.crackleBuf; ck.loop = true;
+      const rumble = c.createBiquadFilter(); rumble.type = 'lowpass'; rumble.frequency.value = 90; rumble.Q.value = 1.1;
+      const rush = c.createBiquadFilter(); rush.type = 'bandpass'; rush.frequency.value = 900; rush.Q.value = 0.45;
+      const hiss = c.createBiquadFilter(); hiss.type = 'highpass'; hiss.frequency.value = 3200;
+      const crack = c.createBiquadFilter(); crack.type = 'highpass'; crack.frequency.value = 1400;
+      const gR = c.createGain(); gR.gain.value = 3.2; const gW = c.createGain(); gW.gain.value = 1.3; const gH = c.createGain(); gH.gain.value = 0.22; const gC = c.createGain(); gC.gain.value = 0.9;
+      const lfo = c.createOscillator(); lfo.frequency.value = 1.4; const lg = c.createGain(); lg.gain.value = 380; lfo.connect(lg); lg.connect(rush.frequency); lfo.start();
+      const lfo2 = c.createOscillator(); lfo2.frequency.value = 3.1; const lg2 = c.createGain(); lg2.gain.value = 0.9; lfo2.connect(lg2); lg2.connect(gR.gain); lfo2.start();
+      const g = c.createGain(); g.gain.value = 0.0001;
+      src.connect(rumble); rumble.connect(gR); gR.connect(g);
+      src.connect(rush); rush.connect(gW); gW.connect(g);
+      src.connect(hiss); hiss.connect(gH); gH.connect(g);
+      ck.connect(crack); crack.connect(gC); gC.connect(g);
+      let p = null; if (c.createStereoPanner) { p = c.createStereoPanner(); g.connect(p); p.connect(this.master); } else g.connect(this.master);
+      src.start(c.currentTime, Math.random()); ck.start(c.currentTime, Math.random() * 2);
+      L = { name: '~jet', src, g, p, lfo, lfo2, ck }; this.loops.set(key, L);
+    }
+    L.seen = this.t;
+    L.g.gain.setTargetAtTime(Math.max(0.0001, target), c.currentTime, 0.04);
+    if (L.p) L.p.pan.setTargetAtTime(pan, c.currentTime, 0.05);
+  }
   stopLoop(key) {
     const L = this.loops.get(key); if (!L) return; this.loops.delete(key);
-    const c = this.ctx; L.g.gain.setTargetAtTime(0.0001, c.currentTime, 0.12); L.src.stop(c.currentTime + 0.6); if (L.lfo) L.lfo.stop(c.currentTime + 0.6);
+    const c = this.ctx; L.g.gain.setTargetAtTime(0.0001, c.currentTime, 0.12); L.src.stop(c.currentTime + 0.6); if (L.lfo) L.lfo.stop(c.currentTime + 0.6); if (L.lfo2) L.lfo2.stop(c.currentTime + 0.6); if (L.ck) L.ck.stop(c.currentTime + 0.6);
   }
   // fades out loops that were not held this frame (called once per frame by the game)
   update(dt = 1 / 60) {

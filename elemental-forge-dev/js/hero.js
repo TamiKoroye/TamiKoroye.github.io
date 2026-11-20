@@ -90,6 +90,8 @@ const REACT = /^(hit_|Hit_|knockback|getup|block_hit|run_stop|struggle)/;
 function rigQuat(o, stop, out) { out.identity(); for (let x = o; x && x !== stop; x = x.parent) out.premultiply(x.quaternion); return out; }
 function rigPos(o, stop, out) { o.updateWorldMatrix(true, false); stop.updateWorldMatrix(true, false); return out.setFromMatrixPosition(o.matrixWorld).applyMatrix4(_m.copy(stop.matrixWorld).invert()); }
 
+// the frame of Running Arc held as Fire's glide stance (seconds into the baked clip)
+const GLIDE_POSE_T = 0.2;
 export class Hero {
   // parent: the group that also holds the driver's hips (the fighter's "offs" group); driverJ: driver bones
   constructor(parent, driverJ, colors) {
@@ -358,12 +360,13 @@ export class Hero {
       // a flinch alternates the two light reactions; a stagger is the heavy one: Big Side Hit (mirrored to the side
       // the blow came from) or, for a blow straight on, Receive Stomach Uppercut
       const heavy = f.action === 'stagger';
-      const n = heavy ? (Math.abs(hlx) > 0.45 && has('hit_big') ? (hlx > 0 ? 'hit_big_M' : 'hit_big') : has('hit_body') ? 'hit_body' : 'hit_b') : f.headHit && has('hit_head') ? (hlx > 0 ? 'hit_head_M' : 'hit_head') : f.hitAlt ? 'hit_b' : 'hit_a';   // a punch snaps the head back (Head Hit)
+      const cut = f.cutClip && has(f.cutClip) ? (hlx > 0.3 && has(f.cutClip + '_M') ? f.cutClip + '_M' : f.cutClip) : null;
+      const n = cut || (heavy ? (Math.abs(hlx) > 0.45 && has('hit_big') ? (hlx > 0 ? 'hit_big_M' : 'hit_big') : has('hit_body') ? 'hit_body' : 'hit_b') : f.headHit && has('hit_head') ? (hlx > 0 ? 'hit_head_M' : 'hit_head') : f.hitAlt ? 'hit_b' : 'hit_a');   // a punch snaps the head back (Head Hit)
       // several hits landing together (a punch and its fireball, a whip's two lashes) are one reaction: within
       // 0.3 s of a reaction starting, the clip already playing continues instead of switching or restarting
-      const recent = /^hit_/.test(this.curName || '') && this.clock - (this.reactAt || -9) < 0.3 && !(heavy && !/^hit_(big|body)/.test(this.curName));
+      const recent = /^hit_/.test(this.curName || '') && this.clock - (this.reactAt || -9) < 0.3 && !(heavy && !/^hit_(big|body|stomach_big)/.test(this.curName)) && !(cut && !this.curName.startsWith(cut.replace(/_M$/, '')));
       if (recent) { clip = this.curName; ts = this.cur.timeScale; wU = wL = 0; fade = 0.1; }
-      else if (has(n)) { clip = n; ts = heavy ? 1.15 : /^hit_head/.test(n) ? 2.0 : 1.35; wU = wL = 0; fade = 0.1; if (f.actionT < dt * 1.5 || this.curName !== n) { restart = true; this.reactAt = this.clock; } }
+      else if (has(n)) { clip = n; ts = cut ? (heavy ? 1.6 : 1.5) : heavy ? 1.15 : /^hit_head/.test(n) ? 2.0 : 1.35; wU = wL = 0; fade = 0.1; if (f.actionT < dt * 1.5 || this.curName !== n) { restart = true; this.reactAt = this.clock; } }
       else { clip = f.hitAlt ? 'Hit_Head' : 'Hit_Chest'; wU = wL = 0; if (this.curName !== clip || f.actionT < dt * 1.5) restart = true; ts = 1.2; fade = 0.05; }
     }
     else if (f.dodgeT > 0) {
@@ -384,6 +387,15 @@ export class Hero {
         clip = L.idle; ts = LOOP_SPEED[L.idle] || 1; fade = 0.1;
         if (f.action === 'tech' && f.tech && f.tech.clip) { const [n, scale] = clipFor(f.tech, f.techSide); if (has(n)) { clip = n; ts = scale; fade = 0.06; if (f.techN !== this.techN) { this.techN = f.techN; restart = true; } } }
         wU = wL = 0; layered = true; glideLegs = ['surf_stance', LOOP_SPEED.surf_stance || 1];
+      }
+      // (20 Nov, after review, with the user's reference clip and their Mixamo Running Arc) the rocket dodge and the
+      // glide hold ONE frame of Running Arc, never playing it: knees bent, one foot a little ahead of the other, the body
+      // pitched forward over the front knee, the arms swept back. Nothing steps or cycles; the jets at the heels move him.
+      // A strike thrown while gliding replaces only the upper body; the legs stay frozen in that stance.
+      else if (f.dodgeKind === 'rocket' && has('run_arc_l')) {
+        clip = 'run_arc_l'; ts = 0; fade = 0.1; startAt = GLIDE_POSE_T;
+        if (f.action === 'tech' && f.tech && f.tech.clip) { const [n, scale] = clipFor(f.tech, f.techSide); if (has(n)) { clip = n; ts = scale; fade = 0.06; startAt = 0; if (f.techN !== this.techN) { this.techN = f.techN; restart = true; } } }
+        wU = wL = 0; layered = true; glideLegs = ['run_arc_l', 0, GLIDE_POSE_T];
       }
       else if (f.dodgeKind === 'rocket' && has('skate_ride')) {
         clip = has('fire_action') ? 'fire_action' : 'fire_idle'; ts = 1; fade = 0.08;
@@ -482,9 +494,10 @@ export class Hero {
     if (this.curName && clip !== this.curName.split('|')[0] && this.prevFadeOut) fade = Math.max(fade, this.prevFadeOut);
     this.prevFadeOut = f.action === 'tech' && f.tech && f.tech.fadeOut && clip === (clipFor(f.tech, f.techSide)[0]) ? f.tech.fadeOut : 0;
     if (layered) {
-      const [ln, lts] = glideLegs || lowOv || loco();
+      const [ln, lts, lat] = glideLegs || lowOv || loco();
       this.play(clip + '|U', fade, ts, restart);
       this.playLower(ln + '|L', lts, 0.18);
+      if (lat !== undefined && this.low) this.low.time = lat;   // a held frame (the glide stance): pinned every frame
     } else {
       this.play(clip, fade, ts, restart);
       // a stance that is too deep for the style keeps its arms and footing but rises part-way to the standing idle
@@ -492,7 +505,8 @@ export class Hero {
       this.playLower(mix ? 'Idle_Loop|L' : null, 1, 0.25);
       if (mix && this.low) this.low.setEffectiveWeight(mix);
     }
-    if (f.breathHold && this.curName && /fire_breath/.test(this.curName)) ts = 0;   // (Dragon's Breath: the roaring pose is held while the flame pours out)
+    if (f.breathHold && this.curName && /fire_breath/.test(this.curName)) ts = 0;
+    if (f.cometHold && this.curName && /whip_v/.test(this.curName)) ts = 0;   // (the Fire Comet: the arms stay raised while it forms)   // (Dragon's Breath: the roaring pose is held while the flame pours out)
     if (this.cur) this.cur.timeScale = ts;
     if (startAt && this.cur) this.cur.time = startAt;
     if (ts === 0 && this.cur && this.chargeHold !== undefined) this.cur.time += (this.chargeHold - this.cur.time) * Math.min(1, dt * 6);
