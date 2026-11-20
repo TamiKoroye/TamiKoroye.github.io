@@ -246,9 +246,9 @@ await setup({ el: 'earth', oel: 'fire', p: [0, 0, -9], o: [0, 0, -5.5] }); await
   // the rival's Dragon Descent knocks the player down; the recovery is recorded
   await S(() => { const { opp } = window.__EF; opp.startTech(opp.style.tech.special, 1); });
   const seq = []; let shots = 0;
-  for (let j = 0; j < 110; j++) { await stepN(1); const r = await S(() => ({ a: window.__EF.player.action, c: window.__EF.player.hero.curName })); seq.push(r); if (r.a === 'getup' && shots < 3 && j % 4 === 0) { await snap(`getup-${shots}`); shots++; } }
+  for (let j = 0; j < 110; j++) { await stepN(1); const r = await S(() => ({ a: window.__EF.player.action, c: window.__EF.player.hero.curName, d: window.__EF.player.downClip })); seq.push(r); if (r.a === 'getup' && shots < 3 && j % 4 === 0) { await snap(`getup-${shots}`); shots++; } }
   const ups = seq.filter(r => r.a === 'getup').map(r => r.c);
-  check('recovery from a knockdown plays the Mixamo get-up (on the back, roll to a crouch, stand)', ups.length > 5 && ups.every(c => c === 'getup'), `getup frames ${ups.length}, clips ${[...new Set(ups)].join(',') || 'none'}; actions ${[...new Set(seq.map(r => r.a))].join(',')}`);
+  check('recovery from a knockdown plays the Mixamo get-up (on the back, roll to a crouch, stand)', ups.length > 5 && ups.every(c => c === 'getup'), `getup frames ${ups.length}, clips ${[...new Set(ups)].join(',') || 'none'}; actions ${[...new Set(seq.map(r => r.a))].join(',')}; falls ${[...new Set(seq.map(r => r.d))].join(',')}; down clips ${[...new Set(seq.filter(r => r.a === 'down').map(r => r.c))].join(',')}`);
 }
 
 console.log(`\n${results.filter(r => r.ok).length}/${results.length} passed`);

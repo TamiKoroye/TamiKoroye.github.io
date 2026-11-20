@@ -191,7 +191,9 @@ const CHECKS = {
     }
     // (18 Nov, second review: blows from the front knock the fighter backwards; Fall Flat only from behind, so the
     //  scripted frontal blows here all show the backward knockdown)
-    const ok = /hit_legs/.test(out.sweep) && /knockback/.test(out['punch knockdown']) && /knockback/.test(out['plain knockdown'] + out['plain knockdown 2']) && !/fall_flat|hit_head_down/.test(out['punch knockdown'] + out['plain knockdown']) && /hit_head/.test(out['light punch']) && /trip/.test(out['hit while dodging']) && /getup/.test(out['hit while dodging']) && !/kip/.test(Object.values(out).join(' '));   // (18 Nov, after review: the flip get-ups are Air's only; Water and Earth get up plainly)
+    // (20 Nov, changed with the Earth brief's falling section: a sweep that takes the legs now plays Mixamo Sweep Fall,
+    //  feet up and down flat on the back, instead of Hit To The Legs; either still shows the legs being taken)
+    const ok = /hit_legs|sweep_fall/.test(out.sweep) && /knockback/.test(out['punch knockdown']) && /knockback/.test(out['plain knockdown'] + out['plain knockdown 2']) && !/fall_flat|hit_head_down/.test(out['punch knockdown'] + out['plain knockdown']) && /hit_head/.test(out['light punch']) && /trip/.test(out['hit while dodging']) && /getup/.test(out['hit while dodging']) && !/kip/.test(Object.values(out).join(' '));   // (18 Nov, after review: the flip get-ups are Air's only; Water and Earth get up plainly)
     check('Reactions chosen from the blow: sweep, punch, knockdowns, head snap, tripped mid-dodge; plain get-ups (not Air)', ok, Object.entries(out).map(([k, v]) => `${k}: ${v}`).join(' | '));
   },
   async footwork() {
