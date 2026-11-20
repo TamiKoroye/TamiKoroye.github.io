@@ -146,8 +146,8 @@ export class EarthSkills {
   // ---------------------------------------------------------------- Earth Sinking
   // (brief) the bender bends the knees and drives both palms down; the ground under the rival loosens and pulls the feet
   // in: the rival drops to the shins into a churned pit (a hole is opened in the look of the floor: a dark pit, broken
-  // rim stones round the legs), cannot step out, bends the knees and struggles to get free. Lasts 2.2 s; each JUMP or
-  // DODGE pressed while stuck tears free 0.35 s sooner. The bender can follow up while the rival is held.
+  // rim stones round the legs), cannot step out, bends the knees and struggles. The rock holds them 2.2 s and they
+  // cannot dodge or jump out of it. The bender can follow up while the rival is held.
   sink(f) {
     const w = this.world, t = f.target && !f.target.dead ? f.target : null;
     if (!t || Math.hypot(t.pos.x - f.pos.x, t.pos.z - f.pos.z) > 11 || !t.onGround || t.invuln > 0) {
@@ -170,7 +170,8 @@ export class EarthSkills {
     const w = this.world;
     for (const P of this.pits) {
       const t = P.t; P.time += dt;
-      if (t.input && (t.input.jump || t.input.dodge)) { P.dur -= 0.35; w.fx.dust(P.at, 3, 1.2, 0xa08a6c); }
+      // (20 Nov, after review: "for the rock trap the victim cannot apply the option of dodge") the rock holds the legs for
+      // the full 2.2 s: no dodge, no jump, no struggling out (a restrained fighter cannot dodge, fighter.free)
       const free = t.dead || P.time >= P.dur || t.action === 'down';
       const k = free ? 0 : Math.min(1, P.time / 0.22);
       t.sinkY = 0.42 * k * (1 - 0.06 * Math.sin(P.time * 9) * (P.time > 0.3 ? 1 : 0));   // a little heave as they strain
@@ -187,39 +188,56 @@ export class EarthSkills {
   }
 
   // ---------------------------------------------------------------- Quicksand
-  // (brief) from a stable stance the hands circle downwards and the ground round the rival turns into swirling sand for
-  // 4.5 s: anyone but the bender standing in it moves at a third of their speed, sinks a little into it and cannot
-  // jump high. It traps; it is not Earth's surfing.
+  // (20 Nov, after review: "the purpose of quicksand is to sink ... in quicksand the victim sinks to their head") from a
+  // stable stance the hands circle downwards and the ground under the rival turns to swirling sand. A rival standing
+  // in it is caught: drawn to the middle and swallowed, steadily deeper (knees, waist, chest) towards the head, over
+  // about 3.5 s, struggling with the arms above the sand. Struggling (each JUMP press) heaves them up 0.14 m; if they
+  // fight their way back out before it closes over them they climb free. If the sand reaches the chin it crushes them
+  // (20 damage) and spits them out onto the ground (a knockdown). Sinking deeper also costs 4 health a second once past
+  // the waist. The pool lasts 5 s; whoever walks into it while it lasts is caught the same way.
   quicksand(f) {
     const w = this.world, t = f.target && !f.target.dead ? f.target : null;
     const at = t && Math.hypot(t.pos.x - f.pos.x, t.pos.z - f.pos.z) < 12 ? new THREE.Vector3(t.pos.x, 0, t.pos.z) : f.pos.clone().addScaledVector(f.forward(_v).setY(0).normalize(), 4.5);
     at.y = w.arena.groundAt(at.x, at.z, (t ? t.pos.y : f.pos.y) + 1);
     const m = new THREE.Mesh(this.sandGeo || (this.sandGeo = (() => { const g = new THREE.CircleGeometry(1, 40); g.rotateX(-Math.PI / 2); return g; })()), this.sandMat.clone());
-    const R = 3.2; m.scale.set(R, 1, R); m.position.set(at.x, at.y + 0.02, at.z); m.renderOrder = 2; w.scene.add(m);
-    this.sands.push({ f, at, R, m, t: 0, life: 4.5 });
+    const R = 2.4; m.scale.set(R, 1, R); m.position.set(at.x, at.y + 0.02, at.z); m.renderOrder = 2; w.scene.add(m);
+    this.sands.push({ f, at, R, m, t: 0, life: 5.0, caught: new Map() });
     w.fx.dust(at, 14, 3, 0xb39b7a); w.audio.rumble(0.8); w.popup(f, 'QUICKSAND', true);
   }
   updateSands(dt) {
-    const w = this.world;
+    const w = this.world, FULL = 1.45;   // sunk to the chin
     for (const S of this.sands) {
       S.t += dt; const A = Math.min(1, S.t / 0.35) * Math.min(1, (S.life - S.t) / 0.6);
-      S.m.material.uniforms.uTime.value = S.t; S.m.material.uniforms.uAlpha.value = 0.92 * Math.max(0, A);
+      S.m.material.uniforms.uTime.value = S.t; S.m.material.uniforms.uAlpha.value = 0.95 * Math.max(0, A);
       for (const t of w.fighters) {
-        if (t === S.f || t.dead || !t.onGround) continue;
+        if (t === S.f || t.dead) continue;
+        let C = S.caught.get(t);
         const d = Math.hypot(t.pos.x - S.at.x, t.pos.z - S.at.z);
-        if (d < S.R * 0.95) {
-          t.sandT = 0.12; t.sandSink = Math.min(0.22, (t.sandSink || 0) + dt * 0.4);
-          if (Math.random() < dt * 6) w.fx.dust(_v.set(t.pos.x, S.at.y, t.pos.z), 1, 0.8, 0xb39b7a);
+        if (!C && t.onGround && d < S.R * 0.9 && S.t < S.life - 0.5 && t.action !== 'down' && t.invuln <= 0) { C = { depth: 0.05, tick: 0 }; S.caught.set(t, C); w.audio.rumble(0.5); }
+        if (!C) continue;
+        // drawn to the middle, swallowed steadily; each JUMP heaves them up
+        t.pos.x += (S.at.x - t.pos.x) * Math.min(1, dt * 1.5); t.pos.z += (S.at.z - t.pos.z) * Math.min(1, dt * 1.5); t.vel.x = t.vel.z = 0; if (t.vel.y > 0) t.vel.y = 0;
+        C.depth += dt * (0.36 + 0.1 * C.depth);
+        if (t.input && t.input.jump) { C.depth -= 0.14; w.fx.dust(_v.set(t.pos.x, S.at.y, t.pos.z), 3, 1.2, 0xb39b7a); }
+        t.restrainT = Math.max(t.restrainT || 0, 0.1); t.sandSink = Math.max(0, C.depth);
+        if (C.depth > 0.75 && (C.tick -= dt) <= 0) { C.tick = 0.25; w.combat.damage(t, 1, _v.set(0, 0, 0), S.f, 'quicksand', t.chestPos(_v2), 0, -1); }
+        if (Math.random() < dt * 10) w.fx.dust(_v.set(t.pos.x + rand(-0.4, 0.4), S.at.y, t.pos.z + rand(-0.4, 0.4)), 1, 0.6, 0xb39b7a);
+        const out = C.depth <= 0;
+        const crushed = C.depth >= FULL;
+        if (out || crushed || S.t >= S.life || t.dead) {
+          S.caught.delete(t); t.sandSink = 0; t.restrainT = Math.min(t.restrainT, 0.05);
+          if (crushed) {
+            // closed over to the chin: crushed and thrown out onto the sand
+            w.combat.damage(t, 20, _v.set(rand(-1, 1), 0, rand(-1, 1)).normalize().clone(), S.f, 'quicksand', t.chestPos(new THREE.Vector3()), 6, 2);
+            w.fx.debrisBurst(_v.set(t.pos.x, S.at.y + 0.2, t.pos.z), 14, 3, 0.07, 0x8a7458, 1.8); w.fx.dust(_v, 14, 3, 0xb39b7a); w.audio.impact(1.0); w.popup(S.f, 'SWALLOWED', true);
+          } else { t.vel.y = 5; t.onGround = false; w.fx.dust(_v.set(t.pos.x, S.at.y, t.pos.z), 10, 2, 0xb39b7a); }
+          if (out) w.popup(t, 'BROKE FREE', false);
         }
       }
       if (Math.random() < dt * 5) { const a = rand(0, 6.28), r = rand(0, S.R * 0.9); w.fx.dust(_v.set(S.at.x + Math.cos(a) * r, S.at.y, S.at.z + Math.sin(a) * r), 1, 0.5, 0xb39b7a); }
       if (S.t >= S.life) { w.scene.remove(S.m); S.m.material.dispose(); S.dead = true; }
     }
     this.sands = this.sands.filter(S => !S.dead);
-    for (const t of w.fighters) {
-      if ((t.sandT || 0) > 0) { t.sandT -= dt; if (t.vel.y > 4.5) t.vel.y = 4.5; }
-      else if (t.sandSink) t.sandSink = Math.max(0, t.sandSink - dt * 1.2);
-    }
   }
 
   // ---------------------------------------------------------------- Rock Armour

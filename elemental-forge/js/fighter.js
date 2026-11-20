@@ -504,7 +504,6 @@ export class Fighter {
     // forward, keeps its own speed)
     if (A && !A.soft && !A.react && this.onGround && !this.mob && !(this.tech && this.tech.travels)) maxSpeed = Math.min(maxSpeed, 1.0);
     if (this.stunT > 0 || restrained) maxSpeed = 0;
-    if ((this.sandT || 0) > 0) maxSpeed *= 0.33;   // (20 Nov) wading in Quicksand
     if (this.armour) maxSpeed *= 0.8;   // (20 Nov) the weight of the Rock Armour
 
     if (this.mob && this.mobMove(dt, mx, mz)) {
@@ -742,7 +741,7 @@ export class Fighter {
   floorGuard(dt) {
     const h = this.hero, sc = h && h.scene; if (!sc) return;
     sc.position.y = this.floorLift || 0; sc.updateMatrixWorld(true);
-    const floor = this.groundY + 0.06; let mn = Infinity;   // a joint is about a limb's half-thickness inside the skin
+    const floor = this.groundY + 0.06 - (this.sinkY || 0) - (this.sandSink || 0); let mn = Infinity;   // (20 Nov: sinking in Earth Sinking / Quicksand, the floor that the body is kept above goes down with it)   // a joint is about a limb's half-thickness inside the skin
     if (!h._guardBones) h._guardBones = Object.keys(h.bones).filter(k => /^DEF-/.test(k) && !/foot|toe|heel/i.test(k)).map(k => h.bones[k]);   // body joints only (the rig's root sits on the floor; feet stand on it)
     for (const b of h._guardBones) { const e = b.matrixWorld.elements; if (e[13] < mn) mn = e[13]; }
     const need = (this.pos.y - this.groundY < 0.6) ? Math.max(0, (this.floorLift || 0) + floor - mn) : 0;
