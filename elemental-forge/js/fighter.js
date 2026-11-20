@@ -912,7 +912,12 @@ export class Fighter {
   soundLoops() {
     const A = this.world.audio, key = this === this.world.fighters[0] ? 'p' : 'o', m = this.mob, el = this.el;
     if (this.dead) return;
-    if ((this.guarding && el === 'fire') || (m && m.kind === 'flame') || (this.holding && el === 'fire')) A.hold(key + 'fire', 'fireLoop', this.guarding ? 1 : 0.8, this.pos);
+    // (20 Nov, after review: "the sounds for gliding have been removed") the rocket glide and the jump's jets lost their
+    // fire roar when the glide was rebuilt on 18 Nov; it plays again for as long as the jets burn
+    const jets = el === 'fire' && ((this.dodgeKind === 'rocket' && this.dodgeT > 0) || ((this.jetBurstT || 0) > 0 && !this.onGround));
+    if ((this.guarding && el === 'fire') || (m && m.kind === 'flame') || (this.holding && el === 'fire') || jets) A.hold(key + 'fire', 'fireLoop', this.guarding ? 1 : jets ? 1.1 : 0.8, this.pos);
+    // Earth riding its slab, on the floor or along a wall: the grinding of the rock under the feet (never had a sound)
+    if (el === 'earth' && ((m && m.kind === 'surf') || (this.wall && this.wall.kind === 'surf'))) A.hold(key + 'rock', 'rockLift', 0.75, this.pos);
     if ((m && m.kind === 'surf' && el === 'water') || (this.holding && el === 'water')) A.hold(key + 'water', 'waterLoop', 0.85, this.pos);
     if ((this.dodgeKind === 'glide' && this.dodgeT > 0) || (m && m.kind === 'fly') || (this.holding && el === 'air')) A.hold(key + 'wind', 'windLoop', 1, this.pos);
   }
@@ -965,7 +970,11 @@ export class Fighter {
     // (19 Nov, from the reference: the jump is driven by a blast out of the soles) Water: a gush of water from each
     // foot down into the floor; Air: a blast of wind from each foot that raises dust
     if ((this.el === 'water' || this.el === 'air') && w.bending) for (const s of ['L', 'R']) w.bending.weapons.footJet(this, this.el, s, { down: true, len: air ? 1.4 : 1.8, dur: 0.32, r: this.el === 'air' ? 0.3 : 0.22 });
-    if (this.el === 'air' || air) { w.fx.ring(this.pos, 1.6, 0xffffff, 0.35); for (let i = 0; i < 8; i++) w.fx.wind(this.pos.clone().setY(this.pos.y + 0.2), _v.set(rand(-3, 3), -1, rand(-3, 3)), 0.6, 0.4); w.audio.gust(air ? 0.7 : 0.4); }
+    // (20 Nov, after review: "a little bit of air bending in Earth when he jumps off a gliding rock on the side of the
+    // wall") a jump in the air or off a wall used Air's ring and gusts for every element; wind is Air's alone now. Earth
+    // pushes off in a burst of stone and dust with the crack of rock
+    if (this.el === 'air') { w.fx.ring(this.pos, 1.6, 0xffffff, 0.35); for (let i = 0; i < 8; i++) w.fx.wind(this.pos.clone().setY(this.pos.y + 0.2), _v.set(rand(-3, 3), -1, rand(-3, 3)), 0.6, 0.4); w.audio.gust(air ? 0.7 : 0.4); }
+    else if (this.el === 'earth' && air) { w.fx.debrisBurst(this.pos.clone(), 10, 3, 0.09, 0x6a5d50, 1); w.fx.dust(this.pos, 8, 2, 0xa08a6c); w.audio.rumble(0.6); }
     else w.audio.whoosh(0.4, this.pos);
     w.audio.jump(air ? 0.5 : 0.7, this.pos);
   }

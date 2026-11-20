@@ -33,7 +33,7 @@ export class Audio {
     this.master = this.ctx.createGain(); this.master.gain.value = 0.9;
     // a gentle limiter, so stacked hits and blasts never clip
     const comp = this.ctx.createDynamicsCompressor(); comp.threshold.value = -10; comp.knee.value = 8; comp.ratio.value = 6; comp.attack.value = 0.003; comp.release.value = 0.15;
-    this.master.connect(comp); comp.connect(this.ctx.destination);
+    this.master.connect(comp); comp.connect(this.ctx.destination); this.comp = comp;
     const len = this.ctx.sampleRate * 1.5, b = this.ctx.createBuffer(1, len, this.ctx.sampleRate), d = b.getChannelData(0);
     for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
     this.noiseBuf = b;
