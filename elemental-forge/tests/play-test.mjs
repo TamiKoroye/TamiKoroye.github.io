@@ -321,7 +321,10 @@ for (const el of els) {
   // (20 Nov, changed with the user's simpler Earth controls: Earth's charged LEG is now Earth Sinking, the rock trap; it
   //  does not knock the rival down or stagger them but holds them in the ground, which counts as its reaction here)
   for (const a of funnelReacts) reacts.add(a); if (funnelSeen) tech = tech || 'Air Funnel';
-  check(`${el}: hold-and-release LEG performs the charged technique`, tech && ch < 100 && (reacts.has('down') || reacts.has('stagger') || (el === 'earth' && reacts.has('trapped'))), `${tech}; rival hp ${ch}; reactions ${[...reacts].join(',')}`);
+  // (20 Nov, Airbending brief: "Air Funnel ... the opponent braces") the funnel holds the rival bracing (a flinch, 'hit')
+  // while it pushes them back; it staggers only after 1.2 s in the wind, longer than this hold reaches them, so for Air
+  // the bracing reaction counts, as Earth's trap does
+  check(`${el}: hold-and-release LEG performs the charged technique`, tech && ch < 100 && (reacts.has('down') || reacts.has('stagger') || (el === 'earth' && reacts.has('trapped')) || (el === 'air' && funnelSeen && reacts.has('hit'))), `${tech}; rival hp ${ch}; reactions ${[...reacts].join(',')}`);
   await stepN(30);
 }
 
