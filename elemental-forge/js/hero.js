@@ -452,6 +452,9 @@ export class Hero {
         clip = has(n) ? n : 'block_hit'; wU = wL = 0; fade = 0.06; ts = 1.6; if (this.curName !== clip) restart = true;
       }
       else if (f.guarding && has(L.guard)) { clip = L.guard; wU = wL = 0; fade = 0.12; layered = moving || !!lowOv; }
+      // (20 Nov, Airbending brief) the Air Funnel: both palms driven forward (Air Push), the arms working slightly as the
+      // stream pours out; the legs planted (or stepping, layered, if he moves)
+      else if (f.funnelOn && has('air_push')) { clip = 'air_push'; ts = 0.45; wU = wL = 0; fade = 0.12; layered = moving; }
       // (20 Nov, Earth brief) Earth Compression: the hands held in front of the chest, palms facing (Standing 2H Magic
       // Attack, its gathering frame held), legs set; the stone packs between them
       else if (f.holding && f.el === 'earth' && f.comp && has('magic_2h')) { clip = 'magic_2h'; ts = 0; startAt = 1.15 - 0.08 * Math.min(1, f.comp.t / 1.2); wU = wL = 0; fade = 0.15; layered = moving; }

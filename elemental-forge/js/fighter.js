@@ -371,8 +371,15 @@ export class Fighter {
         this.buf.hand = 0; if (this.dodgeKind !== 'rocket' && this.dodgeKind !== 'arch') this.dodgeT = 0;
         if (this.counterT > 0) { this.counterT = 0; this.startAction('counter'); w.combat.lunge(this, ACTIONS.counter); w.popup(this, 'COUNTER', true); w.audio.whoosh(0.9); }
         else if (B.spiralRelease && B.spiralRelease(this)) { w.popup(this, 'RELEASE', true); }
-        else { this.handSide = -this.handSide; const riding = this.el === 'water' && st.tech.surfPunch && ((this.dodgeKind === 'arch' && this.dodgeT > 0) || (this.mob && this.mob.kind === 'surf')); this.startTech(riding ? st.tech.surfPunch : (this.el === 'fire' && this.fireHandTech()) || (this.el === 'earth' && this.earthHandTech()) || st.tech.hand, this.handSide, true); }
+        else { this.handSide = -this.handSide; const riding = this.el === 'water' && st.tech.surfPunch && ((this.dodgeKind === 'arch' && this.dodgeT > 0) || (this.mob && this.mob.kind === 'surf')); this.startTech(riding ? st.tech.surfPunch : (this.el === 'fire' && this.fireHandTech()) || (this.el === 'earth' && this.earthHandTech()) || (this.el === 'air' && this.airHandTech()) || st.tech.hand, this.handSide, true); }
         this.handHoldT = 0;
+      }
+      // (20 Nov, Airbending brief) Air's LEG on the floor: the rival close (3 m), Air Bomb (4 s cooldown); otherwise Air Blades
+      if (this.buf.leg && this.el === 'air' && this.onGround && !this.charging && canStrike && st.tech.blades && !(this.mob && this.mob.kind === 'fly')) {
+        const t = this.target, d = t && !t.dead ? Math.hypot(t.pos.x - this.pos.x, t.pos.z - this.pos.z) : 99;
+        this.buf.leg = 0; this.lastStrike = 'leg'; this.legHoldT = 0;
+        if (d < 3 && (this.bombCd || 0) <= this.time && this.en >= st.tech.bomb.cost) { this.bombCd = this.time + 4; this.startTech(st.tech.bomb, 1, true); }
+        else this.startTech(st.tech.blades, this.handSide = -this.handSide, true);
       }
       // (20 Nov, Earth brief) Earth: LEG while GUARD is held: Slab Shackles (8 s cooldown); LEG with the stick pulled away
       // from the rival: Ground Shift (5 s cooldown)
@@ -498,8 +505,14 @@ export class Fighter {
           if (this.el === 'fire' && st.tech.stomp && this.onGround && !this.mob && this.legHoldT > 0.3 && !this.charging && !this.guarding && !this.reacting() && (!this.action || this.action === 'land' || (this.action === 'tech' && this.tech !== st.tech.stomp && this.actionU < kev))) {
             this.legHoldT = -1; this.action = null; this.tech = null; this.startTech(st.tech.stomp, 1);
           }
+          // (20 Nov, Airbending brief) Air: LEG held is the Air Funnel, sustained while held (air.js funnelTick)
+          else if (this.el === 'air' && this.onGround && this.legHoldT > 0.3 && !this.guarding && !this.reacting() && this.en > 4 && (!this.action || this.action === 'land' || (this.action === 'tech' && this.actionU > 0.5))) { this.funnelOn = true; this.action = null; this.tech = null; }
           else if (!this.charging && this.legHoldT > 0.38 && kickDone && !this.guarding && !this.reacting()) { this.charging = true; this.chargeT = 0; this.action = null; this.tech = null; }
         }
+      }
+      if (this.funnelOn) {
+        if (!inp.legHeld || this.dead || this.reacting() || this.en <= 1 || this.guarding) this.funnelOn = false;
+        else { this.en -= 12 * dt; B.air.funnelTick(this, dt); }
       }
       if (this.charging) {
         this.chargeT += dt;
@@ -545,6 +558,7 @@ export class Fighter {
     if (A && !A.soft && !A.react && this.onGround && !this.mob && !(this.tech && this.tech.travels)) maxSpeed = Math.min(maxSpeed, 1.0);
     if (this.stunT > 0 || restrained) maxSpeed = 0;
     if (this.launchPrepT > 0) maxSpeed = 0;   // (crouched for the Earth Launch)
+    if (this.funnelOn) maxSpeed = 1.2;   // (planted behind the Air Funnel)
     if (this.armour) maxSpeed *= 0.8;   // (20 Nov) the weight of the Rock Armour
 
     if (this.mob && this.mobMove(dt, mx, mz)) {
@@ -1064,6 +1078,24 @@ export class Fighter {
   }
   // (20 Nov, after review) Earth: HAND with the stick pulled away from the rival is the Ground Rupture (the fissure;
   // it was SPECIAL before Dust Storm and Quicksand took that button)
+  // (20 Nov, Airbending brief) Air's HAND: the stick pulled away from the rival, Suction (5 s cooldown); the stick to the
+  // side, Air Swipe; the rival close (2.8 m) and on their feet, the palm, palm, kick combination (each press the next,
+  // within 0.9 s of the last); otherwise Air Blast
+  airHandTech() {
+    const st = this.style, t = this.target, inp = this.input; if (!st.tech.blast) return null;
+    if (!t || t.dead) return st.tech.blast;
+    const dx = t.pos.x - this.pos.x, dz = t.pos.z - this.pos.z, d = Math.hypot(dx, dz) || 1, sl = Math.hypot(inp.mx, inp.mz);
+    const c = sl > 0.5 ? (inp.mx * dx + inp.mz * dz) / (sl * d) : 1;
+    if ((c < -0.5 || this.aiSuction) && (this.suctionCd || 0) <= this.time) { this.aiSuction = false; this.suctionCd = this.time + 5; return st.tech.suction; }
+    this.aiSuction = false;
+    if (sl > 0.5 && Math.abs(c) <= 0.5) return st.tech.swipe;
+    const lying = t.action === 'down' || t.action === 'getup';
+    if (d < 2.8 && !lying && this.onGround && Math.abs(t.pos.y - this.pos.y) < 1.2) {
+      this.airComboN = this.time - (this.airComboT ?? -9) < 0.9 ? ((this.airComboN || 0) + 1) % 3 : 0; this.airComboT = this.time + 0.4;
+      return st.tech.combo[this.airComboN];
+    }
+    return st.tech.blast;
+  }
   // the Earth Launch itself: the rock column erupts under the feet and throws the bender up (the legs drive out of the
   // crouch as it rises: hero plays Standing Jump from its spring)
   earthLaunch() {
@@ -1151,7 +1183,7 @@ export class Fighter {
     // knocks down); struck in the air the fighter drops flat (Falling Flat Impact); other knockdowns alternate the
     // Mixamo Knocked Down and Fall Flat
     const src = this.lastHitFrom, T = src && src !== this && src.action === 'tech' ? src.tech : null;
-    const legBlow = !!(T && !T.upper && /sweep|flair/i.test(T.name || '')) || !!this.shiftFall, headBlow = !!(T && T.upper);
+    const legBlow = !!(T && !T.upper && /sweep|flair/i.test(T.name || '')) || !!this.shiftFall, headBlow = !!(T && T.upper && !(src.el === 'air' && /Air|Suction|Blades/.test(T.name || '')));   // (20 Nov: wind strikes hit the chest, not the head)
     const alt = this.pos.y - this.groundY;
     this.headHit = level === 0 && headBlow;
     // (20 Nov, after review: "characters struck with fire blades must not flail around but respond to the attack") a

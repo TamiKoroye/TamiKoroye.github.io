@@ -224,7 +224,8 @@ export class AI {
       const roll = Math.random();
       if (f.el === 'earth' && roll < 0.15 && dist < 12) { f.aiDust = true; inp.hand = true; }   // (20 Nov) Earth: the Ground Rupture
       else if (f.el === 'earth' && roll < 0.25 && dist < 5 && !f.armour) { f.aiArmour = true; }
-      else if (f.el === 'earth' && roll < 0.33 && dist < 10) { f.aiShift = true; inp.leg = true; }   // (20 Nov) Earth: Ground Shift   // (20 Nov) Earth: the Rock Man for close fighting
+      else if (f.el === 'earth' && roll < 0.33 && dist < 10) { f.aiShift = true; inp.leg = true; }   // (20 Nov) Earth: Ground Shift
+      else if (f.el === 'air' && roll < 0.15 && dist < 10) { f.aiSuction = true; inp.hand = true; }   // (20 Nov) Air: Suction   // (20 Nov) Earth: the Rock Man for close fighting
       else if (held > 0 || roll < 0.45) inp.hand = true;                         // launch held object / hand technique
       else if (roll < 0.7) inp.leg = true;                                   // kick projectile
       else if (this.d !== 'training') { inp.hand = true; this.holdKind = 'hand'; this.holdT = rand(0.9, 1.6); }  // sustained bending

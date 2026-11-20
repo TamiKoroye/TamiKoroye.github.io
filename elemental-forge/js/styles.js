@@ -518,3 +518,21 @@ STYLES.earth.tech.breaker = T({ name: 'Earthbreaker', clip: 'tc_push', clipSpeed
 // drive down into them (Hard Landing's drop into a deep crouch, the hand driven to the floor in front), then he rises. The blades are the
 // hitboxes (elements.js bladeContact)
 STYLES.fire.tech.groundStab = T({ name: 'Grounded Stab', clip: 'hard_land', clipSpeed: 2.2, dur: 0.6, cost: 4, cancel: 0.8, move: 1.2, lunge: 12, keys: K0, events: [[0.42, 'fire.dagger']] });
+// ------------------------------------------------------------------ AIR, phase one (20 Nov, the Airbending brief)
+// HAND at range: Air Blast (Air Palm: the palm draws back, the hips turn, the palm drives out; the air leaves on the thrust)
+STYLES.air.tech.blast = T({ name: 'Air Blast', clip: 'air_palm', clipSpeed: 1.4, dur: 0.64, cost: 6, cancel: 0.55, upper: true, move: 1, keys: K0, events: [[0.45, 'air.blast']] });
+// HAND close: the palm, palm, kick combination (a short lead palm; a pivoting backhand sweep; a turning kick with a gust)
+STYLES.air.tech.combo = [
+  T({ name: 'Air Palm Strike', clip: 'fire_jab', clipSpeed: 2.2, dur: 0.38, cost: 4, cancel: 0.5, upper: true, move: 1.5, lunge: 6, keys: K0, events: [[0.4, 'air.combo0']] }),
+  T({ name: 'Turning Palm', clip: 'whip_h', clipSpeed: 2.0, dur: 0.45, cost: 4, cancel: 0.55, upper: true, move: 1.5, lunge: 5, keys: K0, events: [[0.4, 'air.combo1']] }),
+  T({ name: 'Gale Kick', clip: 'move_kick', clipSpeed: 1.7, dur: 0.6, cost: 6, cancel: 0.7, move: 1.2, lunge: 4, keys: K0, events: [[0.45, 'air.combo2']] }),
+];
+// HAND with the stick sideways: Air Swipe (a low lunge, the open palm sweeping a broad arc across the body)
+STYLES.air.tech.swipe = T({ name: 'Air Swipe', clip: 'air_vortex', clipSpeed: 1.6, dur: 0.6, cost: 9, cancel: 0.65, move: 1.2, keys: K0, events: [[0.45, 'air.swipe']] });
+// LEG at range: Air Blades (two quick diagonal cuts, each releasing a blade)
+STYLES.air.tech.blades = T({ name: 'Air Blades', clip: 'whip_d', clipSpeed: 1.8, dur: 0.55, cost: 9, cancel: 0.65, upper: true, move: 0.8, keys: K0, events: [[0.45, 'air.blade1'], [0.6, 'air.blade2']] });
+// LEG close: Air Bomb (the crouch and spring of Standing Jump: legs drive straight, both palms push out and down)
+STYLES.air.tech.bomb = T({ name: 'Air Bomb', clip: 'stand_jump', clipSpeed: 1.5, dur: 0.95, cost: 16, cancel: 0.75, move: 0, keys: K0, rawTiming: true, events: [[0.32, 'air.bomb']] });
+// HAND with the stick pulled away: Suction (the hand reaches out and draws back across the body, the weight going back)
+STYLES.air.tech.suction = T({ name: 'Suction', clip: 'water_redirect', clipSpeed: 1.5, dur: 0.6, cost: 10, cancel: 0.7, upper: true, move: 0.5, keys: K0, events: [[0.4, 'air.suction']] });
+STYLES.air.labels.hand = 'AIR BLAST'; STYLES.air.labels.leg = 'AIR BLADES';

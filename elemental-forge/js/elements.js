@@ -8,6 +8,7 @@
 import * as THREE from 'three';
 import { jaggedRockGeometry, HALF } from './arena.js';
 import { EarthSkills } from './earth.js';
+import { AirSkills } from './air.js';
 import { clamp, mulberry32, smooth01, rand } from './util.js';
 import { iceClusterMesh } from './ice.js';
 import { TOON_RAMP } from './hero.js';
@@ -102,7 +103,8 @@ export class Bending {
     this.waterLight = 0;
     this.weapons = new Weapons(this);
     this.specials = new Specials(this);
-    this.earth = new EarthSkills(this);   // (20 Nov) Dust Cloud, Earth Sinking, Quicksand, Rock Armour
+    this.earth = new EarthSkills(this);
+    this.air = new AirSkills(this);   // (20 Nov) Air Blast, the combination, Swipe, Blades, Bomb, Funnel, Suction   // (20 Nov) Dust Cloud, Earth Sinking, Quicksand, Rock Armour
     this.iceSpearGeo = (() => { const g = new THREE.OctahedronGeometry(1, 0); g.scale(0.22, 1.1, 0.22); return g; })();
   }
 
@@ -279,6 +281,16 @@ export class Bending {
         return;
       }
       // (20 Nov, Earth phase one) the new skills (earth.js); Dust Cloud is the charged storm if HAND is still held
+      // (20 Nov, Airbending brief) air.js
+      case 'air.blast': this.air.blast(f, f.techSide); return;
+      case 'air.combo0': this.air.comboHit(f, 0); return;
+      case 'air.combo1': this.air.comboHit(f, 1); return;
+      case 'air.combo2': this.air.comboHit(f, 2); return;
+      case 'air.swipe': this.air.swipe(f); return;
+      case 'air.blade1': this.air.blades(f, f.techSide); return;
+      case 'air.blade2': this.air.blades(f, -f.techSide); return;
+      case 'air.bomb': this.air.bomb(f); return;
+      case 'air.suction': this.air.suction(f); return;
       case 'earth.dust': this.earth.dust(f, !!f.input.handHeld); return;
       case 'earth.storm': this.earth.storm(f); return;
       case 'earth.thrust': this.earth.compressLaunch(f); return;
@@ -1236,6 +1248,7 @@ export class Bending {
     this.updateSpirals(dt);
     this.specials.update(dt);
     this.earth.update(dt);
+    this.air.update(dt);
     this.weapons.update(dt);
     this.updateEnvironment(dt);
     // one shared flickering light makes fire read as a light source without per-flame lights
@@ -1884,7 +1897,7 @@ export class Bending {
   clear() {
     for (const sp of this.spirals) for (const tb of sp.streams) this.world.scene.remove(tb.mesh);
     this.spirals = [];
-    this.weapons.clear(); this.specials.clear(); this.earth.clear(); this.world.fx.flip.clear();
+    this.weapons.clear(); this.specials.clear(); this.earth.clear(); this.air.clear(); this.world.fx.flip.clear();
     // projectiles leave nothing behind: their mesh and, for water, the stream drawn behind them
     for (const o of this.objs) { this.world.scene.remove(o.mesh); if (o.ftube) { o.ftube.dispose(); o.ftube = null; } if (o.tube) { this.world.scene.remove(o.tube.mesh); o.tube.mesh.geometry.dispose(); o.tube.mesh.material.dispose(); o.tube = null; } }
     for (const d of this.defs) { this.world.scene.remove(d.mesh); if (d.tubes) d.tubes.forEach(t => this.weapons.freeTube(t)); }
