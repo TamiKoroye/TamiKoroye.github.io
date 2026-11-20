@@ -184,14 +184,16 @@ check('flight is limited in time and the airbender lands on their feet', endT !=
 await fUp(7); await stepN(10);
 
 // ================================================================== EARTH
-head('Earth: stomp eruption at the opponent');
+// (20 Nov, changed with the user's simpler Earth controls: Earth's charged LEG is now Earth Sinking, the rock trap that
+//  opens the ground under the rival and holds their legs, in place of the marked eruption; these checks test that)
+head('Earth: rock trap (Earth Sinking) under the opponent');
 await setup({ el: 'earth', p: [0, 0, -12], o: [1, 0, -5] }); await stepN(3);
 await hold('btn-leg'); await stepN(30); await fUp(6); await clearHits();
-let mark = null, clipSeen = false; for (let j = 0; j < 40; j++) { await stepN(1); const r = await S(() => { const E = window.__EF.world.bending.weapons.erupts[0], o = window.__EF.opp; return { e: E ? { x: E.x, z: E.z, fired: E.fired, ox: o.pos.x, oz: o.pos.z } : null, clip: window.__EF.player.hero.curName }; }); if (r.e && !r.e.fired && !mark) mark = r.e; if (r.clip === 'stomp' || r.clip === 'stomp_M') clipSeen = true; if (j === 14) await shot('earth-stomp'); }
+let trap = null, clipSeen = false; for (let j = 0; j < 40; j++) { await stepN(1); const r = await S(() => { const p = window.__EF.player, o = window.__EF.opp; return { clip: p.hero.curName, sink: o.sinkY || 0, held: o.restrainT || 0 }; }); if (/earth_gather/.test(r.clip || '')) clipSeen = true; if (r.sink > 0.2 && !trap) trap = r; }
 const stHits = await hitsOn();
-check('charged LEG plays the stomp', clipSeen, '');
-check('the ground is marked under the opponent before it erupts', mark && Math.hypot(mark.x - mark.ox, mark.z - mark.oz) < 0.8, mark ? `mark at ${mark.x.toFixed(1)}, ${mark.z.toFixed(1)}; rival at ${mark.ox.toFixed(1)}, ${mark.oz.toFixed(1)}` : 'no mark');
-check('rock spikes erupt there and launch the rival', stHits.includes('eruption'), `rival hit by: ${stHits.join(',') || 'nothing'}`);
+check('charged LEG plays the rock trap (both palms driven down)', clipSeen, '');
+check('the ground opens under the opponent and pulls the legs in', !!trap, trap ? `sunk ${trap.sink.toFixed(2)} m` : 'not sunk');
+check('the opponent is struck and held by the rock', stHits.includes('earthSink') && trap && trap.held > 0.5, `rival hit by: ${stHits.join(',') || 'nothing'}`);
 await setup({ el: 'earth', p: [0, 0, -12], o: [1, 0, -5] }); await stepN(3);
 await hold('btn-leg'); await stepN(30); await fUp(6); await clearHits(); await stepN(3);
 await S(() => { window.__EF.opp.pos.x += 3.5; });   // the rival steps out of the marked ground
@@ -293,7 +295,8 @@ check('a wall shields a rival from the fire ring', !behind.includes('fireRing'),
 await setup({ el: 'earth', p: [-2, 0, -1.5], o: [3, 0, -1.5] }); await stepN(3);
 await hold('btn-leg'); await stepN(30); await fUp(6); await clearHits(); await stepN(40);
 const er = await hitsOn(); await shot('venue-earth-stomp');
-check('the earth stomp erupts from the barn floor under the rival', er.includes('eruption'), `rival hit by: ${er.join(',') || 'nothing'}`);
+// (20 Nov: the charged LEG is the rock trap now, see above)
+check('the earth rock trap opens in the barn floor under the rival', er.includes('earthSink'), `rival hit by: ${er.join(',') || 'nothing'}`);
 // flight above the walls
 await setup({ el: 'air', p: [0, 0, -1], o: [0, 0, 8] }); await stepN(3);
 await hold('btn-dodge', 7); await stepN(8); await hold('btn-jump', 6); const vf = await run(40); await fUp(6); await shot('venue-flight'); await fUp(7); await run(220);

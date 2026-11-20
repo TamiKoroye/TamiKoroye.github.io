@@ -190,7 +190,11 @@ for (const el of (process.env.ONLY || process.env.WHIPS ? [] : ["fire", "earth",
   //  SPECIAL; the blast, trail and knockdown checks below are unchanged.)
   await setup({ el, p: [0, 0, el === 'fire' ? -12 : -9], o: [0, 0, el === 'fire' ? -5.5 : -4.5] }); await stepN(10); await clearHits();
   if (el === 'fire') { await stick(0, -90); await stepN(40); }
-  await press('btn-special', 2);
+  // (20 Nov, changed with the user's simpler Earth controls: SPECIAL tapped is now Earth's Dust Storm, and the Ground
+  //  Rupture moved to HAND with the stick pulled away from the rival; the Earth checks below press that instead and are
+  //  otherwise unchanged)
+  if (el === 'earth') { await stick(0, 90); await stepN(2); await press('btn-hand', 2); await stickUp(); }
+  else await press('btn-special', 2);
   if (el === 'fire') await stickUp();
   const rows = []; let shot = 0;
   for (let j = 0; j < 120; j++) {

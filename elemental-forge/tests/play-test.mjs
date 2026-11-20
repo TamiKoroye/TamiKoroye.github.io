@@ -308,9 +308,11 @@ for (const el of els) {
   await fUp(9);
   const reacts = new Set(); let tech = null;
   if (process.env.DBG) console.log(el, 'charged started while held:', startedEarly);
-  for (let i = 0; i < 30; i++) { await stepN(1); const s = await S(() => ({ a: window.__EF.opp.action, t: window.__EF.player.tech && window.__EF.player.tech.name })); if (s.a) reacts.add(s.a); if (s.t) tech = s.t; if (i === 12) await shot(`15-${el}-charged`); }
+  for (let i = 0; i < 30; i++) { await stepN(1); const s = await S(() => ({ a: window.__EF.opp.action, t: window.__EF.player.tech && window.__EF.player.tech.name, sunk: (window.__EF.opp.sinkY || 0) > 0.2 })); if (s.a) reacts.add(s.a); if (s.sunk) reacts.add('trapped'); if (s.t) tech = s.t; if (i === 12) await shot(`15-${el}-charged`); }
   const ch = await S(() => window.__EF.opp.hp);
-  check(`${el}: hold-and-release LEG performs the charged technique`, tech && ch < 100 && (reacts.has('down') || reacts.has('stagger')), `${tech}; rival hp ${ch}; reactions ${[...reacts].join(',')}`);
+  // (20 Nov, changed with the user's simpler Earth controls: Earth's charged LEG is now Earth Sinking, the rock trap; it
+  //  does not knock the rival down or stagger them but holds them in the ground, which counts as its reaction here)
+  check(`${el}: hold-and-release LEG performs the charged technique`, tech && ch < 100 && (reacts.has('down') || reacts.has('stagger') || (el === 'earth' && reacts.has('trapped'))), `${tech}; rival hp ${ch}; reactions ${[...reacts].join(',')}`);
   await stepN(30);
 }
 
@@ -342,7 +344,9 @@ check('a rock punches through a fire wall at reduced force', thruFire < 100 && t
 // (M3 brief: Earth SPECIAL is now the Ground Rupture. The stone pillar is still raised by the rock-surf launch, so
 //  standing on it is tested with a pillar raised by that function)
 await setup({ el: 'earth', p: [0, 0, -12], o: [0, 0, -6] });
-await press('btn-special', 2); let rupLift = 0; for (let i = 0; i < 70; i++) { await stepN(1); rupLift = Math.max(rupLift, (await P()).oy); if (i === 45) await shot('16-rupture'); }
+// (20 Nov, changed with the user's simpler Earth controls: the Ground Rupture is now HAND with the stick pulled away
+//  from the rival, SPECIAL being the Dust Storm; the check is unchanged)
+await stick(0, 90); await stepN(2); await press('btn-hand', 2); await stickUp(); let rupLift = 0; for (let i = 0; i < 70; i++) { await stepN(1); rupLift = Math.max(rupLift, (await P()).oy); if (i === 45) await shot('16-rupture'); }
 const rh = await hitsOn(); await clearHits();
 check('earth SPECIAL (Ground Rupture) runs to the rival and throws them up', rh.includes('rupture') && rupLift > 0.8, `max rival height ${rupLift.toFixed(2)} m; hits ${rh.join(',')}`);
 await setup({ el: 'earth', locked: false, p: [0, 0, -14], o: [20, 0, 20] });
