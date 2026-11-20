@@ -11,7 +11,7 @@ const DUST_COLS = [0x9c8466, 0xb39b7a, 0x7d6a52, 0xa88f6c, 0x8a7458];
 export class EarthSkills {
   constructor(B) {
     this.B = B; this.world = B.world;
-    this.blasts = []; this.clouds = []; this.pits = []; this.sands = []; this.armours = []; this.tremors = []; this.storming = null;
+    this.blasts = []; this.clouds = []; this.pits = []; this.sands = []; this.armours = []; this.tremors = []; this.storming = null; this.gaunts = []; this.hands = []; this.shifts = []; this.shackled = []; this.breakers = [];
     const rng = mulberry32(4242);
     this.rockGeos = [0, 1, 2, 3, 4, 5].map(() => jaggedRockGeometry(rng, 1, 0.34, 1));
     this.rockMat = new THREE.MeshStandardMaterial({ color: 0x7a6f66, roughness: 0.95, flatShading: true });
@@ -366,7 +366,303 @@ export class EarthSkills {
     this.armours = this.armours.filter(A => !A.dead);
   }
 
-  update(dt) { this.updateStorm(dt); this.updateTremors(dt); this.updateBlasts(dt); this.updateClouds(dt); this.updatePits(dt); this.updateSands(dt); this.updateArmours(dt); }
+  // ---------------------------------------------------------------- Earth Gauntlet
+  // (20 Nov, Earth brief) on a punch the striking fist clenches and small rocks fly up from the ground and lock round the
+  // fist and forearm (each piece fixed to the hand or forearm bone, so the wrist and elbow still bend and the stone
+  // follows the punch exactly); it stays while the punching goes on and crumbles 0.7 s after the last punch.
+  gauntlet(f, side) {
+    const H = f.hero; if (!H) return;
+    f.gaunts = f.gaunts || {};
+    const G = f.gaunts[side];
+    if (G && !G.dead) { G.until = G.t + 0.7 + 0.5; return; }
+    const parts = [['DEF-hand' + side, 'DEF-f_middle01' + side, 0.15, 2], ['DEF-forearm' + side, 'DEF-hand' + side, 0.17, 3]];
+    const g = { f, side, t: 0, until: 1.2, plates: [] };
+    for (const [bn, cn, th, n] of parts) {
+      const bone = H.bones[bn], child = H.bones[cn]; if (!bone || !child) continue;
+      const seg = child.position.clone(), ws = bone.getWorldScale(_v).x || 1, len = seg.length(), T = th / ws;
+      const q = new THREE.Quaternion().setFromUnitVectors(_v2.set(0, 1, 0), seg.clone().normalize());
+      for (let i = 0; i < n; i++) {
+        const m = new THREE.Mesh(this.rockGeos[(i * 2 + side.length) % this.rockGeos.length], this.armourMat);
+        m.position.copy(seg).multiplyScalar(n === 1 ? 0.5 : 0.2 + 0.65 * i / (n - 1));
+        m.quaternion.copy(q).multiply(new THREE.Quaternion().setFromAxisAngle(_v2.set(0, 1, 0), rand(0, 6.28)));
+        m.userData.scale = new THREE.Vector3(T * 0.5, Math.max(len * 0.36, T * 0.45), T * 0.5); m.scale.setScalar(0.0001); m.castShadow = true;
+        bone.add(m); g.plates.push({ m, bone, delay: i * 0.025 });
+      }
+    }
+    // the stones come up off the floor to the fist
+    const w = this.world; w.fx.debrisBurst(_v.set(f.pos.x, f.groundY + 0.05, f.pos.z), 6, 1.2, 0.06, 0x6a5d50, 2.2);
+    f.gaunts[side] = g; this.gaunts.push(g);
+  }
+  updateGauntlets(dt) {
+    const w = this.world;
+    for (const g of this.gaunts) {
+      g.t += dt;
+      for (const P of g.plates) { const k = clamp((g.t - P.delay) / 0.09, 0, 1); P.m.scale.copy(P.m.userData.scale).multiplyScalar(Math.max(0.0001, k)); }
+      const f = g.f, punching = f.action === 'tech' && f.tech && (f.tech === f.style.tech.hand || f.tech.variantOf === f.style.tech.hand);
+      if (punching) g.until = Math.max(g.until, g.t + 0.7);
+      if (g.t > g.until || f.dead || f.el !== 'earth' || f.armour) {
+        for (const P of g.plates) { P.m.getWorldPosition(_v); if (Math.random() < 0.6) w.fx.debrisBurst(_v, 1, 2, 0.06, 0x6f665e, 0.6); P.bone.remove(P.m); }
+        g.dead = true; if (f.gaunts && f.gaunts[g.side] === g) f.gaunts[g.side] = null;
+      }
+    }
+    this.gaunts = this.gaunts.filter(g => !g.dead);
+  }
+
+  // ---------------------------------------------------------------- Earth Compression (HAND held)
+  // (20 Nov, Earth brief) the hands come up in front of the chest, palms facing one another, and draw inward while rock
+  // fragments fly in from the ground between them and pack together into a stone that grows denser the longer HAND is
+  // held (0.35 m to 0.75 m across over 1.2 s). Letting go thrusts a palm and the compressed stone flies at the rival:
+  // 9 damage at the smallest to 24 at full size, the full one knocking the rival down.
+  compressStart(f) {
+    f.comp = { t: 0, r: 0.16, frags: [], tick: 0 };
+    // a loose stone lying near (4 m) flies up into the hands and becomes the heart of the compressed stone
+    const stone = this.world.arena.nearestLooseStone && this.world.arena.nearestLooseStone(f.pos, 4);
+    if (stone) { stone.col.dead = true; stone.mesh.visible = false; stone.taken = true; const m = this.rock(0.3); m.position.copy(stone.mesh.position); this.world.scene.add(m); f.comp.frags.push({ m, t: 0, from: stone.mesh.position.clone() }); f.comp.t = 0.35; this.world.fx.dust(stone.mesh.position, 8, 2, 0xa08a6c); }
+  }
+  compressTick(f, dt) {
+    const C = f.comp; if (!C) return; const w = this.world; C.t += dt;
+    const k = Math.min(1, C.t / 1.2); C.r = 0.17 + 0.2 * k;
+    const mid = f.handPos('L', _v).add(f.handPos('R', _v2)).multiplyScalar(0.5).addScaledVector(f.forward(_v3), 0.12);
+    if (!C.m) { C.m = this.rock(0.2); w.scene.add(C.m); }
+    C.m.position.lerp(mid, 0.6); C.m.scale.setScalar(C.r * (1 + 0.04 * Math.sin(C.t * 40))); C.m.rotation.y += dt * 2; C.m.rotation.x += dt * 1.3;
+    if ((C.tick -= dt) <= 0) {
+      C.tick = 0.06;
+      const a = rand(0, 6.28), from = _v.set(f.pos.x + Math.cos(a) * rand(1.2, 2.4), f.groundY + 0.05, f.pos.z + Math.sin(a) * rand(1.2, 2.4));
+      const m = this.rock(rand(0.05, 0.1)); m.position.copy(from); w.scene.add(m); C.frags.push({ m, t: 0, from: from.clone() });
+      if (Math.random() < 0.3) w.fx.dust(from, 1, 0.6, 0xa08a6c);
+    }
+    for (const F of C.frags) {
+      F.t += dt * 3.2; const e = Math.min(1, F.t);
+      F.m.position.copy(F.from).lerp(C.m.position, e * e); F.m.position.y += Math.sin(e * Math.PI) * 0.6; F.m.rotation.x += dt * 10;
+      if (e >= 1) { w.scene.remove(F.m); F.dead = true; }
+    }
+    C.frags = C.frags.filter(F => !F.dead);
+    if (Math.random() < dt * 4) w.audio.rumble(0.35, C.m.position);
+  }
+  // released (HAND let go): the stone waits on the thrust (earth.thrust launches it); dropped (hit, out of energy): it
+  // crumbles
+  compressEnd(f, released) {
+    const C = f.comp; if (!C) return; const w = this.world;
+    for (const F of C.frags) w.scene.remove(F.m);
+    f.comp = null;
+    if (!C.m) return;
+    if (released && C.t > 0.2) { f.compBall = { m: C.m, r: C.r, k: Math.min(1, C.t / 1.2) }; }
+    else { w.fx.debrisBurst(C.m.position, 8, 2, 0.07, 0x6a5d50); w.scene.remove(C.m); }
+  }
+  compressLaunch(f) {
+    const Bd = f.compBall; if (!Bd) return; f.compBall = null; const w = this.world, B = this.B;
+    const from = Bd.m.position.clone(); w.scene.remove(Bd.m);
+    const o = B.fire('boulder', f, from); o.dmg = Math.round(9 + 15 * Bd.k); o.knock = 6 + 8 * Bd.k; if (Bd.k > 0.85) o.level = 2;
+    o.mesh.scale.multiplyScalar(0.6 + 0.9 * Bd.k);
+    w.fx.debrisBurst(from, 8, 3, 0.07, 0x6a5d50); w.audio.rumble(0.6 + 0.5 * Bd.k, from); w.shake(0.1 + 0.2 * Bd.k, from);
+    if (Bd.k > 0.85) w.popup(f, 'COMPRESSED STONE', true);
+  }
+
+  // ---------------------------------------------------------------- Earth Hand (HAND with the stick pulled away)
+  // (20 Nov, Earth brief) the bender thrusts one hand at the rival and closes the fingers: a huge hand of stone tears up
+  // out of the ground under the rival, the fingers close round them and lift them (1 s, held; each JUMP tears free 0.25 s
+  // sooner), then it slams them down (14 damage, a knockdown) and crumbles. A rival in the air or out of reach (12 m): the
+  // stone hand still rises and swats where they were.
+  earthHand(f) {
+    const w = this.world, t = f.target && !f.target.dead ? f.target : null;
+    const near = t && Math.hypot(t.pos.x - f.pos.x, t.pos.z - f.pos.z) < 12;
+    const at = near ? new THREE.Vector3(t.pos.x, t.groundY, t.pos.z) : f.pos.clone().addScaledVector(f.forward(_v).setY(0).normalize(), 5);
+    at.y = w.arena.groundAt(at.x, at.z, at.y + 1);
+    const g = new THREE.Group(); g.position.copy(at); g.rotation.y = Math.atan2(f.pos.x - at.x, f.pos.z - at.z); w.scene.add(g);
+    const palm = this.rock(1); palm.scale.set(0.75, 0.42, 0.95); palm.position.set(0, 0.25, 0); g.add(palm);
+    const wrist = this.rock(1); wrist.scale.set(0.55, 1.1, 0.6); wrist.position.set(0, -0.8, 0.15); g.add(wrist);
+    const fingers = [];
+    for (let i = 0; i < 5; i++) {
+      const thumb = i === 4, piv = new THREE.Group();
+      piv.position.set(thumb ? 0.62 : -0.48 + i * 0.32, 0.5, thumb ? 0.25 : -0.55); if (thumb) piv.rotation.y = -1.1; g.add(piv);
+      const s1 = this.rock(1); s1.scale.set(0.15, 0.42, 0.15); s1.position.set(0, 0.38, 0); piv.add(s1);
+      const j = new THREE.Group(); j.position.set(0, 0.78, 0); piv.add(j);
+      const s2 = this.rock(1); s2.scale.set(0.13, 0.32, 0.13); s2.position.set(0, 0.3, 0); j.add(s2);
+      fingers.push({ piv, j, thumb });
+    }
+    const H = { f, t: near ? t : null, at, g, fingers, time: 0, phase: 'rise', hold: 1.0 };
+    g.position.y = at.y - 2.2; g.scale.setScalar(1.25);
+    this.hands.push(H);
+    w.fx.crater(at, 3); w.fx.debrisBurst(_v.copy(at).setY(at.y + 0.1), 18, 3.5, 0.11, 0x6a5d50, 1.6); w.fx.dust(at, 12, 3, 0xa08a6c);
+    w.audio.rumble(1.0, at); w.shake(0.25, at); w.popup(f, 'EARTH HAND', true);
+  }
+  updateHands(dt) {
+    const w = this.world;
+    for (const H of this.hands) {
+      H.time += dt; const t = H.t, g = H.g;
+      if (H.phase === 'rise') {
+        const k = Math.min(1, H.time / 0.3); g.position.y = H.at.y - 2.2 + 2.4 * k * (2 - k);
+        for (const F of H.fingers) { F.piv.rotation.x = 0.15; F.j.rotation.x = 0.1; }
+        if (k >= 1) {
+          H.phase = 'grab'; H.time = 0;
+          if (t && !t.dead && t.invuln <= 0 && Math.hypot(t.pos.x - H.at.x, t.pos.z - H.at.z) < 1.6 && t.pos.y - t.groundY < 1.5) { H.caught = true; t.restrainT = Math.max(t.restrainT || 0, H.hold + 0.3); t.handGrip = H; w.combat.damage(t, 4, _v.set(0, 0, 0), H.f, 'earthHand', t.chestPos(new THREE.Vector3()), 0, -1); }
+          else { // nothing in it: a swat on the spot
+            for (const v of w.fighters) if (v !== H.f && !v.dead && v.invuln <= 0 && Math.hypot(v.pos.x - H.at.x, v.pos.z - H.at.z) < 2.0 && v.pos.y - v.groundY < 2.2) w.combat.damage(v, 10, _v.set(v.pos.x - H.at.x, 0, v.pos.z - H.at.z).normalize().clone(), H.f, 'earthHand', v.chestPos(new THREE.Vector3()), 8, 1);
+          }
+        }
+      } else if (H.phase === 'grab') {
+        const close = Math.min(1, H.time / 0.18);
+        for (const F of H.fingers) { F.piv.rotation.x = (F.thumb ? -0.9 : 1.15) * close; F.j.rotation.x = 1.2 * close; }
+        if (H.caught && t) {
+          if (t.input && t.input.jump) H.hold -= 0.25;
+          const lift = Math.min(1, H.time / 0.5);
+          g.position.y = H.at.y + 0.2 + 1.0 * lift;
+          t.pos.set(H.at.x, H.at.y + 1.0 * lift + 0.3, H.at.z); t.vel.set(0, 0, 0); t.onGround = false; t.restrainT = Math.max(t.restrainT, 0.1);
+          if (H.time >= H.hold || t.dead) { H.phase = 'slam'; H.time = 0; }
+        } else if (H.time > 0.35) { H.phase = 'sink'; H.time = 0; }
+      } else if (H.phase === 'slam') {
+        const k = Math.min(1, H.time / 0.16); g.position.y = H.at.y + 1.2 - 1.6 * k;
+        if (t && H.caught) { t.pos.y = H.at.y + 1.3 * (1 - k); }
+        if (k >= 1) {
+          if (t && H.caught && !t.dead) { t.handGrip = null; t.restrainT = 0.05; t.onGround = true; w.combat.damage(t, 14, _v.set(t.pos.x - H.f.pos.x, 0, t.pos.z - H.f.pos.z).normalize().clone(), H.f, 'earthHand', t.chestPos(new THREE.Vector3()), 3, 2); }
+          w.fx.crater(H.at, 2.6); w.fx.debrisBurst(_v.copy(H.at).setY(H.at.y + 0.3), 16, 4, 0.1, 0x6a5d50); w.fx.dust(H.at, 12, 3, 0xa08a6c); w.audio.rumble(1.2, H.at); w.shake(0.35, H.at);
+          H.phase = 'sink'; H.time = 0;
+        }
+      } else {
+        g.position.y -= dt * 4.5; for (const F of H.fingers) F.piv.rotation.x *= 0.9;
+        if (H.time > 0.6) { w.scene.remove(g); H.dead = true; if (t && t.handGrip === H) t.handGrip = null; }
+      }
+    }
+    this.hands = this.hands.filter(H => !H.dead);
+  }
+
+  // ---------------------------------------------------------------- Ground Shift (LEG with the stick pulled away)
+  // (20 Nov, Earth brief) the hips turn and both forearms sweep sideways; a slab of ground under the rival lurches the
+  // same way (the floor cracks round it and the slab slides 1.5 m), throwing them off balance: a stumble and a sideways
+  // stagger (6 damage), or, caught mid-stride or already reeling, the legs go and they fall (Sweep Fall).
+  groundShift(f) {
+    const w = this.world, t = f.target && !f.target.dead ? f.target : null;
+    const at = t && Math.hypot(t.pos.x - f.pos.x, t.pos.z - f.pos.z) < 12 ? new THREE.Vector3(t.pos.x, t.groundY, t.pos.z) : f.pos.clone().addScaledVector(f.forward(_v).setY(0).normalize(), 4);
+    at.y = w.arena.groundAt(at.x, at.z, at.y + 1);
+    const fw = f.forward(new THREE.Vector3()).setY(0).normalize(), side = new THREE.Vector3(-fw.z, 0, fw.x).multiplyScalar(f.techSide > 0 ? 1 : -1);
+    const slab = this.rock(1); slab.scale.set(1.6, 0.35, 1.6); slab.position.set(at.x, at.y - 0.2, at.z); w.scene.add(slab);
+    this.shifts.push({ f, slab, at, side, t: 0, hit: false, target: t });
+    w.fx.crater(at, 3.2); w.audio.rumble(0.9, at); w.shake(0.2, at); w.popup(f, 'GROUND SHIFT', true);
+  }
+  updateShifts(dt) {
+    const w = this.world;
+    for (const S of this.shifts) {
+      S.t += dt; const k = Math.min(1, S.t / 0.22);
+      S.slab.position.set(S.at.x + S.side.x * 1.5 * k, S.at.y - 0.2 + 0.12 * Math.sin(k * Math.PI), S.at.z + S.side.z * 1.5 * k);
+      if (Math.random() < 0.6 && k < 1) w.fx.dust(S.slab.position, 2, 1.5, 0xa08a6c);
+      if (!S.hit && S.t > 0.06) {
+        S.hit = true;
+        for (const v of w.fighters) {
+          if (v === S.f || v.dead || v.invuln > 0 || !v.onGround || Math.hypot(v.pos.x - S.at.x, v.pos.z - S.at.z) > 1.9) continue;
+          const reeling = v.action === 'hit' || v.action === 'stagger' || v.speedNorm > 0.5;
+          if (reeling) { v.lastHitFrom = S.f; v.shiftFall = true; }
+          w.combat.damage(v, 6, S.side.clone(), S.f, 'groundShift', v.chestPos(new THREE.Vector3()), reeling ? 3 : 5, reeling ? 2 : 1);
+          v.shiftFall = false;
+        }
+        w.fx.debrisBurst(_v.copy(S.at).setY(S.at.y + 0.1), 14, 3, 0.09, 0x6a5d50, 1.2);
+      }
+      if (S.t > 1.2) { S.slab.position.y -= dt * 2; }
+      if (S.t > 1.6) { w.scene.remove(S.slab); S.dead = true; }
+    }
+    this.shifts = this.shifts.filter(S => !S.dead);
+  }
+
+  // ---------------------------------------------------------------- Slab Shackles (GUARD held + LEG)
+  // (20 Nov, Earth brief) the hands draw inward and close: stone segments rise round the rival's ankles and shins and
+  // lock (5 damage). The legs are held 2 s while the upper body struggles (and can still guard); each JUMP breaks
+  // 0.3 s off; the shackles shatter when it ends.
+  shackles(f) {
+    const w = this.world, t = f.target && !f.target.dead ? f.target : null;
+    if (!t || Math.hypot(t.pos.x - f.pos.x, t.pos.z - f.pos.z) > 12 || !t.onGround || t.invuln > 0) { w.audio.rumble(0.5); return; }
+    const at = new THREE.Vector3(t.pos.x, t.groundY, t.pos.z), segs = [];
+    for (let i = 0; i < 6; i++) { const a = i / 6 * 6.28, m = this.rock(1); m.scale.set(0.16, 0.42, 0.16); m.position.set(at.x + Math.cos(a) * 0.3, at.y - 0.5, at.z + Math.sin(a) * 0.3); m.rotation.set(Math.sin(a) * 0.35, a, -Math.cos(a) * 0.35); w.scene.add(m); segs.push(m); }
+    const K = { f, t, at, segs, time: 0, dur: 2.0 };
+    t.restrainT = Math.max(t.restrainT || 0, K.dur); t.vel.set(0, 0, 0);
+    w.combat.damage(t, 5, _v.set(0, 0, 0), f, 'shackles', t.chestPos(new THREE.Vector3()), 0, -1);
+    w.fx.debrisBurst(_v.copy(at).setY(at.y + 0.1), 10, 2, 0.07, 0x6a5d50, 1.4); w.audio.rumble(0.9, at); w.popup(f, 'SLAB SHACKLES', true);
+    this.shackled.push(K);
+  }
+  updateShackles(dt) {
+    const w = this.world;
+    for (const K of this.shackled) {
+      K.time += dt; const t = K.t;
+      if (t.input && t.input.jump) { K.dur -= 0.3; w.fx.debrisBurst(_v.copy(K.at).setY(K.at.y + 0.3), 2, 1.5, 0.05, 0x6a5d50); }
+      const k = Math.min(1, K.time / 0.15); for (const m of K.segs) m.position.y = K.at.y - 0.5 + 0.72 * k;
+      const free = t.dead || K.time >= K.dur || t.action === 'down';
+      if (!free) { t.pos.x = K.at.x; t.pos.z = K.at.z; t.vel.x = t.vel.z = 0; t.restrainT = Math.max(t.restrainT, 0.05); }
+      else { t.restrainT = Math.min(t.restrainT, 0.05); for (const m of K.segs) { w.fx.debrisBurst(m.position, 2, 2.5, 0.06, 0x6a5d50); w.scene.remove(m); } w.audio.rumble(0.6, K.at); K.dead = true; }
+    }
+    this.shackled = this.shackled.filter(K => !K.dead);
+  }
+
+  // ---------------------------------------------------------------- Earthbreaker (SPECIAL held 1 s): the ultimate
+  // (20 Nov, Earth brief, an original ultimate) a deep stance; the arms reach out to the earth and draw up and inward
+  // while great rocks tear out of the ground round the bender and grind together into one mass in front of him (the
+  // pose is held while it gathers, about 1 s); the hips and torso turn to the rival and both arms drive forward: the
+  // mass flies and crashes down on them. The impact: a crater, a ring of rock spikes erupting outward through the
+  // ground, fragments thrown up and falling, a rolling cloud of dust (no fire). Up to 34 damage within 5 m, a heavy
+  // throw for anyone within 3 m; 50 energy, 16 s cooldown.
+  breakerGather(f) {
+    const w = this.world, at = f.pos.clone().addScaledVector(f.forward(_v).setY(0).normalize(), 1.6);
+    at.y = f.groundY + 1.3;
+    const g = new THREE.Group(); g.position.copy(at); w.scene.add(g);
+    const E = { f, g, at, t: 0, state: 'gather', parts: [], vel: new THREE.Vector3(), r: 0.4 };
+    for (let i = 0; i < 9; i++) {
+      const a = i / 9 * 6.28 + rand(-0.2, 0.2), R = rand(2.2, 3.4), m = this.rock(rand(0.35, 0.6));
+      const from = new THREE.Vector3(f.pos.x + Math.cos(a) * R, f.groundY - 0.3, f.pos.z + Math.sin(a) * R);
+      m.position.copy(from); w.scene.add(m);
+      E.parts.push({ m, from, slot: new THREE.Vector3(rand(-1, 1), rand(-1, 1), rand(-1, 1)).normalize().multiplyScalar(rand(0.15, 0.5)), d: i * 0.06 });
+      w.fx.crater(_v.copy(from).setY(f.groundY), 1.4); w.fx.debrisBurst(_v.copy(from).setY(f.groundY + 0.1), 5, 2, 0.08, 0x6a5d50, 1.5);
+    }
+    w.audio.rumble(1.2); w.shake(0.3, f.pos); w.popup(f, 'EARTHBREAKER', true);
+    this.breakers.push(E);
+  }
+  breakerLaunch(f) {
+    const E = this.breakers.find(e => e.f === f && e.state === 'gather'); if (!E) return;
+    const t = f.target && !f.target.dead ? f.target : null;
+    const dest = t ? t.pos.clone().setY(t.groundY) : f.pos.clone().addScaledVector(f.forward(_v).setY(0).normalize(), 10);
+    E.state = 'fly'; E.t = 0; E.from = E.g.position.clone(); E.dest = dest; E.dur = clamp(dest.distanceTo(E.from) / 22, 0.25, 0.8);
+    this.world.audio.rumble(1.0); this.world.audio.whoosh(1.3);
+  }
+  updateBreakers(dt) {
+    const w = this.world;
+    for (const E of this.breakers) {
+      E.t += dt; const f = E.f;
+      if (E.state === 'gather') {
+        if (f.dead || f.reacting() || f.action !== 'tech' || f.tech !== f.style.tech.breaker) { for (const P of E.parts) w.scene.remove(P.m); w.scene.remove(E.g); E.dead = true; f.breakerHold = false; continue; }
+        // the pose waits while the mass gathers (hero pins the clip)
+        const pinU = 0.33; if (f.actionU >= pinU && E.t < 1.0) { f.actionT = pinU * f.A.dur; f.breakerHold = true; } else if (E.t >= 1.0) f.breakerHold = false;
+        E.g.position.copy(f.pos).addScaledVector(f.forward(_v).setY(0).normalize(), 1.7).setY(f.groundY + 1.5);
+        for (const P of E.parts) {
+          const k = clamp((E.t - P.d) / 0.7, 0, 1), e = k * k * (3 - 2 * k);
+          _v.copy(E.g.position).addScaledVector(P.slot, 1 + 0.8 * (1 - e)); P.m.position.copy(P.from).lerp(_v, e); P.m.position.y += Math.sin(e * Math.PI) * 1.2;
+          P.m.rotation.x += dt * 2; P.m.rotation.z += dt * 1.5;
+        }
+        if (Math.random() < dt * 8) w.fx.debrisBurst(E.g.position, 1, 1.5, 0.06, 0x6a5d50, 0.4);
+        if (Math.random() < dt * 3) w.audio.rumble(0.5, E.g.position);
+      } else {
+        const k = Math.min(1, E.t / E.dur), p = _v.copy(E.from).lerp(E.dest, k); p.y += Math.sin(k * Math.PI) * 2.2;
+        const off = p.clone().sub(E.g.position); E.g.position.copy(p);
+        for (const P of E.parts) { P.m.position.add(off); P.m.rotation.x += dt * 4; }
+        if (Math.random() < 0.6) w.fx.dust(p, 1, 1, 0xa08a6c);
+        if (k >= 1) { this.breakerImpact(E); for (const P of E.parts) w.scene.remove(P.m); w.scene.remove(E.g); E.dead = true; }
+      }
+    }
+    this.breakers = this.breakers.filter(E => !E.dead);
+  }
+  breakerImpact(E) {
+    const w = this.world, c = E.dest, f = E.f, B = this.B;
+    w.fx.crater(c, 6); w.shake(1.1, c); w.audio.rumble(1.6, c); w.audio.boom(1.6, c); w.audio.impact(1.4);
+    for (let i = 0; i < 4; i++) w.fx.debrisBurst(_v.copy(c).setY(c.y + 0.3), 16, 6 + i, 0.14, i % 2 ? 0x6a5d50 : 0x7a7068, 2);
+    w.fx.dust(c, 24, 6, 0x9a8466);
+    this.cloud(c.clone().setY(c.y + 0.5), 4.5, 3.5);
+    // a ring of rock spikes erupting outward through the ground
+    for (let ring = 1; ring <= 3; ring++) for (let i = 0; i < 8 + ring * 3; i++) { const a = i / (8 + ring * 3) * 6.28; B.spikes.push({ owner: f, t: -ring * 0.08, pos: new THREE.Vector3(c.x + Math.cos(a) * ring * 1.6, c.y, c.z + Math.sin(a) * ring * 1.6), mesh: null, hit: new Set() }); }
+    for (const P of this.B.pillars || []) if (!P.dead && !P.col.dead && Math.hypot(P.col.x - c.x, P.col.z - c.z) < 5) { P.col.dead = true; B.lowerPillar(P); }
+    for (const t of w.fighters) {
+      if (t === f || t.dead || t.invuln > 0) continue;
+      const d = Math.hypot(t.pos.x - c.x, t.pos.z - c.z);
+      if (d < 5) w.combat.damage(t, Math.round(34 - d * 4), _v.set(t.pos.x - c.x, 0, t.pos.z - c.z).normalize().clone(), f, 'earthbreaker', t.chestPos(new THREE.Vector3()), d < 3 ? 15 : 9, 2);
+    }
+    w.popup(f, 'EARTHBREAKER', true);
+  }
+
+  update(dt) { this.updateHands(dt); this.updateShifts(dt); this.updateShackles(dt); this.updateBreakers(dt); this.updateGauntlets(dt); for (const f of this.world.fighters) if (f.comp) this.compressTick(f, dt); this.updateStorm(dt); this.updateTremors(dt); this.updateBlasts(dt); this.updateClouds(dt); this.updatePits(dt); this.updateSands(dt); this.updateArmours(dt); }
   clear() {
     const w = this.world;
     for (const B of this.blasts) { for (const P of B.sprites) w.scene.remove(P.s); for (const G of B.grit) w.scene.remove(G.m); }
@@ -375,6 +671,10 @@ export class EarthSkills {
     for (const S of this.sands) w.scene.remove(S.m);
     for (const A of this.armours) this.armourEnd(A.f, true);
     for (const R of this.tremors) w.scene.remove(R.m);
+    for (const g of this.gaunts) for (const P of g.plates) P.bone.remove(P.m); this.gaunts = [];
+    for (const H of this.hands) w.scene.remove(H.g); for (const S of this.shifts) w.scene.remove(S.slab); for (const K of this.shackled) for (const m of K.segs) w.scene.remove(m); for (const E of this.breakers) { for (const P of E.parts) w.scene.remove(P.m); w.scene.remove(E.g); E.f.breakerHold = false; }
+    this.hands = []; this.shifts = []; this.shackled = []; this.breakers = [];
+    for (const f of w.fighters || []) { if (f.comp) this.compressEnd(f, false); if (f.compBall) { w.scene.remove(f.compBall.m); f.compBall = null; } f.gaunts = null; }
     this.storming = null; if (this.stormS) { const sc = w.scene, O = this.stormS; sc.fog.color.copy(O.fogC); sc.fog.near = O.near; sc.fog.far = O.far; if (O.bg) sc.background.copy(O.bg); this.stormS = null; }
     this.blasts = []; this.clouds = []; this.pits = []; this.sands = []; this.armours = []; this.tremors = [];
     for (const f of w.fighters || []) { f.sandT = 0; f.sandSink = 0; f.blindT = 0; }

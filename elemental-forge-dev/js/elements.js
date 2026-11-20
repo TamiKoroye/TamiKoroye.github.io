@@ -281,6 +281,13 @@ export class Bending {
       // (20 Nov, Earth phase one) the new skills (earth.js); Dust Cloud is the charged storm if HAND is still held
       case 'earth.dust': this.earth.dust(f, !!f.input.handHeld); return;
       case 'earth.storm': this.earth.storm(f); return;
+      case 'earth.thrust': this.earth.compressLaunch(f); return;
+      case 'earth.hand2': this.earth.earthHand(f); return;
+      case 'earth.shift': this.earth.groundShift(f); return;
+      case 'earth.shackles': this.earth.shackles(f); return;
+      case 'earth.breakerGather': this.earth.breakerGather(f); return;
+      case 'earth.breakerLaunch': this.earth.breakerLaunch(f); return;
+      case 'earth.slamRupture': this.specials.earthRupture(f); return;
       case 'earth.sink': this.earth.sink(f); return;
       case 'earth.quicksand': this.earth.quicksand(f); return;
       case 'earth.armour': this.earth.armour(f); return;
@@ -720,6 +727,7 @@ export class Bending {
   holdStart(f) {
     const h = { el: f.el, t: 0, tick: 0, whip: null };
     this.holds.set(f, h);
+    if (f.el === 'earth') { h.mode = 'compress'; this.earth.compressStart(f); }   // (20 Nov) Earth Compression
     if (f.el === 'water' || f.el === 'air') h.mode = 'twin';   // two sustained streams, one from each hand
   }
   // a visible body for sustained streams: a cone from the hands along the aim
@@ -733,6 +741,7 @@ export class Bending {
   }
   holdEnd(f) {
     const h = this.holds.get(f); if (!h) return;
+    if (h.mode === 'compress') { const rel = !!f.compRelease; f.compRelease = false; this.earth.compressEnd(f, rel); if (rel && f.compBall) f.startTech(f.style.tech.thrust, f.handSide = -f.handSide, true); }
     if (h.whip) { this.world.scene.remove(h.whip.mesh); h.whip.mesh.geometry.dispose(); h.whip = null; }
     this.weapons.endSustain(h);
     if (h.streams) { for (const m of h.streams) this.world.scene.remove(m); }
@@ -743,7 +752,8 @@ export class Bending {
     const h = this.holds.get(f); if (!h) return;
     const w = this.world; h.t += dt; h.tick -= dt;
     const aim = f.input.aimPoint;
-    if (h.el === 'earth') {
+    if (h.mode === 'compress') { /* earth.js compressTick draws it */ }
+    else if (h.el === 'earth') {
       // Boulder Lift: one rock (or a nearby loose stone) every 0.35 s up to three
       // the bender reaches down to the ground for each one (PickUp_Table), and the rock breaks out of the ground as the
       // hands come back up

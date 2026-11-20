@@ -223,14 +223,15 @@ export class AI {
       this.throwT = rand(P.throwGap[0], P.throwGap[1]);
       const roll = Math.random();
       if (f.el === 'earth' && roll < 0.15 && dist < 12) { f.aiDust = true; inp.hand = true; }   // (20 Nov) Earth: the Ground Rupture
-      else if (f.el === 'earth' && roll < 0.25 && dist < 5 && !f.armour) { f.aiArmour = true; }   // (20 Nov) Earth: the Rock Man for close fighting
+      else if (f.el === 'earth' && roll < 0.25 && dist < 5 && !f.armour) { f.aiArmour = true; }
+      else if (f.el === 'earth' && roll < 0.33 && dist < 10) { f.aiShift = true; inp.leg = true; }   // (20 Nov) Earth: Ground Shift   // (20 Nov) Earth: the Rock Man for close fighting
       else if (held > 0 || roll < 0.45) inp.hand = true;                         // launch held object / hand technique
       else if (roll < 0.7) inp.leg = true;                                   // kick projectile
       else if (this.d !== 'training') { inp.hand = true; this.holdKind = 'hand'; this.holdT = rand(0.9, 1.6); }  // sustained bending
       else inp.hand = true;
     } else if (this.specialT <= 0 && dist < 16 && f.en > 30) {
       inp.special = true; this.specialT = this.d === 'master' ? rand(3, 5) : rand(6, 10);
-      if (f.el === 'earth') f.aiEarthPick = Math.random() < 0.4 ? 'quicksand' : null;   // (20 Nov) Earth's SPECIAL: tap the Dust Storm, hold for Quicksand
+      if (f.el === 'earth') { const r = Math.random(); f.aiEarthPick = r < 0.3 ? 'quicksand' : r < 0.45 && f.en > 55 ? 'breaker' : null; }   // (20 Nov) Earth's SPECIAL: tap the Dust Storm, hold for Quicksand
     } else if (this.d === 'master' && dist < 4 && Math.random() < dt * 0.6 && f.en > 30) {
       inp.leg = true; this.holdKind = 'leg'; this.holdT = 0.9;               // charged technique
     }

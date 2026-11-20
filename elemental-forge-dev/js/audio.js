@@ -233,8 +233,55 @@ export class Audio {
     if (this.recorded) { if (k >= 1) { this.play('bodyfall', { vol: Math.min(1.2, 0.6 + 0.4 * k), pos }); if (k >= 1.3) this.play('quake', { vol: 0.6, pos }); } else this.play('block', { vol: 0.6 + 0.5 * k, pos }); return; }
     this.noise(0.35, 'lowpass', 1400, 120, 0.6 * k, 0.8); this.tone(0.25, 120, 45, 0.5 * k);
   }
+  // (20 Nov, after review: "the earth moves should sound powerful and devastating") the rock recordings are joined by a
+  // synthesised boom: a deep thump that falls from 150 to 45 Hz with a sharp crack of stone on top, scaled by the blow
+  boom(k = 1, pos) {
+    const c = this.ctx; if (!c || this.muted || !this.noiseBuf) return;
+    const [pan, att] = this.place(pos), t = c.currentTime, g0 = Math.min(1.6, 0.9 * k) * att;
+    const out = c.createGain(); out.gain.value = 1; let p = null; if (c.createStereoPanner) { p = c.createStereoPanner(); p.pan.value = pan; out.connect(p); p.connect(this.master); } else out.connect(this.master);
+    const o = c.createOscillator(); o.type = 'sine'; o.frequency.setValueAtTime(150, t); o.frequency.exponentialRampToValueAtTime(45, t + 0.45);
+    const og = c.createGain(); og.gain.setValueAtTime(0.0001, t); og.gain.exponentialRampToValueAtTime(g0, t + 0.012); og.gain.exponentialRampToValueAtTime(0.0001, t + 0.6);
+    o.connect(og); og.connect(out); o.start(t); o.stop(t + 0.65);
+    const n = c.createBufferSource(); n.buffer = this.noiseBuf; const bp = c.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 900; bp.Q.value = 0.8;
+    const ng = c.createGain(); ng.gain.setValueAtTime(0.0001, t); ng.gain.exponentialRampToValueAtTime(g0 * 0.7, t + 0.005); ng.gain.exponentialRampToValueAtTime(0.0001, t + 0.18);
+    n.connect(bp); bp.connect(ng); ng.connect(out); n.start(t, Math.random()); n.stop(t + 0.2);
+    // a gravel tail: the debris settling
+    const n2 = c.createBufferSource(); n2.buffer = this.noiseBuf; const bp2 = c.createBiquadFilter(); bp2.type = 'bandpass'; bp2.frequency.value = 450; bp2.Q.value = 0.6;
+    const g2 = c.createGain(); g2.gain.setValueAtTime(0.0001, t); g2.gain.exponentialRampToValueAtTime(g0 * 0.35, t + 0.05); g2.gain.exponentialRampToValueAtTime(0.0001, t + 0.7 + 0.3 * k);
+    n2.connect(bp2); bp2.connect(g2); g2.connect(out); n2.start(t, Math.random()); n2.stop(t + 1.1);
+  }
+  // (20 Nov, after review: "most of the rock gravelling sounds are gone") a held loop: stone grinding over stone and
+  // gravel crunching under the slab, kept alive each frame like hold()
+  gravel(key, vol = 1, pos = null) {
+    const c = this.ctx; if (!c || this.muted || !this.noiseBuf) return;
+    let L = this.loops.get(key);
+    const [pan, att] = this.place(pos), target = 0.6 * vol * att;
+    if (!L || L.name !== '~gravel') {
+      if (L) this.stopLoop(key);
+      if (!this.gravelBuf) {
+        const n = Math.floor(c.sampleRate * 1.9), b = c.createBuffer(1, n, c.sampleRate), d = b.getChannelData(0);
+        for (let i = 0; i < n;) { i += Math.floor(c.sampleRate * (0.004 + Math.random() * 0.03)); const amp = 0.2 + Math.random() * 0.8, len = Math.floor(c.sampleRate * (0.003 + Math.random() * 0.012)); for (let m = 0; m < len && i + m < n; m++) d[i + m] += amp * (Math.random() * 2 - 1) * Math.exp(-m / (len * 0.35)); }
+        this.gravelBuf = b;
+      }
+      const src = c.createBufferSource(); src.buffer = this.noiseBuf; src.loop = true;
+      const gr = c.createBufferSource(); gr.buffer = this.gravelBuf; gr.loop = true;
+      const grind = c.createBiquadFilter(); grind.type = 'bandpass'; grind.frequency.value = 320; grind.Q.value = 1.2;
+      const crunch = c.createBiquadFilter(); crunch.type = 'bandpass'; crunch.frequency.value = 1300; crunch.Q.value = 0.7;
+      const gG = c.createGain(); gG.gain.value = 1.6; const gC = c.createGain(); gC.gain.value = 1.1;
+      const lfo = c.createOscillator(); lfo.frequency.value = 4.3; const lg = c.createGain(); lg.gain.value = 0.6; lfo.connect(lg); lg.connect(gG.gain); lfo.start();
+      const g = c.createGain(); g.gain.value = 0.0001;
+      src.connect(grind); grind.connect(gG); gG.connect(g); gr.connect(crunch); crunch.connect(gC); gC.connect(g);
+      let p = null; if (c.createStereoPanner) { p = c.createStereoPanner(); g.connect(p); p.connect(this.master); } else g.connect(this.master);
+      src.start(c.currentTime, Math.random()); gr.start(c.currentTime, Math.random());
+      L = { name: '~gravel', src, g, p, lfo, ck: gr }; this.loops.set(key, L);
+    }
+    L.seen = this.t;
+    L.g.gain.setTargetAtTime(Math.max(0.0001, target), c.currentTime, 0.05);
+    if (L.p) L.p.pan.setTargetAtTime(pan, c.currentTime, 0.05);
+  }
   rumble(k = 0.6, pos) {
-    if (this.recorded) { this.play(k >= 0.75 ? 'rockCrash' : 'rockLift', { vol: 0.6 + 0.4 * k, pos }); if (k >= 1) this.play('quake', { vol: 0.7, pos }); return; }
+    if (k >= 0.6) this.boom(k, pos);
+    if (this.recorded) { this.play(k >= 0.75 ? 'rockCrash' : 'rockLift', { vol: 0.8 + 0.6 * k, pos }); if (k >= 0.9) this.play('quake', { vol: 0.8 + 0.3 * k, pos }); return; }
     this.noise(0.5, 'lowpass', 300, 60, 0.6 * k, 0.7); this.tone(0.4, 70, 40, 0.35 * k, 'triangle');
   }
   step(k = 0.5, pos) {

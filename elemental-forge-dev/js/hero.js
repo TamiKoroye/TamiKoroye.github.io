@@ -92,6 +92,10 @@ function rigPos(o, stop, out) { o.updateWorldMatrix(true, false); stop.updateWor
 
 // the frame of Running Arc held as Fire's glide stance (seconds into the baked clip)
 const GLIDE_POSE_T = 0.2;
+// (20 Nov, after review: "when sliding on rock the arms flail like a confused person") Earth's rock-surf stance is one
+// held frame of the surf stance (feet staggered, knees bent, the lead arm forward, the other near the chest); the clip
+// looped its arms round every four seconds. The body's lean and the knees' give come from the slab's motion (fighter.js)
+const EARTH_SURF_T = 2.3;
 export class Hero {
   // parent: the group that also holds the driver's hips (the fighter's "offs" group); driverJ: driver bones
   constructor(parent, driverJ, colors) {
@@ -304,7 +308,7 @@ export class Hero {
       return [side > 0 ? 'strafe' : 'strafe_M', C(sp / 2.5, 0.7, 1.9)];
     };
     // elemental mobility: the legs hold the surfing stance / the flying pose, techniques play over them
-    const mk = f.mob && f.mob.kind, lowOv = mk === 'surf' && f.onGround && has('surf_stance') ? ['surf_stance', LOOP_SPEED.surf_stance] : mk === 'fly' && has('air_loop') ? ['air_loop', 1] : null;   // (the reclined Mixamo Flying pose, air_fly, is kept in the pack for a later unlock: lying level it does not face the rival)
+    const mk = f.mob && f.mob.kind, lowOv = mk === 'surf' && f.onGround && has('surf_stance') ? (f.el === 'earth' ? ['surf_stance', 0, EARTH_SURF_T] : ['surf_stance', LOOP_SPEED.surf_stance]) : mk === 'fly' && has('air_loop') ? ['air_loop', 1] : null;   // (the reclined Mixamo Flying pose, air_fly, is kept in the pack for a later unlock: lying level it does not face the rival)
     // the blow's direction relative to the body (lz < 0: driven backwards, |lx| large: from the side)
     const hd = f.hitDir || f.koDir, hc = Math.cos(f.yaw), hs = Math.sin(f.yaw);
     const hlx = hd ? hd.x * hc - hd.z * hs : 0, hlz = hd ? hd.x * hs + hd.z * hc : -1;
@@ -355,6 +359,10 @@ export class Hero {
     // recovery from the floor: the Mixamo get-up (on the back, roll to a crouch, stand). UAL2's LayToIdle starts
     // from a crumpled pose that does not match the knockdown, so it is no longer used
     else if (f.action === 'getup' && has('getup')) { once('getup', this.actions.getup.getClip().duration / Math.max(0.3, f.A.dur) * 0.75, 0.1); }
+    // (20 Nov, Earth brief) Earth Launch: the crouch over the launch spot (Standing Jump's gather, 0 to 0.4 s, in 0.18 s);
+    // Earth's high landing: Hard Landing, knees absorbing into a crouch with a hand to the floor, then rising to guard
+    else if (f.launchPrepT > 0 && has('stand_jump')) { once('stand_jump', 2.2, 0.06); }
+    else if (f.action === 'landHigh' && f.el === 'earth' && has('hard_land')) once('hard_land', 2.4, 0.05);
     else if (f.action === 'landHigh' && has('land_high')) once('land_high', 1.25 / 0.42 * 0.75, 0.06);
     else if (f.action === 'hit' || f.action === 'stagger') {
       // a flinch alternates the two light reactions; a stagger is the heavy one: Big Side Hit (mirrored to the side
@@ -444,6 +452,9 @@ export class Hero {
         clip = has(n) ? n : 'block_hit'; wU = wL = 0; fade = 0.06; ts = 1.6; if (this.curName !== clip) restart = true;
       }
       else if (f.guarding && has(L.guard)) { clip = L.guard; wU = wL = 0; fade = 0.12; layered = moving || !!lowOv; }
+      // (20 Nov, Earth brief) Earth Compression: the hands held in front of the chest, palms facing (Standing 2H Magic
+      // Attack, its gathering frame held), legs set; the stone packs between them
+      else if (f.holding && f.el === 'earth' && f.comp && has('magic_2h')) { clip = 'magic_2h'; ts = 0; startAt = 1.15 - 0.08 * Math.min(1, f.comp.t / 1.2); wU = wL = 0; fade = 0.15; layered = moving; }
       else if (f.holding && f.el === 'earth' && f.gatherT > 0 && has('Fixing_Kneeling')) {
         // Earth's rock lift: sinking to one knee with the hands on the ground (UAL Fixing_Kneeling, from 0.3 s to its
         // lowest point at 1.15 s, reached 0.28 s into each gathering of 0.42 s), once per rock drawn up
@@ -454,7 +465,7 @@ export class Hero {
         else { const t = this.cur.time; if (t > 1.2) this.kneelDir = -1; else if (t < 0.95) this.kneelDir = 1; ts = this.kneelDir * (t > 0.9 ? 0.45 : 2.2); }
       }
       else if (f.holding && has(L.hold)) { clip = L.hold; ts = LOOP_SPEED[L.hold] || 1; wU = wL = 0; fade = 0.2; layered = moving || !!lowOv; }
-      else if (lowOv) { [clip, ts] = lowOv; wU = wL = 0; fade = 0.2; }
+      else if (lowOv) { [clip, ts] = lowOv; if (lowOv[2] !== undefined) startAt = lowOv[2]; wU = wL = 0; fade = 0.2; }
       // take-off from a run (every element): the Running Jump's spring, before the element's own airborne pose
       else if (free && !f.onGround && !f.mob && f.airTime < 0.3 && f.vel.y > 1 && (f.lastGroundSp || 0) > 4.5 && has('run_jump')) once('run_jump', 1.0, 0.08);
       // take-off from standing (an ordinary jump): the Standing Jump's spring from its take-off frame
@@ -506,7 +517,8 @@ export class Hero {
       if (mix && this.low) this.low.setEffectiveWeight(mix);
     }
     if (f.breathHold && this.curName && /fire_breath/.test(this.curName)) ts = 0;
-    if (f.cometHold && this.curName && /whip_v/.test(this.curName)) ts = 0;   // (the Fire Comet: the arms stay raised while it forms)   // (Dragon's Breath: the roaring pose is held while the flame pours out)
+    if (f.cometHold && this.curName && /whip_v/.test(this.curName)) ts = 0;
+    if (f.breakerHold && this.curName && /tc_push/.test(this.curName)) ts = 0;   // (Earthbreaker: the gathering pose held while the mass forms)   // (the Fire Comet: the arms stay raised while it forms)   // (Dragon's Breath: the roaring pose is held while the flame pours out)
     if (this.cur) this.cur.timeScale = ts;
     if (startAt && this.cur) this.cur.time = startAt;
     if (ts === 0 && this.cur && this.chargeHold !== undefined) this.cur.time += (this.chargeHold - this.cur.time) * Math.min(1, dt * 6);
