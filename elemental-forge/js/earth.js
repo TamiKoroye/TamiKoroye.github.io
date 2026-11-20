@@ -5,13 +5,13 @@ import * as THREE from 'three';
 import { jaggedRockGeometry } from './arena.js';
 import { mulberry32, rand, clamp } from './util.js';
 
-const _v = new THREE.Vector3(), _v2 = new THREE.Vector3(), _v3 = new THREE.Vector3();
+const _v = new THREE.Vector3(), _v2 = new THREE.Vector3(), _v3 = new THREE.Vector3(), _c1 = new THREE.Color();
 const DUST_COLS = [0x9c8466, 0xb39b7a, 0x7d6a52, 0xa88f6c, 0x8a7458];
 
 export class EarthSkills {
   constructor(B) {
     this.B = B; this.world = B.world;
-    this.blasts = []; this.clouds = []; this.pits = []; this.sands = []; this.armours = [];
+    this.blasts = []; this.clouds = []; this.pits = []; this.sands = []; this.armours = []; this.tremors = []; this.storming = null;
     const rng = mulberry32(4242);
     this.rockGeos = [0, 1, 2, 3, 4, 5].map(() => jaggedRockGeometry(rng, 1, 0.34, 1));
     this.rockMat = new THREE.MeshStandardMaterial({ color: 0x7a6f66, roughness: 0.95, flatShading: true });
@@ -143,6 +143,56 @@ export class EarthSkills {
   }
   obscured(p) { return this.clouds.some(C => C.t > 0.3 && C.t < C.life - 1 && Math.hypot(p.x - C.pos.x, p.z - C.pos.z) < C.R * 0.8); }
 
+  // ---------------------------------------------------------------- Dust Storm (SPECIAL tap)
+  // (20 Nov, after review: "the dust attack is meant to be powerful, not just a brown mist ... fill up the whole arena
+  // so the opponent cannot see where the earth bender is ... the earth bender feels the person through the ground")
+  // The stamp and palm thrust send the charged storm of grit at the rival (it strikes and staggers, as Dust Cloud), and
+  // the dust boils out over the whole arena for 8 s: the air thickens to a brown wall a dozen metres off (fog and sky
+  // turn to dust), clouds churn round the fighters, and the rival is blinded for as long as it lasts (the computer
+  // opponent loses track of the bender and swings wild; a human rival's screen is veiled). The bender is not blinded:
+  // he feels the rival through the ground, shown as tremor rings pulsing under the rival's feet, seen through the dust.
+  storm(f) {
+    this.dust(f, true);
+    const w = this.world, sc = w.scene;
+    if (!this.stormS) this.stormS = { fogC: sc.fog.color.clone(), near: sc.fog.near, far: sc.fog.far, bg: sc.background && sc.background.isColor ? sc.background.clone() : null };
+    this.storming = { f, t: 0, life: 8, ringT: 0 };
+    for (let i = 0; i < 26; i++) { const a = rand(0, 6.28), r = rand(2, 26); this.cloud(new THREE.Vector3(Math.cos(a) * r, f.groundY, Math.sin(a) * r), rand(4, 7), 8); }
+    w.audio.rumble(1.3); w.shake(0.4, f.pos); w.popup(f, 'DUST STORM', true);
+  }
+  updateStorm(dt) {
+    const S = this.storming, w = this.world, sc = w.scene, O = this.stormS;
+    if (!O) return;
+    let k = 0;
+    if (S) {
+      S.t += dt; k = Math.min(1, S.t / 0.8) * Math.min(1, (S.life - S.t) / 1.5);
+      for (const t of w.fighters) if (t !== S.f && !t.dead) t.blindT = Math.max(t.blindT || 0, 0.25);
+      // the bender's tremor sense: rings pulse out under the rival, drawn over the dust
+      if ((S.ringT -= dt) <= 0) {
+        S.ringT = 0.5;
+        const t = S.f.target; if (t && !t.dead) this.tremor(t);
+      }
+      if (S.t >= S.life || S.f.dead) this.storming = null;
+    }
+    // fog and sky ease toward dust and back
+    const dustC = _c1.setHex(0x9c8466);
+    // the player's own storm: thick enough to hide the rival beyond a few metres, thin enough to keep the bender in view
+    // on the follow camera; the rival's storm round the player: a blinding wall (and the dust veil, main.js)
+    const mine = !S || S.f === w.fighters[0], near = mine ? 4 : 1, far = mine ? 15 : 9;
+    sc.fog.color.copy(O.fogC).lerp(dustC, k); sc.fog.near = O.near + (near - O.near) * k; sc.fog.far = O.far + (far - O.far) * k;
+    if (O.bg && sc.background && sc.background.isColor) sc.background.copy(O.bg).lerp(dustC, k);
+    if (!S && k === 0) { sc.fog.color.copy(O.fogC); sc.fog.near = O.near; sc.fog.far = O.far; if (O.bg) sc.background.copy(O.bg); this.stormS = null; }
+  }
+  tremor(t) {
+    const w = this.world;
+    const m = new THREE.Mesh(this.ringGeo || (this.ringGeo = (() => { const g = new THREE.RingGeometry(0.8, 1, 40); g.rotateX(-Math.PI / 2); return g; })()), new THREE.MeshBasicMaterial({ color: 0xffd36a, transparent: true, opacity: 0.9, depthTest: false, depthWrite: false, fog: false }));
+    m.position.set(t.pos.x, t.groundY + 0.05, t.pos.z); m.renderOrder = 20; w.scene.add(m);
+    this.tremors.push({ m, t: 0 });
+  }
+  updateTremors(dt) {
+    for (const R of this.tremors) { R.t += dt; R.m.scale.setScalar(0.4 + R.t * 2.6); R.m.material.opacity = 0.9 * Math.max(0, 1 - R.t / 0.7); if (R.t > 0.7) { this.world.scene.remove(R.m); R.m.material.dispose(); R.dead = true; } }
+    this.tremors = this.tremors.filter(R => !R.dead);
+  }
+
   // ---------------------------------------------------------------- Earth Sinking
   // (brief) the bender bends the knees and drives both palms down; the ground under the rival loosens and pulls the feet
   // in: the rival drops to the shins into a churned pit (a hole is opened in the look of the floor: a dark pit, broken
@@ -245,7 +295,8 @@ export class EarthSkills {
   // every part of the body, from the feet upwards: shins, thighs, hips, the torso in three plates, shoulders, upper
   // arms, forearms, fists, neck and head. Each plate is fixed to its own bone, so the joints still bend, punch, guard
   // and fall naturally. While it holds: blows do 40 % of their damage, light hits do not make him flinch, a stagger is
-  // only a flinch and a knockdown only a stagger; he moves at 80 % speed. It soaks 70 damage or lasts 10 s, then bursts.
+  // only a flinch and a knockdown only a stagger; he moves at 80 % speed. (20 Nov, after review) it is the close-quarters
+  // form: stone fists hit 40 % harder and push further (combat.damage). It soaks 70 damage or lasts 10 s, then bursts.
   armour(f) {
     const w = this.world;
     if (f.armour) this.armourEnd(f, true);
@@ -315,7 +366,7 @@ export class EarthSkills {
     this.armours = this.armours.filter(A => !A.dead);
   }
 
-  update(dt) { this.updateBlasts(dt); this.updateClouds(dt); this.updatePits(dt); this.updateSands(dt); this.updateArmours(dt); }
+  update(dt) { this.updateStorm(dt); this.updateTremors(dt); this.updateBlasts(dt); this.updateClouds(dt); this.updatePits(dt); this.updateSands(dt); this.updateArmours(dt); }
   clear() {
     const w = this.world;
     for (const B of this.blasts) { for (const P of B.sprites) w.scene.remove(P.s); for (const G of B.grit) w.scene.remove(G.m); }
@@ -323,7 +374,9 @@ export class EarthSkills {
     for (const P of this.pits) { for (const r of P.rim) w.scene.remove(r.m); w.scene.remove(P.pit); P.t.sinkY = 0; P.t.sinkP = null; }
     for (const S of this.sands) w.scene.remove(S.m);
     for (const A of this.armours) this.armourEnd(A.f, true);
-    this.blasts = []; this.clouds = []; this.pits = []; this.sands = []; this.armours = [];
+    for (const R of this.tremors) w.scene.remove(R.m);
+    this.storming = null; if (this.stormS) { const sc = w.scene, O = this.stormS; sc.fog.color.copy(O.fogC); sc.fog.near = O.near; sc.fog.far = O.far; if (O.bg) sc.background.copy(O.bg); this.stormS = null; }
+    this.blasts = []; this.clouds = []; this.pits = []; this.sands = []; this.armours = []; this.tremors = [];
     for (const f of w.fighters || []) { f.sandT = 0; f.sandSink = 0; f.blindT = 0; }
   }
 }

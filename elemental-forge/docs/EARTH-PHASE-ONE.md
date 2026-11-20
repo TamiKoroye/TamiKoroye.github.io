@@ -68,3 +68,13 @@ Each stage: tests, captures, deploy to the dev URL, report.
 | Quicksand | SPECIAL with the stick to the side (7 s cooldown, 20 energy) | A horse stance, the hands circling down; a 3.2 m circle of swirling sand opens under the rival for 4.5 s. Anyone but the bender in it moves at a third of their speed, sinks a little and cannot jump high. A trap only. |
 | Rock Armour | SPECIAL with the stick pulled away (14 s cooldown, 30 energy) | A stamp; stone plates climb from the feet to the head and lock onto every bone (48 plates: feet, shins, thighs, hips, torso, shoulders, upper arms, forearms, fists, neck, head), a rock man whose joints still bend. Blows do 40 % damage and each reaction drops a step (a knockdown becomes a stagger; light hits no flinch); 80 % speed. It breaks after soaking 70 damage or after 10 s. |
 The computer opponent uses all four when it plays Earth.
+
+## Controls simplified (20 Nov, after review: "too complex / hidden ... this is a phone game")
+| Input | Earth |
+|---|---|
+| SPECIAL tap | Dust Storm: the stamp and palm thrust drive a storm of grit at the rival (14 damage, a stagger, no knockdown), then the dust floods the whole arena for 8 s. The rival is blinded throughout (a computer rival loses track of the bender; a human rival sees a dust wall about 9 m off plus a veil). The bender feels the rival through the ground: gold tremor rings pulse under the rival's feet, drawn through the dust. 12 s cooldown, 30 energy. |
+| SPECIAL held 0.3 s | Quicksand under the rival: drawn in and swallowed towards the head; JUMP struggles up; at the chin it crushes (20) and throws them out. 7 s cooldown. |
+| LEG held | Earth Sinking: the rock trap under the rival, legs held 2.2 s, no dodge or jump out. |
+| GUARD held 0.6 s | Rock Man: the stone armour, the close-quarters form (stone fists and feet hit 40 % harder and push further; blows do 40 % damage and one reaction step less). 14 s cooldown, 30 energy. |
+| HAND with the stick pulled away | Ground Rupture (the fissure), moved here from SPECIAL. |
+The earlier stick-direction SPECIAL moves and the Dust Cloud on HAND are replaced by these.
