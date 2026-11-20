@@ -140,10 +140,11 @@ export class JetSet {
         pts.push(p);
       }
       // q = 0 at the far end, 1 at the nozzle: a narrow nozzle swelling quickly, widest about two thirds out, a ragged end
-      const shape = (q) => { const x = 1 - q; return (0.28 + 1.35 * Math.pow(Math.min(1, x / 0.65), 0.6)) * (x > 0.85 ? 1 - (x - 0.85) / 0.15 * 0.55 : 1); };
+      // (20 Nov: the first 15% stays heel-thin, so the flame plainly starts AT the heel and does not wrap the foot or shin)
+      const shape = (q) => { const x = 1 - q, e = Math.max(0, (x - 0.12) / 0.6); return (0.22 + 1.4 * Math.pow(Math.min(1, e), 1.1)) * (x > 0.85 ? 1 - (x - 0.85) / 0.15 * 0.55 : 1); };
       J.outer.set(pts, (q) => J.r * 1.3 * shape(q), t * 3);
       J.body.set(pts, (q) => J.r * 0.85 * shape(q), t * 4);
-      J.core.set(pts.slice(4), (q) => J.r * 0.45 * shape(q * 0.6 + 0.4), t * 5);
+      J.core.set(pts.slice(4), (q) => J.r * 0.5 * Math.max(0.35, shape(q * 0.6 + 0.4)), t * 5);
     }
   }
   dispose() { for (const J of this.map.values()) { J.outer.dispose(); J.body.dispose(); J.core.dispose(); } this.map.clear(); }
