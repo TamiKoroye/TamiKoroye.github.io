@@ -359,6 +359,10 @@ export class Hero {
     // recovery from the floor: the Mixamo get-up (on the back, roll to a crouch, stand). UAL2's LayToIdle starts
     // from a crumpled pose that does not match the knockdown, so it is no longer used
     else if (f.action === 'getup' && has('getup')) { once('getup', this.actions.getup.getClip().duration / Math.max(0.3, f.A.dur) * 0.75, 0.1); }
+    // (20 Nov, Earth brief) Earth Launch: the crouch over the launch spot (Standing Jump's gather, 0 to 0.4 s, in 0.18 s);
+    // Earth's high landing: Hard Landing, knees absorbing into a crouch with a hand to the floor, then rising to guard
+    else if (f.launchPrepT > 0 && has('stand_jump')) { once('stand_jump', 2.2, 0.06); }
+    else if (f.action === 'landHigh' && f.el === 'earth' && has('hard_land')) once('hard_land', 2.4, 0.05);
     else if (f.action === 'landHigh' && has('land_high')) once('land_high', 1.25 / 0.42 * 0.75, 0.06);
     else if (f.action === 'hit' || f.action === 'stagger') {
       // a flinch alternates the two light reactions; a stagger is the heavy one: Big Side Hit (mirrored to the side
@@ -448,6 +452,9 @@ export class Hero {
         clip = has(n) ? n : 'block_hit'; wU = wL = 0; fade = 0.06; ts = 1.6; if (this.curName !== clip) restart = true;
       }
       else if (f.guarding && has(L.guard)) { clip = L.guard; wU = wL = 0; fade = 0.12; layered = moving || !!lowOv; }
+      // (20 Nov, Earth brief) Earth Compression: the hands held in front of the chest, palms facing (Standing 2H Magic
+      // Attack, its gathering frame held), legs set; the stone packs between them
+      else if (f.holding && f.el === 'earth' && f.comp && has('magic_2h')) { clip = 'magic_2h'; ts = 0; startAt = 1.15 - 0.08 * Math.min(1, f.comp.t / 1.2); wU = wL = 0; fade = 0.15; layered = moving; }
       else if (f.holding && f.el === 'earth' && f.gatherT > 0 && has('Fixing_Kneeling')) {
         // Earth's rock lift: sinking to one knee with the hands on the ground (UAL Fixing_Kneeling, from 0.3 s to its
         // lowest point at 1.15 s, reached 0.28 s into each gathering of 0.42 s), once per rock drawn up
@@ -510,7 +517,8 @@ export class Hero {
       if (mix && this.low) this.low.setEffectiveWeight(mix);
     }
     if (f.breathHold && this.curName && /fire_breath/.test(this.curName)) ts = 0;
-    if (f.cometHold && this.curName && /whip_v/.test(this.curName)) ts = 0;   // (the Fire Comet: the arms stay raised while it forms)   // (Dragon's Breath: the roaring pose is held while the flame pours out)
+    if (f.cometHold && this.curName && /whip_v/.test(this.curName)) ts = 0;
+    if (f.breakerHold && this.curName && /tc_push/.test(this.curName)) ts = 0;   // (Earthbreaker: the gathering pose held while the mass forms)   // (the Fire Comet: the arms stay raised while it forms)   // (Dragon's Breath: the roaring pose is held while the flame pours out)
     if (this.cur) this.cur.timeScale = ts;
     if (startAt && this.cur) this.cur.time = startAt;
     if (ts === 0 && this.cur && this.chargeHold !== undefined) this.cur.time += (this.chargeHold - this.cur.time) * Math.min(1, dt * 6);

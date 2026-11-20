@@ -193,7 +193,9 @@ for (const el of (process.env.ONLY || process.env.WHIPS ? [] : ["fire", "earth",
   // (20 Nov, changed with the user's simpler Earth controls: SPECIAL tapped is now Earth's Dust Storm, and the Ground
   //  Rupture moved to HAND with the stick pulled away from the rival; the Earth checks below press that instead and are
   //  otherwise unchanged)
-  if (el === 'earth') { await stick(0, 90); await stepN(2); await press('btn-hand', 2); await stickUp(); }
+  // (20 Nov, later: HAND pulled away became Earth Hand; the Ground Rupture now bursts out where Earth lands from a jump
+  //  with LEG held in the air, so the check jumps and holds LEG)
+  if (el === 'earth') { await S(() => { window.__EF.player.en = 100; }); await press('btn-jump', 2); await stepN(26); await hold('btn-leg'); await stepN(30); await fUp(6); }
   else await press('btn-special', 2);
   if (el === 'fire') await stickUp();
   const rows = []; let shot = 0;

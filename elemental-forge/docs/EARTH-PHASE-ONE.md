@@ -78,3 +78,25 @@ The computer opponent uses all four when it plays Earth.
 | GUARD held 0.6 s | Rock Man: the stone armour, the close-quarters form (stone fists and feet hit 40 % harder and push further; blows do 40 % damage and one reaction step less). 14 s cooldown, 30 energy. |
 | HAND with the stick pulled away | Ground Rupture (the fissure), moved here from SPECIAL. |
 The earlier stick-direction SPECIAL moves and the Dust Cloud on HAND are replaced by these.
+
+## Third round (20 Nov, evening), after the user's review and screen recording
+Fixed:
+- Rock-surf stance: one held frame of the surf stance (lead arm forward, the other guarding the chest, knees bent, feet
+  staggered); the loop that swung the arms round every four seconds is gone. The body leans into the slab's
+  acceleration and banks into turns.
+- Sound: a synthesised boom (a deep thump falling from 150 to 45 Hz, a crack of stone, a gravel tail) under every heavy
+  Earth move; the rock recordings louder; a gravel-grinding loop under the slab while surfing; the Fire glide roar louder.
+- Falls: less time on the floor and brisk get-ups; every fall ends back on the feet in about 1.5 to 2 s.
+
+Built:
+| Move | Input | What it does |
+|---|---|---|
+| Earth Launch | JUMP | a 0.18 s crouch over the spot, then the rock column erupts and throws him up; a high landing absorbs into Hard Landing (a crouch with a hand to the floor) |
+| Earth Gauntlet | every punch | rocks fly up and lock round the striking fist and forearm (fixed to the hand and forearm bones); they crumble 0.7 s after the last punch |
+| Earth Compression | HAND held | hands in front of the chest, palms facing; fragments fly in and pack into a stone that grows over 1.2 s; letting go thrusts a palm and the stone flies (9 to 24 damage, the full one a knockdown) |
+| Earth Hand | HAND with the stick pulled away | a giant stone hand tears up under the rival, closes round them, lifts them 1 s (JUMP struggles free sooner) and slams them down (14, a knockdown) |
+| Ground Shift | LEG with the stick pulled away | the hips turn and the forearms sweep; a slab of ground under the rival lurches 1.5 m sideways: a stagger (6), or a fall (Sweep Fall) if they were already reeling or moving fast |
+| Slab Shackles | LEG while GUARD is held | stone segments rise round the rival's shins and lock them for 2 s (JUMP breaks 0.3 s off each press); the upper body struggles |
+| Earthbreaker (ultimate) | SPECIAL held 1 s | deep stance, great rocks tear out of the ground round him and grind into one mass in front (held about 1 s); both palms drive forward and the mass crashes on the rival: crater, three rings of rock spikes erupting outward, fragments, a dust cloud; up to 34 damage within 5 m, a heavy throw within 3 m; 50 energy, 16 s cooldown |
+| Ground Rupture | LEG held in the air | he drives down feet first and the rupture bursts out where he lands |
+SPECIAL now: tap Dust Storm, hold 0.3 to 1 s Quicksand, hold 1 s or more Earthbreaker.

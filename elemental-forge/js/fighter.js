@@ -169,6 +169,8 @@ export class Fighter {
   // martial-arts blows (same movement, physical damage only, no elemental effect).
   startTech(def, side, basic = false) {
     if (!def) return false;
+    // (20 Nov) Earth's punches: the striking fist and forearm armour themselves in rock (earth.js gauntlet)
+    if (this.el === 'earth' && this.world.bending && this.world.bending.earth && (def === this.style.tech.hand || def.variantOf === this.style.tech.hand)) this.world.bending.earth.gauntlet(this, (side ?? 1) > 0 ? 'R' : 'L');
     // alternating authored takes (e.g. hook / lunge punch) each carry their own timing
     // (a chain of alternating takes starts again from its first once the bender has been back in stance for 0.9 s
     //  after the previous take ended)
@@ -219,7 +221,7 @@ export class Fighter {
       this.aiArmour = false; this.en -= 30; this.armourCd = this.time + 14; this.world.bending.earth.armour(this);
     }
     if (this.slamFall && this.onGround && this.action !== 'down' && !(this.restrainT > 0)) this.slamFall = false;   // a slam's fall ends on landing
-    if (this.bombDive && (this.onGround || this.reacting() || this.dead)) { const landed = this.onGround && !this.reacting() && !this.dead; this.bombDive = false; if (landed) { this.vel.x = this.vel.z = 0; this.world.bending.fireBomb(this); } }
+    if (this.bombDive && (this.onGround || this.reacting() || this.dead)) { const landed = this.onGround && !this.reacting() && !this.dead; this.bombDive = false; if (landed) { this.vel.x = this.vel.z = 0; if (this.earthSlam) { this.en -= this.style.tech.special.cost; this.startTech(this.style.tech.special, 1); this.world.fx.crater(this.pos, 2.5); this.world.audio.rumble(1.2, this.pos); } else this.world.bending.fireBomb(this); } this.earthSlam = false; }
     if (this.floatT > 0) this.floatT -= dt;   // lifted by wind: the Floating clip (hero.js)
     // footwork cues for hero.js (M9): the ground speed at take-off picks Running Jump / Standing Jump; the first stride
     // of a run from standing is the Male Locomotion Pose lunge; reversing the stick at a run plants and turns
@@ -340,7 +342,13 @@ export class Fighter {
       }
       if (this.buf.jump && this.free('jump') && !this.charging && !this.guarding && this.onGround && !this.mob && this.el === 'earth') {
         // Earth: the ground thrusts up under the feet and launches the bender straight up (the column stays as a platform)
-        this.buf.jump = 0; this.action = null; B.weapons.surfLaunch(this, 'earth'); this.vel.y = 15.5; this.onGround = false; this.highJump = true; this.airJumps = 0; w.audio.rumble(0.8);
+        // (20 Nov, Earth brief: Earth Launch as a sequence) first the crouch: knees bend, hips drop, arms draw back over
+        // the launch spot (0.18 s, launchPrepT); then the column erupts under the feet and drives him up (earthLaunch)
+        this.buf.jump = 0; this.action = null; this.launchPrepT = 0.18; this.vel.x *= 0.2; this.vel.z *= 0.2;
+      }
+      if (this.launchPrepT > 0) {
+        this.launchPrepT -= dt; this.vel.x *= 0.5; this.vel.z *= 0.5;
+        if (this.launchPrepT <= 0 || !this.onGround) { this.launchPrepT = 0; if (this.onGround && this.el === 'earth') this.earthLaunch(); }
       }
       // JUMP while jet-gliding: the jets throw the bender up out of the glide (hold JUMP to keep the flame jets going)
       if (this.buf.jump && this.dodgeKind === 'rocket' && this.dodgeT > 0 && !this.charging) {
@@ -365,6 +373,15 @@ export class Fighter {
         else if (B.spiralRelease && B.spiralRelease(this)) { w.popup(this, 'RELEASE', true); }
         else { this.handSide = -this.handSide; const riding = this.el === 'water' && st.tech.surfPunch && ((this.dodgeKind === 'arch' && this.dodgeT > 0) || (this.mob && this.mob.kind === 'surf')); this.startTech(riding ? st.tech.surfPunch : (this.el === 'fire' && this.fireHandTech()) || (this.el === 'earth' && this.earthHandTech()) || st.tech.hand, this.handSide, true); }
         this.handHoldT = 0;
+      }
+      // (20 Nov, Earth brief) Earth: LEG while GUARD is held: Slab Shackles (8 s cooldown); LEG with the stick pulled away
+      // from the rival: Ground Shift (5 s cooldown)
+      if (this.buf.leg && this.el === 'earth' && this.onGround && !this.charging && st.tech.shackles) {
+        const t = this.target, inp2 = this.input, sl = Math.hypot(inp2.mx, inp2.mz);
+        const away = t && !t.dead && sl > 0.5 && (inp2.mx * (t.pos.x - this.pos.x) + inp2.mz * (t.pos.z - this.pos.z)) / (sl * (Math.hypot(t.pos.x - this.pos.x, t.pos.z - this.pos.z) || 1)) < -0.5;
+        if (this.guarding && inp2.guard && (this.shackleCd || 0) <= this.time && this.en >= st.tech.shackles.cost) { this.buf.leg = 0; this.guarding = false; B.guardEnd(this, true); this.guardCd = 0.4; this.shackleCd = this.time + 8; this.startTech(st.tech.shackles, 1); }
+        else if ((away || this.aiShift) && canStrike && (this.shiftCd || 0) <= this.time && this.en >= st.tech.shift.cost) { this.buf.leg = 0; this.shiftCd = this.time + 5; this.startTech(st.tech.shift, this.handSide = -this.handSide, true); }
+        this.aiShift = false;
       }
       if (this.buf.leg && !struck && !this.charging && canStrike) {
         this.buf.leg = 0; this.lastStrike = 'leg';
@@ -422,11 +439,15 @@ export class Fighter {
         if (this.buf.special && !this.charging && canStrike && this.onGround && (this.spT ?? -1) < 0) { this.buf.special = 0; this.spT = 0; }
         if ((this.spT ?? -1) >= 0) {
           const aiHold = this.aiEarthPick === 'quicksand';
-          if ((inp.specialHeld || aiHold) && this.spT < 0.3) { this.spT += dt; if (this.spT >= 0.3) w.popup(this, 'QUICKSAND', false); }
+          const aiUlt = this.aiEarthPick === 'breaker';
+          const lim = aiUlt ? 1.0 : aiHold ? 0.3 : 1.0;
+          if ((inp.specialHeld || aiHold || aiUlt) && this.spT < lim) { const was = this.spT; this.spT += dt; if (was < 0.3 && this.spT >= 0.3) w.popup(this, 'QUICKSAND', false); if (was < 1.0 && this.spT >= 1.0) w.popup(this, 'EARTHBREAKER', false); }
           else {
-            const held = this.spT >= 0.3; this.spT = -1; this.aiEarthPick = undefined;
-            const T = held ? st.tech.quicksand : st.tech.storm, cdKey = held ? 'sandCd' : 'stormCd';
-            if ((this[cdKey] || 0) <= this.time && this.en >= T.cost) { this[cdKey] = this.time + (held ? 7 : 12); this.startTech(T, 1); }
+            // (20 Nov) held 1 s: the Earthbreaker (50 energy, 16 s cooldown); 0.3 to 1 s: Quicksand; tapped: the Dust Storm
+            const tier = this.spT >= 1.0 && (this.breakerCd || 0) <= this.time && this.en >= st.tech.breaker.cost ? 2 : this.spT >= 0.3 ? 1 : 0;
+            this.spT = -1; this.aiEarthPick = undefined;
+            const T = [st.tech.storm, st.tech.quicksand, st.tech.breaker][tier], cdKey = ['stormCd', 'sandCd', 'breakerCd'][tier];
+            if ((this[cdKey] || 0) <= this.time && this.en >= T.cost) { this[cdKey] = this.time + [12, 7, 16][tier]; this.startTech(T, 1); }
             else if (this.en >= st.tech.special.cost) this.startTech(st.tech.special, this.handSide);
           }
         }
@@ -435,7 +456,7 @@ export class Fighter {
 
       // HAND held -> sustained technique (stream / lift / draw / push)
       if (this.handHoldT >= 0) {
-        if (!inp.handHeld) { this.handHoldT = -1; this.endHold(); }
+        if (!inp.handHeld) { this.handHoldT = -1; if (this.holding && this.el === 'earth') this.compRelease = true; this.endHold(); }
         else {
           this.handHoldT += dt;
           // a held HAND turns into the sustained technique straight away: a punch that has not landed yet is abandoned
@@ -468,6 +489,10 @@ export class Fighter {
             const t = this.target, to = t && !t.dead ? _v.set(t.pos.x - this.pos.x, 0, t.pos.z - this.pos.z) : null;
             this.vel.y = -24; if (to && to.length() < 9) { this.vel.x = to.x * 2; this.vel.z = to.z * 2; } else { this.vel.x *= 0.3; this.vel.z *= 0.3; }
             this.dodgeT = 0; this.jetFuel = 0;
+          }
+          // (20 Nov) Earth in the air: LEG held drives him down feet first and the Ground Rupture bursts out where he lands
+          if (this.el === 'earth' && !this.onGround && !this.bombDive && this.legHoldT > 0.18 && this.pos.y - this.groundY > 0.6 && this.en >= st.tech.special.cost && !this.reacting()) {
+            this.legHoldT = -1; this.action = null; this.tech = null; this.bombDive = true; this.earthSlam = true; this.vel.y = -24; this.vel.x *= 0.3; this.vel.z *= 0.3; this.dodgeT = 0;
           }
           // Fire: LEG held is the stomp, straight away (the tap kick is dropped if it has not landed yet)
           if (this.el === 'fire' && st.tech.stomp && this.onGround && !this.mob && this.legHoldT > 0.3 && !this.charging && !this.guarding && !this.reacting() && (!this.action || this.action === 'land' || (this.action === 'tech' && this.tech !== st.tech.stomp && this.actionU < kev))) {
@@ -519,6 +544,7 @@ export class Fighter {
     // forward, keeps its own speed)
     if (A && !A.soft && !A.react && this.onGround && !this.mob && !(this.tech && this.tech.travels)) maxSpeed = Math.min(maxSpeed, 1.0);
     if (this.stunT > 0 || restrained) maxSpeed = 0;
+    if (this.launchPrepT > 0) maxSpeed = 0;   // (crouched for the Earth Launch)
     if (this.armour) maxSpeed *= 0.8;   // (20 Nov) the weight of the Rock Armour
 
     if (this.mob && this.mobMove(dt, mx, mz)) {
@@ -1033,12 +1059,18 @@ export class Fighter {
   }
   // (20 Nov, after review) Earth: HAND with the stick pulled away from the rival is the Ground Rupture (the fissure;
   // it was SPECIAL before Dust Storm and Quicksand took that button)
+  // the Earth Launch itself: the rock column erupts under the feet and throws the bender up (the legs drive out of the
+  // crouch as it rises: hero plays Standing Jump from its spring)
+  earthLaunch() {
+    const w = this.world; w.bending.weapons.surfLaunch(this, 'earth'); this.vel.y = 15.5; this.onGround = false; this.highJump = true; this.airJumps = 0;
+    w.audio.rumble(1.0); w.fx.dust(this.pos, 12, 3, 0xa08a6c);
+  }
   earthHandTech() {
     const st = this.style, t = this.target, inp = this.input;
     if (!t || t.dead || !this.onGround) return null;
     const dx = t.pos.x - this.pos.x, dz = t.pos.z - this.pos.z, d = Math.hypot(dx, dz) || 1, sl = Math.hypot(inp.mx, inp.mz);
     const want = this.aiDust || (sl > 0.5 && (inp.mx * dx + inp.mz * dz) / (sl * d) < -0.5); this.aiDust = false;
-    if (want && (this.ruptureCd || 0) <= this.time && this.en >= st.tech.special.cost) { this.ruptureCd = this.time + 5; return st.tech.special; }
+    if (want && (this.handCd || 0) <= this.time && this.en >= st.tech.earthHand.cost) { this.handCd = this.time + 6; return st.tech.earthHand; }
     return null;
   }
   rollDir() { const inp = this.input; if (Math.hypot(inp.mx, inp.mz) > 0.3) this.faceYaw = this.yaw = Math.atan2(inp.mx, inp.mz); this.lungeDir.set(Math.sin(this.faceYaw), 0, Math.cos(this.faceYaw)).multiplyScalar(9); this.lungeT = 0.45; }   // about 4 m
@@ -1114,7 +1146,7 @@ export class Fighter {
     // knocks down); struck in the air the fighter drops flat (Falling Flat Impact); other knockdowns alternate the
     // Mixamo Knocked Down and Fall Flat
     const src = this.lastHitFrom, T = src && src !== this && src.action === 'tech' ? src.tech : null;
-    const legBlow = !!(T && !T.upper && /sweep|flair/i.test(T.name || '')), headBlow = !!(T && T.upper);
+    const legBlow = !!(T && !T.upper && /sweep|flair/i.test(T.name || '')) || !!this.shiftFall, headBlow = !!(T && T.upper);
     const alt = this.pos.y - this.groundY;
     this.headHit = level === 0 && headBlow;
     // (20 Nov, after review: "characters struck with fire blades must not flail around but respond to the attack") a

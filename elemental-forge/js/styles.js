@@ -501,3 +501,16 @@ STYLES.fire.tech.comet = T({ name: 'Fire Comet', clip: 'whip_v', clipSpeed: 1, d
   events: [[0.17, 'fire.cometCharge'], [0.63, 'fire.cometLaunch']] });
 // (20 Nov, after review) LEG held (the charged stamp) is Earth Sinking for Earth: the rock trap under the rival
 STYLES.earth.tech.stomp = STYLES.earth.tech.sink;
+// (20 Nov, Earth brief) Earth Compression's release: a palm thrust (Air Palm's capture) drives the compressed stone out
+STYLES.earth.tech.thrust = T({ name: 'Stone Thrust', clip: 'air_palm', clipSpeed: 1.6, dur: 0.5, cost: 0, cancel: 0.6, move: 0.5, upper: true, keys: K0, events: [[0.4, 'earth.thrust']] });
+// (20 Nov, Earth brief: the rest of Earth's moves, on simple inputs)
+// HAND with the stick pulled away: Earth Hand (one hand thrust at the rival, the fingers closing)
+STYLES.earth.tech.earthHand = T({ name: 'Earth Hand', clip: 'air_palm', clipSpeed: 1.3, dur: 0.6, cost: 24, cancel: 0.8, move: 0.3, keys: K0, events: [[0.4, 'earth.hand2']] });
+// LEG with the stick pulled away: Ground Shift (the horse-stance horizontal sweep: the hips turn, the forearms sweep sideways)
+STYLES.earth.tech.shift = T({ name: 'Ground Shift', clip: 'whip_h_horse', clipSpeed: 1.8, dur: 0.6, cost: 16, cancel: 0.8, move: 0.3, keys: K0, events: [[0.45, 'earth.shift']] });
+// GUARD held + LEG: Slab Shackles (the hands draw in and close: the gathering of Standing 2H Magic Attack)
+STYLES.earth.tech.shackles = T({ name: 'Slab Shackles', clip: 'magic_2h', clipSpeed: 2.2, dur: 0.7, cost: 20, cancel: 0.85, move: 0, keys: K0, events: [[0.6, 'earth.shackles']] });
+// SPECIAL held 1 s: Earthbreaker (Tai Chi Push: the deep stance, the arms gather, then both palms drive forward; the
+// gathering pose is held about 1 s while the mass forms, earth.js updateBreakers)
+STYLES.earth.tech.breaker = T({ name: 'Earthbreaker', clip: 'tc_push', clipSpeed: 1.3, dur: 1.4, cost: 50, cancel: 0.9, move: 0, keys: K0, rawTiming: true,
+  events: [[0.12, 'earth.breakerGather'], [0.62, 'earth.breakerLaunch']] });

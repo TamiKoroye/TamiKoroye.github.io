@@ -346,7 +346,9 @@ check('a rock punches through a fire wall at reduced force', thruFire < 100 && t
 await setup({ el: 'earth', p: [0, 0, -12], o: [0, 0, -6] });
 // (20 Nov, changed with the user's simpler Earth controls: the Ground Rupture is now HAND with the stick pulled away
 //  from the rival, SPECIAL being the Dust Storm; the check is unchanged)
-await stick(0, 90); await stepN(2); await press('btn-hand', 2); await stickUp(); let rupLift = 0; for (let i = 0; i < 70; i++) { await stepN(1); rupLift = Math.max(rupLift, (await P()).oy); if (i === 45) await shot('16-rupture'); }
+// (later the same day: HAND pulled away became Earth Hand; the Rupture bursts out where Earth lands from a jump with LEG
+//  held in the air, so the check jumps and holds LEG)
+await ev(() => { window.__EF.player.en = 100; }); await press('btn-jump', 2); await stepN(26); await hold('btn-leg'); await stepN(30); await fUp(6); let rupLift = 0; for (let i = 0; i < 70; i++) { await stepN(1); rupLift = Math.max(rupLift, (await P()).oy); if (i === 45) await shot('16-rupture'); }
 const rh = await hitsOn(); await clearHits();
 check('earth SPECIAL (Ground Rupture) runs to the rival and throws them up', rh.includes('rupture') && rupLift > 0.8, `max rival height ${rupLift.toFixed(2)} m; hits ${rh.join(',')}`);
 await setup({ el: 'earth', locked: false, p: [0, 0, -14], o: [20, 0, 20] });
