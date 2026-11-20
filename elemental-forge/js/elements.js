@@ -7,6 +7,7 @@
 //   interactions        : reusable rules for projectile-vs-projectile and projectile-vs-defence by element
 import * as THREE from 'three';
 import { jaggedRockGeometry, HALF } from './arena.js';
+import { EarthSkills } from './earth.js';
 import { clamp, mulberry32, smooth01, rand } from './util.js';
 import { iceClusterMesh } from './ice.js';
 import { TOON_RAMP } from './hero.js';
@@ -101,6 +102,7 @@ export class Bending {
     this.waterLight = 0;
     this.weapons = new Weapons(this);
     this.specials = new Specials(this);
+    this.earth = new EarthSkills(this);   // (20 Nov) Dust Cloud, Earth Sinking, Quicksand, Rock Armour
     this.iceSpearGeo = (() => { const g = new THREE.OctahedronGeometry(1, 0); g.scale(0.22, 1.1, 0.22); return g; })();
   }
 
@@ -276,6 +278,11 @@ export class Bending {
         for (let i = 1; i <= 5; i++) this.spikes.push({ owner: f, t: -i * 0.07, pos: new THREE.Vector3(f.pos.x + fw.x * (1.4 + i * 1.3), f.groundY, f.pos.z + fw.z * (1.4 + i * 1.3)), mesh: null, hit: new Set() });
         return;
       }
+      // (20 Nov, Earth phase one) the new skills (earth.js); Dust Cloud is the charged storm if HAND is still held
+      case 'earth.dust': this.earth.dust(f, !!f.input.handHeld); return;
+      case 'earth.sink': this.earth.sink(f); return;
+      case 'earth.quicksand': this.earth.quicksand(f); return;
+      case 'earth.armour': this.earth.armour(f); return;
       case 'earth.pillar': {
         const t = f.target, locked = f.input.strafe && t && !t.dead && t.pos.distanceTo(f.pos) < 9;
         const at = locked ? t.pos.clone() : this.forwardPoint(f, 2.2, 0);
@@ -1216,6 +1223,7 @@ export class Bending {
     this.updateRings(dt);
     this.updateSpirals(dt);
     this.specials.update(dt);
+    this.earth.update(dt);
     this.weapons.update(dt);
     this.updateEnvironment(dt);
     // one shared flickering light makes fire read as a light source without per-flame lights
@@ -1835,7 +1843,7 @@ export class Bending {
   clear() {
     for (const sp of this.spirals) for (const tb of sp.streams) this.world.scene.remove(tb.mesh);
     this.spirals = [];
-    this.weapons.clear(); this.specials.clear(); this.world.fx.flip.clear();
+    this.weapons.clear(); this.specials.clear(); this.earth.clear(); this.world.fx.flip.clear();
     // projectiles leave nothing behind: their mesh and, for water, the stream drawn behind them
     for (const o of this.objs) { this.world.scene.remove(o.mesh); if (o.ftube) { o.ftube.dispose(); o.ftube = null; } if (o.tube) { this.world.scene.remove(o.tube.mesh); o.tube.mesh.geometry.dispose(); o.tube.mesh.material.dispose(); o.tube = null; } }
     for (const d of this.defs) { this.world.scene.remove(d.mesh); if (d.tubes) d.tubes.forEach(t => this.weapons.freeTube(t)); }

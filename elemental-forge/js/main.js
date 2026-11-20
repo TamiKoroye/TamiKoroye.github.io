@@ -330,8 +330,11 @@ function updateHUD(dt) {
 // ------------------------------------------------------------------ loop
 let last = performance.now();
 const stats = { frames: 0, fps: 0, acc: 0 };
+// (20 Nov) caught in a Dust Cloud: grit and dust cloud the player's view for a moment (earth.js sets blindT)
+const dustVeil = (() => { const d = document.createElement('div'); d.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:5;opacity:0;background:radial-gradient(ellipse at center, rgba(150,128,96,0.35) 0%, rgba(120,98,70,0.8) 55%, rgba(90,72,50,0.95) 100%);transition:opacity 0.15s'; document.body.appendChild(d); return d; })();
 function frame(now) {
   requestAnimationFrame(frame);
+  { const P = window.__EF && window.__EF.player; dustVeil.style.opacity = P && P.blindT > 0 ? String(Math.min(0.85, P.blindT * 0.6)) : '0'; }
   let dt = Math.min(0.05, Math.max(0, (now - last) / 1000)); last = now; // rAF time can precede performance.now() on the first frame
   stats.acc += dt; stats.frames++;
   if (stats.acc > 1) { stats.fps = stats.frames / stats.acc; stats.frames = 0; stats.acc = 0; }
