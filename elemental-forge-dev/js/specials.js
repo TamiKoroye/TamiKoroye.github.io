@@ -300,6 +300,9 @@ export class Specials {
     }
     const end = S.t > S.life, fade = end ? Math.max(0, 1 - (S.t - S.life) / 0.5) : 1, g = S.grow * fade;
     const R = (h) => (0.35 + 2.1 * Math.pow(h / H, 1.6)) * g;
+    // (Air brief: Air Vortex) the roar of the cyclone builds as it grows and peaks while it carries someone
+    const sk = 'vortex' + (f === w.fighters[0] ? 0 : 1);
+    if (g > 0.02) { w.audio.hold(sk, 'windLoop', 0.5 + 0.9 * g, S.c); if (w.audio.roar) w.audio.roar(sk + 'r', (0.35 + 0.65 * g) * (S.held.size ? 1.3 : 1), S.c); }
     // three helical bands winding up the funnel, turning fast
     S.tubes.forEach((tb, i) => {
       const P = S.pts[i];
@@ -324,14 +327,16 @@ export class Specials {
       t.ext.x += ((S.c.x + Math.cos(a) * r - t.pos.x) * 6 - t.ext.x) * Math.min(1, dt * 6); t.ext.z += ((S.c.z + Math.sin(a) * r - t.pos.z) * 6 - t.ext.z) * Math.min(1, dt * 6);
       t.vel.y = Math.max(t.vel.y, (S.c.y + 2.6 - t.pos.y) * 3); t.onGround = false;
       t.restrainT = Math.max(t.restrainT, 0.15); t.floatT = 0.3;   // caught in the funnel: Mixamo Floating, limbs adrift (hero.js)
+      t.spinYaw = (t.spinYaw || 0) + dt * (4 + 6 * Math.min(1, nt / 0.6));   // (Air Vortex) and turned round with the wind, faster as it takes hold
       if (nt > 1.4 || end) {
         S.held.delete(t);
         const out = _a.set(t.pos.x - S.c.x, 0, t.pos.z - S.c.z); if (out.lengthSq() < 1e-3) out.copy(S.v || f.forward(_b)); out.normalize();
-        w.combat.damage(t, 10, out.clone(), f, 'tornado', t.chestPos(new THREE.Vector3()), 16, 2); t.vel.y = 7;
+        t.spinYaw = 0; w.combat.damage(t, 10, out.clone(), f, 'tornado', t.chestPos(new THREE.Vector3()), 16, 2); t.vel.y = 7;
+        w.audio.gust(1.4, t.pos); for (let i = 0; i < 10; i++) w.fx.wind(t.pos.clone().setY(t.pos.y + 1), _b.set(out.x * 9 + rand(-2, 2), rand(0, 3), out.z * 9 + rand(-2, 2)), 0.7, 0.4);
       }
     }
     for (const o of this.B.objs) if (o.state === 'flying' && o.owner !== f && Math.hypot(o.pos.x - S.c.x, o.pos.z - S.c.z) < 2.5 * g && o.pos.y < S.c.y + H) this.B.kill(o);
-    if (S.t > S.life + 0.5) { S.dead = true; for (const tb of S.tubes) this.B.weapons.freeTube(tb); for (const [t] of S.held) t.vel.y = 4; }
+    if (S.t > S.life + 0.5) { S.dead = true; for (const tb of S.tubes) this.B.weapons.freeTube(tb); for (const [t] of S.held) { t.vel.y = 4; t.spinYaw = 0; } }
   }
 
   clear() {

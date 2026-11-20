@@ -8,6 +8,7 @@
 import * as THREE from 'three';
 import { jaggedRockGeometry, HALF } from './arena.js';
 import { EarthSkills } from './earth.js';
+import { AirSkills } from './air.js';
 import { clamp, mulberry32, smooth01, rand } from './util.js';
 import { iceClusterMesh } from './ice.js';
 import { TOON_RAMP } from './hero.js';
@@ -102,7 +103,8 @@ export class Bending {
     this.waterLight = 0;
     this.weapons = new Weapons(this);
     this.specials = new Specials(this);
-    this.earth = new EarthSkills(this);   // (20 Nov) Dust Cloud, Earth Sinking, Quicksand, Rock Armour
+    this.earth = new EarthSkills(this);
+    this.air = new AirSkills(this);   // (20 Nov) Air Blast, the combination, Swipe, Blades, Bomb, Funnel, Suction   // (20 Nov) Dust Cloud, Earth Sinking, Quicksand, Rock Armour
     this.iceSpearGeo = (() => { const g = new THREE.OctahedronGeometry(1, 0); g.scale(0.22, 1.1, 0.22); return g; })();
   }
 
@@ -279,6 +281,16 @@ export class Bending {
         return;
       }
       // (20 Nov, Earth phase one) the new skills (earth.js); Dust Cloud is the charged storm if HAND is still held
+      // (20 Nov, Airbending brief) air.js
+      case 'air.blast': this.air.blast(f, f.techSide); return;
+      case 'air.combo0': this.air.comboHit(f, 0); return;
+      case 'air.combo1': this.air.comboHit(f, 1); return;
+      case 'air.combo2': this.air.comboHit(f, 2); return;
+      case 'air.swipe': this.air.swipe(f); return;
+      case 'air.blade1': this.air.blades(f, f.techSide); return;
+      case 'air.blade2': this.air.blades(f, -f.techSide); return;
+      case 'air.bomb': this.air.bomb(f); return;
+      case 'air.suction': this.air.suction(f); return;
       case 'earth.dust': this.earth.dust(f, !!f.input.handHeld); return;
       case 'earth.storm': this.earth.storm(f); return;
       case 'earth.thrust': this.earth.compressLaunch(f); return;
@@ -317,8 +329,9 @@ export class Bending {
       case 'fire.dagger': {
         // Fire Daggers / Fire Blade: the cut lands on whoever is in front within reach (the flames on the hands are drawn
         // by updateFireBlades for as long as the cut lasts).
-        const blade = /blade_spin/.test(f.tech && f.tech.clip || '');
-        this.daggerHit(f, blade);
+        // (20 Nov, after review: "damage must correspond to real contact") the cut no longer lands on the event: the flame blades
+        // themselves are the hitboxes (updateFireBlades, bladeContact); the event only sounds the cut
+        w.audio.fireWhoosh(/blade_spin/.test(f.tech && f.tech.clip || '') ? 1.1 : 0.55);
         // (20 Nov: each knife clip is now one cut, so there is no backhand second hit)
         return;
       }
@@ -1235,6 +1248,7 @@ export class Bending {
     this.updateSpirals(dt);
     this.specials.update(dt);
     this.earth.update(dt);
+    this.air.update(dt);
     this.weapons.update(dt);
     this.updateEnvironment(dt);
     // one shared flickering light makes fire read as a light source without per-flame lights
@@ -1358,15 +1372,43 @@ export class Bending {
     }
     w.audio.fireWhoosh(blade ? 1.2 : 0.6);
   }
+  // (20 Nov, after review) the flame blade as the hitbox: a segment from the fist to the point. It strikes when it reaches
+  // the rival's body (a capsule from the hips to the head, or the body lying on the floor), once per blade per cut; a
+  // flare of fire and the fire-hit sound at the point of contact, and the rival's reaction (fighter.takeHit picks the
+  // stomach hits for a knife). Out of reach, it misses.
+  bladeContact(f, sd, a, b, blade) {
+    const w = this.world, tag = f.techN + (f.tech === f.style.tech.groundStab ? 'G' : sd);   // (the grounded stab strikes once)
+    if ((f._bladeHits = f._bladeHits || new Set()).has(tag)) return;
+    for (const t of w.fighters) {
+      if (t === f || t.dead) continue;
+      const lying = t.action === 'down' || t.action === 'getup';
+      const c0 = _v3.set(t.pos.x, t.pos.y + (lying ? 0.15 : 0.45), t.pos.z), c1 = lying ? c0.clone() : new THREE.Vector3(t.pos.x, t.pos.y + 1.55, t.pos.z);
+      const d = segSegDist(a, b, c0, c1), R = lying ? 0.75 : 0.38;
+      if (d > R) continue;
+      f._bladeHits.add(tag); if (f._bladeHits.size > 40) f._bladeHits.clear();
+      const ground0 = f.tech === f.style.tech.groundStab;
+      // (a knocked-down fighter is protected from ordinary blows while lying there; the grounded stab is the one attack
+      //  made for a rival on the floor, so it lands on them while they lie (not once they are getting up))
+      if (ground0 && t.action === 'down') t.invuln = 0;
+      if (t.invuln > 0) return;
+      const p = b.clone().lerp(a, 0.25), dir = new THREE.Vector3(t.pos.x - f.pos.x, 0, t.pos.z - f.pos.z).normalize();
+      const ground = f.tech === f.style.tech.groundStab;
+      w.combat.damage(t, blade ? 13 : ground ? 9 : 5, dir, f, blade ? 'fireBlade' : 'fireDagger', p.clone(), blade ? 7 : ground ? 0 : 1.2, blade ? 1 : 0);
+      for (let i = 0; i < (blade ? 9 : 5); i++) w.fx.fire(p, _v.copy(dir).multiplyScalar(rand(1.5, 4)).add(_v2.set(rand(-1, 1), rand(0, 1.6), rand(-1, 1))), blade ? 0.3 : 0.2, 0.16);
+      w.fx.ember(p, 0xffd27a); w.audio.fireHit(blade ? 1 : 0.7, p);
+      if (blade && Math.random() < 0.6) this.burn(t.pos.x, t.pos.z, t.groundY, f);
+      return;
+    }
+  }
   // flames on the hands for the melee family: short daggers (0.5 m past the fist) or long blades (1.3 m), along the
   // forearm's line, for as long as the cut lasts
   updateFireBlades(dt) {
     const w = this.world;
     for (const f of w.fighters) {
-      const M = f.style && f.style.tech.melee, on = M && f.action === 'tech' && f.tech && (f.tech === M || f.tech.variantOf === M) && !f.dead;
+      const M = f.style && f.style.tech.melee, G = f.style && f.style.tech.groundStab, on = M && f.action === 'tech' && f.tech && (f.tech === M || f.tech.variantOf === M || f.tech === G) && !f.dead;
       if (!on) { f._dagger2 = 0; if (f._blades) { f._blades.forEach(b => b.dispose()); f._blades = null; } continue; }
       if (f._dagger2 && f.time >= f._dagger2) { f._dagger2 = 0; this.daggerHit(f, false); }
-      const blade = /blade_spin/.test(f.tech.clip), len = blade ? 1.4 : 0.75, u = f.actionU;
+      const blade = /blade_spin/.test(f.tech.clip), len = blade ? 1.4 : 0.85, u = f.actionU;
       const k = u < 0.15 ? u / 0.15 : u > 0.88 ? Math.max(0, (1 - u) / 0.12) : 1;   // the blades spring from the fists and die with the follow-through
       // (19 Nov, the user's picture: thin blades of flame out of the side of each fist, yellow at the fist to red points)
       // along the hand bone's cross axis (thumb to little finger, mirrored left / right), tipped a little back, so the
@@ -1384,6 +1426,7 @@ export class Bending {
         f._blades[i * 2].set([tip, mid, hand], (q) => (blade ? 0.09 : 0.065) * (0.15 + 0.85 * q) * Math.max(0.2, k), f.time);
         f._blades[i * 2 + 1].set([hand.clone().addScaledVector(dir, L * 0.5), hand.clone().addScaledVector(dir, L * 0.25), hand], (q) => (blade ? 0.05 : 0.035) * (0.2 + 0.8 * q) * Math.max(0.2, k), f.time);
         if (k > 0.5 && Math.random() < (blade ? 0.5 : 0.2)) w.fx.fire(tip, _v.set(rand(-0.5, 0.5), rand(0.5, 1.5), rand(-0.5, 0.5)), blade ? 0.28 : 0.16, 0.18);   // licks off the point
+        if (k > 0.6 && u > 0.12 && u < 0.85) this.bladeContact(f, sd, hand, tip, blade);
       });
     }
   }
@@ -1714,9 +1757,10 @@ export class Bending {
       } else {
         d.mesh.position.copy(d.pos); d.mesh.scale.setScalar(d.rise); d.mesh.rotation.y += dt * 9;
         // a visible whirlwind: three bands of wind winding round the bender from the feet to above the head
-        if (!d.tubes) { d.tubes = [0, 1, 2].map(() => { const t = this.weapons.tube(); t.mesh.material = this.weapons.airTubeMat; return t; }); d.wpts = d.tubes.map(() => Array.from({ length: 20 }, () => new THREE.Vector3())); }
+        if (!d.tubes) { d.tubes = [0, 1, 2, 3].map(() => { const t = this.weapons.tube(); t.mesh.material = this.weapons.airTubeMat; return t; });   // (Air brief: Air Shield, four bands, was three)
+          d.wpts = d.tubes.map(() => Array.from({ length: 20 }, () => new THREE.Vector3())); }
         const of = d.owner, R = 1.25 * d.rise;
-        d.tubes.forEach((tb, i) => { const P = d.wpts[i]; for (let j = 0; j < P.length; j++) { const q = j / (P.length - 1), a = -d.t * 9 + q * 7 + i * 2.09; P[j].set(of.pos.x + Math.cos(a) * R * (0.85 + 0.25 * q), of.pos.y + 0.1 + q * 2.2, of.pos.z + Math.sin(a) * R * (0.85 + 0.25 * q)); } tb.set(P, (u) => 0.05 + 0.06 * Math.sin(Math.PI * u), d.t * 2); });
+        d.tubes.forEach((tb, i) => { const P = d.wpts[i]; for (let j = 0; j < P.length; j++) { const q = j / (P.length - 1), a = -d.t * 9 + q * 7 + i * 1.571; P[j].set(of.pos.x + Math.cos(a) * R * (0.85 + 0.25 * q), of.pos.y + 0.1 + q * 2.2, of.pos.z + Math.sin(a) * R * (0.85 + 0.25 * q)); } tb.set(P, (u) => 0.06 + 0.08 * Math.sin(Math.PI * u), d.t * 2); });
         for (let k = 0; k < 2; k++) { const a = Math.random() * 6.28; w.fx.wind(_v.set(d.pos.x + Math.cos(a) * d.sphere, d.pos.y + rand(-0.8, 0.8), d.pos.z + Math.sin(a) * d.sphere), _v2.set(-Math.sin(a) * 8, 0, Math.cos(a) * 8), 0.5, 0.3); }
       }
       if (!d.ice && !d.owner.guarding && d.sink === 0) {
@@ -1854,7 +1898,7 @@ export class Bending {
   clear() {
     for (const sp of this.spirals) for (const tb of sp.streams) this.world.scene.remove(tb.mesh);
     this.spirals = [];
-    this.weapons.clear(); this.specials.clear(); this.earth.clear(); this.world.fx.flip.clear();
+    this.weapons.clear(); this.specials.clear(); this.earth.clear(); this.air.clear(); this.world.fx.flip.clear();
     // projectiles leave nothing behind: their mesh and, for water, the stream drawn behind them
     for (const o of this.objs) { this.world.scene.remove(o.mesh); if (o.ftube) { o.ftube.dispose(); o.ftube = null; } if (o.tube) { this.world.scene.remove(o.tube.mesh); o.tube.mesh.geometry.dispose(); o.tube.mesh.material.dispose(); o.tube = null; } }
     for (const d of this.defs) { this.world.scene.remove(d.mesh); if (d.tubes) d.tubes.forEach(t => this.weapons.freeTube(t)); }
@@ -1874,3 +1918,12 @@ export class Bending {
   }
 }
 export { SPEC };
+// the shortest distance between segments p1-q1 and p2-q2 (the flame blade and the rival's body)
+function segSegDist(p1, q1, p2, q2) {
+  const d1 = q1.clone().sub(p1), d2 = q2.clone().sub(p2), r = p1.clone().sub(p2), a = d1.dot(d1), e = d2.dot(d2), f = d2.dot(r);
+  let s, t;
+  if (a < 1e-6 && e < 1e-6) return p1.distanceTo(p2);
+  if (a < 1e-6) { s = 0; t = Math.min(1, Math.max(0, f / e)); }
+  else { const c = d1.dot(r); if (e < 1e-6) { t = 0; s = Math.min(1, Math.max(0, -c / a)); } else { const b = d1.dot(d2), den = a * e - b * b; s = den > 1e-9 ? Math.min(1, Math.max(0, (b * f - c * e) / den)) : 0; t = (b * s + f) / e; if (t < 0) { t = 0; s = Math.min(1, Math.max(0, -c / a)); } else if (t > 1) { t = 1; s = Math.min(1, Math.max(0, (b - c) / a)); } } }
+  return p1.clone().addScaledVector(d1, s).distanceTo(p2.clone().addScaledVector(d2, t));
+}

@@ -482,7 +482,7 @@ STYLES.fire.tech.hand.clip = ['fire_jab', 'fire_punch'];
 // long flame blades (whip_d_single: the torso turns into a downward diagonal cut). fire.dagger in elements.js.
 // (19 Nov, later: the user's knife animations from the Drive replace the whip clips: Stable Sword Inward / Outward
 // Slash, Stabbing, and Thrust Slash's spin into a two-armed slash for the Fire Blade finisher)
-STYLES.fire.tech.melee = T({ name: 'Fire Daggers', clip: ['dagger_in', 'dagger_out', 'dagger_stab', 'blade_spin'], clipSpeed: 1.8, dur: 0.32, cost: 4, cancel: 0.62, move: 1.5, lunge: 5, keys: K0,
+STYLES.fire.tech.melee = T({ name: 'Fire Daggers', clip: ['dagger_in', 'dagger_out', 'dagger_stab', 'blade_spin'], clipSpeed: 1.8, dur: 0.32, cost: 4, cancel: 0.62, move: 1.5, lunge: 8, keys: K0,
   events: [[0.45, 'fire.dagger']] });
 // Fire Whip: HAND with the stick pulled away from the rival (draw back and lash): the arm draws back and the whip is
 // released on the swing, following the hand (whip_v overhead, whip_h across). fire.whip in elements.js.
@@ -514,3 +514,30 @@ STYLES.earth.tech.shackles = T({ name: 'Slab Shackles', clip: 'magic_2h', clipSp
 // gathering pose is held about 1 s while the mass forms, earth.js updateBreakers)
 STYLES.earth.tech.breaker = T({ name: 'Earthbreaker', clip: 'tc_push', clipSpeed: 1.3, dur: 1.4, cost: 50, cancel: 0.9, move: 0, keys: K0, rawTiming: true,
   events: [[0.12, 'earth.breakerGather'], [0.62, 'earth.breakerLaunch']] });
+// (20 Nov, after review) the grounded stab: the rival on the floor; the knees bend, the body sinks and both flame daggers
+// drive down into them (Hard Landing's drop into a deep crouch, the hand driven to the floor in front), then he rises. The blades are the
+// hitboxes (elements.js bladeContact)
+STYLES.fire.tech.groundStab = T({ name: 'Grounded Stab', clip: 'hard_land', clipSpeed: 2.2, dur: 0.6, cost: 4, cancel: 0.8, move: 1.2, lunge: 12, keys: K0, events: [[0.42, 'fire.dagger']] });
+// ------------------------------------------------------------------ AIR, phase one (20 Nov, the Airbending brief)
+// HAND at range: Air Blast (Air Palm: the palm draws back, the hips turn, the palm drives out; the air leaves on the thrust)
+STYLES.air.tech.blast = T({ name: 'Air Blast', clip: 'air_palm', clipSpeed: 1.4, dur: 0.64, cost: 6, cancel: 0.55, upper: true, move: 1, keys: K0, events: [[0.45, 'air.blast']] });
+// HAND close: the palm, palm, kick combination (a short lead palm; a pivoting backhand sweep; a turning kick with a gust)
+STYLES.air.tech.combo = [
+  T({ name: 'Air Palm Strike', clip: 'fire_jab', clipSpeed: 2.2, dur: 0.38, cost: 4, cancel: 0.5, upper: true, move: 1.5, lunge: 6, keys: K0, events: [[0.4, 'air.combo0']] }),
+  T({ name: 'Turning Palm', clip: 'whip_h', clipSpeed: 2.0, dur: 0.45, cost: 4, cancel: 0.55, upper: true, move: 1.5, lunge: 5, keys: K0, events: [[0.4, 'air.combo1']] }),
+  T({ name: 'Gale Kick', clip: 'move_kick', clipSpeed: 1.7, dur: 0.6, cost: 6, cancel: 0.7, move: 1.2, lunge: 4, keys: K0, events: [[0.45, 'air.combo2']] }),
+];
+// HAND with the stick sideways: Air Swipe (a low lunge, the open palm sweeping a broad arc across the body)
+STYLES.air.tech.swipe = T({ name: 'Air Swipe', clip: 'air_vortex', clipSpeed: 1.6, dur: 0.6, cost: 9, cancel: 0.65, move: 1.2, keys: K0, events: [[0.45, 'air.swipe']] });
+// LEG at range: Air Blades (two quick diagonal cuts, each releasing a blade)
+STYLES.air.tech.blades = T({ name: 'Air Blades', clip: 'whip_d', clipSpeed: 1.8, dur: 0.55, cost: 9, cancel: 0.65, upper: true, move: 0.8, keys: K0, events: [[0.45, 'air.blade1'], [0.6, 'air.blade2']] });
+// LEG close: Air Bomb (the crouch and spring of Standing Jump: legs drive straight, both palms push out and down)
+STYLES.air.tech.bomb = T({ name: 'Air Bomb', clip: 'stand_jump', clipSpeed: 1.5, dur: 0.95, cost: 16, cancel: 0.75, move: 0, keys: K0, rawTiming: true, events: [[0.32, 'air.bomb']] });
+// HAND with the stick pulled away: Suction (the hand reaches out and draws back across the body, the weight going back)
+STYLES.air.tech.suction = T({ name: 'Suction', clip: 'water_redirect', clipSpeed: 1.5, dur: 0.6, cost: 10, cancel: 0.7, upper: true, move: 0.5, keys: K0, events: [[0.4, 'air.suction']] });
+STYLES.air.labels.hand = 'AIR BLAST'; STYLES.air.labels.leg = 'AIR BLADES';
+// (20 Nov, Airbending brief: Air Vortex, the main special) the Tornado's full-body spin (turn_spin) is replaced by the
+// arms circling in front of the body (the qigong circling also used by the guard) while the cyclone winds up round the
+// bender over about 0.8 s; then it is sent at the rival, catches them, lifts and turns them and throws them out
+// (specials.js updateTornado)
+STYLES.air.tech.special = T({ name: 'Air Vortex', clip: 'water_flow', clipSpeed: 1.9, keepDur: true, onStart: 'air.specialStart', dur: 1.0, cost: 30, cancel: 0.9, move: 0, rawTiming: true, keys: K0, events: [[0.82, 'air.special']] });
