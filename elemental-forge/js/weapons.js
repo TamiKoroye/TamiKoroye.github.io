@@ -37,7 +37,14 @@ export class Weapons {
     this.airTubeMat.uniforms.uDeep.value.set(0x6f86c4); this.airTubeMat.uniforms.uLight.value.set(0xc6d3f5); this.airTubeMat.uniforms.uFoam.value.set(0xffffff);
     this.burst = new GroundBurst(this.w);   // earth's ground reaction (baked fracture simulation)
     this.iceTubeMat = iceMat;
-    this.slabGeo = (() => { const g = new THREE.BoxGeometry(1.5, 0.35, 2.1, 3, 1, 3); const p = g.attributes.position; for (let i = 0; i < p.count; i++) p.setXYZ(i, p.getX(i) + rand(-0.06, 0.06), p.getY(i) + rand(-0.05, 0.05), p.getZ(i) + rand(-0.06, 0.06)); g.computeVertexNormals(); return g; })();
+    // (20 Nov, after review: "the gliding rock does not look solid; there are gaps") the slab's corners were each nudged
+    // at random, but a box keeps a separate copy of each corner for every face, so the faces pulled apart and left slits.
+    // The nudge is now a function of the position, so every copy of a corner moves together and the stone stays closed.
+    const solidJitter = (g, a) => { g = g.index ? g.toNonIndexed() : g; const p = g.attributes.position, h = (x, y, z, k) => { const v = Math.sin(x * 127.1 + y * 311.7 + z * 74.7 + k * 19.3) * 43758.5453; return (v - Math.floor(v)) * 2 - 1; };
+      for (let i = 0; i < p.count; i++) { const x = +p.getX(i).toFixed(3), y = +p.getY(i).toFixed(3), z = +p.getZ(i).toFixed(3); p.setXYZ(i, x + h(x, y, z, 1) * a[0], y + h(x, y, z, 2) * a[1], z + h(x, y, z, 3) * a[2]); }
+      g.computeVertexNormals(); return g; };
+    this.slabGeo = solidJitter(new THREE.BoxGeometry(1.55, 0.5, 2.15, 3, 2, 3), [0.07, 0.06, 0.07]);
+    this.solidJitter = solidJitter;
     // the ice the water bender rides: a thick, faceted floe (flat on top), not a flat disc
     this.iceSheetGeo = (() => { const g = new THREE.CylinderGeometry(0.85, 0.7, 0.22, 9, 1); g.translate(0, -0.11, 0); const p = g.attributes.position; for (let i = 0; i < p.count; i++) if (p.getY(i) < -0.01) p.setXYZ(i, p.getX(i) * rand(0.85, 1.1), p.getY(i) - rand(0, 0.08), p.getZ(i) * rand(0.85, 1.1)); g.computeVertexNormals(); return g; })();
     this.rampGeo = (() => { const g = new THREE.CylinderGeometry(0.75, 1.1, 2.4, 7, 1); g.translate(0, 1.2, 0); return g; })();   // ice pillar with a flat top
@@ -817,11 +824,11 @@ export class Weapons {
         mob.post = new THREE.Mesh(ICE.crestGeo, iceMat); mob.post.castShadow = true; w.scene.add(mob.post);
         mob.crystals = [[-0.72, -0.5, 0.75], [0.7, -0.9, 0.62], [-0.55, -1.5, 0.5], [0.5, 0.3, 0.55]].map(([x, z, k]) => { const c = iceClusterMesh(k, k * 0.8); c.userData.off = new THREE.Vector3(x, 0, z); c.rotation.y = rand(0, 6.28); w.scene.add(c); return c; });
       } else {
-      mob.post = new THREE.Mesh(this.postGeo || (this.postGeo = (() => { const g = new THREE.CylinderGeometry(0.45, 0.75, 1, 7, 1); g.translate(0, -0.5, 0); return g; })()), mob.el === 'water' ? iceMat : this.rockMat);
+      mob.post = new THREE.Mesh(this.postGeo || (this.postGeo = (() => { const g = new THREE.CylinderGeometry(0.68, 0.85, 1, 8, 3); g.translate(0, -0.5, 0); return this.solidJitter(g, [0.06, 0.0, 0.06]); })()), mob.el === 'water' ? iceMat : this.rockMat);   // (20 Nov: broader at the top, so the slab sits on solid rock)
       mob.post.castShadow = true; w.scene.add(mob.post);
       }
     }
-    const gy = f.groundY, top = f.pos.y + (mob.el === 'water' ? -0.02 : -0.17);
+    const gy = f.groundY, top = f.pos.y + (mob.el === 'water' ? -0.02 : -0.25);   // (earth: the slab is 0.5 m thick now; its top under the soles)
     mob.board.position.set(f.pos.x, top, f.pos.z);
     mob.board.rotation.y = mob.heading;
     // the support: for water a ridge of ice rising from the floor, long along the direction of travel; for earth a
