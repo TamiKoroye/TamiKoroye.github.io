@@ -101,29 +101,50 @@ export function coronaMaterial() {
 }
 
 // ---------------------------------------------------------------- rocket-exhaust jets (Fire's jump, dodge and glide)
-// (19 Nov, after review: "sharp, like an actual jet propeller ... like rocket flames with combustion") A jet is a
-// narrow cone of flame: tight at the nozzle, swelling a little, then tapering to a hard point; a white-hot core inside
-// an orange sheath, flickering in length. jets.fire(key, from, dir, len, r) each frame a jet burns; jets.update(dt)
-// shrinks away and removes any that were not fired this frame.
+// (20 Nov, after review: "they look weak now, as short knives ... powerful and cohesive") A jet is one connected plume
+// out of the heel: tight and white-yellow at the nozzle, swelling fast into a thick orange body wrapped in a turbulent
+// red outer layer, and ending in a ragged billow rather than a point. Its points bend with a moving wobble, so the
+// plume rolls like real exhaust. jets.fire(key, from, dir, len, r) each frame a jet burns; jets.update(dt) shrinks away
+// and removes any that were not fired this frame.
 export class JetSet {
   constructor(scene) { this.scene = scene; this.map = new Map(); this.t = 0; }
-  fire(key, from, dir, len = 1.2, r = 0.11) {
+  fire(key, from, dir, len = 2.4, r = 0.24) {
     let J = this.map.get(key);
-    if (!J) { J = { sheath: makeFireTube(this.scene, 12, 8, { flow: 26, heat: 0.9, tipFade: 0.25, core: 0xffe03a, mid: 0xff9a18, edge: 0xe0300c }), core: makeFireTube(this.scene, 12, 6, { flow: 34, heat: 1, tipFade: 0.3, core: 0xfff6b0, mid: 0xffd84a, edge: 0xffa020 }), k: 0 }; this.map.set(key, J); }   // (red and yellow, like a flame: a yellow core, orange, red edges)
-    J.seen = true; J.from = from.clone(); J.dir = dir.clone().normalize(); J.len = len; J.r = r;
+    if (!J) {
+      J = {
+        outer: makeFireTube(this.scene, 16, 10, { flow: 16, heat: 0.5, tipFade: 0.35, opacity: 0.6, core: 0xffa02a, mid: 0xf06414, edge: 0xc8280a }),
+        body: makeFireTube(this.scene, 16, 9, { flow: 22, heat: 1, tipFade: 0.3, core: 0xffe85a, mid: 0xffa21c, edge: 0xf0500e }),
+        core: makeFireTube(this.scene, 10, 7, { flow: 30, heat: 1, tipFade: 0.4, core: 0xfffbe0, mid: 0xffe680, edge: 0xffb02a }),
+        k: 0, seed: Math.random() * 10,
+      };
+      this.map.set(key, J);
+    }
+    J.seen = true; J.from = (J.from || from.clone()).copy(from); J.dir = (J.dir || dir.clone()).copy(dir).normalize(); J.len = len; J.r = r;
   }
   update(dt) {
     this.t += dt;
     for (const [key, J] of this.map) {
-      J.k = J.seen ? Math.min(1, J.k + dt * 14) : J.k - dt * 8;
-      if (J.k <= 0) { J.sheath.dispose(); J.core.dispose(); this.map.delete(key); continue; }
+      J.k = J.seen ? Math.min(1, J.k + dt * 12) : J.k - dt * 6;
+      if (J.k <= 0) { J.outer.dispose(); J.body.dispose(); J.core.dispose(); this.map.delete(key); continue; }
       J.seen = false;
-      const L = J.len * J.k * (0.85 + 0.15 * Math.sin(this.t * 53 + key.length) + 0.08 * Math.sin(this.t * 97)), n = 6, pts = [];
-      for (let i = 0; i <= n; i++) pts.push(J.from.clone().addScaledVector(J.dir, L * (1 - i / n)));
-      // t = 0 at the far tip, 1 at the nozzle: the widest point a quarter of the way out
-      const shape = (q) => { const x = 1 - q; return x < 0.25 ? 0.55 + 1.8 * x : Math.max(0, 1 - (x - 0.25) / 0.75); };
-      J.sheath.set(pts, (q) => J.r * shape(q), this.t * 4); J.core.set(pts.slice(2), (q) => J.r * 0.45 * shape(q), this.t * 5);
+      const t = this.t, s = J.seed;
+      const L = J.len * J.k * (0.9 + 0.1 * Math.sin(t * 41 + s) + 0.05 * Math.sin(t * 89 + s * 2));
+      // a side axis to bend the plume along
+      const sx = Math.abs(J.dir.y) > 0.9 ? 1 : 0, side = { x: sx ? 1 : -J.dir.z, y: 0, z: sx ? 0 : J.dir.x };
+      const n = 10, pts = [];
+      for (let i = 0; i <= n; i++) {
+        const x = 1 - i / n, d = L * x, w = J.r * 1.6 * x * x;   // head (far end) first
+        const p = J.from.clone().addScaledVector(J.dir, d);
+        p.x += side.x * Math.sin(t * 13 + x * 6 + s) * w; p.z += side.z * Math.sin(t * 13 + x * 6 + s) * w;
+        p.y += Math.cos(t * 11 + x * 5 + s) * w * 0.7 + 0.25 * J.r * x * x;   // hot gas curls up a little at the end
+        pts.push(p);
+      }
+      // q = 0 at the far end, 1 at the nozzle: a narrow nozzle swelling quickly, widest about two thirds out, a ragged end
+      const shape = (q) => { const x = 1 - q; return (0.28 + 1.35 * Math.pow(Math.min(1, x / 0.65), 0.6)) * (x > 0.85 ? 1 - (x - 0.85) / 0.15 * 0.55 : 1); };
+      J.outer.set(pts, (q) => J.r * 1.3 * shape(q), t * 3);
+      J.body.set(pts, (q) => J.r * 0.85 * shape(q), t * 4);
+      J.core.set(pts.slice(4), (q) => J.r * 0.45 * shape(q * 0.6 + 0.4), t * 5);
     }
   }
-  dispose() { for (const J of this.map.values()) { J.sheath.dispose(); J.core.dispose(); } this.map.clear(); }
+  dispose() { for (const J of this.map.values()) { J.outer.dispose(); J.body.dispose(); J.core.dispose(); } this.map.clear(); }
 }

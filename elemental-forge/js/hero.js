@@ -90,6 +90,8 @@ const REACT = /^(hit_|Hit_|knockback|getup|block_hit|run_stop|struggle)/;
 function rigQuat(o, stop, out) { out.identity(); for (let x = o; x && x !== stop; x = x.parent) out.premultiply(x.quaternion); return out; }
 function rigPos(o, stop, out) { o.updateWorldMatrix(true, false); stop.updateWorldMatrix(true, false); return out.setFromMatrixPosition(o.matrixWorld).applyMatrix4(_m.copy(stop.matrixWorld).invert()); }
 
+// the frame of Running Arc held as Fire's glide stance (seconds into the baked clip)
+const GLIDE_POSE_T = 0.2;
 export class Hero {
   // parent: the group that also holds the driver's hips (the fighter's "offs" group); driverJ: driver bones
   constructor(parent, driverJ, colors) {
@@ -385,6 +387,15 @@ export class Hero {
         if (f.action === 'tech' && f.tech && f.tech.clip) { const [n, scale] = clipFor(f.tech, f.techSide); if (has(n)) { clip = n; ts = scale; fade = 0.06; if (f.techN !== this.techN) { this.techN = f.techN; restart = true; } } }
         wU = wL = 0; layered = true; glideLegs = ['surf_stance', LOOP_SPEED.surf_stance || 1];
       }
+      // (20 Nov, after review, with the user's reference clip and their Mixamo Running Arc) the rocket dodge and the
+      // glide hold ONE frame of Running Arc, never playing it: knees bent, one foot a little ahead of the other, the body
+      // pitched forward over the front knee, the arms swept back. Nothing steps or cycles; the jets at the heels move him.
+      // A strike thrown while gliding replaces only the upper body; the legs stay frozen in that stance.
+      else if (f.dodgeKind === 'rocket' && has('run_arc_l')) {
+        clip = 'run_arc_l'; ts = 0; fade = 0.1; startAt = GLIDE_POSE_T;
+        if (f.action === 'tech' && f.tech && f.tech.clip) { const [n, scale] = clipFor(f.tech, f.techSide); if (has(n)) { clip = n; ts = scale; fade = 0.06; startAt = 0; if (f.techN !== this.techN) { this.techN = f.techN; restart = true; } } }
+        wU = wL = 0; layered = true; glideLegs = ['run_arc_l', 0, GLIDE_POSE_T];
+      }
       else if (f.dodgeKind === 'rocket' && has('skate_ride')) {
         clip = has('fire_action') ? 'fire_action' : 'fire_idle'; ts = 1; fade = 0.08;
         if (f.action === 'tech' && f.tech && f.tech.clip) { const [n, scale] = clipFor(f.tech, f.techSide); if (has(n)) { clip = n; ts = scale; fade = 0.06; if (f.techN !== this.techN) { this.techN = f.techN; restart = true; } } }
@@ -482,9 +493,10 @@ export class Hero {
     if (this.curName && clip !== this.curName.split('|')[0] && this.prevFadeOut) fade = Math.max(fade, this.prevFadeOut);
     this.prevFadeOut = f.action === 'tech' && f.tech && f.tech.fadeOut && clip === (clipFor(f.tech, f.techSide)[0]) ? f.tech.fadeOut : 0;
     if (layered) {
-      const [ln, lts] = glideLegs || lowOv || loco();
+      const [ln, lts, lat] = glideLegs || lowOv || loco();
       this.play(clip + '|U', fade, ts, restart);
       this.playLower(ln + '|L', lts, 0.18);
+      if (lat !== undefined && this.low) this.low.time = lat;   // a held frame (the glide stance): pinned every frame
     } else {
       this.play(clip, fade, ts, restart);
       // a stance that is too deep for the style keeps its arms and footing but rises part-way to the standing idle

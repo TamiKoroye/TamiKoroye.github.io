@@ -1,0 +1,7 @@
+[
+ { "name": "run_arc_l", "src": ".anim-src/m11/Running Arc (1).fbx", "start": 0, "end": 0.6, "loop": true, "note": "Fire glide: one frame of this curving run is held as the glide stance (knees bent, one foot ahead, body forward); legs never cycle" },
+ { "name": "run_arc_r", "src": ".anim-src/m11/Running Arc (2).fbx", "start": 0, "end": 0.6, "loop": true, "note": "Fire glide, curving the other way" },
+ { "name": "hit_stomach", "src": ".anim-src/m11/Stomach Hit.fbx", "start": 0, "end": 1.2, "impact": 0.1, "note": "reaction to a fire dagger cut or stab to the body: doubles over, recovers" },
+ { "name": "hit_stomach_big", "src": ".anim-src/m11/Big Stomach Hit.fbx", "start": 0, "end": 1.4, "impact": 0.1, "note": "reaction to a heavy fire blade hit: driven back, doubled over" },
+ { "name": "hit_uppercut", "src": ".anim-src/m11/Receive Stomach Uppercut.fbx", "start": 0, "end": 1.5, "impact": 0.1, "note": "reaction to an upward fire blade cut" }
+]
