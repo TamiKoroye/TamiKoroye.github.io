@@ -213,6 +213,11 @@ export class Fighter {
     if (inp.dodge) this.buf.dodge = 0.18;
     if (inp.jump) this.buf.jump = 0.15;
     if (this.guarding) this.guardT += dt;
+    // (20 Nov, after review: "the rock man should be part of guard, and easy to get") Earth: GUARD held 0.6 s raises the
+    // Rock Man around the bender (30 energy, 14 s cooldown): the close-quarters form
+    if (this.el === 'earth' && !this.dead && !this.armour && (this.armourCd || 0) <= this.time && this.en >= 30 && ((this.guarding && this.guardT > 0.6) || this.aiArmour)) {
+      this.aiArmour = false; this.en -= 30; this.armourCd = this.time + 14; this.world.bending.earth.armour(this);
+    }
     if (this.slamFall && this.onGround && this.action !== 'down' && !(this.restrainT > 0)) this.slamFall = false;   // a slam's fall ends on landing
     if (this.bombDive && (this.onGround || this.reacting() || this.dead)) { const landed = this.onGround && !this.reacting() && !this.dead; this.bombDive = false; if (landed) { this.vel.x = this.vel.z = 0; this.world.bending.fireBomb(this); } }
     if (this.floatT > 0) this.floatT -= dt;   // lifted by wind: the Floating clip (hero.js)
@@ -410,11 +415,21 @@ export class Fighter {
           }
         }
       }
-      // (20 Nov, Earth phase one) Earth's SPECIAL reads the stick: toward the rival, Earth Sinking; to the side, Quicksand;
-      // pulled away, Rock Armour; no stick, the Ground Rupture as before. Each has its own cooldown.
-      if (this.buf.special && !this.charging && canStrike && this.el === 'earth' && this.onGround) {
-        const T = this.earthSpecialTech();
-        if (T && this.en >= T.cost) { this.buf.special = 0; this.startTech(T, this.handSide); }
+      // (20 Nov, after review: "the new moves are too hidden ... this is a phone game") Earth's SPECIAL, like Fire's:
+      // tapped, the Dust Storm (12 s cooldown); held 0.3 s and let go, Quicksand under the rival (7 s). On cooldown or
+      // short of energy it falls back to the Ground Rupture.
+      if (this.el === 'earth' && st.tech.storm) {
+        if (this.buf.special && !this.charging && canStrike && this.onGround && (this.spT ?? -1) < 0) { this.buf.special = 0; this.spT = 0; }
+        if ((this.spT ?? -1) >= 0) {
+          const aiHold = this.aiEarthPick === 'quicksand';
+          if ((inp.specialHeld || aiHold) && this.spT < 0.3) { this.spT += dt; if (this.spT >= 0.3) w.popup(this, 'QUICKSAND', false); }
+          else {
+            const held = this.spT >= 0.3; this.spT = -1; this.aiEarthPick = undefined;
+            const T = held ? st.tech.quicksand : st.tech.storm, cdKey = held ? 'sandCd' : 'stormCd';
+            if ((this[cdKey] || 0) <= this.time && this.en >= T.cost) { this[cdKey] = this.time + (held ? 7 : 12); this.startTech(T, 1); }
+            else if (this.en >= st.tech.special.cost) this.startTech(st.tech.special, this.handSide);
+          }
+        }
       }
       if (this.buf.special && !this.charging && canStrike) { this.buf.special = 0; this.startTech(st.tech.special, this.handSide); }
 
@@ -504,7 +519,6 @@ export class Fighter {
     // forward, keeps its own speed)
     if (A && !A.soft && !A.react && this.onGround && !this.mob && !(this.tech && this.tech.travels)) maxSpeed = Math.min(maxSpeed, 1.0);
     if (this.stunT > 0 || restrained) maxSpeed = 0;
-    if ((this.sandT || 0) > 0) maxSpeed *= 0.33;   // (20 Nov) wading in Quicksand
     if (this.armour) maxSpeed *= 0.8;   // (20 Nov) the weight of the Rock Armour
 
     if (this.mob && this.mobMove(dt, mx, mz)) {
@@ -742,7 +756,7 @@ export class Fighter {
   floorGuard(dt) {
     const h = this.hero, sc = h && h.scene; if (!sc) return;
     sc.position.y = this.floorLift || 0; sc.updateMatrixWorld(true);
-    const floor = this.groundY + 0.06; let mn = Infinity;   // a joint is about a limb's half-thickness inside the skin
+    const floor = this.groundY + 0.06 - (this.sinkY || 0) - (this.sandSink || 0); let mn = Infinity;   // (20 Nov: sinking in Earth Sinking / Quicksand, the floor that the body is kept above goes down with it)   // a joint is about a limb's half-thickness inside the skin
     if (!h._guardBones) h._guardBones = Object.keys(h.bones).filter(k => /^DEF-/.test(k) && !/foot|toe|heel/i.test(k)).map(k => h.bones[k]);   // body joints only (the rig's root sits on the floor; feet stand on it)
     for (const b of h._guardBones) { const e = b.matrixWorld.elements; if (e[13] < mn) mn = e[13]; }
     const need = (this.pos.y - this.groundY < 0.6) ? Math.max(0, (this.floorLift || 0) + floor - mn) : 0;
@@ -913,7 +927,12 @@ export class Fighter {
   soundLoops() {
     const A = this.world.audio, key = this === this.world.fighters[0] ? 'p' : 'o', m = this.mob, el = this.el;
     if (this.dead) return;
-    if ((this.guarding && el === 'fire') || (m && m.kind === 'flame') || (this.holding && el === 'fire')) A.hold(key + 'fire', 'fireLoop', this.guarding ? 1 : 0.8, this.pos);
+    // (20 Nov, after review: "the sounds for gliding have been removed") the rocket glide and the jump's jets lost their
+    // fire roar when the glide was rebuilt on 18 Nov; it plays again for as long as the jets burn
+    const jets = el === 'fire' && ((this.dodgeKind === 'rocket' && this.dodgeT > 0) || ((this.jetBurstT || 0) > 0 && !this.onGround));
+    if ((this.guarding && el === 'fire') || (m && m.kind === 'flame') || (this.holding && el === 'fire') || jets) A.hold(key + 'fire', 'fireLoop', this.guarding ? 1 : jets ? 1.1 : 0.8, this.pos);
+    // Earth riding its slab, on the floor or along a wall: the grinding of the rock under the feet (never had a sound)
+    if (el === 'earth' && ((m && m.kind === 'surf') || (this.wall && this.wall.kind === 'surf'))) A.hold(key + 'rock', 'rockLift', 0.75, this.pos);
     if ((m && m.kind === 'surf' && el === 'water') || (this.holding && el === 'water')) A.hold(key + 'water', 'waterLoop', 0.85, this.pos);
     if ((this.dodgeKind === 'glide' && this.dodgeT > 0) || (m && m.kind === 'fly') || (this.holding && el === 'air')) A.hold(key + 'wind', 'windLoop', 1, this.pos);
   }
@@ -966,7 +985,11 @@ export class Fighter {
     // (19 Nov, from the reference: the jump is driven by a blast out of the soles) Water: a gush of water from each
     // foot down into the floor; Air: a blast of wind from each foot that raises dust
     if ((this.el === 'water' || this.el === 'air') && w.bending) for (const s of ['L', 'R']) w.bending.weapons.footJet(this, this.el, s, { down: true, len: air ? 1.4 : 1.8, dur: 0.32, r: this.el === 'air' ? 0.3 : 0.22 });
-    if (this.el === 'air' || air) { w.fx.ring(this.pos, 1.6, 0xffffff, 0.35); for (let i = 0; i < 8; i++) w.fx.wind(this.pos.clone().setY(this.pos.y + 0.2), _v.set(rand(-3, 3), -1, rand(-3, 3)), 0.6, 0.4); w.audio.gust(air ? 0.7 : 0.4); }
+    // (20 Nov, after review: "a little bit of air bending in Earth when he jumps off a gliding rock on the side of the
+    // wall") a jump in the air or off a wall used Air's ring and gusts for every element; wind is Air's alone now. Earth
+    // pushes off in a burst of stone and dust with the crack of rock
+    if (this.el === 'air') { w.fx.ring(this.pos, 1.6, 0xffffff, 0.35); for (let i = 0; i < 8; i++) w.fx.wind(this.pos.clone().setY(this.pos.y + 0.2), _v.set(rand(-3, 3), -1, rand(-3, 3)), 0.6, 0.4); w.audio.gust(air ? 0.7 : 0.4); }
+    else if (this.el === 'earth' && air) { w.fx.debrisBurst(this.pos.clone(), 10, 3, 0.09, 0x6a5d50, 1); w.fx.dust(this.pos, 8, 2, 0xa08a6c); w.audio.rumble(0.6); }
     else w.audio.whoosh(0.4, this.pos);
     w.audio.jump(air ? 0.5 : 0.7, this.pos);
   }
@@ -998,25 +1021,15 @@ export class Fighter {
     if (st.tech.melee && this.onGround && d < (inChain ? 3.5 : 2.3) && Math.abs(t.pos.y - this.pos.y) < 1.2) { this.lastMeleeT = this.time + 0.6; return st.tech.melee; }
     return null;
   }
-  // (20 Nov) Earth: HAND with the stick pulled away from the rival is Dust Cloud (6 s cooldown)
+  // (20 Nov, after review) Earth: HAND with the stick pulled away from the rival is the Ground Rupture (the fissure;
+  // it was SPECIAL before Dust Storm and Quicksand took that button)
   earthHandTech() {
     const st = this.style, t = this.target, inp = this.input;
-    if (!t || t.dead || !st.tech.dust || !this.onGround) return null;
+    if (!t || t.dead || !this.onGround) return null;
     const dx = t.pos.x - this.pos.x, dz = t.pos.z - this.pos.z, d = Math.hypot(dx, dz) || 1, sl = Math.hypot(inp.mx, inp.mz);
     const want = this.aiDust || (sl > 0.5 && (inp.mx * dx + inp.mz * dz) / (sl * d) < -0.5); this.aiDust = false;
-    if (want && (this.dustCd || 0) <= this.time && this.en >= st.tech.dust.cost) { this.dustCd = this.time + 6; return st.tech.dust; }
+    if (want && (this.ruptureCd || 0) <= this.time && this.en >= st.tech.special.cost) { this.ruptureCd = this.time + 5; return st.tech.special; }
     return null;
-  }
-  // (20 Nov) Earth's SPECIAL by the stick: toward the rival Earth Sinking (5 s cooldown), sideways Quicksand (7 s),
-  // away Rock Armour (14 s); otherwise the element's SPECIAL
-  earthSpecialTech() {
-    const st = this.style, t = this.target, inp = this.input, sl = Math.hypot(inp.mx, inp.mz), ai = this.aiEarthPick; this.aiEarthPick = undefined;
-    if (!t || t.dead || (sl < 0.5 && !ai)) return st.tech.special;
-    const dx = t.pos.x - this.pos.x, dz = t.pos.z - this.pos.z, d = Math.hypot(dx, dz) || 1, c = ai ? { sink: 1, armour: -1, quicksand: 0 }[ai] : (inp.mx * dx + inp.mz * dz) / (sl * d);
-    const pick = c > 0.6 ? ['sink', 'sinkCd', 5] : c < -0.6 ? ['armour', 'armourCd', 14] : ['quicksand', 'sandCd', 7];
-    const T = st.tech[pick[0]];
-    if (!T || (this[pick[1]] || 0) > this.time || this.en < T.cost || (pick[0] === 'armour' && this.armour)) return st.tech.special;
-    this[pick[1]] = this.time + pick[2]; return T;
   }
   rollDir() { const inp = this.input; if (Math.hypot(inp.mx, inp.mz) > 0.3) this.faceYaw = this.yaw = Math.atan2(inp.mx, inp.mz); this.lungeDir.set(Math.sin(this.faceYaw), 0, Math.cos(this.faceYaw)).multiplyScalar(9); this.lungeT = 0.45; }   // about 4 m
   doDodge() {

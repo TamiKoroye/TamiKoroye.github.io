@@ -280,6 +280,7 @@ export class Bending {
       }
       // (20 Nov, Earth phase one) the new skills (earth.js); Dust Cloud is the charged storm if HAND is still held
       case 'earth.dust': this.earth.dust(f, !!f.input.handHeld); return;
+      case 'earth.storm': this.earth.storm(f); return;
       case 'earth.sink': this.earth.sink(f); return;
       case 'earth.quicksand': this.earth.quicksand(f); return;
       case 'earth.armour': this.earth.armour(f); return;

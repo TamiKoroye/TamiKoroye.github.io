@@ -374,12 +374,16 @@ STYLES.earth.tech.hand.clip = ['earth_punch2', 'earth_punch', 'fire_punch2'];
 // drawing the dust, the step drives the other palm out; the storm leaves on the push. HAND kept held: the charged storm.
 STYLES.earth.tech.dust = T({ name: 'Dust Cloud', clip: 'tc_brush_palm', clipSpeed: 2.2, dur: 0.7, cost: 14, cancel: 0.8, move: 0.6, keys: K0,
   events: [[0.45, 'earth.dust']] });
+// (20 Nov, after review: the new moves were too hidden) SPECIAL tapped: Dust Storm (the same stamp and palm thrust,
+// the dust fills the arena); SPECIAL held 0.3 s: Quicksand; LEG held: Earth Sinking; GUARD held 0.6 s: Rock Man
+STYLES.earth.tech.storm = T({ name: 'Dust Storm', clip: 'tc_brush_palm', clipSpeed: 2.2, dur: 0.7, cost: 30, cancel: 0.8, move: 0.6, keys: K0, events: [[0.45, 'earth.storm']] });
 // SPECIAL with the stick toward the rival: Earth Sinking (sink, both palms driven down into the ground)
 STYLES.earth.tech.sink = T({ name: 'Earth Sinking', clip: 'earth_gather', clipSpeed: 2.6, dur: 0.6, cost: 22, cancel: 0.85, move: 0, keys: K0, events: [[0.42, 'earth.sink']] });
 // SPECIAL with the stick to the side: Quicksand (a stable horse stance, the hands circling down)
 STYLES.earth.tech.quicksand = T({ name: 'Quicksand', clip: 'earth_lift', clipSpeed: 1.4, dur: 0.8, cost: 20, cancel: 0.85, move: 0, keys: K0, events: [[0.5, 'earth.quicksand']] });
 // SPECIAL with the stick pulled away: Rock Armour (a stamp; the stone climbs the body from the feet)
 STYLES.earth.tech.armour = T({ name: 'Rock Armour', clip: 'stomp', dur: 0.95, cost: 30, cancel: 0.86, move: 0, keys: K0, events: [[0.5, 'earth.armour']] });
+
 // Water's whip slam (M6): the whip wraps the rival and the bender lifts them overhead and slams them down
 // (Mixamo Grab And Slam from the pull: the arms haul the whip back, lift it overhead, slam down to one knee; see weapons.grabSlam)
 // (18 Nov: the Tai Chi 24 Form clips captured from video were tried here and taken out the same day: chained at
@@ -495,3 +499,5 @@ STYLES.fire.tech.bomb = T({ name: 'Fire Bomb', clip: 'fire_fly', clipSpeed: 2.0,
 // drive forwards and downwards, and the Comet leaves on that drive. Events as fractions of the 1.4 s clip.
 STYLES.fire.tech.comet = T({ name: 'Fire Comet', clip: 'whip_v', clipSpeed: 1, dur: 1.4, cost: 40, cancel: 0.85, move: 0, keys: K0, rawTiming: true,
   events: [[0.17, 'fire.cometCharge'], [0.63, 'fire.cometLaunch']] });
+// (20 Nov, after review) LEG held (the charged stamp) is Earth Sinking for Earth: the rock trap under the rival
+STYLES.earth.tech.stomp = STYLES.earth.tech.sink;

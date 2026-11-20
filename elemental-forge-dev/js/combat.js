@@ -58,6 +58,7 @@ export class Combat {
   // level: -1 no reaction (damage over time), 0 flinch, 1 stagger, 2 knockdown
   damage(t, dmg, dir, from, kind, at, knock, level = 0) {
     const w = this.world;
+    if (from && from.armour && from !== t && dmg > 0) { dmg *= 1.4; knock *= 1.3; }   // (20 Nov) the Rock Man's stone fists and feet
     // a raised defence is resolved before any damage: coverage by direction, element rules, durability
     if (t.guarding && t.defense && from && from !== t && kind !== 'proj') {
       // perfectly timed guard against a blow: the attacker is thrown off balance and a counter opens
