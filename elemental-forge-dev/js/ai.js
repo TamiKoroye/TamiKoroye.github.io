@@ -207,7 +207,10 @@ export class AI {
       if (this.mobT <= 0 && f.el === 'water' && f.mob && f.mob.kind === 'surf' && f.mob.t > 0.4) inp.dodge = true;
       if (this.mobT > 0 && f.mob && f.mob.kind === 'surf' && dist < 5 && Math.random() < dt * 2) inp.jump = true;
     }
-    if (dist < 2.6 && this.meleeT <= 0) {
+    // (20 Nov) blinded by a Dust Cloud, or the rival hidden inside one: the opponent loses its aim and holds off
+    const blind = f.blindT > 0 || (w.bending.earth && w.bending.earth.obscured(foe.pos) && Math.random() < 0.85);
+    if (blind) { this.meleeT = Math.max(this.meleeT, 0.25); this.throwT = Math.max(this.throwT, 0.4); if (Math.random() < dt * 2) inp.faceYaw += rand(-0.8, 0.8); }
+    else if (dist < 2.6 && this.meleeT <= 0) {
       // close range: hand / leg combinations
       if (Math.random() < P.melee) {
         // combinations: hand-hand-leg, hand-leg-leg, leg-leg; training throws single strikes
@@ -219,12 +222,14 @@ export class AI {
     } else if (this.throwT <= 0 && dist > 3 && dist < 24 && f.en > 22) {
       this.throwT = rand(P.throwGap[0], P.throwGap[1]);
       const roll = Math.random();
-      if (held > 0 || roll < 0.45) inp.hand = true;                         // launch held object / hand technique
+      if (f.el === 'earth' && roll < 0.2 && dist < 9) { f.aiDust = true; inp.hand = true; }   // (20 Nov) Earth: Dust Cloud
+      else if (held > 0 || roll < 0.45) inp.hand = true;                         // launch held object / hand technique
       else if (roll < 0.7) inp.leg = true;                                   // kick projectile
       else if (this.d !== 'training') { inp.hand = true; this.holdKind = 'hand'; this.holdT = rand(0.9, 1.6); }  // sustained bending
       else inp.hand = true;
     } else if (this.specialT <= 0 && dist < 16 && f.en > 30) {
       inp.special = true; this.specialT = this.d === 'master' ? rand(3, 5) : rand(6, 10);
+      if (f.el === 'earth') f.aiEarthPick = ['sink', 'quicksand', 'armour', null][Math.floor(Math.random() * 4)];   // (20 Nov) Earth's new SPECIAL moves
     } else if (this.d === 'master' && dist < 4 && Math.random() < dt * 0.6 && f.en > 30) {
       inp.leg = true; this.holdKind = 'leg'; this.holdT = 0.9;               // charged technique
     }

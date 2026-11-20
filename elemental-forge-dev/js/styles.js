@@ -369,6 +369,17 @@ STYLES.earth.tech.leg.push(T({ name: 'Rock Push Kick', clip: 'earth_teep', dur: 
   active: { from: 0.45, to: 0.6, dmg: 9, range: 2.2, arc: 0.3, knock: 9, level: 1 }, events: [[0.48, 'earth.teep']] }));
 // the chain opens with the quick jab (impact 0.21 s); the heavy lunge punch (impact 0.52 s) is the second strike
 STYLES.earth.tech.hand.clip = ['earth_punch2', 'earth_punch', 'fire_punch2'];
+// (20 Nov, Earth phase one: new skills, earth.js) Dust Cloud: HAND with the stick pulled away from the rival. Brush Knee
+// and Push (Tai Chi capture): the weight settles on the supporting leg, the lead arm sweeps down and up across the body
+// drawing the dust, the step drives the other palm out; the storm leaves on the push. HAND kept held: the charged storm.
+STYLES.earth.tech.dust = T({ name: 'Dust Cloud', clip: 'tc_brush_palm', clipSpeed: 2.2, dur: 0.7, cost: 14, cancel: 0.8, move: 0.6, keys: K0,
+  events: [[0.45, 'earth.dust']] });
+// SPECIAL with the stick toward the rival: Earth Sinking (sink, both palms driven down into the ground)
+STYLES.earth.tech.sink = T({ name: 'Earth Sinking', clip: 'earth_gather', clipSpeed: 2.6, dur: 0.6, cost: 22, cancel: 0.85, move: 0, keys: K0, events: [[0.42, 'earth.sink']] });
+// SPECIAL with the stick to the side: Quicksand (a stable horse stance, the hands circling down)
+STYLES.earth.tech.quicksand = T({ name: 'Quicksand', clip: 'earth_lift', clipSpeed: 1.4, dur: 0.8, cost: 20, cancel: 0.85, move: 0, keys: K0, events: [[0.5, 'earth.quicksand']] });
+// SPECIAL with the stick pulled away: Rock Armour (a stamp; the stone climbs the body from the feet)
+STYLES.earth.tech.armour = T({ name: 'Rock Armour', clip: 'stomp', dur: 0.95, cost: 30, cancel: 0.86, move: 0, keys: K0, events: [[0.5, 'earth.armour']] });
 // Water's whip slam (M6): the whip wraps the rival and the bender lifts them overhead and slams them down
 // (Mixamo Grab And Slam from the pull: the arms haul the whip back, lift it overhead, slam down to one knee; see weapons.grabSlam)
 // (18 Nov: the Tai Chi 24 Form clips captured from video were tried here and taken out the same day: chained at

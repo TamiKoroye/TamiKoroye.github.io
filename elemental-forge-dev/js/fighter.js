@@ -358,7 +358,7 @@ export class Fighter {
         this.buf.hand = 0; if (this.dodgeKind !== 'rocket' && this.dodgeKind !== 'arch') this.dodgeT = 0;
         if (this.counterT > 0) { this.counterT = 0; this.startAction('counter'); w.combat.lunge(this, ACTIONS.counter); w.popup(this, 'COUNTER', true); w.audio.whoosh(0.9); }
         else if (B.spiralRelease && B.spiralRelease(this)) { w.popup(this, 'RELEASE', true); }
-        else { this.handSide = -this.handSide; const riding = this.el === 'water' && st.tech.surfPunch && ((this.dodgeKind === 'arch' && this.dodgeT > 0) || (this.mob && this.mob.kind === 'surf')); this.startTech(riding ? st.tech.surfPunch : (this.el === 'fire' && this.fireHandTech()) || st.tech.hand, this.handSide, true); }
+        else { this.handSide = -this.handSide; const riding = this.el === 'water' && st.tech.surfPunch && ((this.dodgeKind === 'arch' && this.dodgeT > 0) || (this.mob && this.mob.kind === 'surf')); this.startTech(riding ? st.tech.surfPunch : (this.el === 'fire' && this.fireHandTech()) || (this.el === 'earth' && this.earthHandTech()) || st.tech.hand, this.handSide, true); }
         this.handHoldT = 0;
       }
       if (this.buf.leg && !struck && !this.charging && canStrike) {
@@ -409,6 +409,12 @@ export class Fighter {
             else if (this.en >= st.tech.breath.cost) this.startTech(st.tech.breath, 1);
           }
         }
+      }
+      // (20 Nov, Earth phase one) Earth's SPECIAL reads the stick: toward the rival, Earth Sinking; to the side, Quicksand;
+      // pulled away, Rock Armour; no stick, the Ground Rupture as before. Each has its own cooldown.
+      if (this.buf.special && !this.charging && canStrike && this.el === 'earth' && this.onGround) {
+        const T = this.earthSpecialTech();
+        if (T && this.en >= T.cost) { this.buf.special = 0; this.startTech(T, this.handSide); }
       }
       if (this.buf.special && !this.charging && canStrike) { this.buf.special = 0; this.startTech(st.tech.special, this.handSide); }
 
@@ -498,6 +504,8 @@ export class Fighter {
     // forward, keeps its own speed)
     if (A && !A.soft && !A.react && this.onGround && !this.mob && !(this.tech && this.tech.travels)) maxSpeed = Math.min(maxSpeed, 1.0);
     if (this.stunT > 0 || restrained) maxSpeed = 0;
+    if ((this.sandT || 0) > 0) maxSpeed *= 0.33;   // (20 Nov) wading in Quicksand
+    if (this.armour) maxSpeed *= 0.8;   // (20 Nov) the weight of the Rock Armour
 
     if (this.mob && this.mobMove(dt, mx, mz)) {
       // velocity set by the element's mobility
@@ -666,6 +674,8 @@ export class Fighter {
 
     this.animate(dt);
     this.root.position.copy(this.pos);
+    if (this.sinkY || this.sandSink) this.root.position.y -= (this.sinkY || 0) + (this.sandSink || 0);   // (20 Nov) pulled into the ground (Earth Sinking, Quicksand)
+    if (this.blindT > 0) this.blindT -= dt;
     this.root.rotation.set(0, this.yaw, 0);
     // on a wall the whole body tips over so the feet meet the face: sideways for a run along it, backwards for a
     // run up it (eased in and out)
@@ -988,6 +998,26 @@ export class Fighter {
     if (st.tech.melee && this.onGround && d < (inChain ? 3.5 : 2.3) && Math.abs(t.pos.y - this.pos.y) < 1.2) { this.lastMeleeT = this.time + 0.6; return st.tech.melee; }
     return null;
   }
+  // (20 Nov) Earth: HAND with the stick pulled away from the rival is Dust Cloud (6 s cooldown)
+  earthHandTech() {
+    const st = this.style, t = this.target, inp = this.input;
+    if (!t || t.dead || !st.tech.dust || !this.onGround) return null;
+    const dx = t.pos.x - this.pos.x, dz = t.pos.z - this.pos.z, d = Math.hypot(dx, dz) || 1, sl = Math.hypot(inp.mx, inp.mz);
+    const want = this.aiDust || (sl > 0.5 && (inp.mx * dx + inp.mz * dz) / (sl * d) < -0.5); this.aiDust = false;
+    if (want && (this.dustCd || 0) <= this.time && this.en >= st.tech.dust.cost) { this.dustCd = this.time + 6; return st.tech.dust; }
+    return null;
+  }
+  // (20 Nov) Earth's SPECIAL by the stick: toward the rival Earth Sinking (5 s cooldown), sideways Quicksand (7 s),
+  // away Rock Armour (14 s); otherwise the element's SPECIAL
+  earthSpecialTech() {
+    const st = this.style, t = this.target, inp = this.input, sl = Math.hypot(inp.mx, inp.mz), ai = this.aiEarthPick; this.aiEarthPick = undefined;
+    if (!t || t.dead || (sl < 0.5 && !ai)) return st.tech.special;
+    const dx = t.pos.x - this.pos.x, dz = t.pos.z - this.pos.z, d = Math.hypot(dx, dz) || 1, c = ai ? { sink: 1, armour: -1, quicksand: 0 }[ai] : (inp.mx * dx + inp.mz * dz) / (sl * d);
+    const pick = c > 0.6 ? ['sink', 'sinkCd', 5] : c < -0.6 ? ['armour', 'armourCd', 14] : ['quicksand', 'sandCd', 7];
+    const T = st.tech[pick[0]];
+    if (!T || (this[pick[1]] || 0) > this.time || this.en < T.cost || (pick[0] === 'armour' && this.armour)) return st.tech.special;
+    this[pick[1]] = this.time + pick[2]; return T;
+  }
   rollDir() { const inp = this.input; if (Math.hypot(inp.mx, inp.mz) > 0.3) this.faceYaw = this.yaw = Math.atan2(inp.mx, inp.mz); this.lungeDir.set(Math.sin(this.faceYaw), 0, Math.cos(this.faceYaw)).multiplyScalar(9); this.lungeT = 0.45; }   // about 4 m
   doDodge() {
     const inp = this.input, D = this.style.dodge;
@@ -1045,6 +1075,8 @@ export class Fighter {
   // level: -1 damage only, 0 flinch, 1 stagger, 2 knockdown
   takeHit(dmg, dir, knock, level) {
     level = level === true ? 1 : (level ?? 0);
+    // (20 Nov) the Rock Armour takes 60 % of the blow and one step off the reaction (earth.js armourHit)
+    if (this.armour && level >= 0) { [dmg, level] = this.world.bending.earth.armourHit(this, dmg, level); knock *= 0.4; if (level < 0) { this.hp = Math.max(0, this.hp - dmg); this.flash = Math.max(this.flash, 0.5); if (this.hp <= 0) this.die(dir.lengthSq() ? dir : _v.set(0, 0, 1)); return; } }
     this.hp = Math.max(0, this.hp - dmg);
     if (level < 0) { this.flash = Math.max(this.flash, 0.35); if (this.hp <= 0) this.die(dir.lengthSq() ? dir : _v.set(0, 0, 1)); return; }
     this.flash = 1;
