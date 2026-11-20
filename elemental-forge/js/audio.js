@@ -300,6 +300,13 @@ export class Audio {
     if (this.recorded) return void this.play(k >= 1 ? 'waterBig' : k >= 0.75 ? 'waterCast' : 'waterWhip', { vol: 0.6 + 0.4 * k, pos });
     this.noise(0.3, 'bandpass', 1200, 500, 0.35 * k, 2.5); this.tone(0.12, 900, 300, 0.08 * k);
   }
+  // (Air brief: air sound) the sharp burst of compressed air at a palm strike, swipe or blade: a high crack sweeping
+  // down into a short whoosh, layered over the recorded gust
+  airBurst(k = 0.8, pos) {
+    if (!this.ctx || this.muted) return; const t = this.t; if (t - (this._lab ?? -9) < 0.05) return; this._lab = t;
+    this.noise(0.09, 'highpass', 5200, 1400, 0.42 * k, 0.7); this.noise(0.28, 'bandpass', 2600, 380, 0.3 * k, 1.1);
+    if (this.recorded) this.play('gust', { vol: 0.45 + 0.3 * k, pos });
+  }
   gust(k = 0.6, pos) {
     if (!this.ctx) return; const t = this.t; if (t - (this._lg ?? -9) < 0.06) return; this._lg = t;
     if (this.recorded) return void this.play(k >= 1 ? 'gustBig' : 'gust', { vol: 0.6 + 0.4 * k, pos });

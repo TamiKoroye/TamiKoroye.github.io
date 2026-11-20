@@ -87,7 +87,7 @@ export function adoptTiming(styles) {
   for (const st of Object.values(styles)) for (const T of techList(st)) {
     if (!T.clip) continue;
     const list = names(T).filter(n => MOCAP[n]); if (!list.length) continue;
-    const orig = { dur: T.dur, rawTiming: T.rawTiming, events: T.events, active: T.active, jumpAt: T.jumpAt, cancel: T.cancel, full: T.full };
+    const orig = { dur: T.dur, keepDur: T.keepDur, rawTiming: T.rawTiming, events: T.events, active: T.active, jumpAt: T.jumpAt, cancel: T.cancel, full: T.full };
     // every alternative take gets its own timing, so each plays at its proper speed with its impact on the hit
     const timings = list.map(n => timing(orig, n, T.clipSpeed || CLIP_SPEED[n] || SPEED[st.key] || 1.5));
     Object.assign(T, timings[0]); T.clip = list[0];
@@ -97,7 +97,9 @@ export function adoptTiming(styles) {
 }
 function timing(orig, name, sp) {
   const m = MOCAP[name];
-  const dur = m.clip.duration / sp;
+  // (keepDur: a technique built on part of a long loop, e.g. the Air Vortex on the circling qigong arms, keeps its own
+  // length and plays only that much of the clip)
+  const dur = orig.keepDur ? orig.dur : m.clip.duration / sp;
   const u0 = orig.events && orig.events.length ? orig.events[0][0] : (orig.active ? orig.active.from : 0.4);
   const evU = (m.impact ?? m.clip.duration * 0.5) / m.clip.duration;   // evasions without a strike: timed from the middle
   const map = (u) => THREE.MathUtils.clamp(evU + (u - u0) * orig.dur / dur, 0, 0.98);
@@ -125,6 +127,6 @@ export function clipFor(T, side) {
     const kind = m.limb[0], want = kind + (kind === 'p' ? (side > 0 ? 'R' : 'L') : (side > 0 ? 'L' : 'R'));
     if (m.limb !== want && MOCAP[base + '_M']) name = base + '_M';
   }
-  const ts = m.impact !== undefined && T.impactT ? THREE.MathUtils.clamp(m.impact / T.impactT, 0.6, 3) : T.dur ? THREE.MathUtils.clamp(m.clip.duration / T.dur, 0.6, 4) : 1;
+  const ts = T.keepDur ? (T.clipSpeed || 1) : m.impact !== undefined && T.impactT ? THREE.MathUtils.clamp(m.impact / T.impactT, 0.6, 3) : T.dur ? THREE.MathUtils.clamp(m.clip.duration / T.dur, 0.6, 4) : 1;
   return [name, ts];
 }

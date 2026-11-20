@@ -70,7 +70,7 @@ export class AirSkills {
     const core = this.body(this.sphereGeo, { opacity: 0.85, twist: 4, flow: 4 });
     const rings = [0, 1].map(() => this.body(this.ringGeo, { opacity: 0.9, twist: 6, flow: 6 }));
     this.shots.push({ kind: 'blast', f, pos: from, dir, speed: 24, range: 15, t: 0, core, rings, r: 0.58, dmg: 8, from: from.clone() });
-    this.world.audio.gust(0.8); this.world.audio.whoosh(0.7, from);
+    this.world.audio.gust(0.8); this.world.audio.airBurst(0.8, from);
   }
   // ---------------------------------------------------------------- 2. the palm, palm, kick combination (HAND close)
   // Each strike releases a short compressed burst along the striking hand or foot, exactly on the strike: a small ring of
@@ -103,7 +103,7 @@ export class AirSkills {
     const m = this.body(this.crescentGeo, { opacity: 0.85, twist: 2, flow: 5 });
     const sideDir = new THREE.Vector3(-dir.z, 0, dir.x).multiplyScalar(f.techSide > 0 ? -1 : 1);
     this.shots.push({ kind: 'swipe', f, pos: from.clone().addScaledVector(dir, 0.6), dir, speed: 17, range: 12, t: 0, core: m, rings: [], r: 1.3, dmg: 9, side: sideDir, from: from.clone() });
-    this.world.audio.gust(0.9); this.world.audio.whoosh(0.9, from);
+    this.world.audio.gust(0.9); this.world.audio.airBurst(1.0, from);
   }
   // ---------------------------------------------------------------- 4. Air Blades (LEG at range)
   // Two quick cuts of the hands release two narrow blades of high-pressure air, crossing on the diagonal, thin and bright
@@ -113,7 +113,7 @@ export class AirSkills {
     const m = this.body(this.bladeGeo, { opacity: 0.95, twist: 1.5, flow: 8, color: 0xe4f3ff });
     m.userData.roll = which > 0 ? 0.7 : -0.7;
     this.shots.push({ kind: 'blade', f, pos: from.clone().addScaledVector(dir, 0.4), dir, speed: 30, range: 14, t: 0, core: m, rings: [], r: 0.55, dmg: 6, from: from.clone() });
-    this.world.audio.whoosh(0.8, from);
+    this.world.audio.airBurst(0.7, from);
   }
   // ---------------------------------------------------------------- 5. Air Bomb (LEG close)
   // From the crouch the legs straighten and both palms push out and down: a shell of compressed air bursts out of the

@@ -536,3 +536,8 @@ STYLES.air.tech.bomb = T({ name: 'Air Bomb', clip: 'stand_jump', clipSpeed: 1.5,
 // HAND with the stick pulled away: Suction (the hand reaches out and draws back across the body, the weight going back)
 STYLES.air.tech.suction = T({ name: 'Suction', clip: 'water_redirect', clipSpeed: 1.5, dur: 0.6, cost: 10, cancel: 0.7, upper: true, move: 0.5, keys: K0, events: [[0.4, 'air.suction']] });
 STYLES.air.labels.hand = 'AIR BLAST'; STYLES.air.labels.leg = 'AIR BLADES';
+// (20 Nov, Airbending brief: Air Vortex, the main special) the Tornado's full-body spin (turn_spin) is replaced by the
+// arms circling in front of the body (the qigong circling also used by the guard) while the cyclone winds up round the
+// bender over about 0.8 s; then it is sent at the rival, catches them, lifts and turns them and throws them out
+// (specials.js updateTornado)
+STYLES.air.tech.special = T({ name: 'Air Vortex', clip: 'water_flow', clipSpeed: 1.9, keepDur: true, onStart: 'air.specialStart', dur: 1.0, cost: 30, cancel: 0.9, move: 0, rawTiming: true, keys: K0, events: [[0.82, 'air.special']] });

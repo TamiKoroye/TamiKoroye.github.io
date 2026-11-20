@@ -100,7 +100,10 @@ const whipSample = () => S(() => {
 const ang = (a, b) => { const la = Math.hypot(...a), lb = Math.hypot(...b); if (la < 0.8 || lb < 0.8) return null; return Math.acos(Math.max(-1, Math.min(1, (a[0] * b[0] + a[1] * b[1] + a[2] * b[2]) / la / lb))) * 180 / Math.PI; };
 
 // ------------------------------------------------------------------ whips (water, air)
-for (const el of (process.env.WHIPS ? [process.env.WHIPS] : process.env.ONLY ? [] : ['water', 'air'])) {
+// (20 Nov, Airbending brief: "Strike: Air Blast or the close combo") Air's HAND no longer cracks a whip; it fires the
+// compressed Air Blast (or, close in, the palm-palm-kick combination). The whip checks now run for Water only; Air's
+// HAND is checked below by the blasts landing on a rival 4 m away (was: four whips, the third an air cannon).
+for (const el of (process.env.WHIPS ? [process.env.WHIPS] : process.env.ONLY ? [] : ['water'])) {
   head(`${el}: whip from the hand`);
   await setup({ el, p: [0, 0, -9], o: [0, 0, -5] }); await stepN(10);
   const per = {};
@@ -141,10 +144,30 @@ for (const el of (process.env.WHIPS ? [process.env.WHIPS] : process.env.ONLY ? [
   const hl = await hitsOn(), hits = hl.filter(t => /Whip|whipSlam/.test(t)).length + hl.filter(t => t === 'proj').length; check(`${el}: strikes land on the rival at 4 m (at least 3 of 4; Air's third is the air cannon, Water's second and fourth throw balls)`, hits >= 3, `${hits} hits: ${hl.join(',')}`); await clearHits();
 }
 
+if (!process.env.ONLY && !process.env.WHIPS) {
+  head('air: Air Blast from the hand');
+  await setup({ el: 'air', p: [0, 0, -9], o: [0, 0, -5] }); await stepN(10); await clearHits();
+  for (let i = 0; i < 4; i++) {
+    await S(() => { const { player: p, opp: o } = window.__EF; const fw = p.forward(); o.pos.set(p.pos.x + fw.x * 4, p.pos.y, p.pos.z + fw.z * 4); o.vel.set(0, 0, 0); o.action = null; o.stunT = 0; o.invuln = 0; });
+    await press('btn-hand', 2); await stepN(30);
+  }
+  const hb = await hitsOn(); check('air: HAND fires Air Blasts that land on the rival at 4 m (at least 3 of 4)', hb.filter(t => t === 'airBlast').length >= 3, hb.join(','));
+  await clearHits();
+}
+
 // ------------------------------------------------------------------ kicks throw the element along the foot's path
 // (19 Nov: Water's kicks no longer throw an arc off the foot; from the reference videos they bring ice up out of the
 //  floor, checked in tests/m9-test.mjs review19)
-for (const el of (process.env.ONLY || process.env.WHIPS ? [] : ["fire", "air"])) {
+// (20 Nov, Airbending brief: "Power: Air Blades or Air Bomb") Air's LEG no longer kicks an arc off the foot; it throws
+// two narrow Air Blades (checked just below). The foot-arc checks now run for Fire only (was: Fire and Air).
+if (!process.env.ONLY && !process.env.WHIPS) {
+  head('air: LEG throws the Air Blades');
+  await setup({ el: 'air', p: [0, 0, -9], o: [0, 0, -5] }); await stepN(10); await clearHits();
+  await press('btn-leg', 2); let blades = 0; for (let j = 0; j < 30; j++) { await stepN(1); blades = Math.max(blades, await S(() => window.__EF.world.bending.air.shots.filter(s => s.kind === 'blade' && s.f === window.__EF.player).length)); }
+  const hbl = await hitsOn(); check('air: LEG throws two Air Blades that strike the rival at 4 m', blades === 2 && hbl.filter(t => /Blade/i.test(t)).length >= 1, `blades in flight ${blades}; hits ${hbl.join(',')}`);
+  await clearHits();
+}
+for (const el of (process.env.ONLY || process.env.WHIPS ? [] : ["fire"])) {
   head(`${el}: kick arcs follow the kicking foot`);
   await setup({ el, p: [0, 0, -9], o: [0, 0, -5] }); await stepN(10); await clearHits();
   await press('btn-leg', 2);

@@ -154,13 +154,18 @@ await setup({ el: 'air', p: [0, 0, -9], o: [0, 0, -4] }); await stepN(3);
 for (let i = 0; i < 2; i++) { await press('btn-hand', 2); await stepN(14); }
 check('air whip strikes', (await S(() => window.__EF.opp.hp)) < 100, `rival hp ${await S(() => window.__EF.opp.hp)}`);
 await setup({ el: 'air', p: [0, 0, -12], o: [0, 0, -6] }); await stepN(3);
-await hold('btn-leg'); await stepN(30); await fUp(6); await stepN(30);
+// (20 Nov, Airbending brief: "Hold Power: Air Funnel") held LEG is now the sustained Air Funnel, a cone of wind that
+// keeps pushing while it is held, in place of the one-shot pressure wave; it is held for about 1.7 s here (was 0.5 s)
+// and must still damage the rival and drive them back at least 1.5 m (the old wave threw them 3 m in one blow)
+await hold('btn-leg'); await stepN(50); await fUp(6); await stepN(30);
 const pw = await P(); await shot('air-pressure-wave');
-check('charged LEG: a pressure wave drives the rival back', pw.ohp < 100 && pw.oz > -6 + 3, `rival hp ${pw.ohp}, pushed to z ${pw.oz.toFixed(1)} (from -6)`);
-await setup({ el: 'air', p: [0, 0, -9], o: [0, 0, -5] }); await stepN(3);
-await S(() => { const p = window.__EF.player; p.comboTimer = 0.9; p.legIdx = 1; });
-await press('btn-leg', 2); let aLift = 0; await run(36, (i, r) => { aLift = Math.max(aLift, r.oy); });
-check('rising kick: an air column launches the rival', aLift > 1.2, `rival lifted ${aLift.toFixed(2)} m`);
+check('held LEG: the Air Funnel drives the rival back', pw.ohp < 100 && pw.oz > -6 + 1.5, `rival hp ${pw.ohp}, pushed to z ${pw.oz.toFixed(1)} (from -6)`);
+// (20 Nov, Airbending brief: "Power: Air Blades or Air Bomb") a LEG tap with the rival close is now the Air Bomb, a
+// radial burst that throws a rival within 2 m off the floor; the LEG-chain rising kick it replaces lifted them 1.2 m.
+// The rival stands 1.8 m away (was 4 m) and must be thrown clear of the floor (0.4 m) and knocked down.
+await setup({ el: 'air', p: [0, 0, -6.8], o: [0, 0, -5] }); await stepN(3);
+await press('btn-leg', 2); let aLift = 0, aDown = false; await run(36, async (i, r) => { aLift = Math.max(aLift, r.oy); aDown = aDown || await S(() => window.__EF.opp.action === 'down'); });
+check('close LEG: the Air Bomb throws the rival off the floor', aLift > 0.4 && aDown, `rival lifted ${aLift.toFixed(2)} m, knocked down ${aDown}`);
 
 head('Air: flight');
 await setup({ el: 'air', locked: true, p: [0, 0, -12], o: [0, 0, 0] }); await stepN(3);

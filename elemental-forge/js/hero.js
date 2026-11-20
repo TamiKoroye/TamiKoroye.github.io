@@ -382,7 +382,14 @@ export class Hero {
       // else is an authored roll
       const c = Math.cos(f.yaw), s = Math.sin(f.yaw), lx = f.dodgeDir.x * c - f.dodgeDir.z * s, lz = f.dodgeDir.x * s + f.dodgeDir.z * c;
       // Air's two-second whirlwind glide: the airborne gliding pose (UAL2 NinjaJump idle, as in flight)
-      if (f.dodgeKind === 'glide' && has('air_loop')) { clip = 'air_loop'; ts = 1; wU = wL = 0; fade = 0.2; }
+      // Air Propulsion: the legs hold the fighting stance (one frame of air_stance) while the wind carries the body; a
+      // strike thrown out of the burst replaces only the upper body
+      if (f.dodgeKind === 'propel' && has('air_stance')) {
+        clip = 'air_stance'; ts = 0; fade = 0.08; startAt = 0.4;
+        if (f.action === 'tech' && f.tech && f.tech.clip) { const [n, scale] = clipFor(f.tech, f.techSide); if (has(n)) { clip = n; ts = scale; fade = 0.06; startAt = 0; if (f.techN !== this.techN) { this.techN = f.techN; restart = true; } } }
+        wU = wL = 0; layered = true; glideLegs = ['air_stance', 0, 0.4];
+      }
+      else if (f.dodgeKind === 'glide' && has('air_loop')) { clip = 'air_loop'; ts = 1; wU = wL = 0; fade = 0.2; }
       // Air's flips: Corkscrew Evade / Cartwheel, spread over the dodge
       else if (f.dodgeKind === 'flip' && has(f.flipClip)) once(f.flipClip, this.actions[f.flipClip].getClip().duration / f.dodgeDur, 0.08);
       // Fire's rocket dodge: Fire's own fighting stance (fists up, knees bent), held nearly still while the jets carry
