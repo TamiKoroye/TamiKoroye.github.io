@@ -1046,6 +1046,11 @@ export class Fighter {
     const legBlow = !!(T && !T.upper && /sweep|flair/i.test(T.name || '')), headBlow = !!(T && T.upper);
     const alt = this.pos.y - this.groundY;
     this.headHit = level === 0 && headBlow;
+    // (20 Nov, after review: "characters struck with fire blades must not flail around but respond to the attack") a
+    // cut or stab of the Fire Daggers doubles the body over the blow (Mixamo Stomach Hit); the Fire Blade's spinning
+    // slash drives it back, doubled over (Big Stomach Hit). hero.js plays them, mirrored to the side the blow came from.
+    const M = src && src.style && src.style.tech.melee, cut = T && M && (T === M || T.variantOf === M) ? T.clip : null;
+    this.cutClip = cut && level < 2 ? (/blade_spin/.test(cut) ? 'hit_stomach_big' : 'hit_stomach') : null;
     if (wasDodging && level >= 0 && this.action !== 'down' && this.action !== 'getup') { level = 2; this.downClip = 'trip'; }
     // (18 Nov, second review: Fall Flat and Hit To Head pitch the body forward, onto the face; struck from the front
     //  that read as a leap into the blow. A blow from the front now knocks the fighter backwards (Knocked Down); Fall
@@ -1063,7 +1068,7 @@ export class Fighter {
       this.actionT = -({ fall_flat: 0.6, hit_head_down: 0.6, hit_legs: 0.8, trip: 0.2 }[this.downClip] || 0);
     }
     else if (level === 1) { this.startAction('stagger'); this.stunT = 0.5; }
-    else { this.startAction('hit'); this.stunT = 0.2; }
+    else { this.startAction('hit'); this.stunT = 0.2; if (this.cutClip) this.actionT = -0.22; }   // (a knife hit holds the doubled-over bend a little longer, about 0.58 s)
   }
 
   die(dir) {

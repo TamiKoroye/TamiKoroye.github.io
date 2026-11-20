@@ -301,10 +301,10 @@ export class Bending {
       }
       case 'fire.dagger': {
         // Fire Daggers / Fire Blade: the cut lands on whoever is in front within reach (the flames on the hands are drawn
-        // by updateFireBlades for as long as the cut lasts). The inward cut comes back with a backhand cut 0.27 s later.
+        // by updateFireBlades for as long as the cut lasts).
         const blade = /blade_spin/.test(f.tech && f.tech.clip || '');
         this.daggerHit(f, blade);
-        if (/dagger_in/.test(f.tech && f.tech.clip || '')) f._dagger2 = f.time + 0.27;
+        // (20 Nov: each knife clip is now one cut, so there is no backhand second hit)
         return;
       }
       case 'fire.whip': {
@@ -1333,7 +1333,7 @@ export class Bending {
       const dx = t.pos.x - f.pos.x, dz = t.pos.z - f.pos.z, d = Math.hypot(dx, dz);
       if (d > reach + t.radius || Math.abs(t.pos.y - f.pos.y) > 1.6 || (d > 0.3 && (dx * fw.x + dz * fw.z) / d < (blade ? -0.2 : 0.4))) continue;   // the blade's spin cuts all round the front half and beyond
       const dir = new THREE.Vector3(dx, 0, dz).normalize(), at = t.chestPos(new THREE.Vector3());
-      w.combat.damage(t, blade ? 13 : 5, dir, f, blade ? 'fireBlade' : 'fireDagger', at, blade ? 11 : 1.2, blade ? 2 : 0);   // the daggers barely push: the chain stays in reach
+      w.combat.damage(t, blade ? 13 : 5, dir, f, blade ? 'fireBlade' : 'fireDagger', at, blade ? 7 : 1.2, blade ? 1 : 0);   // (20 Nov: the Blade staggers the rival back, doubled over, rather than throwing them down)   // the daggers barely push: the chain stays in reach
       for (let i = 0; i < (blade ? 10 : 4); i++) w.fx.fire(at, _v.copy(dir).multiplyScalar(rand(2, 5)).add(_v3.set(rand(-1, 1), rand(0, 2), rand(-1, 1))), 0.3, 0.22);
       if (blade && Math.random() < 0.6) this.burn(t.pos.x, t.pos.z, t.groundY, f);
     }

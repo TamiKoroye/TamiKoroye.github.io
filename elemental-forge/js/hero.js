@@ -360,12 +360,13 @@ export class Hero {
       // a flinch alternates the two light reactions; a stagger is the heavy one: Big Side Hit (mirrored to the side
       // the blow came from) or, for a blow straight on, Receive Stomach Uppercut
       const heavy = f.action === 'stagger';
-      const n = heavy ? (Math.abs(hlx) > 0.45 && has('hit_big') ? (hlx > 0 ? 'hit_big_M' : 'hit_big') : has('hit_body') ? 'hit_body' : 'hit_b') : f.headHit && has('hit_head') ? (hlx > 0 ? 'hit_head_M' : 'hit_head') : f.hitAlt ? 'hit_b' : 'hit_a';   // a punch snaps the head back (Head Hit)
+      const cut = f.cutClip && has(f.cutClip) ? (hlx > 0.3 && has(f.cutClip + '_M') ? f.cutClip + '_M' : f.cutClip) : null;
+      const n = cut || (heavy ? (Math.abs(hlx) > 0.45 && has('hit_big') ? (hlx > 0 ? 'hit_big_M' : 'hit_big') : has('hit_body') ? 'hit_body' : 'hit_b') : f.headHit && has('hit_head') ? (hlx > 0 ? 'hit_head_M' : 'hit_head') : f.hitAlt ? 'hit_b' : 'hit_a');   // a punch snaps the head back (Head Hit)
       // several hits landing together (a punch and its fireball, a whip's two lashes) are one reaction: within
       // 0.3 s of a reaction starting, the clip already playing continues instead of switching or restarting
-      const recent = /^hit_/.test(this.curName || '') && this.clock - (this.reactAt || -9) < 0.3 && !(heavy && !/^hit_(big|body)/.test(this.curName));
+      const recent = /^hit_/.test(this.curName || '') && this.clock - (this.reactAt || -9) < 0.3 && !(heavy && !/^hit_(big|body|stomach_big)/.test(this.curName)) && !(cut && !this.curName.startsWith(cut.replace(/_M$/, '')));
       if (recent) { clip = this.curName; ts = this.cur.timeScale; wU = wL = 0; fade = 0.1; }
-      else if (has(n)) { clip = n; ts = heavy ? 1.15 : /^hit_head/.test(n) ? 2.0 : 1.35; wU = wL = 0; fade = 0.1; if (f.actionT < dt * 1.5 || this.curName !== n) { restart = true; this.reactAt = this.clock; } }
+      else if (has(n)) { clip = n; ts = cut ? (heavy ? 1.6 : 1.5) : heavy ? 1.15 : /^hit_head/.test(n) ? 2.0 : 1.35; wU = wL = 0; fade = 0.1; if (f.actionT < dt * 1.5 || this.curName !== n) { restart = true; this.reactAt = this.clock; } }
       else { clip = f.hitAlt ? 'Hit_Head' : 'Hit_Chest'; wU = wL = 0; if (this.curName !== clip || f.actionT < dt * 1.5) restart = true; ts = 1.2; fade = 0.05; }
     }
     else if (f.dodgeT > 0) {
