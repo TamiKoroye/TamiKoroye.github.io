@@ -1,0 +1,7 @@
+[
+ { "name": "thrown_fall", "src": ".anim-src/m10/Getting Thrown.fbx", "start": 1.0, "end": 4.33, "noRise": false, "note": "a heavy blow from the front: thrown off the feet, lands on the back, rolls to hands and knees and stands (its own get-up)" },
+ { "name": "side_fall", "src": ".anim-src/drive3/Death From Right.fbx", "start": 0.0, "end": 2.2, "note": "knocked down from the side: buckles and goes down sideways (mirrored for the other side)" },
+ { "name": "sweep_fall", "src": ".anim-src/m10/Sweep Fall (2).fbx", "start": 0.3, "end": 2.2, "note": "legs taken out: the feet go up and the body lands flat on the back" },
+ { "name": "hard_land", "src": ".anim-src/drive7/aap/hard landing.fbx", "start": 0.0, "end": 2.0, "mirror": false, "note": "a high landing: knees absorb it into a crouch with a hand on the floor, then rise" },
+ { "name": "getup2", "src": ".anim-src/m11/Getting Up 2.fbx", "start": 0.9, "end": 5.6, "mirror": false, "note": "the get-up from face down: push up onto the hands, a knee forward, stand into guard" }
+]

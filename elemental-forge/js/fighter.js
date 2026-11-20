@@ -242,11 +242,17 @@ export class Fighter {
         const was = this.action; this.action = null; this.tech = null; this.spinYaw = 0;
         // getting up is protected for most of the rise, so a fighter cannot be kept on the floor by blows timed to it
         if (was === 'down') {
+          // (20 Nov) Getting Thrown already rolls and stands up: no second get-up after it
+          if (this.downClip === 'thrown_fall') { this.downClip = null; this.invuln = Math.max(this.invuln, 0.2); }
+          else {
           this.floorHit = false; this.startAction('getup');
-          // Air gets up with the corkscrew kip-up (longer, so time is added in front); the others with the plain get-up
-          this.getupClip = this.el === 'air' ? 'getup_cork' : 'getup';   // (18 Nov, after review: the flip get-up is Air's only; Fire's double-kick kip-up took too long)
-          this.actionT = 0;   // (18 Nov, after review: Air's get-up took too long; the corkscrew starts at the flip now and fits the plain get-up's time)
+          // Air gets up with the corkscrew kip-up (longer, so time is added in front); the others with the plain get-up;
+          // (20 Nov) face down after a fall forwards, everyone pushes up from the front (Getting Up 2)
+          const faceDown = this.downClip === 'fall_flat' || this.downClip === 'trip';
+          this.getupClip = faceDown ? 'getup2' : this.el === 'air' ? 'getup_cork' : 'getup';   // (18 Nov, after review: the flip get-up is Air's only; Fire's double-kick kip-up took too long)
+          this.actionT = faceDown ? -1.2 : 0;   // (18 Nov, after review: Air's get-up took too long; the corkscrew starts at the flip now and fits the plain get-up's time)
           this.invuln = Math.max(this.invuln, (this.A.dur - this.actionT) * 0.8);
+          }
         }
       }
     }
@@ -1065,7 +1071,16 @@ export class Fighter {
     // (18 Nov, second review: Fall Flat and Hit To Head pitch the body forward, onto the face; struck from the front
     //  that read as a leap into the blow. A blow from the front now knocks the fighter backwards (Knocked Down); Fall
     //  Flat only when struck from behind)
-    else if (level === 2) { const fromBehind = (dir.x * Math.sin(this.yaw) + dir.z * Math.cos(this.yaw)) > 0.3; this.downClip = alt > 1.2 ? 'fall_impact' : legBlow ? 'hit_legs' : fromBehind ? 'fall_flat' : 'knockback'; }
+    // (20 Nov, Earth brief: "the reaction chosen from the actual combat circumstances") the fall follows where the blow
+    // came from relative to the body and how hard it was: legs taken out, the feet go up and the body lands on the back
+    // (Sweep Fall); from behind, forwards onto the front (Fall Flat); from the side, down sideways (Death From Right,
+    // mirrored to the side, hero.downName); from the front, onto the back (Knocked Down), or for a very heavy blow
+    // thrown off the feet onto the back, rolling to hands and knees and up again (Getting Thrown)
+    else if (level === 2) {
+      const fwdC = dir.x * Math.sin(this.yaw) + dir.z * Math.cos(this.yaw), latC = dir.x * Math.cos(this.yaw) - dir.z * Math.sin(this.yaw);
+      const fromBehind = fwdC > 0.3, fromSide = Math.abs(latC) > 0.7 && Math.abs(fwdC) < 0.6;
+      this.downClip = alt > 1.2 ? 'fall_impact' : legBlow ? 'sweep_fall' : fromBehind ? 'fall_flat' : fromSide ? 'side_fall' : knock >= 13 ? 'thrown_fall' : 'knockback';
+    }
     // already on the floor (knocked down or getting up): the blow keeps them down in the lying pose; they do not
     // spring up into a standing hit reaction or replay the fall from standing
     if (this.action === 'down' || this.action === 'getup') {
@@ -1075,7 +1090,8 @@ export class Fighter {
     if (level === 2) {
       this.startAction('down'); this.stunT = 0; this.invuln = 0.9; this.onGround = false;
       // the longer falls get longer on the floor (time added before the get-up), so they play near their captured pace
-      this.actionT = -({ fall_flat: 0.6, hit_head_down: 0.6, hit_legs: 0.8, trip: 0.2 }[this.downClip] || 0);
+      this.actionT = -({ fall_flat: 0.6, hit_head_down: 0.6, hit_legs: 0.8, trip: 0.2, side_fall: 0.9, sweep_fall: 0.7, thrown_fall: 2.3 }[this.downClip] || 0);
+      if (this.downClip === 'thrown_fall') this.invuln = 2.2;   // (the throw carries its own roll and rise: protected through it)
     }
     else if (level === 1) { this.startAction('stagger'); this.stunT = 0.5; }
     else { this.startAction('hit'); this.stunT = 0.2; if (this.cutClip) this.actionT = -0.22; }   // (a knife hit holds the doubled-over bend a little longer, about 0.58 s)
