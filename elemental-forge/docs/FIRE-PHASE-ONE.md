@@ -211,3 +211,13 @@ hit_uppercut (each with a mirrored copy). Running Forward Flip and Getting Up (2
   own mesh: in the rest pose, the lowest, rearmost vertex skinned to each foot, kept in the foot bone's local space so
   it follows the foot in every pose. The plume stays heel-thin for its first stretch before it swells, so it does not
   wrap the foot or the shin.
+
+## Fire Daggers correction (20 Nov, evening)
+- The flame blades are the hitboxes: a segment from the fist to the point, tested against the rival's body (a capsule
+  from the hips to the head; lying down, the body on the floor) while the cut is in its active part. One hit per blade
+  per cut; a stab that does not reach misses. Each hit flares fire at the point of contact with the fire-hit sound and
+  plays the stomach-hit reaction (mirrored to the side), the Blade finisher Big Stomach Hit as a stagger.
+- He steps into each cut (up to about 1.1 m) so the blade reaches; blades 0.85 m.
+- The knives follow the rival's state: standing, staggering or kneeling, the standing stabs; on the floor, the grounded
+  stab (Hard Landing's drop into a deep crouch, the blade driven down into them; once per stab, 9 damage); in the air or
+  falling, no knife work. A knocked-down rival lying on the floor can be struck by the grounded stab (only by it).

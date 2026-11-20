@@ -482,7 +482,7 @@ STYLES.fire.tech.hand.clip = ['fire_jab', 'fire_punch'];
 // long flame blades (whip_d_single: the torso turns into a downward diagonal cut). fire.dagger in elements.js.
 // (19 Nov, later: the user's knife animations from the Drive replace the whip clips: Stable Sword Inward / Outward
 // Slash, Stabbing, and Thrust Slash's spin into a two-armed slash for the Fire Blade finisher)
-STYLES.fire.tech.melee = T({ name: 'Fire Daggers', clip: ['dagger_in', 'dagger_out', 'dagger_stab', 'blade_spin'], clipSpeed: 1.8, dur: 0.32, cost: 4, cancel: 0.62, move: 1.5, lunge: 5, keys: K0,
+STYLES.fire.tech.melee = T({ name: 'Fire Daggers', clip: ['dagger_in', 'dagger_out', 'dagger_stab', 'blade_spin'], clipSpeed: 1.8, dur: 0.32, cost: 4, cancel: 0.62, move: 1.5, lunge: 8, keys: K0,
   events: [[0.45, 'fire.dagger']] });
 // Fire Whip: HAND with the stick pulled away from the rival (draw back and lash): the arm draws back and the whip is
 // released on the swing, following the hand (whip_v overhead, whip_h across). fire.whip in elements.js.
@@ -514,3 +514,7 @@ STYLES.earth.tech.shackles = T({ name: 'Slab Shackles', clip: 'magic_2h', clipSp
 // gathering pose is held about 1 s while the mass forms, earth.js updateBreakers)
 STYLES.earth.tech.breaker = T({ name: 'Earthbreaker', clip: 'tc_push', clipSpeed: 1.3, dur: 1.4, cost: 50, cancel: 0.9, move: 0, keys: K0, rawTiming: true,
   events: [[0.12, 'earth.breakerGather'], [0.62, 'earth.breakerLaunch']] });
+// (20 Nov, after review) the grounded stab: the rival on the floor; the knees bend, the body sinks and both flame daggers
+// drive down into them (Hard Landing's drop into a deep crouch, the hand driven to the floor in front), then he rises. The blades are the
+// hitboxes (elements.js bladeContact)
+STYLES.fire.tech.groundStab = T({ name: 'Grounded Stab', clip: 'hard_land', clipSpeed: 2.2, dur: 0.6, cost: 4, cancel: 0.8, move: 1.2, lunge: 12, keys: K0, events: [[0.42, 'fire.dagger']] });

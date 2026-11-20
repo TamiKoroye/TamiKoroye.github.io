@@ -1054,7 +1054,12 @@ export class Fighter {
     if (st.tech.whip && sl > 0.5 && (inp.mx * dx + inp.mz * dz) / (sl * d) < -0.5) return st.tech.whip;
     // once the melee chain has started it carries on to its finisher while the rival is within 3.5 m
     const inChain = this.time - (this.lastMeleeT ?? -9) < 0.9;
-    if (st.tech.melee && this.onGround && d < (inChain ? 3.5 : 2.3) && Math.abs(t.pos.y - this.pos.y) < 1.2) { this.lastMeleeT = this.time + 0.6; return st.tech.melee; }
+    // (20 Nov, after review: "standing dagger attacks must never play against grounded opponents") the knives are chosen
+    // from the rival's state: standing, staggering or kneeling, the standing stabs; on the floor (knocked down or getting
+    // up), the grounded stab, driven down into them; in the air or falling, no knife work (the HAND chain throws fire)
+    const lying = t.action === 'down' || t.action === 'getup', airborne = !t.onGround && t.pos.y - t.groundY > 0.5;
+    if (st.tech.groundStab && lying && this.onGround && d < 2.6) { this.lastMeleeT = this.time + 0.6; return st.tech.groundStab; }
+    if (st.tech.melee && this.onGround && !lying && !airborne && d < (inChain ? 3.5 : 2.3) && Math.abs(t.pos.y - this.pos.y) < 1.2) { this.lastMeleeT = this.time + 0.6; return st.tech.melee; }
     return null;
   }
   // (20 Nov, after review) Earth: HAND with the stick pulled away from the rival is the Ground Rupture (the fissure;
