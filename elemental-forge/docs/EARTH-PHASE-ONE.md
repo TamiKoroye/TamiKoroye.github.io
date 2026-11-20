@@ -59,3 +59,12 @@ and fragments on every impact).
 5. Earth Sinking, Quicksand, Slab Shackles, Earth Hand.
 6. Rock-surf posture, Earth Armour, Earthbreaker.
 Each stage: tests, captures, deploy to the dev URL, report.
+
+## Built (20 Nov, second round): four new skills (js/earth.js)
+| Skill | Input | What it does |
+|---|---|---|
+| Dust Cloud | HAND with the stick pulled away from the rival (6 s cooldown, 14 energy) | Brush Knee and Push: weight onto the supporting leg, the lead arm sweeps, the palm thrusts at 0.5 s. A low storm of grit and small stones, then thick rolling dust, runs 9 m: 9 damage, a push back into a recoil or stagger (no knockdown), the rival blinded 1.6 s (a dust veil on screen for the player; the computer opponent loses its aim). A dust cloud then hangs 4.5 s where it ran out or struck; a fighter inside it is hidden from the computer opponent. HAND kept held: the charged storm (11 m, wider, 14 damage, harder push, 2.4 s blind, bigger cloud for 6 s). |
+| Earth Sinking | SPECIAL with the stick toward the rival (5 s cooldown, 22 energy) | Sinks and drives both palms down; at 0.65 s the ground under the rival opens into a dark pit ringed with broken stones and pulls them in to the shins (6 damage). They cannot step out and struggle (bent knees, torso working) for up to 2.2 s; each JUMP or DODGE press tears free 0.35 s sooner. |
+| Quicksand | SPECIAL with the stick to the side (7 s cooldown, 20 energy) | A horse stance, the hands circling down; a 3.2 m circle of swirling sand opens under the rival for 4.5 s. Anyone but the bender in it moves at a third of their speed, sinks a little and cannot jump high. A trap only. |
+| Rock Armour | SPECIAL with the stick pulled away (14 s cooldown, 30 energy) | A stamp; stone plates climb from the feet to the head and lock onto every bone (48 plates: feet, shins, thighs, hips, torso, shoulders, upper arms, forearms, fists, neck, head), a rock man whose joints still bend. Blows do 40 % damage and each reaction drops a step (a knockdown becomes a stagger; light hits no flinch); 80 % speed. It breaks after soaking 70 damage or after 10 s. |
+The computer opponent uses all four when it plays Earth.

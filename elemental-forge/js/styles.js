@@ -372,10 +372,10 @@ STYLES.earth.tech.hand.clip = ['earth_punch2', 'earth_punch', 'fire_punch2'];
 // (20 Nov, Earth phase one: new skills, earth.js) Dust Cloud: HAND with the stick pulled away from the rival. Brush Knee
 // and Push (Tai Chi capture): the weight settles on the supporting leg, the lead arm sweeps down and up across the body
 // drawing the dust, the step drives the other palm out; the storm leaves on the push. HAND kept held: the charged storm.
-STYLES.earth.tech.dust = T({ name: 'Dust Cloud', clip: 'tc_brush_palm', clipSpeed: 1.6, dur: 0.7, cost: 14, cancel: 0.8, move: 0.6, keys: K0,
+STYLES.earth.tech.dust = T({ name: 'Dust Cloud', clip: 'tc_brush_palm', clipSpeed: 2.2, dur: 0.7, cost: 14, cancel: 0.8, move: 0.6, keys: K0,
   events: [[0.45, 'earth.dust']] });
 // SPECIAL with the stick toward the rival: Earth Sinking (sink, both palms driven down into the ground)
-STYLES.earth.tech.sink = T({ name: 'Earth Sinking', clip: 'earth_gather', clipSpeed: 1.3, dur: 0.6, cost: 22, cancel: 0.85, move: 0, keys: K0, events: [[0.42, 'earth.sink']] });
+STYLES.earth.tech.sink = T({ name: 'Earth Sinking', clip: 'earth_gather', clipSpeed: 2.6, dur: 0.6, cost: 22, cancel: 0.85, move: 0, keys: K0, events: [[0.42, 'earth.sink']] });
 // SPECIAL with the stick to the side: Quicksand (a stable horse stance, the hands circling down)
 STYLES.earth.tech.quicksand = T({ name: 'Quicksand', clip: 'earth_lift', clipSpeed: 1.4, dur: 0.8, cost: 20, cancel: 0.85, move: 0, keys: K0, events: [[0.5, 'earth.quicksand']] });
 // SPECIAL with the stick pulled away: Rock Armour (a stamp; the stone climbs the body from the feet)
