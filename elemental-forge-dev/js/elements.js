@@ -103,8 +103,8 @@ export class Bending {
     this.waterLight = 0;
     this.weapons = new Weapons(this);
     this.specials = new Specials(this);
-    this.earth = new EarthSkills(this);
-    this.air = new AirSkills(this);   // (20 Nov) Air Blast, the combination, Swipe, Blades, Bomb, Funnel, Suction   // (20 Nov) Dust Cloud, Earth Sinking, Quicksand, Rock Armour
+    this.earth = new EarthSkills(this);   // (20 Nov) Dust Cloud, Earth Sinking, Quicksand, Rock Armour
+    this.air = new AirSkills(this);   // (20 Nov) the added Air skills: Air Blast, Air Swipe, Air Blades, Air Bomb, Suction
     this.iceSpearGeo = (() => { const g = new THREE.OctahedronGeometry(1, 0); g.scale(0.22, 1.1, 0.22); return g; })();
   }
 
@@ -281,11 +281,8 @@ export class Bending {
         return;
       }
       // (20 Nov, Earth phase one) the new skills (earth.js); Dust Cloud is the charged storm if HAND is still held
-      // (20 Nov, Airbending brief) air.js
+      // (20 Nov, Airbending brief) the added Air skills (air.js)
       case 'air.blast': this.air.blast(f, f.techSide); return;
-      case 'air.combo0': this.air.comboHit(f, 0); return;
-      case 'air.combo1': this.air.comboHit(f, 1); return;
-      case 'air.combo2': this.air.comboHit(f, 2); return;
       case 'air.swipe': this.air.swipe(f); return;
       case 'air.blade1': this.air.blades(f, f.techSide); return;
       case 'air.blade2': this.air.blades(f, -f.techSide); return;
@@ -1757,10 +1754,9 @@ export class Bending {
       } else {
         d.mesh.position.copy(d.pos); d.mesh.scale.setScalar(d.rise); d.mesh.rotation.y += dt * 9;
         // a visible whirlwind: three bands of wind winding round the bender from the feet to above the head
-        if (!d.tubes) { d.tubes = [0, 1, 2, 3].map(() => { const t = this.weapons.tube(); t.mesh.material = this.weapons.airTubeMat; return t; });   // (Air brief: Air Shield, four bands, was three)
-          d.wpts = d.tubes.map(() => Array.from({ length: 20 }, () => new THREE.Vector3())); }
+        if (!d.tubes) { d.tubes = [0, 1, 2].map(() => { const t = this.weapons.tube(); t.mesh.material = this.weapons.airTubeMat; return t; }); d.wpts = d.tubes.map(() => Array.from({ length: 20 }, () => new THREE.Vector3())); }
         const of = d.owner, R = 1.25 * d.rise;
-        d.tubes.forEach((tb, i) => { const P = d.wpts[i]; for (let j = 0; j < P.length; j++) { const q = j / (P.length - 1), a = -d.t * 9 + q * 7 + i * 1.571; P[j].set(of.pos.x + Math.cos(a) * R * (0.85 + 0.25 * q), of.pos.y + 0.1 + q * 2.2, of.pos.z + Math.sin(a) * R * (0.85 + 0.25 * q)); } tb.set(P, (u) => 0.06 + 0.08 * Math.sin(Math.PI * u), d.t * 2); });
+        d.tubes.forEach((tb, i) => { const P = d.wpts[i]; for (let j = 0; j < P.length; j++) { const q = j / (P.length - 1), a = -d.t * 9 + q * 7 + i * 2.09; P[j].set(of.pos.x + Math.cos(a) * R * (0.85 + 0.25 * q), of.pos.y + 0.1 + q * 2.2, of.pos.z + Math.sin(a) * R * (0.85 + 0.25 * q)); } tb.set(P, (u) => 0.05 + 0.06 * Math.sin(Math.PI * u), d.t * 2); });
         for (let k = 0; k < 2; k++) { const a = Math.random() * 6.28; w.fx.wind(_v.set(d.pos.x + Math.cos(a) * d.sphere, d.pos.y + rand(-0.8, 0.8), d.pos.z + Math.sin(a) * d.sphere), _v2.set(-Math.sin(a) * 8, 0, Math.cos(a) * 8), 0.5, 0.3); }
       }
       if (!d.ice && !d.owner.guarding && d.sink === 0) {

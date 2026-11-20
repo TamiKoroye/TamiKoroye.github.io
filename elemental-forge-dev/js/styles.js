@@ -512,32 +512,25 @@ STYLES.earth.tech.shift = T({ name: 'Ground Shift', clip: 'whip_h_horse', clipSp
 STYLES.earth.tech.shackles = T({ name: 'Slab Shackles', clip: 'magic_2h', clipSpeed: 2.2, dur: 0.7, cost: 20, cancel: 0.85, move: 0, keys: K0, events: [[0.6, 'earth.shackles']] });
 // SPECIAL held 1 s: Earthbreaker (Tai Chi Push: the deep stance, the arms gather, then both palms drive forward; the
 // gathering pose is held about 1 s while the mass forms, earth.js updateBreakers)
-STYLES.earth.tech.breaker = T({ name: 'Earthbreaker', clip: 'tc_push', clipSpeed: 1.3, dur: 1.4, cost: 50, cancel: 0.9, move: 0, keys: K0, rawTiming: true,
-  events: [[0.12, 'earth.breakerGather'], [0.62, 'earth.breakerLaunch']] });
+// (20 Nov, after review: "the earth bender's stance on Earthbreaker is horrible ... does not look natural") the Tai Chi
+// push (arms flung wide, head back, the weight on one leg) is replaced by Casting Spell's low rooted lunge: he sinks with
+// the hands low by the hips while the rocks gather (held there, earth.js), then the arm sweeps and thrusts at the rival
+STYLES.earth.tech.breaker = T({ name: 'Earthbreaker', clip: 'earth_pillar', clipSpeed: 1.3, dur: 1.4, cost: 50, cancel: 0.75, move: 0, keys: K0, rawTiming: true,
+  events: [[0.03, 'earth.breakerGather'], [0.27, 'earth.breakerLaunch']] });
 // (20 Nov, after review) the grounded stab: the rival on the floor; the knees bend, the body sinks and both flame daggers
 // drive down into them (Hard Landing's drop into a deep crouch, the hand driven to the floor in front), then he rises. The blades are the
 // hitboxes (elements.js bladeContact)
 STYLES.fire.tech.groundStab = T({ name: 'Grounded Stab', clip: 'hard_land', clipSpeed: 2.2, dur: 0.6, cost: 4, cancel: 0.8, move: 1.2, lunge: 12, keys: K0, events: [[0.42, 'fire.dagger']] });
-// ------------------------------------------------------------------ AIR, phase one (20 Nov, the Airbending brief)
-// HAND at range: Air Blast (Air Palm: the palm draws back, the hips turn, the palm drives out; the air leaves on the thrust)
-STYLES.air.tech.blast = T({ name: 'Air Blast', clip: 'air_palm', clipSpeed: 1.4, dur: 0.64, cost: 6, cancel: 0.55, upper: true, move: 1, keys: K0, events: [[0.45, 'air.blast']] });
-// HAND close: the palm, palm, kick combination (a short lead palm; a pivoting backhand sweep; a turning kick with a gust)
-STYLES.air.tech.combo = [
-  T({ name: 'Air Palm Strike', clip: 'fire_jab', clipSpeed: 2.2, dur: 0.38, cost: 4, cancel: 0.5, upper: true, move: 1.5, lunge: 6, keys: K0, events: [[0.4, 'air.combo0']] }),
-  T({ name: 'Turning Palm', clip: 'whip_h', clipSpeed: 2.0, dur: 0.45, cost: 4, cancel: 0.55, upper: true, move: 1.5, lunge: 5, keys: K0, events: [[0.4, 'air.combo1']] }),
-  T({ name: 'Gale Kick', clip: 'move_kick', clipSpeed: 1.7, dur: 0.6, cost: 6, cancel: 0.7, move: 1.2, lunge: 4, keys: K0, events: [[0.45, 'air.combo2']] }),
-];
-// HAND with the stick sideways: Air Swipe (a low lunge, the open palm sweeping a broad arc across the body)
-STYLES.air.tech.swipe = T({ name: 'Air Swipe', clip: 'air_vortex', clipSpeed: 1.6, dur: 0.6, cost: 9, cancel: 0.65, move: 1.2, keys: K0, events: [[0.45, 'air.swipe']] });
-// LEG at range: Air Blades (two quick diagonal cuts, each releasing a blade)
-STYLES.air.tech.blades = T({ name: 'Air Blades', clip: 'whip_d', clipSpeed: 1.8, dur: 0.55, cost: 9, cancel: 0.65, upper: true, move: 0.8, keys: K0, events: [[0.45, 'air.blade1'], [0.6, 'air.blade2']] });
-// LEG close: Air Bomb (the crouch and spring of Standing Jump: legs drive straight, both palms push out and down)
-STYLES.air.tech.bomb = T({ name: 'Air Bomb', clip: 'stand_jump', clipSpeed: 1.5, dur: 0.95, cost: 16, cancel: 0.75, move: 0, keys: K0, rawTiming: true, events: [[0.32, 'air.bomb']] });
-// HAND with the stick pulled away: Suction (the hand reaches out and draws back across the body, the weight going back)
+
+// (20 Nov, Airbending brief, after review: "you were meant to ADD new skills to Air, not change it") the Air moves
+// above stay exactly as they were; these are added on inputs Air did not use before (fighter.js):
+//   GUARD + HAND: Air Blast, a compressed palm strike thrown as a ball of spiralling wind
+//   GUARD + LEG: Air Blades, two narrow blades from alternate hands
+//   HAND with the stick pulled away: Suction, the rival hauled in, stumbling
+//   LEG with the stick pulled away: Air Swipe, an upright crescent of wind that drives the rival sideways
+//   SPECIAL held 0.3 s and let go: Air Bomb, a crouch and a radial burst round the bender (SPECIAL tapped: the Tornado)
+STYLES.air.tech.airBlast = T({ name: 'Air Blast', clip: 'air_palm', clipSpeed: 1.4, dur: 0.64, cost: 6, cancel: 0.55, upper: true, move: 1, keys: K0, events: [[0.45, 'air.blast']] });
+STYLES.air.tech.airSwipe = T({ name: 'Air Swipe', clip: 'air_vortex', clipSpeed: 1.6, dur: 0.6, cost: 9, cancel: 0.65, move: 1.2, keys: K0, events: [[0.45, 'air.swipe']] });
+STYLES.air.tech.airBlades = T({ name: 'Air Blades', clip: 'whip_d', clipSpeed: 1.8, dur: 0.55, cost: 9, cancel: 0.65, upper: true, move: 0.8, keys: K0, events: [[0.45, 'air.blade1'], [0.6, 'air.blade2']] });
+STYLES.air.tech.airBomb = T({ name: 'Air Bomb', clip: 'stand_jump', clipSpeed: 1.5, dur: 0.95, cost: 16, cancel: 0.75, move: 0, keys: K0, rawTiming: true, events: [[0.32, 'air.bomb']] });
 STYLES.air.tech.suction = T({ name: 'Suction', clip: 'water_redirect', clipSpeed: 1.5, dur: 0.6, cost: 10, cancel: 0.7, upper: true, move: 0.5, keys: K0, events: [[0.4, 'air.suction']] });
-STYLES.air.labels.hand = 'AIR BLAST'; STYLES.air.labels.leg = 'AIR BLADES';
-// (20 Nov, Airbending brief: Air Vortex, the main special) the Tornado's full-body spin (turn_spin) is replaced by the
-// arms circling in front of the body (the qigong circling also used by the guard) while the cyclone winds up round the
-// bender over about 0.8 s; then it is sent at the rival, catches them, lifts and turns them and throws them out
-// (specials.js updateTornado)
-STYLES.air.tech.special = T({ name: 'Air Vortex', clip: 'water_flow', clipSpeed: 1.9, keepDur: true, onStart: 'air.specialStart', dur: 1.0, cost: 30, cancel: 0.9, move: 0, rawTiming: true, keys: K0, events: [[0.82, 'air.special']] });

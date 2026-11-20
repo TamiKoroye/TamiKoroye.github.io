@@ -382,14 +382,7 @@ export class Hero {
       // else is an authored roll
       const c = Math.cos(f.yaw), s = Math.sin(f.yaw), lx = f.dodgeDir.x * c - f.dodgeDir.z * s, lz = f.dodgeDir.x * s + f.dodgeDir.z * c;
       // Air's two-second whirlwind glide: the airborne gliding pose (UAL2 NinjaJump idle, as in flight)
-      // Air Propulsion: the legs hold the fighting stance (one frame of air_stance) while the wind carries the body; a
-      // strike thrown out of the burst replaces only the upper body
-      if (f.dodgeKind === 'propel' && has('air_stance')) {
-        clip = 'air_stance'; ts = 0; fade = 0.08; startAt = 0.4;
-        if (f.action === 'tech' && f.tech && f.tech.clip) { const [n, scale] = clipFor(f.tech, f.techSide); if (has(n)) { clip = n; ts = scale; fade = 0.06; startAt = 0; if (f.techN !== this.techN) { this.techN = f.techN; restart = true; } } }
-        wU = wL = 0; layered = true; glideLegs = ['air_stance', 0, 0.4];
-      }
-      else if (f.dodgeKind === 'glide' && has('air_loop')) { clip = 'air_loop'; ts = 1; wU = wL = 0; fade = 0.2; }
+      if (f.dodgeKind === 'glide' && has('air_loop')) { clip = 'air_loop'; ts = 1; wU = wL = 0; fade = 0.2; }
       // Air's flips: Corkscrew Evade / Cartwheel, spread over the dodge
       else if (f.dodgeKind === 'flip' && has(f.flipClip)) once(f.flipClip, this.actions[f.flipClip].getClip().duration / f.dodgeDur, 0.08);
       // Fire's rocket dodge: Fire's own fighting stance (fists up, knees bent), held nearly still while the jets carry
@@ -459,9 +452,6 @@ export class Hero {
         clip = has(n) ? n : 'block_hit'; wU = wL = 0; fade = 0.06; ts = 1.6; if (this.curName !== clip) restart = true;
       }
       else if (f.guarding && has(L.guard)) { clip = L.guard; wU = wL = 0; fade = 0.12; layered = moving || !!lowOv; }
-      // (20 Nov, Airbending brief) the Air Funnel: both palms driven forward (Air Push), the arms working slightly as the
-      // stream pours out; the legs planted (or stepping, layered, if he moves)
-      else if (f.funnelOn && has('air_push')) { clip = 'air_push'; ts = 0.45; wU = wL = 0; fade = 0.12; layered = moving; }
       // (20 Nov, Earth brief) Earth Compression: the hands held in front of the chest, palms facing (Standing 2H Magic
       // Attack, its gathering frame held), legs set; the stone packs between them
       else if (f.holding && f.el === 'earth' && f.comp && has('magic_2h')) { clip = 'magic_2h'; ts = 0; startAt = 1.15 - 0.08 * Math.min(1, f.comp.t / 1.2); wU = wL = 0; fade = 0.15; layered = moving; }
@@ -528,7 +518,7 @@ export class Hero {
     }
     if (f.breathHold && this.curName && /fire_breath/.test(this.curName)) ts = 0;
     if (f.cometHold && this.curName && /whip_v/.test(this.curName)) ts = 0;
-    if (f.breakerHold && this.curName && /tc_push/.test(this.curName)) ts = 0;   // (Earthbreaker: the gathering pose held while the mass forms)   // (the Fire Comet: the arms stay raised while it forms)   // (Dragon's Breath: the roaring pose is held while the flame pours out)
+    if (f.breakerHold && this.curName && /earth_pillar/.test(this.curName)) ts = 0;   // (Earthbreaker: the gathering pose held while the mass forms)   // (the Fire Comet: the arms stay raised while it forms)   // (Dragon's Breath: the roaring pose is held while the flame pours out)
     if (this.cur) this.cur.timeScale = ts;
     if (startAt && this.cur) this.cur.time = startAt;
     if (ts === 0 && this.cur && this.chargeHold !== undefined) this.cur.time += (this.chargeHold - this.cur.time) * Math.min(1, dt * 6);
