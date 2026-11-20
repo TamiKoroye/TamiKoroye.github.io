@@ -727,7 +727,7 @@ export class Fighter {
     // (20 Nov, after review: the dash is a flight, not a sidestep) in Fire's rocket dodge the body turns to the way the
     // jets carry it and dives into it; a strike thrown on the way turns him back to the rival (inp.faceYaw above)
     if (!this.dead && this.dodgeKind === 'rocket' && this.dodgeT > 0 && this.action !== 'tech') wantYaw = Math.atan2(this.dodgeDir.x, this.dodgeDir.z);
-    if (wantYaw !== null && wantYaw !== undefined && (this.dodgeT <= 0 || this.dodgeKind === 'glide' || this.dodgeKind === 'rocket' || this.dodgeKind === 'arch')) {   // (the glide keeps turning to face the rival)
+    if (wantYaw !== null && wantYaw !== undefined && (this.dodgeT <= 0 || this.dodgeKind === 'glide' || this.dodgeKind === 'propel' || this.dodgeKind === 'rocket' || this.dodgeKind === 'arch')) {   // (Air Propulsion: facing the rival through the burst)   // (the glide keeps turning to face the rival)
       const rate = this.action && this.action !== 'land' ? 18 : (inp.strafe ? 14 : (this.sprinting ? 7 : 11));
       this.faceYaw = dampAngle(this.faceYaw, wantYaw, rate, dt);
     }

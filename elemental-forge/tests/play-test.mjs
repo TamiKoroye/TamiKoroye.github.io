@@ -187,10 +187,12 @@ for (const el of els) {
   const wantWhip0 = el === 'water' || el === 'air';
   await setup({ el, p: [0, 0, -12], o: [0, 0, wantWhip0 ? -6 : -4] });
   await press('btn-hand', 2);
-  const kinds = new Set(); for (let i = 0; i < 30; i++) { await stepN(1); (await S(() => [...window.__EF.world.bending.objs.map(o => o.kind), ...window.__EF.world.bending.weapons.whips.map(W => W.el + ' whip')])).forEach(k => kinds.add(k)); }
+  const kinds = new Set(); for (let i = 0; i < 30; i++) { await stepN(1); (await S(() => [...window.__EF.world.bending.objs.map(o => o.kind), ...window.__EF.world.bending.weapons.whips.map(W => W.el + ' whip'), ...window.__EF.world.bending.air.shots.map(s => 'air ' + s.kind)])).forEach(k => kinds.add(k)); }
   R.hand = await S(() => window.__EF.opp.hp);
-  const wantWhip = el === 'water' || el === 'air';
-  check(`${el}: HAND ${wantWhip ? 'lashes a ' + el + ' whip (stepping in) that hits at 6 m' : 'sends an element projectile that hits at 8 m'}`, R.hand < 100 && (wantWhip ? kinds.has(el + ' whip') : kinds.size > 0), `${[...kinds].join(',')}; rival hp ${R.hand}`);
+  // (20 Nov, Airbending brief: "Strike: Air Blast") Air's HAND fires the Air Blast now, not a whip; at the same 6 m it
+  // must be the blast that leaves the palm and lands (was: an air whip)
+  const wantWhip = el === 'water';
+  check(`${el}: HAND ${wantWhip ? 'lashes a ' + el + ' whip (stepping in) that hits at 6 m' : el === 'air' ? 'fires an Air Blast that hits at 6 m' : 'sends an element projectile that hits at 8 m'}`, R.hand < 100 && (wantWhip ? kinds.has(el + ' whip') : el === 'air' ? kinds.has('air blast') : kinds.size > 0), `${[...kinds].join(',')}; rival hp ${R.hand}`);
   await shot(`10-${el}-hand`);
   // LEG tap at range
   await setup({ el, p: [0, 0, -12], o: [0, 0, -5.5] });
@@ -213,7 +215,9 @@ for (const el of els) {
   }
   R.leg = await S(() => window.__EF.opp.hp);
   check(`${el}: LEG kick launches its technique and staggers the rival`, R.leg < 100 && (legReact.has('stagger') || legReact.has('down')), `rival hp ${R.leg}; reactions ${[...legReact].filter(Boolean).join(',')}`);
-  if (kick) {
+  // (20 Nov, Airbending brief) Air's LEG tap throws the Air Blades from the hands, so there is no kick to measure for Air
+  // here; Air's kick is the gale kick that ends the close HAND combination
+  if (kick && el !== 'air') {
     const kickLeg = Math.max(Math.abs(kick.hipL[0]) + Math.abs(kick.hipL[1]), Math.abs(kick.hipR[0]) + Math.abs(kick.hipR[1]));
     const supportFoot = Math.min(kick.aL, kick.aR), torso = Math.max(...kick.spine.map(Math.abs));
     check(`${el}: full-body kick (leg raised, supporting foot planted, hips/torso engaged)`, kickLeg > 0.9 && supportFoot < 0.4 && torso > 0.08, `kicking hip ${kickLeg.toFixed(2)} rad, support ankle ${supportFoot.toFixed(2)} m above ground, torso ${torso.toFixed(2)} rad`);
@@ -296,12 +300,15 @@ for (const el of els) {
   //  put the rival back only after that, so the hold now runs (up to the same 1.5 s) until the charge begins or
   //  the stomp / charged move starts, the rival is put back in range at that moment, and the hold continues)
   const chargedName = await S(() => { const st = window.__EF.player.style.tech; return [st.stomp, st.charged].filter(Boolean).map(t => t.name); });
-  let startedEarly = false, placed = false;
+  let startedEarly = false, placed = false, funnelSeen = false; const funnelReacts = new Set();
   const putBack = () => S(() => { const { player: p, opp: o } = window.__EF; const fw = p.forward(); o.pos.set(p.pos.x + fw.x * 2.3, 0, p.pos.z + fw.z * 2.3); o.vel.set(0, 0, 0); o.action = null; o.stunT = 0; o.invuln = 0; o.hp = 100; });
   for (let i = 0; i < 45; i++) {
-    const st = await S(() => { const p = window.__EF.player; return { t: p.tech && p.tech.name, ch: p.charging }; });
+    const st = await S(() => { const p = window.__EF.player; return { t: p.tech && p.tech.name, ch: p.charging, fo: !!p.funnelOn, oa: window.__EF.opp.action }; });
     // the opening kick knocks the rival away; bring them back in range of the charged technique
-    if (!placed && (st.ch || chargedName.includes(st.t))) { await putBack(); placed = true; }
+    // (20 Nov, Airbending brief: "Hold Power: Air Funnel") Air's held LEG is the sustained Air Funnel; the rival is put
+    // back in front when it starts, and its reactions count while LEG is still held, since the funnel stops on release
+    if (st.fo) { funnelSeen = true; if (placed && st.oa) funnelReacts.add(st.oa); }
+    if (!placed && (st.ch || st.fo || chargedName.includes(st.t))) { await putBack(); placed = true; }
     if (chargedName.includes(st.t)) { startedEarly = true; break; }
     await stepN(1);
   }
@@ -313,6 +320,7 @@ for (const el of els) {
   const ch = await S(() => window.__EF.opp.hp);
   // (20 Nov, changed with the user's simpler Earth controls: Earth's charged LEG is now Earth Sinking, the rock trap; it
   //  does not knock the rival down or stagger them but holds them in the ground, which counts as its reaction here)
+  for (const a of funnelReacts) reacts.add(a); if (funnelSeen) tech = tech || 'Air Funnel';
   check(`${el}: hold-and-release LEG performs the charged technique`, tech && ch < 100 && (reacts.has('down') || reacts.has('stagger') || (el === 'earth' && reacts.has('trapped'))), `${tech}; rival hp ${ch}; reactions ${[...reacts].join(',')}`);
   await stepN(30);
 }

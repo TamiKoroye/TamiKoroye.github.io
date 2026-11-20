@@ -163,7 +163,8 @@ if (!process.env.ONLY && !process.env.WHIPS) {
 if (!process.env.ONLY && !process.env.WHIPS) {
   head('air: LEG throws the Air Blades');
   await setup({ el: 'air', p: [0, 0, -9], o: [0, 0, -5] }); await stepN(10); await clearHits();
-  await press('btn-leg', 2); let blades = 0; for (let j = 0; j < 30; j++) { await stepN(1); blades = Math.max(blades, await S(() => window.__EF.world.bending.air.shots.filter(s => s.kind === 'blade' && s.f === window.__EF.player).length)); }
+  // (the blades are counted as they are thrown: at 4 m the first lands before the second leaves the hand)
+  await S(() => { window.__bl = new Set(); }); let blades = 0; await press('btn-leg', 2); for (let j = 0; j < 30; j++) { await stepN(1); blades = await S(() => { for (const s of window.__EF.world.bending.air.shots) if (s.kind === 'blade' && s.f === window.__EF.player) window.__bl.add(s); return window.__bl.size; }); }
   const hbl = await hitsOn(); check('air: LEG throws two Air Blades that strike the rival at 4 m', blades === 2 && hbl.filter(t => /Blade/i.test(t)).length >= 1, `blades in flight ${blades}; hits ${hbl.join(',')}`);
   await clearHits();
 }

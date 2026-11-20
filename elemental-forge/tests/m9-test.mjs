@@ -213,10 +213,12 @@ const CHECKS = {
     await setup('air', 'earth', 5); await step(30);
     const kinds = [], clips = new Set(); let slide = 0;
     for (let i = 0; i < 4; i++) {
+      const p0 = await step(1, "({ x: P.pos.x, z: P.pos.z })");
       await page.keyboard.down('ShiftLeft'); await step(2); await page.keyboard.up('ShiftLeft');
       const r = await step(50, "({ k: P.dodgeT > 0 ? P.dodgeKind : null, c: P.hero.curName, g: P.onGround, x: P.pos.x, z: P.pos.z })");
       kinds.push(r.find(x => x.k) ? r.find(x => x.k).k : 'none'); for (const x of r) if (x.k) clips.add(x.c);
-      const on = r.filter(x => x.k); if (on.length) slide = Math.max(slide, Math.hypot(on[on.length - 1].x - on[0].x, on[on.length - 1].z - on[0].z)); if (on.some(x => !x.g)) kinds.push('airborne');
+      // (the distance is measured from where the bender stood before the press: the burst is fastest in its first frames)
+      const on = r.filter(x => x.k); if (on.length) slide = Math.max(slide, Math.hypot(on[on.length - 1].x - p0[0].x, on[on.length - 1].z - p0[0].z)); if (on.some(x => !x.g)) kinds.push('airborne');
     }
     // (20 Nov, Airbending brief: "Air Propulsion: tap dodge bursts sideways; no running, no flight, no excessive
     // spinning") the alternation of the two-second glide with the Corkscrew Evade / Cartwheel flips is removed; this check
