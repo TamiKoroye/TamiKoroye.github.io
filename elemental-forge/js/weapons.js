@@ -33,9 +33,8 @@ export class Weapons {
     this.tubePool = [];
     // air: the same rope drawn as a pale, fast-turning translucent current (it has a body, not only streaks)
     // a cool blue-grey core with white streaks: readable against the pale floor and the sky alike
-    this.airTubeMat = waterMaterial(-9); Object.assign(this.airTubeMat.uniforms, { uOpacity: { value: 0.5 } }); this.airTubeMat.uniforms.uRise.value = 1;
-    // (Air brief: pale silver and white air, never blue like water) was 0x6f86c4 / 0xc6d3f5
-    this.airTubeMat.uniforms.uDeep.value.set(0xa7b8c8); this.airTubeMat.uniforms.uLight.value.set(0xe6eff6); this.airTubeMat.uniforms.uFoam.value.set(0xffffff);
+    this.airTubeMat = waterMaterial(-9); Object.assign(this.airTubeMat.uniforms, { uOpacity: { value: 0.58 } }); this.airTubeMat.uniforms.uRise.value = 1;
+    this.airTubeMat.uniforms.uDeep.value.set(0x6f86c4); this.airTubeMat.uniforms.uLight.value.set(0xc6d3f5); this.airTubeMat.uniforms.uFoam.value.set(0xffffff);
     this.burst = new GroundBurst(this.w);   // earth's ground reaction (baked fracture simulation)
     this.iceTubeMat = iceMat;
     // (20 Nov, after review: "the gliding rock does not look solid; there are gaps") the slab's corners were each nudged
@@ -794,27 +793,22 @@ export class Weapons {
   // ============================================================ surfing and flight effects
   // the sheet of ice / slab of rock under the surfer, and the path of ice left behind
   // Air dodge: two bands of wind wound round the bender for the length of the dash, carried with them
-  whirlwind(f, dur, low) {
+  whirlwind(f, dur) {
     const tubes = [0, 1].map(() => { const t = this.tube(); t.mesh.material = this.airTubeMat; return t; });
-    this.whirls.push({ f, tubes, t: 0, dur: dur + 0.15, low, pts: [0, 1].map(() => Array.from({ length: 18 }, () => new THREE.Vector3())) });
+    this.whirls.push({ f, tubes, t: 0, dur: dur + 0.15, pts: [0, 1].map(() => Array.from({ length: 18 }, () => new THREE.Vector3())) });
     this.w.fx.dust(f.pos, 8, 3); this.w.audio.gust(0.9);
   }
   updateWhirls(dt) {
     for (const W of this.whirls) {
       W.t += dt;
-      if (!W.low && W.dur > 1 && W.t > 0.3 && W.f.dodgeT <= 0 && W.dur > W.t + 0.12) W.dur = W.t + 0.12;   // the glide was cut short (a hit, a landing strike): the whirlwind fades out
+      if (W.dur > 1 && W.t > 0.3 && W.f.dodgeT <= 0 && W.dur > W.t + 0.12) W.dur = W.t + 0.12;   // the glide was cut short (a hit, a landing strike): the whirlwind fades out
       const f = W.f, k = Math.min(1, W.t / 0.08) * (1 - smooth01((W.t - W.dur + 0.12) / 0.12));
       W.tubes.forEach((tb, i) => {
         const P = W.pts[i];
-        for (let j = 0; j < P.length; j++) { const s = j / (P.length - 1), a = -W.t * 22 + s * 9 + i * Math.PI, r = (W.low === 'spout' ? 0.25 + 0.5 * (1 - s) : W.low ? 0.6 - 0.25 * s : 0.55 + 0.35 * s) * k;
-          // (spout: from the floor up to the soles, wide at the floor, rising with the flier)
-          const y = W.low === 'spout' ? f.groundY + s * Math.max(0.3, f.pos.y - f.groundY) : f.pos.y + 0.05 + s * (W.low ? 0.8 : 1.9);
-          P[j].set(f.pos.x + Math.cos(a) * r, y, f.pos.z + Math.sin(a) * r); }   // (low: the Air Propulsion's whirl round the legs)
+        for (let j = 0; j < P.length; j++) { const s = j / (P.length - 1), a = -W.t * 22 + s * 9 + i * Math.PI, r = (0.55 + 0.35 * s) * k; P[j].set(f.pos.x + Math.cos(a) * r, f.pos.y + 0.1 + s * 1.9, f.pos.z + Math.sin(a) * r); }
         tb.set(P, (q) => (0.05 + 0.08 * Math.sin(Math.PI * q)) * k + 0.005, W.t * 3);
       });
-      if (W.low === 'spout') { if (Math.random() < 0.7) this.w.fx.wind(_a.set(f.pos.x + rand(-0.6, 0.6), f.groundY + 0.1, f.pos.z + rand(-0.6, 0.6)), _b.set(rand(-3, 3), rand(2, 6), rand(-3, 3)), 0.6, 0.4); if (Math.random() < 0.4) this.w.fx.dust(_a.set(f.pos.x, f.groundY, f.pos.z), 1, 1.6); }
-      else if (W.low) { if (Math.random() < 0.8) this.w.fx.wind(_a.set(f.pos.x, f.pos.y + rand(0.05, 0.5), f.pos.z), _b.set(-f.vel.x * 0.5 + rand(-1.5, 1.5), 0.4, -f.vel.z * 0.5 + rand(-1.5, 1.5)), 0.6, 0.35); if (Math.random() < 0.3 && f.onGround) this.w.fx.dust(f.pos, 1, 1); }   // streaks left behind along the floor, a little dust
-      else if (Math.random() < 0.6) this.w.fx.wind(_a.set(f.pos.x, f.pos.y + rand(0.2, 1.6), f.pos.z), _b.set(rand(-4, 4), 1, rand(-4, 4)), 0.5, 0.25);
+      if (Math.random() < 0.6) this.w.fx.wind(_a.set(f.pos.x, f.pos.y + rand(0.2, 1.6), f.pos.z), _b.set(rand(-4, 4), 1, rand(-4, 4)), 0.5, 0.25);
       if (W.t > W.dur) { W.dead = true; W.tubes.forEach(t => this.freeTube(t)); }
     }
     this.whirls = this.whirls.filter(W => !W.dead);

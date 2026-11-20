@@ -134,7 +134,7 @@ export class AirSkills {
       if (d < 2) { w.combat.damage(t, 12, dir, f, 'airBomb', t.chestPos(new THREE.Vector3()), 12, 2); t.vel.y = Math.max(t.vel.y, 6); t.onGround = false; }
       else w.combat.damage(t, 8, dir, f, 'airBomb', t.chestPos(new THREE.Vector3()), 8, 1);
     }
-    w.audio.gust(1.3); w.audio.boom(0.9, f.pos); w.shake(0.3, f.pos);
+    w.audio.gust(1.3); w.shake(0.3, f.pos);
   }
   // ---------------------------------------------------------------- 6. Suction (HAND with the stick pulled away)
   // The open hand reaches toward the rival and draws back to the body: spirals of air run from the rival to the bender,

@@ -65,12 +65,10 @@ const CHECKS = {
     const gu = await step(240, "P.action"), downT = gu.filter(a => a === 'down').length / 60, upT = gu.filter(a => a === 'getup').length / 60;
     check('Air gets up quickly (corkscrew kip-up, about 1.1 s)', upT > 0.5 && upT < 1.3, `down ${downT.toFixed(2)} s, getting up ${upT.toFixed(2)} s`);
     await setup('air', 'earth', 6); await step(20);
-    // (20 Nov, Airbending brief: "Air Propulsion ... no excessive spinning") the Corkscrew Evade and Cartwheel dodges are
-    // removed; every DODGE is now the short lateral wind burst, and this check now asks that it moves inside its whirl of
-    // wind (was: the corkscrew / cartwheel inside the whirl)
+    await page.keyboard.down('ShiftLeft'); await step(2); await page.keyboard.up('ShiftLeft'); await step(150);   // first dodge: the glide
     await page.keyboard.down('ShiftLeft'); await step(2); await page.keyboard.up('ShiftLeft');
-    const cw = await step(30, "(P.dodgeKind === 'propel' && P.dodgeT > 0 ? 'propel' : '-') + ':' + E.world.bending.weapons.whirls.filter(W => W.f === P).length");
-    check('Air Propulsion moves inside a whirl of wind', cw.some(x => x === 'propel:1'), `${[...new Set(cw)].join(' ')}`);
+    const cw = await step(40, "(P.dodgeKind === 'flip' && P.dodgeT > 0 ? 'flip' : '-') + ':' + E.world.bending.weapons.whirls.filter(W => W.f === P).length");
+    check('Air corkscrew / cartwheel spins inside a whirl of wind', cw.some(x => x === 'flip:1'), `${[...new Set(cw)].join(' ')}`);
   },
   async fireWallStays() {
     // 18 Nov: Fire's wall stays where it was raised while the bender moves (it is only punched forward)
@@ -213,18 +211,11 @@ const CHECKS = {
     await setup('air', 'earth', 5); await step(30);
     const kinds = [], clips = new Set(); let slide = 0;
     for (let i = 0; i < 4; i++) {
-      const p0 = await step(1, "({ x: P.pos.x, z: P.pos.z })");
       await page.keyboard.down('ShiftLeft'); await step(2); await page.keyboard.up('ShiftLeft');
-      const r = await step(50, "({ k: P.dodgeT > 0 ? P.dodgeKind : null, c: P.hero.curName, g: P.onGround, x: P.pos.x, z: P.pos.z })");
-      kinds.push(r.find(x => x.k) ? r.find(x => x.k).k : 'none'); for (const x of r) if (x.k) clips.add(x.c);
-      // (the distance is measured from where the bender stood before the press: the burst is fastest in its first frames)
-      const on = r.filter(x => x.k); if (on.length) slide = Math.max(slide, Math.hypot(on[on.length - 1].x - p0[0].x, on[on.length - 1].z - p0[0].z)); if (on.some(x => !x.g)) kinds.push('airborne');
+      const r = await step(140, "({ k: P.dodgeT > 0 ? P.dodgeKind : null, c: P.hero.curName, g: P.onGround })");
+      kinds.push(r.find(x => x.k) ? r.find(x => x.k).k : 'none'); for (const x of r) if (x.k === 'flip') clips.add(x.c);
     }
-    // (20 Nov, Airbending brief: "Air Propulsion: tap dodge bursts sideways; no running, no flight, no excessive
-    // spinning") the alternation of the two-second glide with the Corkscrew Evade / Cartwheel flips is removed; this check
-    // now asks that all four dodges are the burst, with the feet on the floor, no flip clip, and 3.5 to 6 m of travel
-    // (was: glide, flip, glide, flip with both flip clips seen)
-    check('Air: every dodge is the lateral wind burst, feet on the floor, no flips', kinds.length === 4 && kinds.every(k => k === 'propel') && ![...clips].some(c => /air_cork|cartwheel/.test(c)) && slide > 3.5 && slide < 6, `dodges ${kinds.join(', ')}; clips ${[...clips].join(', ')}; longest ${slide.toFixed(1)} m`);
+    check('Air: the whirlwind glide stays, and every second dodge is a Corkscrew Evade or a Cartwheel', kinds[0] === 'glide' && kinds[1] === 'flip' && kinds[2] === 'glide' && kinds[3] === 'flip' && [...clips].some(c => /air_cork/.test(c)) && [...clips].some(c => /cartwheel/.test(c)), `dodges ${kinds.join(', ')}; flip clips ${[...clips].join(', ')}`);
   },
   async airFloat() {
     await setup('earth', 'air', 3); await step(20);
