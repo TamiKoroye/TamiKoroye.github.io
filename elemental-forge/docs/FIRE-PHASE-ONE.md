@@ -178,3 +178,27 @@ added up to a wall of flame. Now: fireballs as above, the fist flare about 40% s
   forearm, so it pushes the same way as the heels. On the take-off, with the arms up or out, the heels carry him alone.
 - Dragon's Breath: the white line is short (at most 0.35 m from the mouth). Flame starts right where it ends, and the
   flame cone starts wider there.
+
+## Sixth round (20 Nov), after the user's review, reference clip and new Drive clips
+New clips (Drive, Mixamo): Running Arc (1) and (2), Running Forward Flip, Stomach Hit, Big Stomach Hit, Receive Stomach
+Uppercut, Getting Up (2). Baked through `tools/retarget/m11-spec.json` as run_arc_l/r, hit_stomach, hit_stomach_big,
+hit_uppercut (each with a mirrored copy). Running Forward Flip and Getting Up (2) are downloaded but not used yet.
+
+- Jets (jump, dodge, glide): from the heels only, never the hands. Each is one connected plume (firefx JetSet): a narrow
+  white-yellow nozzle swelling into a thick orange body inside a turbulent red outer layer, ending in a ragged billow;
+  the points wobble so it rolls like exhaust. Dash: 3.2 m plumes back and down, with billows spreading to the sides
+  behind (the reference). Jump: 2.4 m plumes straight down.
+- Jet sound (audio.jet): a deep combustion rumble (noise under 90 Hz, swelling at 3 Hz), a pressurised rush (a broad
+  band around 900 Hz whose centre surges up and down) with a soft high hiss, and irregular crackle bursts.
+- Dodge and glide pose: one frame of Running Arc (0.2 s in) held for the whole dash. Knees bent, one foot a little
+  ahead, chest pitched forward over the front knee, arms swept back; the legs never move. The body turns to face the
+  way the jets carry it. HAND while gliding plays the strike on the upper body only; the legs keep the held stance.
+- Fire Comet: both arms rise overhead (whip_v) and the pose is held for about 1 s while a mass of fire gathers just
+  above the raised palms (streams drawn in) and swells to a ball about 2.3 m across. Then the hips and shoulders turn
+  and the arms drive forward and down; the Comet leaves on that drive. In flight: the boiling yellow-white core, a
+  thick turbulent orange-to-red corona, a long writhing tail (a red-orange outer body and a hotter yellow inner one),
+  sparks and embers peeling off; the three-layer jet roar.
+- Fire Daggers: each knife clip re-cut to one cut and a short settle, played at 1.8x (0.43 to 0.48 s per cut; the
+  Blade 1.04 s) instead of whole clips at 3x, so the arms follow the knife animations without the frantic waving. A
+  knife hit plays Stomach Hit (about 0.58 s, mirrored to the side the blow came from); the Blade plays Big Stomach Hit
+  as a stagger and no longer throws the rival down.
