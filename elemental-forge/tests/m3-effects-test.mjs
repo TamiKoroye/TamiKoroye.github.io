@@ -242,10 +242,13 @@ await setup({ el: 'earth', p: [0, 0, -9], o: [0, 0, -4] }); await stepN(10);
     clips.push(r.clip); if (r.clip === "Fixing_Kneeling") low = Math.min(low, r.hy); if (process.env.DBG) console.log(j, r.clip, r.hy.toFixed(2), r.t, r.w, r.g);
     if (j === 12 || j === 40) await snap(`earth-gather-${j}`);
   }
+  // (20 Nov, changed with the Earth brief: holding HAND is now Earth Compression, not the kneeling rock lift. These
+  //  check the compression pose (palms facing in front of the chest, the gathering frame of Standing 2H Magic Attack)
+  //  with the hands up at chest height, and a stone packed between them that grows while HAND is held)
+  const comp = await S(() => { const p = window.__EF.player; return { r: p.comp ? p.comp.r : 0, hy: Math.min(p.handPos('L').y, p.handPos('R').y) - p.groundY }; });
   await fUp(6);
-  const n = await S(() => window.__EF.world.bending.held(window.__EF.player, 'earth'));
-  check('earth: holding HAND sinks to the ground for the rocks (Fixing_Kneeling)', clips.includes('Fixing_Kneeling') && low < 0.6, `lowest hand ${low.toFixed(2)} m above the ground; clips ${[...new Set(clips)].join(',')}`);
-  check('earth: rocks are drawn up while gathering', n >= 1, `${n} rocks held`);
+  check('earth: holding HAND raises the hands, palms facing, in front of the chest (compression pose)', clips.includes('magic_2h') && comp.hy > 0.9, `hands ${comp.hy.toFixed(2)} m above the ground; clips ${[...new Set(clips)].join(',')}`);
+  check('earth: a stone is packed between the palms and grows', comp.r > 0.25, `stone radius ${comp.r.toFixed(2)} m`);
 }
 await setup({ el: 'earth', oel: 'fire', p: [0, 0, -9], o: [0, 0, -5.5] }); await stepN(5);
 {

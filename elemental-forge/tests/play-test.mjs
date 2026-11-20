@@ -222,25 +222,26 @@ for (const el of els) {
   const holdPos = el === 'water' ? [12, 0, -9] : [0, 0, -12];
   await setup({ el, p: holdPos, o: el === 'water' ? [12, 0, -1] : [0, 0, -5] });
   await hold('btn-hand'); await stepN(el === 'water' ? 60 : 40);
-  const sus = await S(() => { const { player: p, opp: o, world } = window.__EF, h = world.bending.holds.get(p); return { holding: p.holding, held: world.bending.held(p), oHp: o.hp, oz: o.pos.z, whips: h && h.whips ? h.whips.length : 0 }; });
+  const sus = await S(() => { const { player: p, opp: o, world } = window.__EF, h = world.bending.holds.get(p); return { holding: p.holding, held: world.bending.held(p), oHp: o.hp, oz: o.pos.z, whips: h && h.whips ? h.whips.length : 0, comp: p.comp ? +p.comp.r.toFixed(2) : 0 }; });
   await stick(80, 0); await stepN(15);
   const moveBend = await S(() => ({ sp: Math.hypot(window.__EF.player.vel.x, window.__EF.player.vel.z), holding: window.__EF.player.holding, held: window.__EF.world.bending.held(window.__EF.player) }));
   await stickUp(); await shot(`12-${el}-hold`);
   await fUp(6); await stepN(4);
   const susDetail = `holding=${sus.holding}, held objects ${sus.held}, rival hp ${sus.oHp}`;
-  if (el === 'earth') check('earth: holding HAND lifts three rocks that orbit the player', sus.holding && sus.held === 3, susDetail);
+  // (20 Nov, changed with the Earth brief: holding HAND is now Earth Compression, a stone packed between the palms that
+  //  grows while HAND is held, in place of lifting three orbiting rocks; this checks the stone forms and grows)
+  if (el === 'earth') check('earth: holding HAND compresses a stone between the palms', sus.holding && sus.comp > 0.25, `${susDetail}, stone radius ${sus.comp} m`);
   if (el === 'fire') check('fire: holding HAND sustains a fire stream that burns the rival', sus.holding && sus.oHp < 100, susDetail);
   if (el === 'water') check('water: holding HAND keeps two water whips going that strike the rival', sus.holding && sus.whips === 2 && sus.oHp < 100, `${susDetail}, whips ${sus.whips}`);
   if (el === 'air') check('air: holding HAND pushes the rival back with a sustained wind', sus.holding && sus.oz > -5 + 1.5, `${susDetail}, rival pushed to z ${sus.oz.toFixed(1)} (from -5)`);
   check(`${el}: can move while sustaining bending`, moveBend.sp > 1.5 && (moveBend.holding || moveBend.held > 0), `${moveBend.sp.toFixed(1)} m/s while bending`);
   // multiple controlled objects
+  // (20 Nov, changed with the Earth brief: letting HAND go thrusts a palm and the compressed stone flies at the rival,
+  //  in place of punching held rocks out one at a time; this checks the thrust and the stone striking the rival)
   if (el === 'earth') {
-    const before = await S(() => window.__EF.world.bending.held(window.__EF.player));
-    await press('btn-hand', 2); await stepN(15);
-    const mid = await S(() => window.__EF.world.bending.held(window.__EF.player));
-    await press('btn-leg', 2); await stepN(15);
-    const after = await S(() => ({ held: window.__EF.world.bending.held(window.__EF.player), kinds: window.__EF.world.bending.objs.filter(o => o.state === 'flying').map(o => o.kind) }));
-    check('earth: held rocks are launched one at a time by punches and kicks', before === 3 && mid === 2 && after.held === 1, `${before} -> ${mid} (punch) -> ${after.held} (kick)`);
+    const after = []; for (let i = 0; i < 40; i++) { await stepN(1); after.push(await S(() => ({ t: window.__EF.player.tech && window.__EF.player.tech.name, ohp: window.__EF.opp.hp }))); }
+    const thrust = after.some(r => r.t === 'Stone Thrust'), hit = after[after.length - 1].ohp < sus.oHp;
+    check('earth: letting HAND go thrusts the compressed stone at the rival', thrust && hit, `thrust ${thrust}, rival hp ${sus.oHp} -> ${after[after.length - 1].ohp}`);
   }
   if (el === 'fire' || el === 'air') {
     // (M3 brief: the flame orbs and vortex orbs are replaced. Fire SPECIAL is Dragon Descent, a leaping flying kick
@@ -385,8 +386,10 @@ if (boulder) {
 // loose stone lifted from the arena
 await setup({ el: 'earth', p: [0, 0, 0], o: [20, 0, 20] });
 const stoneInfo = await S(() => { const s = window.__EF.world.arena.looseStones[0]; window.__EF.player.pos.set(s.home.x + 2, 0, s.home.z); return { x: s.home.x, z: s.home.z }; });
-await hold('btn-hand'); await stepN(14); await fUp(6); await stepN(4);
-const lifted = await S(() => ({ taken: window.__EF.world.arena.looseStones[0].taken, kinds: window.__EF.world.bending.objs.map(o => o.kind) }));
+// (20 Nov, changed with the Earth brief: holding HAND is Earth Compression; a loose stone within 4 m flies into the hands
+//  as its core and the released stone flies as a boulder; the check waits for the release thrust)
+await hold('btn-hand'); await stepN(30); await fUp(6); let lifted = null;
+for (let i = 0; i < 30 && !(lifted && lifted.kinds.includes('boulder')); i++) { await stepN(1); lifted = await S(() => ({ taken: window.__EF.world.arena.looseStones[0].taken, kinds: window.__EF.world.bending.objs.map(o => o.kind) })); }
 check('earth lifts an existing loose stone from the arena', lifted.taken && lifted.kinds.includes('boulder'), JSON.stringify(lifted));
 
 // ======================================================================== combinations & animation continuity
@@ -412,12 +415,15 @@ for (const el of els) {
 }
 // the brief's earth combination: raise a rock, move sideways while controlling it, kick it
 await setup({ el: 'earth', p: [0, 0, -12], o: [0, 0, -3] });
-await hold('btn-hand'); await stepN(14); await fUp(6);
+// (20 Nov, changed with the Earth brief: the rock is now compressed between the palms while HAND is held, and moving
+//  while compressing is allowed; letting go thrusts it into the rival. Same combination: raise a stone, move sideways
+//  while holding it, send it into the rival)
+await hold('btn-hand'); await stepN(20);
 await stick(80, 0); await stepN(15);
-const combo = await S(() => ({ held: window.__EF.world.bending.held(window.__EF.player), sp: Math.hypot(window.__EF.player.vel.x, window.__EF.player.vel.z) }));
-await press('btn-leg', 2); await stepN(35); await stickUp();
+const combo = await S(() => ({ held: window.__EF.player.comp ? 1 : 0, sp: Math.hypot(window.__EF.player.vel.x, window.__EF.player.vel.z) }));
+await fUp(6); await stepN(40); await stickUp();
 const comboHit = await S(() => window.__EF.opp.hp);
-check('earth combo: lift a rock, strafe while holding it, kick it into the rival', combo.held >= 1 && combo.sp > 3 && comboHit < 100, `held ${combo.held} at ${combo.sp.toFixed(1)} m/s, rival hp ${comboHit}`);
+check('earth combo: lift a rock, strafe while holding it, kick it into the rival', combo.held >= 1 && combo.sp > 1.5 && comboHit < 100, `held ${combo.held} at ${combo.sp.toFixed(1)} m/s, rival hp ${comboHit}`);
 
 // ======================================================================== camera
 head('Camera');

@@ -413,7 +413,12 @@ export class EarthSkills {
   // fragments fly in from the ground between them and pack together into a stone that grows denser the longer HAND is
   // held (0.35 m to 0.75 m across over 1.2 s). Letting go thrusts a palm and the compressed stone flies at the rival:
   // 9 damage at the smallest to 24 at full size, the full one knocking the rival down.
-  compressStart(f) { f.comp = { t: 0, r: 0.16, frags: [], tick: 0 }; }
+  compressStart(f) {
+    f.comp = { t: 0, r: 0.16, frags: [], tick: 0 };
+    // a loose stone lying near (4 m) flies up into the hands and becomes the heart of the compressed stone
+    const stone = this.world.arena.nearestLooseStone && this.world.arena.nearestLooseStone(f.pos, 4);
+    if (stone) { stone.col.dead = true; stone.mesh.visible = false; stone.taken = true; const m = this.rock(0.3); m.position.copy(stone.mesh.position); this.world.scene.add(m); f.comp.frags.push({ m, t: 0, from: stone.mesh.position.clone() }); f.comp.t = 0.35; this.world.fx.dust(stone.mesh.position, 8, 2, 0xa08a6c); }
+  }
   compressTick(f, dt) {
     const C = f.comp; if (!C) return; const w = this.world; C.t += dt;
     const k = Math.min(1, C.t / 1.2); C.r = 0.17 + 0.2 * k;
