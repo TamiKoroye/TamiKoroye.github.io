@@ -272,7 +272,7 @@ const CHECKS = {
   },
   async fireGlide() {
     await setup('fire', 'earth', 5); await step(30);
-    const probe = "({ d: P.dodgeT > 0 ? 1 : 0, kind: P.dodgeKind, h: +(P.pos.y - P.groundY).toFixed(3), py: +P.pos.y.toFixed(3), gy: +P.groundY.toFixed(3), vy: +P.vel.y.toFixed(2), fl: +(P.footPos('L', new P.pos.constructor()).y - P.groundY).toFixed(3), fr: +(P.footPos('R', new P.pos.constructor()).y - P.groundY).toFixed(3), x: +P.pos.x.toFixed(2), tech: P.tech && P.tech.name, lo: P.hero.lowName, cur: P.hero.curName, orbs: E.world.bending.objs.filter(o => o.owner === P && /fire/.test(o.kind) && o.state !== 'dead').length, ll: (() => { const h = P.hero.bones['DEF-hips'].getWorldPosition(new P.pos.constructor()); const a = P.footPos('L', new P.pos.constructor()), b = P.footPos('R', new P.pos.constructor()); const c = Math.cos(P.yaw), s = Math.sin(P.yaw), L = (p) => [(p.x - h.x) * c - (p.z - h.z) * s, (p.x - h.x) * s + (p.z - h.z) * c]; return [...L(a), ...L(b)].map(v => +v.toFixed(2)); })() })";
+    const probe = "({ d: P.dodgeT > 0 ? 1 : 0, kind: P.dodgeKind, h: +(P.pos.y - P.groundY).toFixed(3), py: +P.pos.y.toFixed(3), gy: +P.groundY.toFixed(3), vy: +P.vel.y.toFixed(2), fl: +(P.footPos('L', new P.pos.constructor()).y - P.groundY).toFixed(3), fr: +(P.footPos('R', new P.pos.constructor()).y - P.groundY).toFixed(3), x: +P.pos.x.toFixed(2), tech: P.tech && P.tech.name, lo: P.hero.lowName, cur: P.hero.curName, orbs: E.world.bending.objs.filter(o => o.owner === P && /fire/.test(o.kind) && o.state !== 'dead').length, ll: (() => { const h = P.hero.bones['DEF-hips'].getWorldPosition(new P.pos.constructor()); const a = P.footPos('L', new P.pos.constructor()), b = P.footPos('R', new P.pos.constructor()); const q = P.hero.bones['DEF-hips'].getWorldQuaternion(new P.root.quaternion.constructor()).invert(), L = (p) => { const v = p.clone().sub(h).applyQuaternion(q); return [v.x, v.z]; }; return [...L(a), ...L(b)].map(v => +v.toFixed(2)); })() })";
     // (18 Nov, after review: the glide lasts while DODGE is held and rides higher, about 1.2 m; held for 2 s here, with
     //  punches and a blast thrown during it, then let go; the old check was a 1 s tap glide at half a metre)
     await page.keyboard.down('KeyD'); await page.keyboard.down('ShiftLeft'); const a = await step(2, probe);
@@ -290,7 +290,11 @@ const CHECKS = {
     if (process.env.DEBUG) console.log(all.map(r => r.py + '/' + r.gy + '/' + r.vy + (r.d ? '' : '*') + (r.tech ? '!' : '')).join(' '));
     const dur = glide.length / 60; let travel = 0; for (let i = 1; i < glide.length; i++) travel += Math.hypot(glide[i].x - glide[i - 1].x, (glide[i].z ?? 0) - (glide[i - 1].z ?? 0));   // path length (with lock-on a sideways glide arcs round the rival)
     check('Fire glide: lasts while DODGE is held (2 s here), about 1.2 m up, feet off the floor, no flame run', dur > 1.9 && dur < 2.6 && maxH > 1.0 && maxH < 1.5 && minFoot > 0.5 && travel > 12 && !mobs, `glide ${dur.toFixed(2)} s, mob after ${mobs}, height up to ${maxH.toFixed(2)} m, lowest foot mid-glide ${minFoot.toFixed(2)} m, travel ${travel.toFixed(1)} m`);
-    check('Fire glide: legs locked in the board crouch (no steps)', legs.every(n => n === 'skate_ride|L') && Math.max(...sw) < 0.12, `leg clips ${legs.join(',')}, foot swing relative to hips (fighter's frame) ${sw.map(v => v.toFixed(2)).join('/')} m`);
+    // (20 Nov, changed with the user's review: the glide stance is now one held frame of Mixamo Running Arc, chosen by
+    // the user, instead of the skateboard crouch, so the expected leg clip is run_arc_l. The body is also pitched and
+    // turned into the flight on purpose, so the feet are measured in the hips' own frame (rotation included) rather
+    // than an upright frame that turns only with yaw: the check still fails if the legs step or cycle under the hips.)
+    check('Fire glide: legs locked in the held Running Arc stance (no steps)', legs.every(n => n === 'run_arc_l|L') && Math.max(...sw) < 0.12, `leg clips ${legs.join(',')}, foot swing relative to hips (hips' frame) ${sw.map(v => v.toFixed(2)).join('/')} m`);
     check('Fire glide: punches and a blast thrown while it carries on', punchedInGlide && blastInGlide, `upper clips ${uppers.join(', ')}, flame shots in flight ${Math.max(...all.map(r => r.orbs))}`);
   },
   async lingerEarth() {

@@ -523,7 +523,7 @@ export class Fighter {
         if (held) { this.dodgeT = Math.max(this.dodgeT, 0.3); this.en -= 9 * dt; this.glideHeld = true; }
         const rsp = held || this.glideHeld ? Math.max(9, 6 + 12 * k) : 6 + 12 * k;
         this.vel.x = this.dodgeDir.x * rsp; this.vel.z = this.dodgeDir.z * rsp;
-        const hov = 1.2 * Math.min(1, el / 0.2) * Math.min(1, this.dodgeT / 0.3);
+        const hov = 1.36 * Math.min(1, el / 0.2) * Math.min(1, this.dodgeT / 0.3);   // (20 Nov: 1.36 m, so the trailing foot of the held Running Arc stance clears the floor by half a metre)
         this.vel.y = (hov - (this.pos.y - this.groundY)) * 8 + 21 * dt; this.onGround = false;
         // the jets: rocket exhaust from both feet and both hands, driven against the direction of travel (fireJets)
       } else {
