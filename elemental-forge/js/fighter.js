@@ -15,8 +15,8 @@ export const ACTIONS = {
   counter: { dur: 0.4,  upper: false, active: { from: 0.2, to: 0.55, dmg: 14, range: 2.1, arc: -1.1, knock: 9, level: 1 }, cancel: 0.65, lunge: 10 },
   hit:     { dur: 0.36, react: true },
   stagger: { dur: 0.72, react: true },
-  down:    { dur: 1.0,  react: true },   // Mixamo Knocked Down (1.05 s at 1.25x) lands on the back, then is held
-  getup:   { dur: 1.1,  react: true },   // the authored get-up at about 1.8x its captured speed
+  down:    { dur: 0.8,  react: true },   // (20 Nov: up sooner)   // Mixamo Knocked Down (1.05 s at 1.25x) lands on the back, then is held
+  getup:   { dur: 0.8,  react: true },   // (20 Nov: a brisk rise, not a struggle)   // the authored get-up at about 1.8x its captured speed
   land:    { dur: 0.14, soft: true },
   landHigh:{ dur: 0.42, soft: true },
   ko:      { dur: 99,   react: true },
@@ -255,7 +255,7 @@ export class Fighter {
           // (20 Nov) face down after a fall forwards, everyone pushes up from the front (Getting Up 2)
           const faceDown = this.downClip === 'fall_flat' || this.downClip === 'trip';
           this.getupClip = faceDown ? 'getup2' : this.el === 'air' ? 'getup_cork' : 'getup';   // (18 Nov, after review: the flip get-up is Air's only; Fire's double-kick kip-up took too long)
-          this.actionT = faceDown ? -1.2 : 0;   // (18 Nov, after review: Air's get-up took too long; the corkscrew starts at the flip now and fits the plain get-up's time)
+          this.actionT = faceDown ? -0.35 : 0;   // (20 Nov: the face-down push-up plays quicker, about 1.1 s)   // (18 Nov, after review: Air's get-up took too long; the corkscrew starts at the flip now and fits the plain get-up's time)
           this.invuln = Math.max(this.invuln, (this.A.dur - this.actionT) * 0.8);
           }
         }
@@ -697,6 +697,16 @@ export class Fighter {
     // rocket dodge: the jets at the feet push the body sideways, so the upper body leans away from the travel (about
     // 14 degrees, in and out with the thrust) while the stance holds
     let rocketRoll = 0, rocketPitch = 0;
+    // (20 Nov) Earth riding its slab: the body leans into the slab's acceleration (forward as it speeds up, back as it
+    // slows) and banks into turns, so the held stance reads as balancing on moving rock rather than standing still
+    if (this.el === 'earth' && this.mob && this.mob.kind === 'surf' && this.onGround) {
+      const m = this.mob, acc = (m.speed - (m.prevSpeed ?? m.speed)) / Math.max(dt, 1e-3), turn = angleDiff(m.prevHeading ?? m.heading, m.heading) / Math.max(dt, 1e-3);
+      m.prevSpeed = m.speed; m.prevHeading = m.heading;
+      const k = 1 - Math.exp(-5 * dt);
+      this.surfPitch = (this.surfPitch || 0) + (clamp(0.06 + acc * 0.012, -0.12, 0.22) - (this.surfPitch || 0)) * k;
+      this.surfRoll = (this.surfRoll || 0) + (clamp(-turn * 0.12, -0.25, 0.25) - (this.surfRoll || 0)) * k;
+      rocketPitch += this.surfPitch; rocketRoll += this.surfRoll;
+    } else { this.surfPitch = 0; this.surfRoll = 0; }
     if (this.dodgeKind === 'rocket' && this.dodgeT > 0) {
       const lx = this.dodgeDir.x * Math.cos(this.yaw) - this.dodgeDir.z * Math.sin(this.yaw);   // + : towards the fighter's left
       // (19 Nov, after review: "he simply just leans a little ... I want it like he is fleeing from the attack") the body
@@ -930,9 +940,9 @@ export class Fighter {
     // (20 Nov, after review: "the sounds for gliding have been removed") the rocket glide and the jump's jets lost their
     // fire roar when the glide was rebuilt on 18 Nov; it plays again for as long as the jets burn
     const jets = el === 'fire' && ((this.dodgeKind === 'rocket' && this.dodgeT > 0) || ((this.jetBurstT || 0) > 0 && !this.onGround));
-    if ((this.guarding && el === 'fire') || (m && m.kind === 'flame') || (this.holding && el === 'fire') || jets) A.hold(key + 'fire', 'fireLoop', this.guarding ? 1 : jets ? 1.1 : 0.8, this.pos);
+    if ((this.guarding && el === 'fire') || (m && m.kind === 'flame') || (this.holding && el === 'fire') || jets) A.hold(key + 'fire', 'fireLoop', this.guarding ? 1 : jets ? 1.5 : 0.8, this.pos);
     // Earth riding its slab, on the floor or along a wall: the grinding of the rock under the feet (never had a sound)
-    if (el === 'earth' && ((m && m.kind === 'surf') || (this.wall && this.wall.kind === 'surf'))) A.hold(key + 'rock', 'rockLift', 0.75, this.pos);
+    if (el === 'earth' && ((m && m.kind === 'surf') || (this.wall && this.wall.kind === 'surf'))) { const sp = Math.min(1, Math.hypot(this.vel.x, this.vel.z) / 9); A.hold(key + 'rock', 'rockLift', 0.8 + 0.4 * sp, this.pos); A.gravel(key + 'grav', 0.7 + 0.8 * sp, this.pos); }
     if ((m && m.kind === 'surf' && el === 'water') || (this.holding && el === 'water')) A.hold(key + 'water', 'waterLoop', 0.85, this.pos);
     if ((this.dodgeKind === 'glide' && this.dodgeT > 0) || (m && m.kind === 'fly') || (this.holding && el === 'air')) A.hold(key + 'wind', 'windLoop', 1, this.pos);
   }
@@ -1135,8 +1145,10 @@ export class Fighter {
     if (level === 2) {
       this.startAction('down'); this.stunT = 0; this.invuln = 0.9; this.onGround = false;
       // the longer falls get longer on the floor (time added before the get-up), so they play near their captured pace
-      this.actionT = -({ fall_flat: 0.6, hit_head_down: 0.6, hit_legs: 0.8, trip: 0.2, side_fall: 0.9, sweep_fall: 0.7, thrown_fall: 2.3 }[this.downClip] || 0);
-      if (this.downClip === 'thrown_fall') this.invuln = 2.2;   // (the throw carries its own roll and rise: protected through it)
+      // (20 Nov, after review: "characters who fall should get up quickly, not spend time struggling to stand") less time on
+      // the floor for every fall; the falls play faster to fit
+      this.actionT = -({ fall_flat: 0.2, hit_head_down: 0.2, hit_legs: 0.3, trip: 0.05, side_fall: 0.3, sweep_fall: 0.2, thrown_fall: 1.2 }[this.downClip] || 0);
+      if (this.downClip === 'thrown_fall') this.invuln = 1.9;   // (the throw carries its own roll and rise: protected through it)
     }
     else if (level === 1) { this.startAction('stagger'); this.stunT = 0.5; }
     else { this.startAction('hit'); this.stunT = 0.2; if (this.cutClip) this.actionT = -0.22; }   // (a knife hit holds the doubled-over bend a little longer, about 0.58 s)

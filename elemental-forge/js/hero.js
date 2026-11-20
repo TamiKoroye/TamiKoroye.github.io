@@ -92,6 +92,10 @@ function rigPos(o, stop, out) { o.updateWorldMatrix(true, false); stop.updateWor
 
 // the frame of Running Arc held as Fire's glide stance (seconds into the baked clip)
 const GLIDE_POSE_T = 0.2;
+// (20 Nov, after review: "when sliding on rock the arms flail like a confused person") Earth's rock-surf stance is one
+// held frame of the surf stance (feet staggered, knees bent, the lead arm forward, the other near the chest); the clip
+// looped its arms round every four seconds. The body's lean and the knees' give come from the slab's motion (fighter.js)
+const EARTH_SURF_T = 2.3;
 export class Hero {
   // parent: the group that also holds the driver's hips (the fighter's "offs" group); driverJ: driver bones
   constructor(parent, driverJ, colors) {
@@ -304,7 +308,7 @@ export class Hero {
       return [side > 0 ? 'strafe' : 'strafe_M', C(sp / 2.5, 0.7, 1.9)];
     };
     // elemental mobility: the legs hold the surfing stance / the flying pose, techniques play over them
-    const mk = f.mob && f.mob.kind, lowOv = mk === 'surf' && f.onGround && has('surf_stance') ? ['surf_stance', LOOP_SPEED.surf_stance] : mk === 'fly' && has('air_loop') ? ['air_loop', 1] : null;   // (the reclined Mixamo Flying pose, air_fly, is kept in the pack for a later unlock: lying level it does not face the rival)
+    const mk = f.mob && f.mob.kind, lowOv = mk === 'surf' && f.onGround && has('surf_stance') ? (f.el === 'earth' ? ['surf_stance', 0, EARTH_SURF_T] : ['surf_stance', LOOP_SPEED.surf_stance]) : mk === 'fly' && has('air_loop') ? ['air_loop', 1] : null;   // (the reclined Mixamo Flying pose, air_fly, is kept in the pack for a later unlock: lying level it does not face the rival)
     // the blow's direction relative to the body (lz < 0: driven backwards, |lx| large: from the side)
     const hd = f.hitDir || f.koDir, hc = Math.cos(f.yaw), hs = Math.sin(f.yaw);
     const hlx = hd ? hd.x * hc - hd.z * hs : 0, hlz = hd ? hd.x * hs + hd.z * hc : -1;
@@ -454,7 +458,7 @@ export class Hero {
         else { const t = this.cur.time; if (t > 1.2) this.kneelDir = -1; else if (t < 0.95) this.kneelDir = 1; ts = this.kneelDir * (t > 0.9 ? 0.45 : 2.2); }
       }
       else if (f.holding && has(L.hold)) { clip = L.hold; ts = LOOP_SPEED[L.hold] || 1; wU = wL = 0; fade = 0.2; layered = moving || !!lowOv; }
-      else if (lowOv) { [clip, ts] = lowOv; wU = wL = 0; fade = 0.2; }
+      else if (lowOv) { [clip, ts] = lowOv; if (lowOv[2] !== undefined) startAt = lowOv[2]; wU = wL = 0; fade = 0.2; }
       // take-off from a run (every element): the Running Jump's spring, before the element's own airborne pose
       else if (free && !f.onGround && !f.mob && f.airTime < 0.3 && f.vel.y > 1 && (f.lastGroundSp || 0) > 4.5 && has('run_jump')) once('run_jump', 1.0, 0.08);
       // take-off from standing (an ordinary jump): the Standing Jump's spring from its take-off frame
