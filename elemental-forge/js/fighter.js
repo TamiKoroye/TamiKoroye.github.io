@@ -369,11 +369,11 @@ export class Fighter {
       if (this.buf.hand && handFirst && !this.charging && canStrike) {
         struck = true; this.lastStrike = 'hand';
         // (the Air Swipe is chosen while the dodge still runs, before the strike ends it)
-        this.airSwipeNow = this.el === 'air' && !!this.airHandTech();
+        this.airPick = this.el === 'air' ? this.airHandTech() : null;   // (chosen while the dodge still runs)
         this.buf.hand = 0; if (this.dodgeKind !== 'rocket' && this.dodgeKind !== 'arch') this.dodgeT = 0;
         if (this.counterT > 0) { this.counterT = 0; this.startAction('counter'); w.combat.lunge(this, ACTIONS.counter); w.popup(this, 'COUNTER', true); w.audio.whoosh(0.9); }
         else if (B.spiralRelease && B.spiralRelease(this)) { w.popup(this, 'RELEASE', true); }
-        else { this.handSide = -this.handSide; const riding = this.el === 'water' && st.tech.surfPunch && ((this.dodgeKind === 'arch' && this.dodgeT > 0) || (this.mob && this.mob.kind === 'surf')); this.startTech(riding ? st.tech.surfPunch : (this.el === 'fire' && this.fireHandTech()) || (this.el === 'earth' && this.earthHandTech()) || (this.airSwipeNow && st.tech.airSwipe) || st.tech.hand, this.handSide, true); }
+        else { this.handSide = -this.handSide; const riding = this.el === 'water' && st.tech.surfPunch && ((this.dodgeKind === 'arch' && this.dodgeT > 0) || (this.mob && this.mob.kind === 'surf')); this.startTech(riding ? st.tech.surfPunch : (this.el === 'fire' && this.fireHandTech()) || (this.el === 'earth' && this.earthHandTech()) || this.airPick || st.tech.hand, this.handSide, true); }
         this.handHoldT = 0;
       }
       // (21 Nov) Air: LEG tap with the rival beyond 5 m on the floor throws the Air Blades (closer in, the kicks as before;
@@ -515,7 +515,8 @@ export class Fighter {
             this.dodgeT = 0; this.jetFuel = 0;
           }
           // (21 Nov) Air in the air: LEG held dives him down on a column of wind and the Air Bomb bursts where he lands
-          if (this.el === 'air' && st.tech.airBomb && !this.onGround && !this.bombDive && !(this.mob && this.mob.kind === 'fly') && this.legHoldT > 0.18 && this.pos.y - this.groundY > 0.5 && this.en >= st.tech.airBomb.cost && !this.reacting()) {
+          if (this.el === 'air' && st.tech.airBomb && !this.onGround && !this.bombDive && !(this.dodgeT > 0) && this.legHoldT > 0.18 && this.pos.y - this.groundY > 0.5 && this.en >= st.tech.airBomb.cost && !this.reacting()) {
+            if (this.mob) { this.endMob(); this.mobCd = 0.6; }   // (out of flight too)
             this.legHoldT = -1; this.action = null; this.tech = null; this.bombDive = true; this.vel.y = -22; this.vel.x *= 0.3; this.vel.z *= 0.3; this.dodgeT = 0;
           }
           // (20 Nov) Earth in the air: LEG held drives him down feet first and the Ground Rupture bursts out where he lands
@@ -1099,7 +1100,7 @@ export class Fighter {
     w.audio.rumble(1.0); w.fx.dust(this.pos, 12, 3, 0xa08a6c);
   }
   // (21 Nov, after review: "they need to be out, similar to Fire ... no holding GUARD and another button") Air's HAND tap,
-  // like Fire's, depends on where the rival is: during the dodge the Air Swipe; the rival within 2.5 m on the floor, the
+  // like Fire's, depends on where the rival is: during the dodge the Air Swipe; the rival within 3 m on the floor, the
   // palm combination (palm, turning palm, gale kick; the kick not over a rival on the floor); beyond 8.5 m, Suction
   // hauls them in (5 s cooldown); otherwise the Air Whip as before
   airHandTech() {
@@ -1107,7 +1108,7 @@ export class Fighter {
     if (st.tech.airSwipe && (this.dodgeKind === 'glide' || this.dodgeKind === 'flip') && this.dodgeT > 0 && this.en >= st.tech.airSwipe.cost) return st.tech.airSwipe;
     if (!t || t.dead || !this.onGround) return null;
     const d = Math.hypot(t.pos.x - this.pos.x, t.pos.z - this.pos.z), lying = t.action === 'down' || t.action === 'getup';
-    if (d < 2.5 && !lying && st.tech.airCombo) {
+    if (d < 3.0 && !lying && st.tech.airCombo) {   // (3 m: the fighters are kept about 2.6 m apart)
       if (this.time - (this.airComboT ?? -9) > 1.0) this.airComboN = 0;
       const T = st.tech.airCombo[(this.airComboN || 0) % 3]; this.airComboN = (this.airComboN || 0) + 1; this.airComboT = this.time + T.dur; return T;
     }

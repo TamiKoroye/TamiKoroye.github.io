@@ -526,11 +526,11 @@ STYLES.fire.tech.groundStab = T({ name: 'Grounded Stab', clip: 'hard_land', clip
 // (20 Nov, Airbending brief) the added Air skills. (21 Nov, after review: "the new moves need to be out, similar to Fire:
 // long press HAND and different moves come out ... I can't be holding GUARD and another option") every one comes from a
 // single button, by tap or long press and by where the rival is (fighter.js airHandTech and the LEG / SPECIAL tiers):
-//   HAND tap: rival within 2.5 m the palm combination; 2.5 to 8.5 m the Air Whip as before; beyond 8.5 m Suction
+//   HAND tap: rival within 3 m the palm combination; 2.5 to 8.5 m the Air Whip as before; beyond 8.5 m Suction
 //   HAND long press: the Twin Air Streams as before; letting go fires the Air Blast
 //   HAND during the dodge: the Air Swipe
 //   LEG tap: the kicks as before; the rival beyond 5 m, the Air Blades
-//   LEG long press: the Air Compression as before; in the air, the Air Bomb dive (it bursts where he lands)
+//   LEG long press: the Air Compression as before; in the air or in flight, the Air Bomb dive (it bursts where he lands)
 //   SPECIAL: tap the Tornado; held 0.3 s the Air Bomb; held 1 s the Air Vortex
 STYLES.air.tech.airBlast = T({ name: 'Air Blast', clip: 'air_palm', clipSpeed: 1.4, dur: 0.64, cost: 6, cancel: 0.55, upper: true, move: 1, keys: K0, events: [[0.45, 'air.blast']] });
 STYLES.air.tech.airSwipe = T({ name: 'Air Swipe', clip: 'air_vortex', clipSpeed: 1.6, dur: 0.6, cost: 9, cancel: 0.65, move: 1.2, keys: K0, events: [[0.45, 'air.swipe']] });
