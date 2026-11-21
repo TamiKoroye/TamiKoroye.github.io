@@ -378,7 +378,7 @@ function step(dt) {
     const P = player, L = P.style.labels, gl = (P.dodgeKind === 'glide' || P.dodgeKind === 'flip') && P.dodgeT > 0, sp = P.spT ?? -1;
     const d = P.airDist ? P.airDist() : 0, ready = (P.suctionCd || 0) <= P.time;
     const want = { 'btn-hand': gl ? 'AIR SWIPE' : P.onGround && d > 0 && d < 3.0 ? 'PALM COMBO' : P.onGround && d > 8.5 && ready ? 'SUCTION' : L.hand,
-      'btn-leg': !P.onGround && !gl && P.pos.y - P.groundY > 0.5 ? 'HOLD: AIR BOMB' : d > 5 ? 'AIR BLADES' : L.leg,
+      'btn-leg': !P.onGround && !gl && P.pos.y - P.groundY > 0.5 ? 'HOLD: AIR BOMB' : d > 7 ? 'AIR BLADES' : L.leg,
       'btn-special': sp >= 1 ? 'AIR VORTEX' : sp >= 0.3 ? 'AIR BOMB' : L.special };
     for (const id in want) { const b = $(id); if (b && b._airLab !== want[id]) { b._airLab = want[id]; const sm = b.querySelector('small'); if (sm) sm.textContent = want[id]; b.classList.toggle('airalt', want[id] !== L[id.slice(4)]); } }
   } else for (const id of ['btn-hand', 'btn-leg', 'btn-special']) { const b = $(id); if (b && b._airLab) { b._airLab = null; b.classList.remove('airalt'); const sm = b.querySelector('small'); if (sm) sm.textContent = player.style.labels[id.slice(4)]; } }

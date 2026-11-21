@@ -29,7 +29,7 @@ the rival is; the button's label names what a tap will throw at that moment (whi
 | HAND long press | Twin Air Streams (as before); letting go fires the Air Blast |
 | HAND during the dodge | Air Swipe |
 | LEG tap, close | the kicks (as before) |
-| LEG tap, rival beyond 5 m | Air Blades |
+| LEG tap, rival beyond 7 m | Air Blades |
 | LEG long press | Air Compression (as before) |
 | LEG long press in the air or in flight | Air Bomb dive: down on a column of wind, the burst where he lands |
 | SPECIAL tap | Tornado |

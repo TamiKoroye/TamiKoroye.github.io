@@ -376,9 +376,9 @@ export class Fighter {
         else { this.handSide = -this.handSide; const riding = this.el === 'water' && st.tech.surfPunch && ((this.dodgeKind === 'arch' && this.dodgeT > 0) || (this.mob && this.mob.kind === 'surf')); this.startTech(riding ? st.tech.surfPunch : (this.el === 'fire' && this.fireHandTech()) || (this.el === 'earth' && this.earthHandTech()) || this.airPick || st.tech.hand, this.handSide, true); }
         this.handHoldT = 0;
       }
-      // (21 Nov) Air: LEG tap with the rival beyond 5 m on the floor throws the Air Blades (closer in, the kicks as before;
+      // (21 Nov) Air: LEG tap with the rival beyond 7 m on the floor throws the Air Blades (closer in, the kicks as before;
       // running fast, the Running Kick)
-      if (this.buf.leg && this.el === 'air' && this.onGround && !this.charging && canStrike && st.tech.airBlades && this.airDist() > 5 && this.speedNorm <= 0.45 && this.en >= st.tech.airBlades.cost) {
+      if (this.buf.leg && this.el === 'air' && this.onGround && !this.charging && canStrike && st.tech.airBlades && this.airDist() > 7 && this.speedNorm <= 0.45 && this.en >= st.tech.airBlades.cost) {
         this.buf.leg = 0; this.lastStrike = 'leg'; this.legHoldT = 0; this.startTech(st.tech.airBlades, this.handSide = -this.handSide, true);
       }
       // (20 Nov, Earth brief) Earth: LEG while GUARD is held: Slab Shackles (8 s cooldown); LEG with the stick pulled away

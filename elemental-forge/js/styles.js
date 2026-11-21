@@ -529,7 +529,7 @@ STYLES.fire.tech.groundStab = T({ name: 'Grounded Stab', clip: 'hard_land', clip
 //   HAND tap: rival within 3 m the palm combination; 2.5 to 8.5 m the Air Whip as before; beyond 8.5 m Suction
 //   HAND long press: the Twin Air Streams as before; letting go fires the Air Blast
 //   HAND during the dodge: the Air Swipe
-//   LEG tap: the kicks as before; the rival beyond 5 m, the Air Blades
+//   LEG tap: the kicks as before; the rival beyond 7 m, the Air Blades
 //   LEG long press: the Air Compression as before; in the air or in flight, the Air Bomb dive (it bursts where he lands)
 //   SPECIAL: tap the Tornado; held 0.3 s the Air Bomb; held 1 s the Air Vortex
 STYLES.air.tech.airBlast = T({ name: 'Air Blast', clip: 'air_palm', clipSpeed: 1.4, dur: 0.64, cost: 6, cancel: 0.55, upper: true, move: 1, keys: K0, events: [[0.45, 'air.blast']] });
