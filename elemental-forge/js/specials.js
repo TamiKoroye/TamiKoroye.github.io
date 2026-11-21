@@ -108,10 +108,12 @@ export class Specials {
   }
 
   // ------------------------------------------------------------------ AIR
-  airStart(f) {
+  // (21 Nov) big: the Air Vortex, the second strong special (SPECIAL held 1 s): the same cyclone half again as tall and
+  // wide, five bands, faster, holding the rival longer, harder throw, a roar building with it
+  airStart(f, big) {
     if (this.find(f, 'tornado')) return;
-    const tubes = [0, 1, 2].map(() => { const tb = this.B.weapons.tube(); tb.mesh.material = this.B.weapons.airTubeMat; return tb; });
-    this.add({ kind: 'tornado', f, t: 0, c: new THREE.Vector3(f.pos.x, f.groundY, f.pos.z), free: false, tubes, pts: tubes.map(() => Array.from({ length: 24 }, () => new THREE.Vector3())), held: new Map(), tick: 0, life: 4.2, grow: 0 });
+    const tubes = (big ? [0, 1, 2, 3, 4] : [0, 1, 2]).map(() => { const tb = this.B.weapons.tube(); tb.mesh.material = this.B.weapons.airTubeMat; return tb; });
+    this.add({ kind: 'tornado', f, t: 0, c: new THREE.Vector3(f.pos.x, f.groundY, f.pos.z), free: false, tubes, pts: tubes.map(() => Array.from({ length: 24 }, () => new THREE.Vector3())), held: new Map(), tick: 0, life: big ? 5 : 4.2, grow: 0, big: !!big });
     this.w.audio.gust(1.2);
   }
   airSend(f) {
@@ -286,7 +288,7 @@ export class Specials {
   dropDragon(S, spill) { if (spill) this.w.fx.splash(S.f.chestPos(_a), 16); this.w.scene.remove(S.tube.mesh); S.tube.mesh.geometry.dispose(); this.B.weapons.freeTube(S.inner); S.tube = S.inner = null; S.dead = true; }
 
   updateTornado(S, dt) {
-    const w = this.w, f = S.f, H = 5.6;
+    const w = this.w, f = S.f, H = S.big ? 8.4 : 5.6, Rk = S.big ? 1.5 : 1;
     if (!S.free && (f.dead || f.reacting())) { S.free = true; S.ft = 0; }
     if (!S.free) { S.c.set(f.pos.x, f.groundY, f.pos.z); S.grow = Math.min(1, S.grow + dt / 0.7); }
     else {
@@ -299,7 +301,8 @@ export class Specials {
       if (w.arena.solidAt(_b.set(S.c.x, S.c.y + 1, S.c.z), 0.3)) S.life = Math.min(S.life, S.t + 0.3);
     }
     const end = S.t > S.life, fade = end ? Math.max(0, 1 - (S.t - S.life) / 0.5) : 1, g = S.grow * fade;
-    const R = (h) => (0.35 + 2.1 * Math.pow(h / H, 1.6)) * g;
+    const R = (h) => (0.35 + 2.1 * Math.pow(h / H, 1.6)) * g * Rk;
+    if (S.big && g > 0.02) { const sk = 'vortex' + (f === w.fighters[0] ? 0 : 1); w.audio.hold(sk, 'windLoop', 0.6 + 0.8 * g, S.c); if (w.audio.roar) w.audio.roar(sk + 'r', 0.5 + 0.7 * g, S.c); }
     // three helical bands winding up the funnel, turning fast
     S.tubes.forEach((tb, i) => {
       const P = S.pts[i];
@@ -315,23 +318,25 @@ export class Specials {
     if (S.free && !end) for (const t of w.fighters) {
       if (t === f || t.dead || t.invuln > 0 && !S.held.has(t)) continue;
       const dx = S.c.x - t.pos.x, dz = S.c.z - t.pos.z, d = Math.hypot(dx, dz);
-      if (!S.held.has(t) && d < 2.4 && t.pos.y - S.c.y < 3) { S.held.set(t, 0); w.combat.damage(t, 6, _a.set(-dx, 0, -dz).normalize().clone(), f, 'tornado', t.chestPos(new THREE.Vector3()), 3, 1); }
+      if (!S.held.has(t) && d < 2.4 * Rk && t.pos.y - S.c.y < 3 * Rk) { S.held.set(t, 0); w.combat.damage(t, S.big ? 9 : 6, _a.set(-dx, 0, -dz).normalize().clone(), f, 'tornado', t.chestPos(new THREE.Vector3()), 3, 1); }
     }
     for (const [t, ht] of S.held) {
       const nt = ht + dt; S.held.set(t, nt);
       if (t.dead) { S.held.delete(t); continue; }
-      const a = S.t * 7, r = 0.9;
+      const a = S.t * (S.big ? 9 : 7), r = S.big ? 1.2 : 0.9;
+      if (S.big) t.spinYaw = (t.spinYaw || 0) + dt * 10;   // (Vortex) the rival is turned with the wind
       t.ext.x += ((S.c.x + Math.cos(a) * r - t.pos.x) * 6 - t.ext.x) * Math.min(1, dt * 6); t.ext.z += ((S.c.z + Math.sin(a) * r - t.pos.z) * 6 - t.ext.z) * Math.min(1, dt * 6);
-      t.vel.y = Math.max(t.vel.y, (S.c.y + 2.6 - t.pos.y) * 3); t.onGround = false;
+      t.vel.y = Math.max(t.vel.y, (S.c.y + (S.big ? 4.2 : 2.6) - t.pos.y) * 3); t.onGround = false;
       t.restrainT = Math.max(t.restrainT, 0.15); t.floatT = 0.3;   // caught in the funnel: Mixamo Floating, limbs adrift (hero.js)
-      if (nt > 1.4 || end) {
-        S.held.delete(t);
+      if (nt > (S.big ? 1.9 : 1.4) || end) {
+        S.held.delete(t); t.spinYaw = 0;
         const out = _a.set(t.pos.x - S.c.x, 0, t.pos.z - S.c.z); if (out.lengthSq() < 1e-3) out.copy(S.v || f.forward(_b)); out.normalize();
-        w.combat.damage(t, 10, out.clone(), f, 'tornado', t.chestPos(new THREE.Vector3()), 16, 2); t.vel.y = 7;
+        w.combat.damage(t, S.big ? 18 : 10, out.clone(), f, 'tornado', t.chestPos(new THREE.Vector3()), S.big ? 24 : 16, 2); t.vel.y = S.big ? 10 : 7;
+        if (S.big) { w.shake(0.5, t.pos); w.audio.gust(1.5, t.pos); w.fx.ring(_b.set(t.pos.x, t.groundY + 0.1, t.pos.z), 5, 0xffffff, 0.5); }
       }
     }
     for (const o of this.B.objs) if (o.state === 'flying' && o.owner !== f && Math.hypot(o.pos.x - S.c.x, o.pos.z - S.c.z) < 2.5 * g && o.pos.y < S.c.y + H) this.B.kill(o);
-    if (S.t > S.life + 0.5) { S.dead = true; for (const tb of S.tubes) this.B.weapons.freeTube(tb); for (const [t] of S.held) t.vel.y = 4; }
+    if (S.t > S.life + 0.5) { S.dead = true; for (const tb of S.tubes) this.B.weapons.freeTube(tb); for (const [t] of S.held) { t.vel.y = 4; t.spinYaw = 0; } }
   }
 
   clear() {

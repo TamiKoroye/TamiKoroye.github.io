@@ -77,8 +77,20 @@ export class Combat {
       }
     }
     t.lastHitFrom = from; t.lastHitKind = kind;   // the reaction clip is chosen from the blow (fighter.takeHit)
+    // (21 Nov, after review: "visually, the moves of Air do not look devastating") an airbender's blow throws harder
+    const airBlow = from && from !== t && from.el === 'air' && level >= 0;
+    if (airBlow) knock *= 1.35;
     t.takeHit(dmg, dir, knock, level);
     if (level < 0) return;
+    if (airBlow) {
+      // and lands with a burst of wind: a shockwave ring round the body, streaks blown out along the blow, dust at the feet
+      const fx = w.fx, gy = t.groundY, k = level >= 1 ? 1 : 0.6;
+      fx.ring(_v.set(t.pos.x, at.y, t.pos.z), 2.2 + 1.6 * k, 0xffffff, 0.35);
+      if (level >= 1) fx.ring(_v.set(t.pos.x, gy + 0.08, t.pos.z), 3.4, 0xe8f2fa, 0.45);
+      for (let i = 0; i < 10 + 8 * k; i++) { const a = Math.random() * 6.283; fx.wind(_v.copy(at), _v2.set(dir.x * 9 + Math.cos(a) * 5, Math.sin(a) * 3 + 1, dir.z * 9 + Math.sin(a) * 5), 0.7, 0.35); }
+      fx.dust(_v.set(t.pos.x, gy, t.pos.z), 6 + 8 * k, 2.5);
+      w.shake(0.18 * k, at);
+    }
     w.popup(t, String(Math.round(dmg)));
     const col = { fire: 0xffb060, water: 0xbfe4ff, air: 0xffffff }[from && from.el] || 0xfff2d0;
     w.fx.spark(at, col, level >= 1 ? 8 : 5);
