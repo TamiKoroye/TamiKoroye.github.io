@@ -119,9 +119,9 @@ export class EarthSkills {
   }
   // a lingering dust cloud: large slow puffs churning in place; inside it fighters are hard to see (cloud alpha) and the
   // computer opponent loses sight of a rival standing in it (obscured())
-  cloud(at, R, life) {
+  cloud(at, R, life, n = 22) {
     const C = { pos: at.clone(), R, life, t: 0, sprites: [] };
-    for (let i = 0; i < 22; i++) {
+    for (let i = 0; i < n; i++) {
       const a = rand(0, 6.28), rr = Math.sqrt(Math.random()) * R * 0.85;
       const s = this.sprite(DUST_COLS[i % DUST_COLS.length], 0);
       C.sprites.push({ s, a, rr, y: rand(0.2, 2.2), ph: rand(0, 6.28), size: rand(1.6, 2.8) * R / 3, spin: rand(-0.6, 0.6), op: rand(0.45, 0.7), drift: rand(0.2, 0.5) });
@@ -156,7 +156,9 @@ export class EarthSkills {
     const w = this.world, sc = w.scene;
     if (!this.stormS) this.stormS = { fogC: sc.fog.color.clone(), near: sc.fog.near, far: sc.fog.far, bg: sc.background && sc.background.isColor ? sc.background.clone() : null };
     this.storming = { f, t: 0, life: 8, ringT: 0 };
-    for (let i = 0; i < 26; i++) { const a = rand(0, 6.28), r = rand(2, 26); this.cloud(new THREE.Vector3(Math.cos(a) * r, f.groundY, Math.sin(a) * r), rand(4, 7), 8); }
+    // (21 Nov) 10 larger clouds of 10 puffs (was 26 of 22: 572 sprites, each its own draw call, over 300 draw calls a frame
+    // on a phone); the fog does most of the hiding
+    for (let i = 0; i < 10; i++) { const a = i / 10 * 6.28 + rand(-0.3, 0.3), r = rand(3, 22); this.cloud(new THREE.Vector3(Math.cos(a) * r, f.groundY, Math.sin(a) * r), rand(6, 9), 8, 10); }
     w.audio.rumble(1.3); w.shake(0.4, f.pos); w.popup(f, 'DUST STORM', true);
   }
   updateStorm(dt) {

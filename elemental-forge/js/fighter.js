@@ -180,7 +180,7 @@ export class Fighter {
       ? def.variants.find(v => /^whip_v/.test(v.clip)) : null;
     this.grabArmed = grabWhip;   // (the grab is armed at the press: "close" means close when HAND is pressed; the lunge does not turn a lash into a grab)
     if (grabWhip) { def = grabWhip; this.altN = (this.altN || 0) + 1; this.lastAltEnd = this.time + def.dur; }   // (the chain still moves on)
-    else if (def.variants) { if (this.time - (this.lastAltEnd ?? -9) > 0.9) this.altN = 0; const n = this.altN || 0; this.altN = n + 1; def = def.variants[n % def.variants.length]; this.lastAltEnd = this.time + def.dur; }
+    else if (def.variants) { if (this.time - (this.lastAltEnd ?? -9) > 0.9 * (this.style.tempo || 1)) this.altN = 0;   /* (21 Nov: Air's strikes end sooner at its faster tempo, so its chain window is as much longer) */ const n = this.altN || 0; this.altN = n + 1; def = def.variants[n % def.variants.length]; this.lastAltEnd = this.time + def.dur; }
     if (this.dodgeKind === 'glide' && this.dodgeT > 0) { this.dodgeT = 0; this.vel.y = Math.min(this.vel.y, 0); }   // a strike ends the glide
     const powered = this.en >= (def.cost || 0);
     if (!powered) {
