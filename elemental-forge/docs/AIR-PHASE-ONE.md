@@ -56,3 +56,22 @@ or backpedals with his whole body; the palm-forward stance is for standing only.
 - A short synthesised burst of compressed air on the Air Blast, Swipe and Blades.
 - (r38, after review: "it makes a 'dumbp' sound when the character is hit") the synthesised boom added in the Earth
   sound round is no longer played anywhere (r38 also took it off the Earthbreaker's crash).
+
+## r42 (21 Nov, after review)
+
+"Air is weak compared to the rest." Added and strengthened, nothing removed:
+- Suffocation: SPECIAL tapped with the rival within 4 m (the label reads SUFFOCATE · HOLD): a bubble of wind seals over
+  the rival's head for 2.5 s; they cannot fight and stagger about, losing 3 every 0.4 s, then gasp (6 more and a stagger).
+  10 s cooldown, 30 energy. Further off, the tap is the Tornado.
+- Air Blades, Air Swipe and Air Blast slice through a Fire or Water guard (SLICED); stone still stops them.
+- Close kicks (within 3.5 m) that land hard knock the rival down, spinning as they fly back (SPIRAL).
+- Guard: a ball of spiralling wind round the whole body, protecting all round; it stays up 3 s after GUARD is let go and
+  goes with him.
+- Air Compression (LEG held): width 9, 13 damage, knock 28 (was 7 / 8 / 18), with a storm of wind along its path.
+- Faster: walk 4.6, run 10.5, sprint 15 m/s, accel 90; techniques 1.45 times faster.
+- Flight: speed 14 (was 9.5), accel 28, 10 s (was 6), drain 5 (was 8), recover 0.8 s.
+- Glide dodge: faster start (5.5 + 12k, was 4 + 9k), 1.6 s (was 2), cooldown 0.3 s, invulnerable 0.9 s, 9 energy (was
+  16); the flips cost 6.
+- Suction: HAND tapped (and let go) with the rival beyond 6 m (was 8.5), reaches 20 m, 3 s cooldown; HAND held there is
+  still the Twin Air Streams.
+- Air Blades on LEG come from a roundhouse kick, off the kicking foot (was a two-handed slash).

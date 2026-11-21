@@ -591,7 +591,7 @@ export class Fighter {
         // Air: a two-second glide inside the whirlwind, held about 0.7 m off the floor, fast at first and easing;
         // the stick steers it
         if (Math.hypot(mx, mz) > 0.3) { const l = Math.hypot(mx, mz), kk = 1 - Math.exp(-3 * dt); this.dodgeDir.x += (mx / l - this.dodgeDir.x) * kk; this.dodgeDir.z += (mz / l - this.dodgeDir.z) * kk; const n = Math.hypot(this.dodgeDir.x, this.dodgeDir.z) || 1; this.dodgeDir.x /= n; this.dodgeDir.z /= n; }
-        const gsp = 6 + 13 * k;   // (21 Nov, after review: "dodge easily": was 4 + 9 * k)
+        const gsp = 5.5 + 12 * k;   // (21 Nov, after review: "dodge easily": was 4 + 9 * k)
         this.vel.x = this.dodgeDir.x * gsp; this.vel.z = this.dodgeDir.z * gsp;
         this.vel.y = (0.7 - (this.pos.y - this.groundY)) * 6 + 21 * dt; this.onGround = false;
       } else if (this.dodgeKind === 'flip') {
