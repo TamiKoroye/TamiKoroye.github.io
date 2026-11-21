@@ -370,13 +370,16 @@ function step(dt) {
   world.bending.update(dt);
   world.fx.update(dt, (x, z, y) => world.arena.groundAt(x, z, y));
   world.audio.update(dt);
-  // (21 Nov, after review: the added Air moves were hidden) Air's buttons name the move they will throw right now:
-  // with GUARD held HAND / LEG / SPECIAL read AIR BLAST / AIR BLADES / SUCTION; in the glide HAND reads AIR SWIPE; while
-  // SPECIAL is held it reads AIR BOMB, then AIR VORTEX
+  // (21 Nov, after review: the added Air moves were hidden) Air's buttons name the move a tap will throw right now, by
+  // where the rival is (as Fire's HAND does): HAND reads PALM COMBO close in, SUCTION far off, AIR SWIPE in the dodge,
+  // otherwise AIR WHIP · HOLD BLAST; LEG reads AIR BLADES far off, HOLD: AIR BOMB in the air; SPECIAL reads TORNADO · HOLD,
+  // then AIR BOMB and AIR VORTEX as it is held
   if (player.el === 'air') {
-    const P = player, L = P.style.labels, g = P.guarding, gl = (P.dodgeKind === 'glide' || P.dodgeKind === 'flip') && P.dodgeT > 0, sp = P.spT ?? -1;
-    const want = { 'btn-hand': g ? 'AIR BLAST' : gl ? 'AIR SWIPE' : L.hand, 'btn-leg': g ? 'AIR BLADES' : L.leg,
-      'btn-special': g ? 'SUCTION' : sp >= 1 ? 'AIR VORTEX' : sp >= 0.3 ? 'AIR BOMB' : L.special };
+    const P = player, L = P.style.labels, gl = (P.dodgeKind === 'glide' || P.dodgeKind === 'flip') && P.dodgeT > 0, sp = P.spT ?? -1;
+    const d = P.airDist ? P.airDist() : 0, ready = (P.suctionCd || 0) <= P.time;
+    const want = { 'btn-hand': gl ? 'AIR SWIPE' : P.onGround && d > 0 && d < 3.0 ? 'PALM COMBO' : P.onGround && d > 8.5 && ready ? 'SUCTION' : L.hand,
+      'btn-leg': !P.onGround && !gl && P.pos.y - P.groundY > 0.5 ? 'HOLD: AIR BOMB' : d > 7 ? 'AIR BLADES' : L.leg,
+      'btn-special': sp >= 1 ? 'AIR VORTEX' : sp >= 0.3 ? 'AIR BOMB' : L.special };
     for (const id in want) { const b = $(id); if (b && b._airLab !== want[id]) { b._airLab = want[id]; const sm = b.querySelector('small'); if (sm) sm.textContent = want[id]; b.classList.toggle('airalt', want[id] !== L[id.slice(4)]); } }
   } else for (const id of ['btn-hand', 'btn-leg', 'btn-special']) { const b = $(id); if (b && b._airLab) { b._airLab = null; b.classList.remove('airalt'); const sm = b.querySelector('small'); if (sm) sm.textContent = player.style.labels[id.slice(4)]; } }
   // Fire holding GUARD: the SPECIAL button reads DRAGON BREATH (GUARD + SPECIAL breathes fire) and glows
