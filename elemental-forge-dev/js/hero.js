@@ -494,6 +494,10 @@ export class Hero {
       else if (free && f.onGround && this.stopT > 0 && sp < 2.5 && has('run_stop')) { clip = 'run_stop'; ts = 1.5; wU = wL = 0; fade = 0.15; }
       else if (free && moving && fwd > 0.7) {
         [clip, ts] = loco(); wU = wL = 0; fade = 0.22;   // authored locomotion, matched to ground speed
+      } else if (free && f.onGround && moving && f.el === 'air') {
+        // (21 Nov, after review: "why does he maintain that weird stance whilst walking or running?") Air moves with his
+        // whole body (walk, jog, strafe or backpedal, arms included); the palm-forward stance is for standing only
+        [clip, ts] = loco(); wU = wL = 0; fade = 0.15;
       } else if (free && f.onGround && has(L.idle)) {
         // the element's authored combat stance; when stepping sideways or backwards, its upper body over authored footwork
         clip = L.idle; ts = LOOP_SPEED[L.idle] || 1; wU = wL = 0; fade = 0.25; layered = moving;

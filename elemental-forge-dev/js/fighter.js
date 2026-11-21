@@ -180,7 +180,7 @@ export class Fighter {
       ? def.variants.find(v => /^whip_v/.test(v.clip)) : null;
     this.grabArmed = grabWhip;   // (the grab is armed at the press: "close" means close when HAND is pressed; the lunge does not turn a lash into a grab)
     if (grabWhip) { def = grabWhip; this.altN = (this.altN || 0) + 1; this.lastAltEnd = this.time + def.dur; }   // (the chain still moves on)
-    else if (def.variants) { if (this.time - (this.lastAltEnd ?? -9) > 0.9) this.altN = 0; const n = this.altN || 0; this.altN = n + 1; def = def.variants[n % def.variants.length]; this.lastAltEnd = this.time + def.dur; }
+    else if (def.variants) { if (this.time - (this.lastAltEnd ?? -9) > 0.9 * (this.style.tempo || 1)) this.altN = 0;   /* (21 Nov: Air's strikes end sooner at its faster tempo, so its chain window is as much longer) */ const n = this.altN || 0; this.altN = n + 1; def = def.variants[n % def.variants.length]; this.lastAltEnd = this.time + def.dur; }
     if (this.dodgeKind === 'glide' && this.dodgeT > 0) { this.dodgeT = 0; this.vel.y = Math.min(this.vel.y, 0); }   // a strike ends the glide
     const powered = this.en >= (def.cost || 0);
     if (!powered) {
@@ -292,10 +292,12 @@ export class Fighter {
       if (lgW && lgW.ice && lgW.iceShots > 0 && this.el === 'water' && this.buf.hand && this.free('attack') && this.en >= 3) { this.buf.hand = 0; this.startTech(st.tech.icePunch, this.handSide = -this.handSide, true); }
       if (lgE && this.el === 'earth' && this.buf.hand && this.free('attack') && this.en >= 8) { if (B.guardShatter(this)) { this.buf.hand = 0; this.en -= 8; this.startTech(st.tech.hand, this.handSide = -this.handSide, true); } }
       if (this.guarding && inp.guard && this.el === 'earth' && this.buf.hand && this.en >= 8) { if (B.guardShatter(this)) { this.buf.hand = 0; this.en -= 8; this.startTech(st.tech.hand, this.handSide = -this.handSide, true); } }
-      // (20 Nov, added Air skills) GUARD + HAND: Air Blast; GUARD + LEG: Air Blades (Air did nothing with these before)
+      // (20 Nov, added Air skills) GUARD + HAND: Air Blast; GUARD + LEG: Air Blades; (21 Nov) GUARD + SPECIAL: Suction
+      // (5 s cooldown). Air did nothing with these before.
       if (this.guarding && inp.guard && this.el === 'air' && st.tech.airBlast && !this.charging && !this.reacting()) {
-        const T = this.buf.hand ? st.tech.airBlast : this.buf.leg ? st.tech.airBlades : null;
-        if (T && this.en >= T.cost) { this.buf.hand = this.buf.leg = 0; this.guarding = false; B.guardEnd(this, true); this.guardCd = 0.4; this.startTech(T, this.handSide = -this.handSide, true); }
+        const T = this.buf.hand ? st.tech.airBlast : this.buf.leg ? st.tech.airBlades : this.buf.special && (this.suctionCd || 0) <= this.time ? st.tech.suction : null;
+        if (T === st.tech.suction && this.en >= T.cost) this.suctionCd = this.time + 5;
+        if (T && this.en >= T.cost) { this.buf.hand = this.buf.leg = this.buf.special = 0; this.guarding = false; B.guardEnd(this, true); this.guardCd = 0.4; this.startTech(T, this.handSide = -this.handSide, true); }
       }
       if (this.guarding && inp.guard && this.el === 'water') {
         if (this.buf.hand && this.en >= 10) { this.buf.hand = 0; this.en -= 10; B.iceSpear(this); }
@@ -373,15 +375,13 @@ export class Fighter {
       let struck = false;
       if (this.buf.hand && handFirst && !this.charging && canStrike) {
         struck = true; this.lastStrike = 'hand';
+        // (the Air Swipe is chosen while the dodge still runs, before the strike ends it)
+        this.airSwipeNow = this.el === 'air' && !!this.airHandTech();
         this.buf.hand = 0; if (this.dodgeKind !== 'rocket' && this.dodgeKind !== 'arch') this.dodgeT = 0;
         if (this.counterT > 0) { this.counterT = 0; this.startAction('counter'); w.combat.lunge(this, ACTIONS.counter); w.popup(this, 'COUNTER', true); w.audio.whoosh(0.9); }
         else if (B.spiralRelease && B.spiralRelease(this)) { w.popup(this, 'RELEASE', true); }
-        else { this.handSide = -this.handSide; const riding = this.el === 'water' && st.tech.surfPunch && ((this.dodgeKind === 'arch' && this.dodgeT > 0) || (this.mob && this.mob.kind === 'surf')); this.startTech(riding ? st.tech.surfPunch : (this.el === 'fire' && this.fireHandTech()) || (this.el === 'earth' && this.earthHandTech()) || (this.el === 'air' && this.airHandTech()) || st.tech.hand, this.handSide, true); }
+        else { this.handSide = -this.handSide; const riding = this.el === 'water' && st.tech.surfPunch && ((this.dodgeKind === 'arch' && this.dodgeT > 0) || (this.mob && this.mob.kind === 'surf')); this.startTech(riding ? st.tech.surfPunch : (this.el === 'fire' && this.fireHandTech()) || (this.el === 'earth' && this.earthHandTech()) || (this.airSwipeNow && st.tech.airSwipe) || st.tech.hand, this.handSide, true); }
         this.handHoldT = 0;
-      }
-      // (20 Nov, added Air skill) Air: LEG with the stick pulled away from the rival: Air Swipe (Air's LEG is unchanged otherwise)
-      if (this.buf.leg && this.el === 'air' && this.onGround && !this.charging && canStrike && st.tech.airSwipe && this.pulledAway() && this.en >= st.tech.airSwipe.cost) {
-        this.buf.leg = 0; this.lastStrike = 'leg'; this.startTech(st.tech.airSwipe, this.handSide = -this.handSide, true);
       }
       // (20 Nov, Earth brief) Earth: LEG while GUARD is held: Slab Shackles (8 s cooldown); LEG with the stick pulled away
       // from the rival: Ground Shift (5 s cooldown)
@@ -461,16 +461,19 @@ export class Fighter {
           }
         }
       }
-      // (20 Nov, added Air skill) Air on the floor: SPECIAL tapped is the Tornado as before; held 0.3 s and let go, the Air
-      // Bomb (4 s cooldown; without energy or on cooldown, the Tornado). The Tornado waits for the release (at most 0.3 s).
-      if (this.el === 'air' && st.tech.airBomb) {
+      // (20 Nov, added Air skills) Air on the floor: SPECIAL tapped is the Tornado as before; held 0.3 s and let go, the Air
+      // Bomb (4 s cooldown); (21 Nov) held 1 s and let go, the Air Vortex (45 energy, 12 s cooldown). Without the energy
+      // or on cooldown it falls back a step. The Tornado waits for the release.
+      if (this.el === 'air' && st.tech.airBomb && !this.guarding) {
         if (this.buf.special && !this.charging && canStrike && this.onGround && (this.spT ?? -1) < 0) { this.buf.special = 0; this.spT = 0; }
         if ((this.spT ?? -1) >= 0) {
-          if (inp.specialHeld && this.spT < 0.3) { this.spT += dt; if (this.spT >= 0.3) w.popup(this, 'AIR BOMB', false); }
+          if (inp.specialHeld && this.spT < 1.0) { const was = this.spT; this.spT += dt; if (was < 0.3 && this.spT >= 0.3) w.popup(this, 'AIR BOMB', false); if (was < 1.0 && this.spT >= 1.0) w.popup(this, 'AIR VORTEX', false); }
           else {
-            const bomb = this.spT >= 0.3 && this.en >= st.tech.airBomb.cost && (this.bombCd || 0) <= this.time;
+            const vortex = this.spT >= 1.0 && this.en >= st.tech.airVortex.cost && (this.vortexCd || 0) <= this.time;
+            const bomb = !vortex && this.spT >= 0.3 && this.en >= st.tech.airBomb.cost && (this.bombCd || 0) <= this.time;
             this.spT = -1;
-            if (bomb) { this.bombCd = this.time + 4; this.startTech(st.tech.airBomb, 1); }
+            if (vortex) { this.vortexCd = this.time + 12; this.startTech(st.tech.airVortex, 1); }
+            else if (bomb) { this.bombCd = this.time + 4; this.startTech(st.tech.airBomb, 1); }
             else if (this.en >= st.tech.special.cost) this.startTech(st.tech.special, this.handSide);
           }
         }
@@ -1093,18 +1096,11 @@ export class Fighter {
     const w = this.world; w.bending.weapons.surfLaunch(this, 'earth'); this.vel.y = 15.5; this.onGround = false; this.highJump = true; this.airJumps = 0;
     w.audio.rumble(1.0); w.fx.dust(this.pos, 12, 3, 0xa08a6c);
   }
-  // the stick pulled away from the rival (more than 90 degrees off, pushed past half way)
-  pulledAway() {
-    const t = this.target, inp = this.input, sl = Math.hypot(inp.mx, inp.mz);
-    if (!t || t.dead || sl < 0.5) return false;
-    const dx = t.pos.x - this.pos.x, dz = t.pos.z - this.pos.z, d = Math.hypot(dx, dz) || 1;
-    return (inp.mx * dx + inp.mz * dz) / (sl * d) < -0.5;
-  }
-  // (20 Nov, added Air skill) HAND with the stick pulled away: Suction (5 s cooldown); otherwise the Air Whip as before
+  // (21 Nov, added Air skill) HAND during the dodge (the glide, or the corkscrew / cartwheel as it lands): the Air Swipe
+  // thrown out of it; otherwise the Air Whip
   airHandTech() {
     const st = this.style;
-    if (!st.tech.suction || !this.onGround || !this.pulledAway() || (this.suctionCd || 0) > this.time || this.en < st.tech.suction.cost) return null;
-    this.suctionCd = this.time + 5; return st.tech.suction;
+    return st.tech.airSwipe && (this.dodgeKind === 'glide' || this.dodgeKind === 'flip') && this.dodgeT > 0 && this.en >= st.tech.airSwipe.cost ? st.tech.airSwipe : null;
   }
   earthHandTech() {
     const st = this.style, t = this.target, inp = this.input;

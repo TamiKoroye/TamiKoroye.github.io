@@ -370,6 +370,15 @@ function step(dt) {
   world.bending.update(dt);
   world.fx.update(dt, (x, z, y) => world.arena.groundAt(x, z, y));
   world.audio.update(dt);
+  // (21 Nov, after review: the added Air moves were hidden) Air's buttons name the move they will throw right now:
+  // with GUARD held HAND / LEG / SPECIAL read AIR BLAST / AIR BLADES / SUCTION; in the glide HAND reads AIR SWIPE; while
+  // SPECIAL is held it reads AIR BOMB, then AIR VORTEX
+  if (player.el === 'air') {
+    const P = player, L = P.style.labels, g = P.guarding, gl = (P.dodgeKind === 'glide' || P.dodgeKind === 'flip') && P.dodgeT > 0, sp = P.spT ?? -1;
+    const want = { 'btn-hand': g ? 'AIR BLAST' : gl ? 'AIR SWIPE' : L.hand, 'btn-leg': g ? 'AIR BLADES' : L.leg,
+      'btn-special': g ? 'SUCTION' : sp >= 1 ? 'AIR VORTEX' : sp >= 0.3 ? 'AIR BOMB' : L.special };
+    for (const id in want) { const b = $(id); if (b && b._airLab !== want[id]) { b._airLab = want[id]; const sm = b.querySelector('small'); if (sm) sm.textContent = want[id]; b.classList.toggle('airalt', want[id] !== L[id.slice(4)]); } }
+  } else for (const id of ['btn-hand', 'btn-leg', 'btn-special']) { const b = $(id); if (b && b._airLab) { b._airLab = null; b.classList.remove('airalt'); const sm = b.querySelector('small'); if (sm) sm.textContent = player.style.labels[id.slice(4)]; } }
   // Fire holding GUARD: the SPECIAL button reads DRAGON BREATH (GUARD + SPECIAL breathes fire) and glows
   { const br = player.el === 'fire' && player.guarding, b = $('btn-special');
     if (b && br !== b._breath) { b._breath = br; const sm = b.querySelector('small'); if (sm) sm.textContent = br ? "DRAGON'S BREATH" : player.style.labels.special; b.classList.toggle('breath', br); } }

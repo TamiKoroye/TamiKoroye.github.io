@@ -592,6 +592,7 @@ export class Bending {
         this.weapons.wave(f, 'air', { width: 7, life: 0.75, speed: 22, dmg: 8, knock: 18, level: 2 }); w.shake(0.2, f.pos); return;
       }
       case 'air.specialStart': this.specials.airStart(f); return;
+      case 'air.vortexStart': this.specials.airStart(f, true); return;   // (21 Nov) the Air Vortex
       case 'air.special': this.specials.airSend(f); return;
       case 'earth.specialStart': this.specials.earthStart(f); return;
       case 'earth.special': this.specials.earthRupture(f); return;

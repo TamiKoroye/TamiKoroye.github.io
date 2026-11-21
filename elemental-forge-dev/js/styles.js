@@ -264,10 +264,11 @@ const water = {
 const air = {
   key: 'air', name: 'Air', art: 'Baguazhang', color: 0xd9e3e8, sash: 0xe0a33a,
   stance: airStance,
-  loco: { walk: 3.4, run: 7.4, sprint: 10.6, accel: 42, stride: 1.2, bob: 0.4, knee: 0.75, lean: 1.2, swing: 0.25, elbow: 0.3, carry: 0.55, out: 0.0, heavy: 0.4 },
+  // (21 Nov, after review: "Air bending should feel super super fast compared to others") was walk 3.4, run 7.4, sprint 10.6, accel 42
+  loco: { walk: 4.2, run: 9.2, sprint: 13.0, accel: 70, stride: 1.2, bob: 0.4, knee: 0.75, lean: 1.2, swing: 0.25, elbow: 0.3, carry: 0.55, out: 0.0, heavy: 0.4 },
   jump: { v: 7.8, air: 1 },
   dodge: { kind: 'airdash', dur: 0.36, speed: 19, iframes: 0.85, trail: 'air' },
-  labels: { hand: 'AIR PALM', leg: 'AIR KICK', guard: 'DEFLECT', special: 'TORNADO' },
+  labels: { hand: 'AIR PALM', leg: 'AIR KICK', guard: 'DEFLECT', special: 'TORNADO · HOLD' },   // (21 Nov: HOLD, the Air Bomb and the Vortex)
   tech: {
     hand: T({ name: 'Air Palm', clip: ['whip_h', 'whip_d', 'fire_punch', 'whip_v'], clipSpeed: 2.1, onStart: 'air.whipOut', dur: 0.32, reach: 4.3, cost: 6, cancel: 0.52, upper: true, move: 5, lunge: 11,
       active: { from: 0.3, to: 0.5, dmg: 4, range: 1.9, arc: 0.4, knock: 6, level: 0 },
@@ -526,11 +527,21 @@ STYLES.fire.tech.groundStab = T({ name: 'Grounded Stab', clip: 'hard_land', clip
 // above stay exactly as they were; these are added on inputs Air did not use before (fighter.js):
 //   GUARD + HAND: Air Blast, a compressed palm strike thrown as a ball of spiralling wind
 //   GUARD + LEG: Air Blades, two narrow blades from alternate hands
-//   HAND with the stick pulled away: Suction, the rival hauled in, stumbling
-//   LEG with the stick pulled away: Air Swipe, an upright crescent of wind that drives the rival sideways
+//   GUARD + SPECIAL: Suction, the rival hauled in, stumbling
+//   HAND during the glide dodge: Air Swipe, an upright crescent of wind that drives the rival sideways
 //   SPECIAL held 0.3 s and let go: Air Bomb, a crouch and a radial burst round the bender (SPECIAL tapped: the Tornado)
+//   SPECIAL held 1 s and let go: Air Vortex, the second strong special (specials.js airStart big)
+// (21 Nov, after review: "there is no stick, this is a phone game") the two inputs that needed the movement thumb pulled
+// away from the rival (Suction, Air Swipe) moved to GUARD + SPECIAL and to HAND during the glide; while GUARD is held or
+// the glide runs, the buttons name the move they will throw (main.js)
 STYLES.air.tech.airBlast = T({ name: 'Air Blast', clip: 'air_palm', clipSpeed: 1.4, dur: 0.64, cost: 6, cancel: 0.55, upper: true, move: 1, keys: K0, events: [[0.45, 'air.blast']] });
 STYLES.air.tech.airSwipe = T({ name: 'Air Swipe', clip: 'air_vortex', clipSpeed: 1.6, dur: 0.6, cost: 9, cancel: 0.65, move: 1.2, keys: K0, events: [[0.45, 'air.swipe']] });
 STYLES.air.tech.airBlades = T({ name: 'Air Blades', clip: 'whip_d', clipSpeed: 1.8, dur: 0.55, cost: 9, cancel: 0.65, upper: true, move: 0.8, keys: K0, events: [[0.45, 'air.blade1'], [0.6, 'air.blade2']] });
 STYLES.air.tech.airBomb = T({ name: 'Air Bomb', clip: 'stand_jump', clipSpeed: 1.5, dur: 0.95, cost: 16, cancel: 0.75, move: 0, keys: K0, rawTiming: true, events: [[0.32, 'air.bomb']] });
 STYLES.air.tech.suction = T({ name: 'Suction', clip: 'water_redirect', clipSpeed: 1.5, dur: 0.6, cost: 10, cancel: 0.7, upper: true, move: 0.5, keys: K0, events: [[0.4, 'air.suction']] });
+// (21 Nov) Air Vortex: the arms circle in front of the body (the qigong circling of the guard) while the cyclone winds
+// up round the bender, then it is sent at the rival
+STYLES.air.tech.airVortex = T({ name: 'Air Vortex', clip: 'water_flow', clipSpeed: 2.4, keepDur: true, onStart: 'air.vortexStart', dur: 0.9, cost: 45, cancel: 0.9, move: 0, rawTiming: true, keys: K0, events: [[0.8, 'air.special']] });
+// (21 Nov, after review: "Air bending should feel super super fast") every Air technique plays 1.3 times faster, so its
+// strikes land sooner and recover sooner (mocap.js adoptTiming)
+STYLES.air.tempo = 1.3;

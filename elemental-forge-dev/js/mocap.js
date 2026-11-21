@@ -35,7 +35,7 @@ export function requiredClips(styles) {
     'jump_high', 'air_loop', 'fall_loop', 'land_high', 'knockback', 'ko_b', 'ko_c', 'hit_big', 'hit_big_M', 'hit_body', 'run_loop', 'sprint_loop', 'walk_back', 'run_stop', 'fall_roll', 'wall_run', 'wall_run_M', 'wall_flip', 'struggle', 'surf_stance', 'water_flow', 'water_gather', 'turn_spin',
     'skate_ride', 'run_arc_l', 'thrown_fall', 'thrown_fall_M', 'side_fall', 'side_fall_M', 'sweep_fall', 'sweep_fall_M', 'hard_land', 'getup2', 'hit_stomach', 'hit_stomach_M', 'hit_stomach_big', 'hit_stomach_big_M', 'hit_uppercut', 'hit_uppercut_M', 'fire_action', 'fire_air_pose', 'surf_stance', 'water_pool', 'air_cork', 'air_cork_M', 'cartwheel', 'cartwheel_M', 'air_fly', 'air_float', 'getup_cork']);
   for (const L of Object.values(LOOPS)) for (const n of Object.values(L)) need.add(n);
-  for (const st of Object.values(styles)) { const t = st.tech; for (const T of [t.hand, ...(t.leg || []), t.legMove, t.charged, t.special, t.stomp, t.release, t.airKick, t.flip, t.flipBack, t.roll, t.whipSlam, t.icePunch, t.glideBlast, t.breath, t.surfPunch, t.airFlip, t.melee, t.whip, t.bomb, t.comet, t.dust, t.sink, t.quicksand, t.armour, t.storm, t.thrust, t.earthHand, t.shift, t.shackles, t.breaker, t.groundStab, t.airBlast, t.airSwipe, t.airBlades, t.airBomb, t.suction]) if (T && T.clip) for (const n of (Array.isArray(T.clip) ? T.clip : [T.clip])) need.add(n); }
+  for (const st of Object.values(styles)) { const t = st.tech; for (const T of [t.hand, ...(t.leg || []), t.legMove, t.charged, t.special, t.stomp, t.release, t.airKick, t.flip, t.flipBack, t.roll, t.whipSlam, t.icePunch, t.glideBlast, t.breath, t.surfPunch, t.airFlip, t.melee, t.whip, t.bomb, t.comet, t.dust, t.sink, t.quicksand, t.armour, t.storm, t.thrust, t.earthHand, t.shift, t.shackles, t.breaker, t.groundStab, t.airBlast, t.airSwipe, t.airBlades, t.airBomb, t.suction, t.airVortex]) if (T && T.clip) for (const n of (Array.isArray(T.clip) ? T.clip : [T.clip])) need.add(n); }
   return [...need].filter(n => !MOCAP[n]);
 }
 
@@ -77,7 +77,7 @@ const CLIP_SPEED = { water_ripple: 1.5, water_twirl: 1.6, water_spin: 1.5, whip_
 
 const names = (T) => (Array.isArray(T.clip) ? T.clip : [T.clip]);
 function techList(st) {
-  const t = st.tech; return [t.hand, ...(t.leg || []), t.legMove, t.charged, t.special, t.stomp, t.release, t.airKick, t.flip, t.flipBack, t.roll, t.whipSlam, t.icePunch, t.glideBlast, t.breath, t.surfPunch, t.airFlip, t.melee, t.whip, t.bomb, t.comet, t.dust, t.sink, t.quicksand, t.armour, t.storm, t.thrust, t.earthHand, t.shift, t.shackles, t.breaker, t.groundStab, t.airBlast, t.airSwipe, t.airBlades, t.airBomb, t.suction].filter(Boolean);
+  const t = st.tech; return [t.hand, ...(t.leg || []), t.legMove, t.charged, t.special, t.stomp, t.release, t.airKick, t.flip, t.flipBack, t.roll, t.whipSlam, t.icePunch, t.glideBlast, t.breath, t.surfPunch, t.airFlip, t.melee, t.whip, t.bomb, t.comet, t.dust, t.sink, t.quicksand, t.armour, t.storm, t.thrust, t.earthHand, t.shift, t.shackles, t.breaker, t.groundStab, t.airBlast, t.airSwipe, t.airBlades, t.airBomb, t.suction, t.airVortex].filter(Boolean);
 }
 
 // Rewrites dur / events / active window / jump / cancel of every technique that names a clip, keeping each
@@ -87,9 +87,9 @@ export function adoptTiming(styles) {
   for (const st of Object.values(styles)) for (const T of techList(st)) {
     if (!T.clip) continue;
     const list = names(T).filter(n => MOCAP[n]); if (!list.length) continue;
-    const orig = { dur: T.dur, rawTiming: T.rawTiming, events: T.events, active: T.active, jumpAt: T.jumpAt, cancel: T.cancel, full: T.full };
+    const orig = { dur: T.dur, keepDur: T.keepDur, rawTiming: T.rawTiming, events: T.events, active: T.active, jumpAt: T.jumpAt, cancel: T.cancel, full: T.full };
     // every alternative take gets its own timing, so each plays at its proper speed with its impact on the hit
-    const timings = list.map(n => timing(orig, n, T.clipSpeed || CLIP_SPEED[n] || SPEED[st.key] || 1.5));
+    const timings = list.map(n => timing(orig, n, (T.clipSpeed || CLIP_SPEED[n] || SPEED[st.key] || 1.5) * (T.keepDur ? 1 : st.tempo || 1)));   // (st.tempo: Air plays faster)
     Object.assign(T, timings[0]); T.clip = list[0];
     if (T.spin) delete T.spin;
     if (list.length > 1) T.variants = timings.map(tm => Object.assign(Object.create(T), tm, { variantOf: T }));
@@ -97,7 +97,8 @@ export function adoptTiming(styles) {
 }
 function timing(orig, name, sp) {
   const m = MOCAP[name];
-  const dur = m.clip.duration / sp;
+  // (keepDur: a technique built on part of a long loop keeps its own length and plays only that much of the clip)
+  const dur = orig.keepDur ? orig.dur : m.clip.duration / sp;
   const u0 = orig.events && orig.events.length ? orig.events[0][0] : (orig.active ? orig.active.from : 0.4);
   const evU = (m.impact ?? m.clip.duration * 0.5) / m.clip.duration;   // evasions without a strike: timed from the middle
   const map = (u) => THREE.MathUtils.clamp(evU + (u - u0) * orig.dur / dur, 0, 0.98);
@@ -125,6 +126,6 @@ export function clipFor(T, side) {
     const kind = m.limb[0], want = kind + (kind === 'p' ? (side > 0 ? 'R' : 'L') : (side > 0 ? 'L' : 'R'));
     if (m.limb !== want && MOCAP[base + '_M']) name = base + '_M';
   }
-  const ts = m.impact !== undefined && T.impactT ? THREE.MathUtils.clamp(m.impact / T.impactT, 0.6, 3) : T.dur ? THREE.MathUtils.clamp(m.clip.duration / T.dur, 0.6, 4) : 1;
+  const ts = T.keepDur ? (T.clipSpeed || 1) : m.impact !== undefined && T.impactT ? THREE.MathUtils.clamp(m.impact / T.impactT, 0.6, 3) : T.dur ? THREE.MathUtils.clamp(m.clip.duration / T.dur, 0.6, 4) : 1;
   return [name, ts];
 }
