@@ -462,7 +462,7 @@ STYLES.water.tech.hand.name = 'Water Whip';
 STYLES.air.tech.hand.name = 'Air Whip';
 STYLES.water.tech.handHold.name = 'Twin Water Whips';
 STYLES.air.tech.handHold.name = 'Twin Air Streams';
-STYLES.water.labels.hand = 'WATER WHIP'; STYLES.air.labels.hand = 'AIR WHIP';
+STYLES.water.labels.hand = 'WATER WHIP'; STYLES.air.labels.hand = 'AIR WHIP · HOLD BLAST';
 STYLES.air.tech.charged.events = [[0.55, 'air.charged']];   // one compressed release
 
 // Air's kicks (19 Nov, from the reference video's airbender): a low wind sweep and the floor spin in a whirl of wind
@@ -523,17 +523,15 @@ STYLES.earth.tech.breaker = T({ name: 'Earthbreaker', clip: 'earth_pillar', clip
 // hitboxes (elements.js bladeContact)
 STYLES.fire.tech.groundStab = T({ name: 'Grounded Stab', clip: 'hard_land', clipSpeed: 2.2, dur: 0.6, cost: 4, cancel: 0.8, move: 1.2, lunge: 12, keys: K0, events: [[0.42, 'fire.dagger']] });
 
-// (20 Nov, Airbending brief, after review: "you were meant to ADD new skills to Air, not change it") the Air moves
-// above stay exactly as they were; these are added on inputs Air did not use before (fighter.js):
-//   GUARD + HAND: Air Blast, a compressed palm strike thrown as a ball of spiralling wind
-//   GUARD + LEG: Air Blades, two narrow blades from alternate hands
-//   GUARD + SPECIAL: Suction, the rival hauled in, stumbling
-//   HAND during the glide dodge: Air Swipe, an upright crescent of wind that drives the rival sideways
-//   SPECIAL held 0.3 s and let go: Air Bomb, a crouch and a radial burst round the bender (SPECIAL tapped: the Tornado)
-//   SPECIAL held 1 s and let go: Air Vortex, the second strong special (specials.js airStart big)
-// (21 Nov, after review: "there is no stick, this is a phone game") the two inputs that needed the movement thumb pulled
-// away from the rival (Suction, Air Swipe) moved to GUARD + SPECIAL and to HAND during the glide; while GUARD is held or
-// the glide runs, the buttons name the move they will throw (main.js)
+// (20 Nov, Airbending brief) the added Air skills. (21 Nov, after review: "the new moves need to be out, similar to Fire:
+// long press HAND and different moves come out ... I can't be holding GUARD and another option") every one comes from a
+// single button, by tap or long press and by where the rival is (fighter.js airHandTech and the LEG / SPECIAL tiers):
+//   HAND tap: rival within 2.5 m the palm combination; 2.5 to 8.5 m the Air Whip as before; beyond 8.5 m Suction
+//   HAND long press: the Twin Air Streams as before; letting go fires the Air Blast
+//   HAND during the dodge: the Air Swipe
+//   LEG tap: the kicks as before; the rival beyond 5 m, the Air Blades
+//   LEG long press: the Air Compression as before; in the air, the Air Bomb dive (it bursts where he lands)
+//   SPECIAL: tap the Tornado; held 0.3 s the Air Bomb; held 1 s the Air Vortex
 STYLES.air.tech.airBlast = T({ name: 'Air Blast', clip: 'air_palm', clipSpeed: 1.4, dur: 0.64, cost: 6, cancel: 0.55, upper: true, move: 1, keys: K0, events: [[0.45, 'air.blast']] });
 STYLES.air.tech.airSwipe = T({ name: 'Air Swipe', clip: 'air_vortex', clipSpeed: 1.6, dur: 0.6, cost: 9, cancel: 0.65, move: 1.2, keys: K0, events: [[0.45, 'air.swipe']] });
 STYLES.air.tech.airBlades = T({ name: 'Air Blades', clip: 'whip_d', clipSpeed: 1.8, dur: 0.55, cost: 9, cancel: 0.65, upper: true, move: 0.8, keys: K0, events: [[0.45, 'air.blade1'], [0.6, 'air.blade2']] });
@@ -545,3 +543,9 @@ STYLES.air.tech.airVortex = T({ name: 'Air Vortex', clip: 'water_flow', clipSpee
 // (21 Nov, after review: "Air bending should feel super super fast") every Air technique plays 1.3 times faster, so its
 // strikes land sooner and recover sooner (mocap.js adoptTiming)
 STYLES.air.tempo = 1.3;
+// (21 Nov) the palm combination, close in (HAND taps within 2.5 m): open palm, turning palm, gale kick
+STYLES.air.tech.airCombo = [
+  T({ name: 'Air Palm Strike', clip: 'fire_jab', clipSpeed: 2.2, dur: 0.38, cost: 4, cancel: 0.5, upper: true, move: 1.5, lunge: 6, keys: K0, events: [[0.4, 'air.combo0']] }),
+  T({ name: 'Turning Palm', clip: 'whip_h', clipSpeed: 2.0, dur: 0.45, cost: 4, cancel: 0.55, upper: true, move: 1.5, lunge: 5, keys: K0, events: [[0.4, 'air.combo1']] }),
+  T({ name: 'Gale Kick', clip: 'move_kick', clipSpeed: 1.7, dur: 0.6, cost: 6, cancel: 0.7, move: 1.2, lunge: 4, keys: K0, events: [[0.45, 'air.combo2']] }),
+];

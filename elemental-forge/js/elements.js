@@ -283,6 +283,9 @@ export class Bending {
       // (20 Nov, Earth phase one) the new skills (earth.js); Dust Cloud is the charged storm if HAND is still held
       // (20 Nov, Airbending brief) the added Air skills (air.js)
       case 'air.blast': this.air.blast(f, f.techSide); return;
+      case 'air.combo0': this.air.comboHit(f, 0); return;
+      case 'air.combo1': this.air.comboHit(f, 1); return;
+      case 'air.combo2': this.air.comboHit(f, 2); return;
       case 'air.swipe': this.air.swipe(f); return;
       case 'air.blade1': this.air.blades(f, f.techSide); return;
       case 'air.blade2': this.air.blades(f, -f.techSide); return;
