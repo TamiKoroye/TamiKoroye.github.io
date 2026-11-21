@@ -375,10 +375,12 @@ export class Fighter {
       let struck = false;
       if (this.buf.hand && handFirst && !this.charging && canStrike) {
         struck = true; this.lastStrike = 'hand';
+        // (the Air Swipe is chosen while the dodge still runs, before the strike ends it)
+        this.airSwipeNow = this.el === 'air' && !!this.airHandTech();
         this.buf.hand = 0; if (this.dodgeKind !== 'rocket' && this.dodgeKind !== 'arch') this.dodgeT = 0;
         if (this.counterT > 0) { this.counterT = 0; this.startAction('counter'); w.combat.lunge(this, ACTIONS.counter); w.popup(this, 'COUNTER', true); w.audio.whoosh(0.9); }
         else if (B.spiralRelease && B.spiralRelease(this)) { w.popup(this, 'RELEASE', true); }
-        else { this.handSide = -this.handSide; const riding = this.el === 'water' && st.tech.surfPunch && ((this.dodgeKind === 'arch' && this.dodgeT > 0) || (this.mob && this.mob.kind === 'surf')); this.startTech(riding ? st.tech.surfPunch : (this.el === 'fire' && this.fireHandTech()) || (this.el === 'earth' && this.earthHandTech()) || (this.el === 'air' && this.airHandTech()) || st.tech.hand, this.handSide, true); }
+        else { this.handSide = -this.handSide; const riding = this.el === 'water' && st.tech.surfPunch && ((this.dodgeKind === 'arch' && this.dodgeT > 0) || (this.mob && this.mob.kind === 'surf')); this.startTech(riding ? st.tech.surfPunch : (this.el === 'fire' && this.fireHandTech()) || (this.el === 'earth' && this.earthHandTech()) || (this.airSwipeNow && st.tech.airSwipe) || st.tech.hand, this.handSide, true); }
         this.handHoldT = 0;
       }
       // (20 Nov, Earth brief) Earth: LEG while GUARD is held: Slab Shackles (8 s cooldown); LEG with the stick pulled away
@@ -1094,10 +1096,11 @@ export class Fighter {
     const w = this.world; w.bending.weapons.surfLaunch(this, 'earth'); this.vel.y = 15.5; this.onGround = false; this.highJump = true; this.airJumps = 0;
     w.audio.rumble(1.0); w.fx.dust(this.pos, 12, 3, 0xa08a6c);
   }
-  // (21 Nov, added Air skill) HAND during the glide dodge: the Air Swipe thrown out of the glide; otherwise the Air Whip
+  // (21 Nov, added Air skill) HAND during the dodge (the glide, or the corkscrew / cartwheel as it lands): the Air Swipe
+  // thrown out of it; otherwise the Air Whip
   airHandTech() {
     const st = this.style;
-    return st.tech.airSwipe && this.dodgeKind === 'glide' && this.dodgeT > 0 && this.en >= st.tech.airSwipe.cost ? st.tech.airSwipe : null;
+    return st.tech.airSwipe && (this.dodgeKind === 'glide' || this.dodgeKind === 'flip') && this.dodgeT > 0 && this.en >= st.tech.airSwipe.cost ? st.tech.airSwipe : null;
   }
   earthHandTech() {
     const st = this.style, t = this.target, inp = this.input;

@@ -374,7 +374,7 @@ function step(dt) {
   // with GUARD held HAND / LEG / SPECIAL read AIR BLAST / AIR BLADES / SUCTION; in the glide HAND reads AIR SWIPE; while
   // SPECIAL is held it reads AIR BOMB, then AIR VORTEX
   if (player.el === 'air') {
-    const P = player, L = P.style.labels, g = P.guarding, gl = P.dodgeKind === 'glide' && P.dodgeT > 0, sp = P.spT ?? -1;
+    const P = player, L = P.style.labels, g = P.guarding, gl = (P.dodgeKind === 'glide' || P.dodgeKind === 'flip') && P.dodgeT > 0, sp = P.spT ?? -1;
     const want = { 'btn-hand': g ? 'AIR BLAST' : gl ? 'AIR SWIPE' : L.hand, 'btn-leg': g ? 'AIR BLADES' : L.leg,
       'btn-special': g ? 'SUCTION' : sp >= 1 ? 'AIR VORTEX' : sp >= 0.3 ? 'AIR BOMB' : L.special };
     for (const id in want) { const b = $(id); if (b && b._airLab !== want[id]) { b._airLab = want[id]; const sm = b.querySelector('small'); if (sm) sm.textContent = want[id]; b.classList.toggle('airalt', want[id] !== L[id.slice(4)]); } }
