@@ -15,24 +15,31 @@ HAND: Air Whip chain. HAND held: Twin Air Streams. LEG: kick chain; LEG charged:
 glide, every second dodge the Corkscrew Evade or the Cartwheel; in the air a somersault. JUMP: flight (JUMP held
 climbs). In the air LEG: Hurricane Kick. GUARD: the whirlwind shield. SPECIAL: Tornado.
 
-## Added
+## Added (r40: single buttons, as Fire)
 
-| Input | Added skill | The button reads |
-|---|---|---|
-| GUARD + HAND | Air Blast: a compressed palm strike, a ball of spiralling wind | HAND: AIR BLAST while GUARD is held |
-| GUARD + LEG | Air Blades: two narrow blades from alternate hands | LEG: AIR BLADES while GUARD is held |
-| GUARD + SPECIAL | Suction: the rival hauled in, stumbling (5 s cooldown) | SPECIAL: SUCTION while GUARD is held |
-| HAND during the dodge (glide or flip) | Air Swipe: an upright crescent of wind that drives the rival sideways | HAND: AIR SWIPE during the dodge |
-| SPECIAL held 0.3 s, let go | Air Bomb: a crouch and a radial burst; close in, a knockdown (4 s cooldown) | SPECIAL: AIR BOMB once held long enough |
-| SPECIAL held 1 s, let go | Air Vortex: a second strong special, a cyclone half again as big as the Tornado that catches the rival, lifts and turns them about 4 m up and throws them (9 + 18 damage, 45 energy, 12 s cooldown) | SPECIAL: AIR VORTEX once held long enough |
+"I can't be holding GUARD and another option ... they need to be out, similar to Fire: long press HAND and different
+moves come out." The GUARD combinations are gone. Every move comes from one button, by tap or long press and by where
+the rival is; the button's label names what a tap will throw at that moment (white glow when it is an added move).
 
-SPECIAL tapped is still the Tornado (the button reads TORNADO · HOLD).
+| Button | Air |
+|---|---|
+| HAND tap, rival within 3 m | palm combination: Air Palm Strike, Turning Palm, Gale Kick |
+| HAND tap, 3 to 8.5 m | Air Whip (as before) |
+| HAND tap, rival beyond 8.5 m | Suction: hauls them in (5 s cooldown) |
+| HAND long press | Twin Air Streams (as before); letting go fires the Air Blast |
+| HAND during the dodge | Air Swipe |
+| LEG tap, close | the kicks (as before) |
+| LEG tap, rival beyond 5 m | Air Blades |
+| LEG long press | Air Compression (as before) |
+| LEG long press in the air or in flight | Air Bomb dive: down on a column of wind, the burst where he lands |
+| SPECIAL tap | Tornado |
+| SPECIAL held 0.3 s | Air Bomb |
+| SPECIAL held 1 s | Air Vortex |
 
 ## After review (21 Nov, r39)
 
 "There is no stick. This is a phone game." The two inputs that needed the movement thumb pulled away from the rival are
-gone: Suction is on GUARD + SPECIAL, the Air Swipe on HAND during the dodge. The buttons name the added move whenever it
-is available (white glow).
+gone (r40: see the table above).
 
 "Visually, the moves of Air do not look devastating. He has just one strong special." Every Air blow that lands throws
 35 % harder and bursts: a ring of wind round the body (two on a stagger or knockdown, one across the floor), streaks
