@@ -142,7 +142,8 @@ export class AirSkills {
   // forward into a stumbling stagger (3), an opening for the palms or the Air Bomb.
   suction(f) {
     const w = this.world, t = f.target && !f.target.dead ? f.target : null;
-    if (!t || Math.hypot(t.pos.x - f.pos.x, t.pos.z - f.pos.z) > 11 || t.invuln > 0) { w.audio.gust(0.5); return; }
+    // (21 Nov) reaches 20 m (was 11: HAND throws Suction at a rival beyond 8.5 m, so the pull has to reach well past that)
+    if (!t || Math.hypot(t.pos.x - f.pos.x, t.pos.z - f.pos.z) > 20 || t.invuln > 0) { w.audio.gust(0.5); return; }
     const toMe = new THREE.Vector3(f.pos.x - t.pos.x, 0, f.pos.z - t.pos.z), d = toMe.length(); toMe.normalize();
     w.combat.damage(t, 3, toMe.clone(), f, 'suction', t.chestPos(new THREE.Vector3()), 0, 1);
     this.pulls.push({ f, t, dir: toMe, left: Math.max(0, d - 1.6), t0: 0, cone: this.body(this.coneGeo, { opacity: 0.6, twist: 5, flow: -6 }) });
