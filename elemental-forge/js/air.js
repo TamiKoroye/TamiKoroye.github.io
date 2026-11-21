@@ -34,7 +34,7 @@ export function windMaterial(o = {}) {
 export class AirSkills {
   constructor(B) {
     this.B = B; this.world = B.world;
-    this.shots = []; this.bursts = []; this.funnels = new Map(); this.pulls = [];
+    this.shots = []; this.bursts = []; this.funnels = new Map(); this.pulls = []; this.smothers = [];
     this.sphereGeo = new THREE.SphereGeometry(1, 20, 14);
     this.ringGeo = new THREE.TorusGeometry(1, 0.12, 6, 28);
     // a crescent: a band of a ring, lying flat, opening forward (+Z)
@@ -109,7 +109,9 @@ export class AirSkills {
   // Two quick cuts of the hands release two narrow blades of high-pressure air, crossing on the diagonal, thin and bright
   // edged, fast (30 m/s). Each cut is a sharp recoil (6, no knockdown); both landing within half a second is a stagger.
   blades(f, which) {
-    const from = f.handPos(which > 0 ? 'R' : 'L', new THREE.Vector3()), dir = this.aimDir(f, from);
+    // (21 Nov) thrown by a kick (LEG): from the kicking foot, the higher one; otherwise from the hand
+    const kick = f.tech && f.tech.name === 'Air Blades', fl = f.footPos('L', new THREE.Vector3()), fr = f.footPos('R', new THREE.Vector3());
+    const from = kick ? (fl.y > fr.y ? fl : fr).setY(Math.max(fl.y, fr.y, f.pos.y + 0.6)) : f.handPos(which > 0 ? 'R' : 'L', new THREE.Vector3()), dir = this.aimDir(f, from);
     const m = this.body(this.bladeGeo, { opacity: 0.95, twist: 1.5, flow: 8, color: 0xe4f3ff });
     m.userData.roll = which > 0 ? 0.7 : -0.7;
     this.shots.push({ kind: 'blade', f, pos: from.clone().addScaledVector(dir, 0.4), dir, speed: 30, range: 14, t: 0, core: m, rings: [], r: 0.55, dmg: 6, from: from.clone() });
@@ -177,7 +179,43 @@ export class AirSkills {
     } else F.onT = Math.max(0, F.onT - dt);
   }
 
+  // ---------------------------------------------------------------- Suffocation (SPECIAL tapped, the rival close)
+  // (21 Nov, the user's special: "a suffocation air bubble around the opponent's head, from the air they breathe") the
+  // bender's palms draw the air from round the rival's face into a sealed bubble over the head: 2.5 s in it, they cannot
+  // fight back and stagger about (the struggle), losing 3 every 0.4 s; then it bursts and they double over gasping (a
+  // stagger, 6 more)
+  suffocate(f) {
+    const w = this.world, t = f.target && !f.target.dead ? f.target : null;
+    if (!t || Math.hypot(t.pos.x - f.pos.x, t.pos.z - f.pos.z) > 7 || t.invuln > 0) { w.audio.gust(0.5); return; }
+    const m = this.body(this.sphereGeo, { opacity: 0.55, twist: 6, flow: -4, color: 0xdcecf8 });
+    this.smothers.push({ f, t, m, t0: 0, tick: 0.4 });
+    for (let i = 0; i < 14; i++) { const a = i / 14 * 6.28; w.fx.wind(t.chestPos(_v).add(_v2.set(Math.cos(a) * 1.4, 0.5, Math.sin(a) * 1.4)), _v3.set(-Math.cos(a) * 6, 0.4, -Math.sin(a) * 6), 0.5, 0.3); }
+    w.audio.gust(1.0, t.pos); w.popup(t, 'SUFFOCATING', true);
+  }
+  // the gust of the Air Compression: a storm of streaks along its path, dust torn up off the floor, a ring and a shake
+  gustStorm(f, len = 10) {
+    const w = this.world, fw = f.forward(new THREE.Vector3()).setY(0).normalize(), gy = f.groundY;
+    w.fx.ring(_v.set(f.pos.x + fw.x, gy + 0.1, f.pos.z + fw.z), 5, 0xffffff, 0.5); w.fx.ring(_v.set(f.pos.x, f.pos.y + 1.2, f.pos.z), 3.5, 0xeaf4fb, 0.35);
+    for (let i = 0; i < 40; i++) { const s = Math.random() * len, side = (Math.random() - 0.5) * (2 + s * 0.6); w.fx.wind(_v.set(f.pos.x + fw.x * s - fw.z * side, gy + 0.3 + Math.random() * 2.2, f.pos.z + fw.z * s + fw.x * side), _v2.set(fw.x * 26, Math.random() * 2, fw.z * 26), 0.9, 0.45); }
+    for (let s = 1; s < len; s += 1.2) w.fx.dust(_v.set(f.pos.x + fw.x * s, gy, f.pos.z + fw.z * s), 3, 2.5);
+    w.shake(0.45, f.pos); w.audio.gust(1.5, f.pos); w.audio.airBurst(1.2, f.pos);
+  }
   update(dt) {
+    for (const S of this.smothers) {
+      const t = S.t; S.t0 += dt;
+      const head = t.chestPos(_v).setY(t.pos.y + 1.62), grow = Math.min(1, S.t0 / 0.25);
+      S.m.position.copy(head); S.m.scale.setScalar(0.42 * grow * (1 + 0.05 * Math.sin(S.t0 * 9))); S.m.material.uniforms.uTime.value = S.t0;
+      if (!t.dead && S.t0 < 2.5) {
+        t.restrainT = Math.max(t.restrainT, 0.15); if (t.action === 'tech') { t.action = null; t.tech = null; }
+        S.tick -= dt; if (S.tick <= 0) { S.tick = 0.4; this.world.combat.damage(t, 3, _v2.set(0, 0, 0), S.f, 'suffocate', head.clone(), 0, -1); }
+        if (Math.random() < 0.3) this.world.fx.wind(head.clone().add(_v2.set(rand(-0.4, 0.4), rand(-0.3, 0.3), rand(-0.4, 0.4))), _v3.set(rand(-1, 1), 1, rand(-1, 1)), 0.3, 0.3);
+      } else {
+        if (!t.dead) { t.restrainT = 0; this.world.combat.damage(t, 6, _v2.set(t.pos.x - S.f.pos.x, 0, t.pos.z - S.f.pos.z).normalize().clone(), S.f, 'suffocate', head.clone(), 2, 1); this.world.popup(t, 'GASP', true); }
+        for (let i = 0; i < 12; i++) this.world.fx.wind(head.clone(), _v3.set(rand(-5, 5), rand(-1, 4), rand(-5, 5)), 0.5, 0.3);
+        this.world.audio.gust(0.9, head); this.drop(S.m); S.dead = true;
+      }
+    }
+    this.smothers = this.smothers.filter(S => !S.dead);
     const w = this.world;
     for (const S of this.shots) {
       S.t += dt; S.pos.addScaledVector(S.dir, S.speed * dt);
@@ -237,6 +275,7 @@ export class AirSkills {
     for (const P of this.bursts) this.drop(P.m);
     for (const P of this.pulls) this.drop(P.cone);
     for (const F of this.funnels.values()) this.drop(F.cone);
-    this.shots = []; this.bursts = []; this.pulls = []; this.funnels.clear();
+    for (const S of this.smothers) { this.drop(S.m); if (S.t) S.t.restrainT = 0; }
+    this.shots = []; this.bursts = []; this.pulls = []; this.funnels.clear(); this.smothers = [];
   }
 }

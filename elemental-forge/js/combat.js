@@ -60,7 +60,11 @@ export class Combat {
     const w = this.world;
     if (from && from.armour && from !== t && dmg > 0) { dmg *= 1.4; knock *= 1.3; }   // (20 Nov) the Rock Man's stone fists and feet
     // a raised defence is resolved before any damage: coverage by direction, element rules, durability
-    if (t.guarding && t.defense && from && from !== t && kind !== 'proj') {
+    // (21 Nov, after review: "Air should be able to slice through certain defences") the Air Blades, Swipe and Blast cut
+    // straight through a wall of fire or water; stone still stops them
+    const sliced = from && from !== t && from.el === 'air' && /^(airBlade|airSwipe|airBlast)$/.test(kind) && t.guarding && t.defense && t.defense.el !== 'earth';
+    if (sliced) w.popup(t, 'SLICED', true);
+    if (t.guarding && t.defense && from && from !== t && kind !== 'proj' && !sliced) {
       // perfectly timed guard against a blow: the attacker is thrown off balance and a counter opens
       if (level >= 0 && t.guardT < 0.25 && !from.dead && w.bending.covers(t.defense, dir) && !['burn', 'spike', 'slam', 'pillar'].includes(kind)) {
         from.takeHit(0, _v.copy(dir).negate(), 4, 1);
@@ -80,8 +84,13 @@ export class Combat {
     // (21 Nov, after review: "visually, the moves of Air do not look devastating") an airbender's blow throws harder
     const airBlow = from && from !== t && from.el === 'air' && level >= 0;
     if (airBlow) knock *= 1.35;
+    // (21 Nov, after review: "when they are close, the kick should send them spiralling back") an Air kick that lands
+    // close in throws the rival off their feet, turning over and over as they fly back
+    const spiral = airBlow && level >= 1 && from.action === 'tech' && from.tech && /kick|sweep|hurricane|crescent|axe|heel|front|round|teep/i.test(from.tech.clip || '') && Math.hypot(t.pos.x - from.pos.x, t.pos.z - from.pos.z) < 3.5;
+    if (spiral) { level = 2; knock *= 1.5; }
     t.takeHit(dmg, dir, knock, level);
     if (level < 0) return;
+    if (spiral && !t.dead) { t.vel.y = Math.max(t.vel.y, 6); t.onGround = false; t.spiralT = 0.9; w.popup(t, 'SPIRAL', true); }
     if (airBlow) {
       // and lands with a burst of wind: a shockwave ring round the body, streaks blown out along the blow, dust at the feet
       const fx = w.fx, gy = t.groundY, k = level >= 1 ? 1 : 0.6;

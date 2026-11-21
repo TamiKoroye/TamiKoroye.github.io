@@ -28,7 +28,9 @@ export const MOBILITY = {
   water: { top: 12.5, accel: 9, turn: 3.0, brake: 14, cruise: 5, coast: 3, drain: 4, launch: 12.5, lift: 3.0, last: 8 },     // ice surfing: riding a sculpted crest of ice that holds the feet 3 m off the floor; DODGE held starts it, it keeps going after DODGE is let go (so the thumb is free to attack), DODGE tapped again ends it
   earth: { top: 10.5, accel: 5, turn: 2.4, brake: 9, cruise: 5, coast: 2, drain: 7, launch: 13.5, lift: 1.0, last: 4 },     // rock slide (heavy, on a slab of rock held 1 m off the floor; DODGE starts and ends it)
   flame: { top: 13, accel: 30, turn: 6, drain: 14, launch: 11 },                                         // flame-propelled run
-  fly:   { duration: 6, takeoff: 8, ascent: 7, sink: 1.2, maxAlt: 14, speed: 9.5, accel: 14, drain: 8, recover: 1.5 }, // airbending flight
+  // (21 Nov, after review: "he should be able to glide through the air easily") faster, steadier and longer (was duration 6,
+  // speed 9.5, accel 14, drain 8, recover 1.5)
+  fly:   { duration: 10, takeoff: 9, ascent: 8, sink: 1.2, maxAlt: 14, speed: 14, accel: 28, drain: 5, recover: 0.8 }, // airbending flight
 };
 
 export class Fighter {
@@ -472,6 +474,7 @@ export class Fighter {
             this.spT = -1;
             if (vortex) { this.vortexCd = this.time + 12; this.startTech(st.tech.airVortex, 1); }
             else if (bomb) { this.bombCd = this.time + 4; this.startTech(st.tech.airBomb, 1); }
+            else if (st.tech.airSuffocate && this.spT < 0.3 && this.airDist() > 0 && this.airDist() < 5 && (this.smotherCd || 0) <= this.time && this.en >= st.tech.airSuffocate.cost) { this.smotherCd = this.time + 10; this.startTech(st.tech.airSuffocate, 1); }   // (21 Nov) tapped close in: Suffocation
             else if (this.en >= st.tech.special.cost) this.startTech(st.tech.special, this.handSide);
           }
         }
@@ -585,7 +588,7 @@ export class Fighter {
         // Air: a two-second glide inside the whirlwind, held about 0.7 m off the floor, fast at first and easing;
         // the stick steers it
         if (Math.hypot(mx, mz) > 0.3) { const l = Math.hypot(mx, mz), kk = 1 - Math.exp(-3 * dt); this.dodgeDir.x += (mx / l - this.dodgeDir.x) * kk; this.dodgeDir.z += (mz / l - this.dodgeDir.z) * kk; const n = Math.hypot(this.dodgeDir.x, this.dodgeDir.z) || 1; this.dodgeDir.x /= n; this.dodgeDir.z /= n; }
-        const gsp = 4 + 9 * k;
+        const gsp = 6 + 13 * k;   // (21 Nov, after review: "dodge easily": was 4 + 9 * k)
         this.vel.x = this.dodgeDir.x * gsp; this.vel.z = this.dodgeDir.z * gsp;
         this.vel.y = (0.7 - (this.pos.y - this.groundY)) * 6 + 21 * dt; this.onGround = false;
       } else if (this.dodgeKind === 'flip') {
@@ -724,7 +727,9 @@ export class Fighter {
       const rate = this.action && this.action !== 'land' ? 18 : (inp.strafe ? 14 : (this.sprinting ? 7 : 11));
       this.faceYaw = dampAngle(this.faceYaw, wantYaw, rate, dt);
     }
-    this.yaw = this.faceYaw + this.spinYaw;
+    // (21 Nov) sent spiralling back by an Air kick: the body turns over and over through the flight (combat.js)
+    if (this.spiralT > 0) { this.spiralT -= dt; this.spiralYaw = (this.spiralYaw || 0) + dt * 15; if (this.spiralT <= 0) { this.faceYaw += this.spiralYaw % (Math.PI * 2); this.spiralYaw = 0; } }
+    this.yaw = this.faceYaw + this.spinYaw + (this.spiralYaw || 0);
 
     // ---- motion analysis for animation
     const sp = Math.hypot(this.vel.x, this.vel.z);
@@ -1112,7 +1117,8 @@ export class Fighter {
       if (this.time - (this.airComboT ?? -9) > 1.0) this.airComboN = 0;
       const T = st.tech.airCombo[(this.airComboN || 0) % 3]; this.airComboN = (this.airComboN || 0) + 1; this.airComboT = this.time + T.dur; return T;
     }
-    if (d > 8.5 && st.tech.suction && (this.suctionCd || 0) <= this.time && this.en >= st.tech.suction.cost) { this.suctionCd = this.time + 5; return st.tech.suction; }
+    // (21 Nov, after review: "the air suction doesn't even work!") from 6 m out, past the whip's reach (was 8.5 m), 3 s cooldown (was 5)
+    if (d > 6 && st.tech.suction && (this.suctionCd || 0) <= this.time && this.en >= st.tech.suction.cost) { this.suctionCd = this.time + 3; return st.tech.suction; }
     return null;
   }
   airDist() { const t = this.target; return t && !t.dead ? Math.hypot(t.pos.x - this.pos.x, t.pos.z - this.pos.z) : 0; }
@@ -1172,7 +1178,7 @@ export class Fighter {
       this.world.audio.ice('form', 0.8, this.pos);
     }
     this.dodgeDur = this.dodgeKind === 'glide' ? 2.0 : this.dodgeKind === 'rocket' ? 0.95 : this.dodgeKind === 'arch' ? 1.0 : this.dodgeKind === 'flip' ? 0.95 : this.dodgeKind === 'side' ? 0.26 : this.dodgeKind === 'back' ? 0.3 : this.dodgeKind === 'circle' ? 0.42 : D.dur;
-    this.dodgeT = this.dodgeDur; this.dodgeCd = this.dodgeKind === 'glide' ? 0.6 : 0.42; this.invuln = this.dodgeKind === 'glide' ? 0.6 : (this.dodgeKind === 'rocket' || this.dodgeKind === 'arch') ? 0.35 : this.dodgeDur * (D.iframes || 0.75); this.en -= this.dodgeKind === 'glide' ? 16 : 10;
+    this.dodgeT = this.dodgeDur; this.dodgeCd = this.dodgeKind === 'glide' ? 0.3 : 0.42; this.invuln = this.dodgeKind === 'glide' ? 0.9 : (this.dodgeKind === 'rocket' || this.dodgeKind === 'arch') ? 0.35 : this.dodgeDur * (D.iframes || 0.75); this.en -= this.dodgeKind === 'glide' ? 9 : this.el === 'air' ? 6 : 10;   /* (21 Nov: Air's dodges cost less; the glide was 16, the flips 10) */
     this.action = null; this.tech = null; this.spinYaw = 0;
     this.world.fx.dust(this.pos, 5, 1.2);
     if (this.el === 'air') this.world.audio.gust(0.6, this.pos); else if (this.el === 'fire') this.world.audio.fireWhoosh(0.6, this.pos); else this.world.audio.dodge(0.7, this.pos);
