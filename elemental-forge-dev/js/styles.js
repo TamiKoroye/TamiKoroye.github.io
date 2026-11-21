@@ -265,7 +265,8 @@ const air = {
   key: 'air', name: 'Air', art: 'Baguazhang', color: 0xd9e3e8, sash: 0xe0a33a,
   stance: airStance,
   // (21 Nov, after review: "Air bending should feel super super fast compared to others") was walk 3.4, run 7.4, sprint 10.6, accel 42
-  loco: { walk: 4.2, run: 9.2, sprint: 13.0, accel: 70, stride: 1.2, bob: 0.4, knee: 0.75, lean: 1.2, swing: 0.25, elbow: 0.3, carry: 0.55, out: 0.0, heavy: 0.4 },
+  loco: { walk: 4.6, run: 10.5, sprint: 15.0, accel: 90, stride: 1.2,   // (21 Nov: faster still; was 4.2 / 9.2 / 13 / 70)
+  bob: 0.4, knee: 0.75, lean: 1.2, swing: 0.25, elbow: 0.3, carry: 0.55, out: 0.0, heavy: 0.4 },
   jump: { v: 7.8, air: 1 },
   dodge: { kind: 'airdash', dur: 0.36, speed: 19, iframes: 0.85, trail: 'air' },
   labels: { hand: 'AIR PALM', leg: 'AIR KICK', guard: 'DEFLECT', special: 'TORNADO · HOLD' },   // (21 Nov: HOLD, the Air Bomb and the Vortex)
@@ -531,10 +532,12 @@ STYLES.fire.tech.groundStab = T({ name: 'Grounded Stab', clip: 'hard_land', clip
 //   HAND during the dodge: the Air Swipe
 //   LEG tap: the kicks as before; the rival beyond 7 m, the Air Blades
 //   LEG long press: the Air Compression as before; in the air or in flight, the Air Bomb dive (it bursts where he lands)
-//   SPECIAL: tap the Tornado; held 0.3 s the Air Bomb; held 1 s the Air Vortex
+//   SPECIAL: tap the Tornado (the rival within 4 m: Suffocation); held 0.3 s the Air Bomb; held 1 s the Air Vortex
 STYLES.air.tech.airBlast = T({ name: 'Air Blast', clip: 'air_palm', clipSpeed: 1.4, dur: 0.64, cost: 6, cancel: 0.55, upper: true, move: 1, keys: K0, events: [[0.45, 'air.blast']] });
 STYLES.air.tech.airSwipe = T({ name: 'Air Swipe', clip: 'air_vortex', clipSpeed: 1.6, dur: 0.6, cost: 9, cancel: 0.65, move: 1.2, keys: K0, events: [[0.45, 'air.swipe']] });
-STYLES.air.tech.airBlades = T({ name: 'Air Blades', clip: 'whip_d', clipSpeed: 1.8, dur: 0.55, cost: 9, cancel: 0.65, upper: true, move: 0.8, keys: K0, events: [[0.45, 'air.blade1'], [0.6, 'air.blade2']] });
+// (21 Nov, after review: "if you click on LEG blades, it's his hands that move!") the blades come off a roundhouse kick: the
+// sweeping foot cuts them loose, one after the other (was a two-handed slash, whip_d)
+STYLES.air.tech.airBlades = T({ name: 'Air Blades', clip: 'round_kick2', clipSpeed: 1.6, dur: 0.55, cost: 9, cancel: 0.65, move: 0.8, keys: K0, events: [[0.45, 'air.blade1'], [0.55, 'air.blade2']] });
 STYLES.air.tech.airBomb = T({ name: 'Air Bomb', clip: 'stand_jump', clipSpeed: 1.5, dur: 0.95, cost: 16, cancel: 0.75, move: 0, keys: K0, rawTiming: true, events: [[0.32, 'air.bomb']] });
 STYLES.air.tech.suction = T({ name: 'Suction', clip: 'water_redirect', clipSpeed: 1.5, dur: 0.6, cost: 10, cancel: 0.7, upper: true, move: 0.5, keys: K0, events: [[0.4, 'air.suction']] });
 // (21 Nov) Air Vortex: the arms circle in front of the body (the qigong circling of the guard) while the cyclone winds
@@ -542,10 +545,13 @@ STYLES.air.tech.suction = T({ name: 'Suction', clip: 'water_redirect', clipSpeed
 STYLES.air.tech.airVortex = T({ name: 'Air Vortex', clip: 'water_flow', clipSpeed: 2.4, keepDur: true, onStart: 'air.vortexStart', dur: 0.9, cost: 45, cancel: 0.9, move: 0, rawTiming: true, keys: K0, events: [[0.8, 'air.special']] });
 // (21 Nov, after review: "Air bending should feel super super fast") every Air technique plays 1.3 times faster, so its
 // strikes land sooner and recover sooner (mocap.js adoptTiming)
-STYLES.air.tempo = 1.3;
+STYLES.air.tempo = 1.45;   // (21 Nov, "the air bender should be faster than other benders": was 1.3)
 // (21 Nov) the palm combination, close in (HAND taps within 2.5 m): open palm, turning palm, gale kick
 STYLES.air.tech.airCombo = [
   T({ name: 'Air Palm Strike', clip: 'fire_jab', clipSpeed: 2.2, dur: 0.38, cost: 4, cancel: 0.5, upper: true, move: 1.5, lunge: 6, keys: K0, events: [[0.4, 'air.combo0']] }),
   T({ name: 'Turning Palm', clip: 'whip_h', clipSpeed: 2.0, dur: 0.45, cost: 4, cancel: 0.55, upper: true, move: 1.5, lunge: 5, keys: K0, events: [[0.4, 'air.combo1']] }),
   T({ name: 'Gale Kick', clip: 'move_kick', clipSpeed: 1.7, dur: 0.6, cost: 6, cancel: 0.7, move: 1.2, lunge: 4, keys: K0, events: [[0.45, 'air.combo2']] }),
 ];
+// (21 Nov) Suffocation: SPECIAL tapped with the rival within 4 m (further off, the Tornado); the palms draw in and press
+// together as the bubble seals round the rival's head (air.js suffocate)
+STYLES.air.tech.airSuffocate = T({ name: 'Suffocation', clip: 'magic_2h', clipSpeed: 1.6, dur: 0.9, cost: 30, cancel: 0.8, move: 0, keys: K0, rawTiming: true, events: [[0.5, 'air.suffocate']] });

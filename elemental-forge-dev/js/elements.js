@@ -8,7 +8,7 @@
 import * as THREE from 'three';
 import { jaggedRockGeometry, HALF } from './arena.js';
 import { EarthSkills } from './earth.js';
-import { AirSkills } from './air.js';
+import { AirSkills, windMaterial } from './air.js';
 import { clamp, mulberry32, smooth01, rand } from './util.js';
 import { iceClusterMesh } from './ice.js';
 import { TOON_RAMP } from './hero.js';
@@ -291,6 +291,7 @@ export class Bending {
       case 'air.blade2': this.air.blades(f, -f.techSide); return;
       case 'air.bomb': this.air.bomb(f); return;
       case 'air.suction': this.air.suction(f); return;
+      case 'air.suffocate': this.air.suffocate(f); return;   // (21 Nov) the suffocation bubble
       case 'earth.dust': this.earth.dust(f, !!f.input.handHeld); return;
       case 'earth.storm': this.earth.storm(f); return;
       case 'earth.thrust': this.earth.compressLaunch(f); return;
@@ -592,7 +593,9 @@ export class Bending {
       }
       case 'air.charged': {
         // Air Compression: the gathered air released as one broad pressure wave
-        this.weapons.wave(f, 'air', { width: 7, life: 0.75, speed: 22, dmg: 8, knock: 18, level: 2 }); w.shake(0.2, f.pos); return;
+        // (21 Nov, after review: "the gust of wind he creates has to be super super strong, and it should show like that")
+        // wider, harder (was width 7, dmg 8, knock 18) and a storm of wind along its path (air.js gustStorm)
+        this.weapons.wave(f, 'air', { width: 9, life: 0.85, speed: 26, dmg: 13, knock: 28, level: 2 }); this.air.gustStorm(f, 11); return;
       }
       case 'air.specialStart': this.specials.airStart(f); return;
       case 'air.vortexStart': this.specials.airStart(f, true); return;   // (21 Nov) the Air Vortex
@@ -965,7 +968,11 @@ export class Bending {
     } else {
       d.mesh = new THREE.Group();
       /* drawn as circling wind streaks (updateDefences), no solid rings */
-      d.sphere = 1.9; this.placeDef(d, 1); w.audio.gust(0.7);
+      // (21 Nov, after review: "a ball of air (circular) around him as the guard") a sphere of spiralling wind, centred on
+      // the chest and turning with the bands; it covers him all round
+      if (!this.airBallMat) { this.airBallMat = windMaterial({ opacity: 0.24, twist: 6, flow: 5, color: 0xe4f0f8 }); this.airBallGeo = new THREE.SphereGeometry(1.6, 28, 18); }
+      d.ball = new THREE.Mesh(this.airBallGeo, this.airBallMat); d.ball.renderOrder = 5; d.mesh.add(d.ball);
+      d.sphere = 1.9; d.full = true; this.placeDef(d, 1); w.audio.gust(0.7);
     }
     d.maxHp = d.hp;
     w.scene.add(d.mesh);
@@ -1002,8 +1009,9 @@ export class Bending {
   guardEnd(f, now) {
     const d = f.defense;
     if (!d || d.dead) { f.defense = null; return; }
-    if (!now && !d.ice && !d.lingering && d.el !== 'air' && !f.dead && d.rise > 0.5) {
-      d.lingering = true; d.linger = LINGER;
+    // (21 Nov, after review: "the guard should not vanish when my hand is off") Air's ball of wind lingers too, 3 s
+    if (!now && !d.ice && !d.lingering && !f.dead && d.rise > 0.5) {
+      d.lingering = true; d.linger = d.el === 'air' ? 3.0 : LINGER;
       if (d.el === 'water') {
         // the water shield turns to ice (the same ice wall as GUARD + SPECIAL, here for LINGER seconds): four spikes in it
         this.freeze(d, true); d.free = true; d.life = LINGER; d.iceShots = 4;
@@ -1077,11 +1085,12 @@ export class Bending {
     const to = _v.subVectors(p, d.pos), dist = to.length();
     if (dist > d.sphere * d.rise + pad) return false;
     const fw = _v2.set(Math.sin(d.yaw), 0, Math.cos(d.yaw));
+    if (d.full) return true;   // (Air's ball: all round)
     return (to.x * fw.x + to.z * fw.z) / (Math.hypot(to.x, to.z) || 1) > -0.85;
   }
   // does the defence cover an attack arriving along `dir` (direction of travel)?
   covers(d, dir) {
-    if (d.ring) return true;
+    if (d.ring || d.full) return true;
     const fx = Math.sin(d.yaw), fz = Math.cos(d.yaw), l = Math.hypot(dir.x, dir.z);
     if (l < 1e-3) return !!d.sphere;
     const c = -(dir.x * fx + dir.z * fz) / l;          // 1 = straight at the front
@@ -1756,6 +1765,8 @@ export class Bending {
           if (d.life <= 0) this.breakDefence(d);
         }
       } else {
+        if (d.lingering && d.owner.defense === d) this.placeDef(d, 0.3);   // (the lingering ball goes with him)
+        if (this.airBallMat) this.airBallMat.uniforms.uTime.value += dt / Math.max(1, this.defs.filter(x => x.ball).length);
         d.mesh.position.copy(d.pos); d.mesh.scale.setScalar(d.rise); d.mesh.rotation.y += dt * 9;
         // a visible whirlwind: three bands of wind winding round the bender from the feet to above the head
         if (!d.tubes) { d.tubes = [0, 1, 2].map(() => { const t = this.weapons.tube(); t.mesh.material = this.weapons.airTubeMat; return t; }); d.wpts = d.tubes.map(() => Array.from({ length: 20 }, () => new THREE.Vector3())); }
