@@ -1151,6 +1151,9 @@ export class Bending {
   }
   breakDefence(d) {
     const w = this.world; d.dead = true; w.scene.remove(d.mesh);
+    // (21 Nov, after review: "hanging air spirals frozen on screen") Air's wind bands are separate meshes: free them too
+    if (d.tubes) { d.tubes.forEach(t => this.weapons.freeTube(t)); d.tubes = null; }
+    if (d.el === 'air') for (let i = 0; i < 16; i++) w.fx.wind(_v.copy(d.pos), _v2.set(rand(-6, 6), rand(-1, 3), rand(-6, 6)), 0.6, 0.35);   // (the ball bursts)
     if (d.cols) for (const c of d.cols) { c.dead = true; } w.arena.colliders = w.arena.colliders.filter(c => !c.dead);
     if (d.el === 'earth') { w.fx.debrisBurst(d.pos.clone().setY(d.pos.y + 1), 24, 4, 0.15, 0x7a6a58); w.audio.impact(1.1); }
     if (d.el === 'water' && d.ice) { w.fx.debrisBurst(_v.copy(d.pos).add(_v2.set(Math.sin(d.yaw) * 1.2, 1, Math.cos(d.yaw) * 1.2)), 34, 4.5, 0.13, 0xcdefff); w.audio.impact(1.0); if (!d.lingering) w.popup(d.owner, 'ICE SHATTERS', true); }
