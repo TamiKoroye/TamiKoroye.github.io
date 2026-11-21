@@ -372,9 +372,12 @@ export class Fighter {
         struck = true; this.lastStrike = 'hand';
         // (the Air Swipe is chosen while the dodge still runs, before the strike ends it)
         this.airPick = this.el === 'air' ? this.airHandTech() : null;   // (chosen while the dodge still runs)
+        // (21 Nov) Suction goes on the release of a tap: a HAND kept held is the Twin Air Streams, as before
+        if (this.airPick === st.tech.suction) { this.suctionPend = this.time; this.airPick = null; this.suctionCd = 0; }
         this.buf.hand = 0; if (this.dodgeKind !== 'rocket' && this.dodgeKind !== 'arch') this.dodgeT = 0;
         if (this.counterT > 0) { this.counterT = 0; this.startAction('counter'); w.combat.lunge(this, ACTIONS.counter); w.popup(this, 'COUNTER', true); w.audio.whoosh(0.9); }
         else if (B.spiralRelease && B.spiralRelease(this)) { w.popup(this, 'RELEASE', true); }
+        else if (this.suctionPend === this.time) { /* Suction waits for the release (above); nothing on the press */ }
         else { this.handSide = -this.handSide; const riding = this.el === 'water' && st.tech.surfPunch && ((this.dodgeKind === 'arch' && this.dodgeT > 0) || (this.mob && this.mob.kind === 'surf')); this.startTech(riding ? st.tech.surfPunch : (this.el === 'fire' && this.fireHandTech()) || (this.el === 'earth' && this.earthHandTech()) || this.airPick || st.tech.hand, this.handSide, true); }
         this.handHoldT = 0;
       }
@@ -474,7 +477,7 @@ export class Fighter {
             this.spT = -1;
             if (vortex) { this.vortexCd = this.time + 12; this.startTech(st.tech.airVortex, 1); }
             else if (bomb) { this.bombCd = this.time + 4; this.startTech(st.tech.airBomb, 1); }
-            else if (st.tech.airSuffocate && this.spT < 0.3 && this.airDist() > 0 && this.airDist() < 5 && (this.smotherCd || 0) <= this.time && this.en >= st.tech.airSuffocate.cost) { this.smotherCd = this.time + 10; this.startTech(st.tech.airSuffocate, 1); }   // (21 Nov) tapped close in: Suffocation
+            else if (st.tech.airSuffocate && this.spT < 0.3 && this.airDist() > 0 && this.airDist() < 4 && (this.smotherCd || 0) <= this.time && this.en >= st.tech.airSuffocate.cost) { this.smotherCd = this.time + 10; this.startTech(st.tech.airSuffocate, 1); }   // (21 Nov) tapped close in: Suffocation
             else if (this.en >= st.tech.special.cost) this.startTech(st.tech.special, this.handSide);
           }
         }
@@ -726,6 +729,10 @@ export class Fighter {
     if (wantYaw !== null && wantYaw !== undefined && (this.dodgeT <= 0 || this.dodgeKind === 'glide' || this.dodgeKind === 'rocket' || this.dodgeKind === 'arch')) {   // (the glide keeps turning to face the rival)
       const rate = this.action && this.action !== 'land' ? 18 : (inp.strafe ? 14 : (this.sprinting ? 7 : 11));
       this.faceYaw = dampAngle(this.faceYaw, wantYaw, rate, dt);
+    }
+    if (this.suctionPend !== undefined && this.suctionPend !== null) {
+      if (!this.input.handHeld) { this.suctionPend = null; if (this.el === 'air' && this.free('attack') && this.en >= this.style.tech.suction.cost) { this.suctionCd = this.time + 3; this.startTech(this.style.tech.suction, this.handSide, true); } }
+      else if (this.time - this.suctionPend > 0.25) this.suctionPend = null;
     }
     // (21 Nov) sent spiralling back by an Air kick: the body turns over and over through the flight (combat.js)
     if (this.spiralT > 0) { this.spiralT -= dt; this.spiralYaw = (this.spiralYaw || 0) + dt * 15; if (this.spiralT <= 0) { this.faceYaw += this.spiralYaw % (Math.PI * 2); this.spiralYaw = 0; } }
@@ -1177,7 +1184,7 @@ export class Fighter {
       this.dodgeKind = 'arch'; this.archH0 = Math.max(0, this.pos.y - this.groundY); this.vel.y = Math.max(this.vel.y, 0);
       this.world.audio.ice('form', 0.8, this.pos);
     }
-    this.dodgeDur = this.dodgeKind === 'glide' ? 2.0 : this.dodgeKind === 'rocket' ? 0.95 : this.dodgeKind === 'arch' ? 1.0 : this.dodgeKind === 'flip' ? 0.95 : this.dodgeKind === 'side' ? 0.26 : this.dodgeKind === 'back' ? 0.3 : this.dodgeKind === 'circle' ? 0.42 : D.dur;
+    this.dodgeDur = this.dodgeKind === 'glide' ? 1.6 :   /* (21 Nov: the faster glide, shorter; was 2.0) */ this.dodgeKind === 'rocket' ? 0.95 : this.dodgeKind === 'arch' ? 1.0 : this.dodgeKind === 'flip' ? 0.95 : this.dodgeKind === 'side' ? 0.26 : this.dodgeKind === 'back' ? 0.3 : this.dodgeKind === 'circle' ? 0.42 : D.dur;
     this.dodgeT = this.dodgeDur; this.dodgeCd = this.dodgeKind === 'glide' ? 0.3 : 0.42; this.invuln = this.dodgeKind === 'glide' ? 0.9 : (this.dodgeKind === 'rocket' || this.dodgeKind === 'arch') ? 0.35 : this.dodgeDur * (D.iframes || 0.75); this.en -= this.dodgeKind === 'glide' ? 9 : this.el === 'air' ? 6 : 10;   /* (21 Nov: Air's dodges cost less; the glide was 16, the flips 10) */
     this.action = null; this.tech = null; this.spinYaw = 0;
     this.world.fx.dust(this.pos, 5, 1.2);

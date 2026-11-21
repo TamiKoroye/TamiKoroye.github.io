@@ -532,7 +532,7 @@ STYLES.fire.tech.groundStab = T({ name: 'Grounded Stab', clip: 'hard_land', clip
 //   HAND during the dodge: the Air Swipe
 //   LEG tap: the kicks as before; the rival beyond 7 m, the Air Blades
 //   LEG long press: the Air Compression as before; in the air or in flight, the Air Bomb dive (it bursts where he lands)
-//   SPECIAL: tap the Tornado (the rival within 5 m: Suffocation); held 0.3 s the Air Bomb; held 1 s the Air Vortex
+//   SPECIAL: tap the Tornado (the rival within 4 m: Suffocation); held 0.3 s the Air Bomb; held 1 s the Air Vortex
 STYLES.air.tech.airBlast = T({ name: 'Air Blast', clip: 'air_palm', clipSpeed: 1.4, dur: 0.64, cost: 6, cancel: 0.55, upper: true, move: 1, keys: K0, events: [[0.45, 'air.blast']] });
 STYLES.air.tech.airSwipe = T({ name: 'Air Swipe', clip: 'air_vortex', clipSpeed: 1.6, dur: 0.6, cost: 9, cancel: 0.65, move: 1.2, keys: K0, events: [[0.45, 'air.swipe']] });
 // (21 Nov, after review: "if you click on LEG blades, it's his hands that move!") the blades come off a roundhouse kick: the
@@ -552,6 +552,6 @@ STYLES.air.tech.airCombo = [
   T({ name: 'Turning Palm', clip: 'whip_h', clipSpeed: 2.0, dur: 0.45, cost: 4, cancel: 0.55, upper: true, move: 1.5, lunge: 5, keys: K0, events: [[0.4, 'air.combo1']] }),
   T({ name: 'Gale Kick', clip: 'move_kick', clipSpeed: 1.7, dur: 0.6, cost: 6, cancel: 0.7, move: 1.2, lunge: 4, keys: K0, events: [[0.45, 'air.combo2']] }),
 ];
-// (21 Nov) Suffocation: SPECIAL tapped with the rival within 5 m (further off, the Tornado); the palms draw in and press
+// (21 Nov) Suffocation: SPECIAL tapped with the rival within 4 m (further off, the Tornado); the palms draw in and press
 // together as the bubble seals round the rival's head (air.js suffocate)
 STYLES.air.tech.airSuffocate = T({ name: 'Suffocation', clip: 'magic_2h', clipSpeed: 1.6, dur: 0.9, cost: 30, cancel: 0.8, move: 0, keys: K0, rawTiming: true, events: [[0.5, 'air.suffocate']] });
