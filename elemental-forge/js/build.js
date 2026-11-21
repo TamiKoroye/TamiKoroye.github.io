@@ -1,2 +1,2 @@
 // shown on the menu so the build on a device can be identified
-export const BUILD = 'dev 2026-11-21 r41 · commit f8c92d8';
+export const BUILD = 'dev 2026-11-21 r42 · commit 96c1c20';
